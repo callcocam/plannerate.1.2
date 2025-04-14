@@ -1,0 +1,52 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+use Callcocam\Plannerate\Enums\SectionStatus;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('sections', function (Blueprint $table) {
+           $table->ulid('id')->primary();
+            $table->ulid('tenant_id')->nullable(); // Tabela de multi-tenancy
+            $table->foreignUlid('user_id')->nullable()->index(); // Usuário que criou
+            $table->foreignUlid('gondola_id')->constrained()->cascadeOnDelete(); // Gondola
+            $table->string('name')->nullable(); // Nome
+            $table->string('code', 50)->unique()->nullable(); // Código que servir de referência para o funcionário 
+            $table->string('slug')->unique()->nullable(); // Slug
+            $table->integer('width')->nullable();  // Largura em centímetros    
+            $table->integer('height')->nullable(); // Altura em centímetros
+            $table->integer('num_shelves')->nullable(); // Número de prateleiras
+            // Configurar base
+            $table->integer('base_height')->nullable()->default(17); // Altura da base em centímetros
+            $table->integer('base_depth')->nullable()->default(40); // Profundidade da base em centímetros
+            $table->integer('base_width')->nullable()->default(130); // Largura da base em centímetros
+            //Configurar Cremalheira 
+            $table->integer('cremalheira_width')->default(4)->nullable(); // Largura da cremalheira em centímetros
+            $table->integer('hole_height')->default(2)->nullable(); // Altura do furo em centímetros
+            $table->integer('hole_width')->default(2)->nullable(); // Largura do furo em centímetros
+            $table->integer('hole_spacing')->default(2)->nullable(); // Espaçamento entre furos em centímetros  
+            
+            $table->integer('ordering')->default(0)->nullable(); // Ordem de exibição/posição 
+            $table->json('settings')->nullable(); // Configurações
+            $table->enum('status', array_column(SectionStatus::cases(), 'value'))
+                ->default(SectionStatus::Draft->value);
+            $table->timestamps();
+            $table->softDeletes();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('sections');
+    }
+};

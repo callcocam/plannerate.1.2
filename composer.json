@@ -1,0 +1,85 @@
+{
+    "name": "callcocam/plannerate",
+    "description": "This is my package plannerate",
+    "keywords": [
+        "Claudio Campos",
+        "laravel",
+        "plannerate"
+    ],
+    "homepage": "https://github.com/callcocam/plannerate.1.1",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Claudio Campos",
+            "email": "contato@sigasmar.com.br",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "spatie/laravel-package-tools": "^1.16",
+        "illuminate/contracts": "^12.0",
+        "intervention/image-laravel": "^1.5",
+        "callcocam/lara-gatekeeper": "^1.0",
+        "callcocam/tall-sluggable": "dev-main",
+        "callcocam/lara-gatekeeper": "dev-main",
+        "maatwebsite/excel": "^3.1"
+    },
+    "require-dev": {
+        "laravel/pint": "^1.18",
+        "nunomaduro/collision": "^8.6",
+        "orchestra/testbench": "^9.0.0||^8.22.0",
+        "pestphp/pest": "^2.34",
+        "pestphp/pest-plugin-arch": "^2.7",
+        "pestphp/pest-plugin-laravel": "^2.3"
+    },
+    "autoload": {
+        "psr-4": {
+            "Callcocam\\Plannerate\\": "src/",
+            "Callcocam\\Plannerate\\Database\\Factories\\": "database/factories/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Callcocam\\Plannerate\\Tests\\": "tests/",
+            "Workbench\\App\\": "workbench/app/"
+        }
+    },
+    "scripts": {
+        "post-autoload-dump": "@composer run prepare",
+        "clear": "@php vendor/bin/testbench package:purge-plannerate --ansi",
+        "prepare": "@php vendor/bin/testbench package:discover --ansi",
+        "build": [
+            "@composer run prepare",
+            "@php vendor/bin/testbench workbench:build --ansi"
+        ],
+        "start": [
+            "Composer\\Config::disableProcessTimeout",
+            "@composer run build",
+            "@php vendor/bin/testbench serve"
+        ],
+        "analyse": "vendor/bin/phpstan analyse",
+        "test": "vendor/bin/pest",
+        "test-coverage": "vendor/bin/pest --coverage",
+        "format": "vendor/bin/pint"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true,
+            "phpstan/extension-installer": true
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Callcocam\\Plannerate\\PlannerateServiceProvider"
+            ],
+            "aliases": {
+                "Plannerate": "Callcocam\\Plannerate\\Facades\\Plannerate"
+            }
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}

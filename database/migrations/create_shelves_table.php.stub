@@ -1,0 +1,44 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+use Callcocam\Plannerate\Enums\ShelfStatus;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('shelves', function (Blueprint $table) {
+            $table->ulid('id')->primary();
+            $table->ulid('tenant_id')->nullable();
+            $table->foreignUlid('user_id')->nullable()->index();
+            $table->foreignUlid('section_id')->constrained()->cascadeOnDelete();
+            $table->string('code', 50)->unique()->nullable();       
+            $table->string('product_type')->nullable()->default('normal'); // Tipo de produto      
+            //Configurar prateleiras e Gancheiras
+            $table->integer('shelf_width')->default(4)->nullable(); // Largura da prateleira em centímetros
+            $table->integer('shelf_height')->default(4); // Altura da prateleira em centímetros
+            $table->integer('shelf_depth')->default(40)->nullable(); // Profundidade da prateleira em centímetros 
+            $table->integer('shelf_position')->default(0)->nullable(); // Posição vertical em centímetros
+            $table->integer('ordering')->default(0)->nullable(); // Ordem de exibição/posição
+            $table->integer('spacing')->default(0)->nullable(); // Espaçamento ente as camadas
+            $table->json('settings')->nullable(); // Configurações
+            $table->enum('status', array_column(ShelfStatus::cases(), 'value'))
+            ->default(ShelfStatus::Draft->value);
+            $table->timestamps();
+            $table->softDeletes();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('shelves');
+    }
+};

@@ -1,0 +1,330 @@
+<template>
+    <div class="shelf-controls" @mouseenter="isHovering = true" @mouseleave="isHovering = false">
+        <!-- Área central para movimento vertical da prateleira -->
+        <div class="absolute inset-0 z-10 flex h-full w-full cursor-ns-resize items-center justify-center"
+            @mousedown="handleVerticalDragStart"></div>
+        <transition name="fade">
+            <!-- Botão para mover horizontalmente para a esquerda -->
+            <div v-show="isHovering"
+                class="absolute left-0 top-0 z-20 flex h-full w-5 cursor-e-resize items-center justify-center bg-blue-500 hover:bg-blue-600"
+                @mousedown="(e) => handleHorizontalDragStart(e, 'left')">
+                <ChevronLeftIcon class="h-4 w-4 text-white" />
+            </div>
+        </transition>
+
+        <transition name="fade">
+            <!-- Botão para mover horizontalmente para a direita -->
+            <div v-show="isHovering"
+                class="absolute right-0 top-0 z-20 flex h-full w-5 cursor-e-resize items-center justify-center bg-blue-500 hover:bg-blue-600"
+                @mousedown="(e) => handleHorizontalDragStart(e, 'right')">
+                <ChevronRightIcon class="h-4 w-4 text-white" />
+            </div>
+        </transition>
+    </div>
+</template>
+
+<script setup lang="ts">
+import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-vue-next';
+import { ref, nextTick } from 'vue';
+import { useGondolaStore } from '../../../store/gondola';
+import { Shelf } from './types';
+
+/**
+ * Props do componente
+ */
+const props = defineProps<{
+    shelf: Shelf;
+    scaleFactor: number;
+    sectionWidth: number;
+    sectionHeight: number;
+    baseHeight: number;
+    shelfElement?: HTMLElement | null; // Referência ao elemento da prateleira
+    sectionsContainer: HTMLElement | null; // Referência ao container das seções
+}>();
+
+// Emits para comunicar com componentes pai
+const emit = defineEmits(['transfer-section']);
+
+// Store para interagir com o estado global das gôndolas
+const gondolaStore = useGondolaStore();
+
+// Estado para controlar a visibilidade dos botões
+const isHovering = ref(false);
+
+// Estado para controlar o modo de manipulação (arrasto vs clique)
+const isDragModeActive = ref(false);
+
+// Estados para controle da manipulação
+const isDragging = ref(false);
+const dragType = ref<'vertical' | 'horizontal' | null>(null);
+const dragDirection = ref<'left' | 'right' | null>(null);
+
+// Valores iniciais para cálculos de movimento
+const initialMouseX = ref(0);
+const initialMouseY = ref(0);
+const initialShelfX = ref(0);
+const initialShelfY = ref(0);
+ 
+// Estado para rastrear a seção alvo potencial
+const potentialTargetSectionId = ref<string | null>(null);
+// Estado para feedback visual na seção alvo
+const targetSectionElement = ref<HTMLElement | null>(null);
+
+/**
+ * Manipula movimento horizontal da prateleira usando os botões
+ */
+const moveHorizontal = (direction: 'left' | 'right') => {
+    // Obtém a posição atual, ou assume 0 se não definida
+    const currentPosition = props.shelf.shelf_x_position || 0;
+
+    // Define o incremento de movimento (unidades lógicas)
+    const moveIncrement = 10;
+
+    // Calcula a nova posição baseada na direção
+    let newPosition = currentPosition;
+
+    if (direction === 'left') {
+        newPosition = Math.max(0, currentPosition - moveIncrement);
+    } else {
+        const maxPosition = props.sectionWidth - (props.shelf.shelf_width || props.sectionWidth);
+        newPosition = Math.min(maxPosition, currentPosition + moveIncrement);
+    }
+
+    // Apenas atualiza se a posição de fato mudou
+    if (newPosition !== currentPosition) {
+        gondolaStore.updateShelf(props.shelf.id, {
+            shelf_x_position: newPosition,
+        });
+    }
+};
+
+/**
+ * Inicia o arrasto vertical
+ */
+const handleVerticalDragStart = (e: MouseEvent) => {
+    if (isDragModeActive.value) return; // Não permitir arrasto vertical no modo de arrasto horizontal
+
+    isDragging.value = true;
+    dragType.value = 'vertical';
+
+    initialMouseY.value = e.clientY;
+    initialShelfY.value = props.shelf.shelf_position || 0;
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    e.preventDefault();
+};
+
+/**
+ * Inicia o arrasto horizontal
+ */
+const handleHorizontalDragStart = (e: MouseEvent, direction: 'left' | 'right') => {
+    isDragging.value = true;
+    dragType.value = 'horizontal';
+    dragDirection.value = direction;
+    initialMouseX.value = e.clientX; // CORRIGIDO: Usar clientX em vez de offsetX
+    initialShelfX.value = props.shelf.shelf_x_position || 0;
+
+    // console.log('Iniciando arrasto horizontal:', {
+    //     direction,
+    //     initialMouseX: initialMouseX.value,
+    //     initialShelfX: initialShelfX.value
+    // });
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    e.preventDefault();
+    e.stopPropagation();
+};
+
+/**
+ * Handler para o movimento do mouse durante arrasto
+ */
+const handleMouseMove = (e: MouseEvent) => {
+    if (!isDragging.value) return;
+
+    if (dragType.value === 'vertical') {
+        handleVerticalMove(e);
+    } else if (dragType.value === 'horizontal') {
+        handleHorizontalMove(e);
+    }
+};
+
+/**
+ * Lida com o movimento vertical da prateleira
+ */
+const handleVerticalMove = (e: MouseEvent) => {
+    if (!props.shelfElement) return;
+
+    const containerRect = props.shelfElement.parentElement?.getBoundingClientRect();
+    if (!containerRect) return;
+
+    const relativeY = e.clientY - containerRect.top;
+
+    if (relativeY < 0 || relativeY > containerRect.height) return;
+
+    const maxYPosition = props.sectionHeight * props.scaleFactor - props.baseHeight - props.shelf.shelf_height;
+    if (relativeY >= maxYPosition) return;
+
+    gondolaStore.updateShelf(
+        props.shelf.id,
+        {
+            shelf_position: relativeY / props.scaleFactor,
+        },
+        false,
+    );
+};
+
+/**
+ * Lida com o movimento horizontal, detectando sobreposição com outras seções.
+ */
+const handleHorizontalMove = (e: MouseEvent) => {
+    if (!props.sectionsContainer || !props.shelfElement) return;
+
+    const containerRect = props.sectionsContainer.getBoundingClientRect();
+    const currentSectionElement = props.shelfElement.parentElement;
+    if (!currentSectionElement) return;
+    const currentSectionRect = currentSectionElement.getBoundingClientRect();
+
+    const deltaX = e.clientX - initialMouseX.value;
+    let newRelativeX = initialShelfX.value + deltaX;
+
+    // Atualiza a posição visual imediatamente (sem persistir)
+    gondolaStore.updateShelf(props.shelf.id, { shelf_x_position: newRelativeX }, false);
+
+    // Usar nextTick para garantir que o DOM atualizou com a nova posição visual
+    nextTick(() => {
+        if (!props.shelfElement) return; // Verifica novamente dentro do nextTick
+        const shelfRect = props.shelfElement.getBoundingClientRect();
+        let foundTarget = false;
+        potentialTargetSectionId.value = null; // Reset antes de checar
+
+        // Remover classe de highlight anterior
+        if (targetSectionElement.value) {
+            targetSectionElement.value.classList.remove('section-drop-target-highlight');
+            targetSectionElement.value = null;
+        }
+
+        const sectionElements = props.sectionsContainer?.querySelectorAll('[data-section-id]');
+
+        sectionElements?.forEach(element => {
+            const sectionEl = element as HTMLElement;
+            const sectionId = sectionEl.dataset.sectionId;
+
+            // Pula a seção atual
+            if (!sectionId || sectionId === props.shelf.section_id) return;
+
+            const targetSectionRect = sectionEl.getBoundingClientRect();
+
+            // Cálculo de sobreposição
+            const overlapLeft = Math.max(shelfRect.left, targetSectionRect.left);
+            const overlapRight = Math.min(shelfRect.right, targetSectionRect.right);
+            const overlapWidth = overlapRight - overlapLeft;
+
+            // Verifica se mais da metade da prateleira está sobre a outra seção
+            if (overlapWidth > shelfRect.width * 0.1) {
+                // console.log(`Overlapping section ${sectionId}`);
+                potentialTargetSectionId.value = sectionId;
+                targetSectionElement.value = sectionEl; // Guarda o elemento para highlight
+                sectionEl.classList.add('section-drop-target-highlight'); // Adiciona classe para feedback
+                foundTarget = true;
+                // Poderia adicionar return aqui se só pode estar sobre uma seção por vez
+            }
+        });
+
+        // Se não encontrou alvo, garante que o ID e o highlight sejam removidos
+        if (!foundTarget) {
+            potentialTargetSectionId.value = null;
+            // Simplified check: Just ensure the element exists
+            if (targetSectionElement.value) {
+                (targetSectionElement.value as HTMLElement).classList.remove('section-drop-target-highlight');
+                targetSectionElement.value = null;
+            }
+        }
+    });
+
+    document.body.style.cursor = 'e-resize';
+};
+
+/**
+ * Finaliza o arrasto e processa transferências entre seções se necessário.
+ */
+const handleMouseUp = () => {
+    // Remover highlight visual ao soltar
+    // Simplified check: Just ensure the element exists
+    if (targetSectionElement.value) {
+        (targetSectionElement.value as HTMLElement).classList.remove('section-drop-target-highlight');
+        targetSectionElement.value = null;
+    }
+
+    if (isDragging.value) {
+        if (dragType.value === 'vertical') {
+            gondolaStore.updateShelf(props.shelf.id, { shelf_position: props.shelf.shelf_position });
+        } else if (dragType.value === 'horizontal') {
+            const targetSectionId = potentialTargetSectionId.value;
+            const currentShelfData = props.shelf;
+
+            if (targetSectionId && targetSectionId !== currentShelfData.section_id) {
+                // console.log(`Transferring shelf ${currentShelfData.id} to section ${targetSectionId}`);
+
+                // ALWAYS set position to 0 relative to the new section
+                const newRelativeX = 0;
+
+                // Chamar a nova ação do store para transferência
+                // No longer need to check elements if we always set X to 0
+                gondolaStore.transferShelf(currentShelfData.id, String(currentShelfData.section_id), targetSectionId, newRelativeX);
+
+            } else {
+                // Soltou na mesma seção ou fora de uma zona de transferência válida
+                // console.log(`Persisting shelf ${currentShelfData.id} horizontal position in section ${currentShelfData.section_id}`);
+                gondolaStore.updateShelf(currentShelfData.id, { shelf_x_position: currentShelfData.shelf_x_position });
+            }
+        }
+    }
+
+    // Resetar estados e cursores
+    isDragging.value = false;
+    dragType.value = null;
+    potentialTargetSectionId.value = null; // Resetar target ID
+    document.body.style.cursor = '';
+
+    // Remover event listeners
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+};
+</script>
+
+<style scoped>
+/* Botões de navegação */
+.absolute.left-0 {
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+}
+
+.absolute.right-0 {
+    border-top-left-radius: 4px;
+    border-bottom-left-radius: 4px;
+}
+
+/* Animação de fade para os botões */
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
+}
+
+/* Estilo para destacar a seção alvo durante o arraste */
+:global(.section-drop-target-highlight) {
+    outline: 2px dashed blue;
+    outline-offset: -2px;
+    /* Para ficar dentro da borda */
+    background-color: rgba(0, 0, 255, 0.05);
+    transition: outline 0.1s ease-in-out, background-color 0.1s ease-in-out;
+}
+</style>
