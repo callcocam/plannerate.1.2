@@ -15,8 +15,7 @@ const props = defineProps({
         type: Array as () => BreadcrumbItem[],
         default: () => [],
     },
-});
- 
+}); 
 </script>
 
 <template> 
