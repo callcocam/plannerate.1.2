@@ -9,8 +9,7 @@
 namespace Callcocam\Plannerate\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use Callcocam\Plannerate\Facades\Plannerate;
-use Illuminate\Http\Request;
+use Callcocam\Plannerate\Facades\Plannerate; 
 use Inertia\Inertia;
 
 class PlannerateController extends Controller
@@ -20,7 +19,7 @@ class PlannerateController extends Controller
     public function index()
     {
 
-        return Inertia::render('plannerate/Index', [
+        return view('plannerate/Index', [
             'title' => 'Planejamento de Tarefas',
             'description' => 'Planejamento de Tarefas',
             'breadcrumbs' => [
@@ -31,7 +30,7 @@ class PlannerateController extends Controller
 
     public function gondola()
     {
-        return Inertia::render('plannerate/Gondola', [
+        return view('plannerate/Gondola', [
             'title' => 'Gôndola',
             'description' => 'Gôndola',
             'breadcrumbs' => [
