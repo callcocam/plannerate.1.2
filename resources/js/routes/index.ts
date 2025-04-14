@@ -4,40 +4,16 @@ import NotFound from '../views/NotFound.vue';
 // Define your routes
 const routes: Array<RouteRecordRaw> = [
     {
-        path: '/plannerate',
+        path: '/plannerate/show',
         name: 'plannerate.home',
-        component: () => import('../views/Home.vue'),
-        redirect: { name: 'plannerate.index' },
+        component: () => import('../views/Home.vue'), 
         children: [
             {
-                path: '',
-                name: 'plannerate.index',
-                component: () => import('../views/List.vue'),
-            },
-            {
-                path: 'cadastrar',
-                name: 'plannerate.create',
-                component: () => import('./../views/Create.vue')
-            },
-            {
-                path: ':id/editar',
-                name: 'plannerate.edit',
-                component: () => import('../views/Edit.vue'),
-                props: true
-            },
-            {
                 path: ':id',
-                name: 'plannerate.view',
-                component: () => import('../views/View.vue'),
+                name: 'plannerate.gondola.view',
+                component: () => import('./../views/View.vue'),
                 props: true,
-                children: [
-                    {
-                        path: 'gondola/criar',
-                        name: 'plannerate.gondola.create',
-                        component: () => import('./../views/gondolas/Create.vue'),
-                        props: true,
-
-                    },
+                children: [ 
                     {
                         name: 'gondola.view',
                         path: 'gondola/:gondolaId',
@@ -46,14 +22,14 @@ const routes: Array<RouteRecordRaw> = [
                         children: [
                             {
                                 path: 'criar',
-                                name: 'gondola.create',
+                                name: 'plannerate.gondola.create',
                                 component: () => import('./../views/gondolas/Create.vue'),
                                 props: true,
 
                             },
                             {
                                 path: 'editar',
-                                name: 'gondola.edit',
+                                name: 'plannerate.gondola.edit',
                                 component: () => import('./../views/gondolas/Edit.vue'),
                                 props: true,
 

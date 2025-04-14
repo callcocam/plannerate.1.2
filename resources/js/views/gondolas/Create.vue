@@ -106,9 +106,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { apiService } from '../../services';
 import { useEditorStore } from './../../store/editor';
 
-// UI Components Imports
-import { Button } from './../../components/ui/button';
-import { Dialog, DialogClose, DialogDescription, DialogTitle } from './../../components/ui/dialog';
+// UI Components Imports 
 import DialogPersonaCloseContent from './../../components/ui/dialog/DialogPersonaCloseContent.vue';
 import { useToast } from './../../components/ui/toast';
 
@@ -201,7 +199,7 @@ const formData = reactive({
     status: 'published', // Initial status
 
     // Section/Module Settings (Step 2)
-    numModules: 1, // Initial number of modules (can be adjusted later)
+    numModules: 4, // Initial number of modules (can be adjusted later)
     width: 130, // Initial total width of the section (cm)
     height: 180, // Initial total height of the section (cm)
 
@@ -244,7 +242,7 @@ watch(() => props.open, (newVal) => {
             flow: 'left_to_right',
             scaleFactor: 3,
             status: 'published',
-            numModules: 1,
+            numModules: 4,
             width: 130,
             height: 180,
             baseHeight: 17,
@@ -285,9 +283,7 @@ const updateForm = (newData: Record<string, any>) => {
  */
 const closeModal = () => {
     // Always return to the planogram overview on cancel/close
-    router.push({ name: 'plannerate.view', params: { id: planogramId.value } });
-    emit('update:open', false);
-    emit('close');
+    router.back(); 
 };
 
 /**
@@ -378,7 +374,7 @@ const submitForm = async () => {
 
         // Emit event for the parent component
         emit('gondola-added', response.data);
-
+       console.log('Gondola created:', response.data);
         // Navigate to the newly created gondola view
         router.push({ name: 'gondola.view', params: { id: planogramId.value, gondolaId: response.data.id } });
 

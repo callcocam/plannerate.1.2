@@ -38,7 +38,7 @@ Route::prefix(Plannerate::getPath())
             ->name(sprintf('%s.destroy', Plannerate::getRoute()))
             ->middleware('can:plannerate.destroy');
 
-        Route::get("/{vue_capture?}", [PlannerateController::class, 'index'])
+        Route::get("/show/{id?}/{vue_capture?}", [PlannerateController::class, 'show'])
             ->where('vue_capture', '[\/\w\.\,\-]*')
             ->name(Plannerate::getRoute());
     });

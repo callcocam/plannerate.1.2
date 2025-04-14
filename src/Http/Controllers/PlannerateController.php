@@ -108,7 +108,7 @@ class PlannerateController extends Controller
         $planogram = Planogram::with(['store', 'cluster', 'department', 'gondolas.sections.shelves.segments'])->findOrFail($id);
 
         return Inertia::render('plannerate/View', [
-            'planogram' => $planogram,
+            'record' => $planogram,
             'title' => 'Visualizar Planograma',
             'description' => 'Detalhes do planograma',
             'breadcrumbs' => [
@@ -177,5 +177,21 @@ class PlannerateController extends Controller
         $planogram->delete();
 
         return redirect()->route(Plannerate::getRoute())->with('success', 'Planograma excluído com sucesso!');
+    }
+
+    public function gondola($id)
+    {
+        // Busca o planograma pelo ID
+        $planogram = Planogram::with(['gondolas.sections.shelves.segments'])->findOrFail($id);
+
+        return Inertia::render('plannerate/Gondola', [
+            'record' => $planogram,
+            'title' => 'Gôndolas do Planograma',
+            'description' => 'Gerenciamento de gôndolas do planograma',
+            'breadcrumbs' => [
+                ['title' => 'Planogramas', 'url' => route(Plannerate::getRoute())],
+                ['title' => $planogram->name],
+            ],
+        ]);
     }
 }

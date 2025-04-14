@@ -12,12 +12,16 @@ class ApiService {
   private api: AxiosInstance;
 
   constructor() {
-    this.api = window.axios.create({
+
+    axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
+    axios.defaults.withCredentials = true;
+    axios.defaults.withXSRFToken = true;
+    this.api = axios.create({
       // @ts-ignore
       baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json', 
+        'Accept': 'application/json',
       },
       withCredentials: true, // Includes cookies in cross-site requests
       withXSRFToken: true, // Automatically includes XSRF token in requests
