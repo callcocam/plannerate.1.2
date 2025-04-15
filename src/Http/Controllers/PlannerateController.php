@@ -60,9 +60,9 @@ class PlannerateController extends Controller
     public function create()
     {
         // Carrega as lojas, clusters e departamentos para os selects
-        $stores = Store::where('status', 'active')->get();
-        $clusters = Cluster::where('status', 'active')->get();
-        $departments = Departament::where('status', 'active')->get();
+        $stores = Store::where('status', 'published')->get();
+        $clusters = Cluster::where('status', 'published')->get();
+        $departments = Departament::where('status', 'published')->get();
 
         return Inertia::render('plannerate/Create', [
             'stores' => $stores,
@@ -132,11 +132,12 @@ class PlannerateController extends Controller
             'end_date' => 'nullable|date|after_or_equal:start_date',
         ]);
 
+        $validated['user_id'] = auth()->id(); // Adiciona o ID do usuário autenticado
     
         // Criar o planograma
         $planogram = Planogram::create($validated);
 
-        return redirect()->route(Plannerate::getRoute())->with('success', 'Planograma criado com sucesso!');
+        return redirect()->route(sprintf("%s.index", Plannerate::getRoute()))->with('success', 'Planograma criado com sucesso!');
     }
 
     public function update(Request $request, $id)
@@ -159,7 +160,7 @@ class PlannerateController extends Controller
         // Atualizar o planograma
         $planogram->update($validated);
 
-        return redirect()->route(Plannerate::getRoute())->with('success', 'Planograma atualizado com sucesso!');
+        return redirect()->route(sprintf("%s.index", Plannerate::getRoute()))->with('success', 'Planograma atualizado com sucesso!');
     }
 
     public function destroy($id)
@@ -176,22 +177,6 @@ class PlannerateController extends Controller
         // Excluir o planograma
         $planogram->delete();
 
-        return redirect()->route(Plannerate::getRoute())->with('success', 'Planograma excluído com sucesso!');
-    }
-
-    public function gondola($id)
-    {
-        // Busca o planograma pelo ID
-        $planogram = Planogram::with(['gondolas.sections.shelves.segments'])->findOrFail($id);
-
-        return Inertia::render('plannerate/Gondola', [
-            'record' => $planogram,
-            'title' => 'Gôndolas do Planograma',
-            'description' => 'Gerenciamento de gôndolas do planograma',
-            'breadcrumbs' => [
-                ['title' => 'Planogramas', 'url' => route(Plannerate::getRoute())],
-                ['title' => $planogram->name],
-            ],
-        ]);
-    }
+        return redirect()->route(sprintf("%s.index", Plannerate::getRoute()))->with('success', 'Planograma excluído com sucesso!');
+    } 
 }

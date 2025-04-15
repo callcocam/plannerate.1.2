@@ -4,38 +4,56 @@ import NotFound from '../views/NotFound.vue';
 // Define your routes
 const routes: Array<RouteRecordRaw> = [
     {
-        path: '/plannerate/show',
+        path: '/plannerate/show/:id',
         name: 'plannerate.home',
-        component: () => import('../views/Home.vue'), 
+        component: () => import('../views/Home.vue'),
+        redirect: { name: 'plannerate.index' },
         children: [
             {
-                path: ':id',
-                name: 'plannerate.gondola.view',
+                path: '',
+                name: 'plannerate.index',
+                component: () => import('./../views/Create.vue'),
+                props: true,
+                children: [
+
+                    {
+                        path: 'criar',
+                        name: 'plannerate.create',
+                        component: () => import('./../views/gondolas/Create.vue'),
+                        props: true,
+
+                    }
+                ]
+
+            },
+            {
+                name: 'gondola.view',
+                path: 'gondola/:gondolaId',
                 component: () => import('./../views/View.vue'),
                 props: true,
-                children: [ 
-                    {
-                        name: 'gondola.view',
-                        path: 'gondola/:gondolaId',
+                redirect: { name: 'plannerate.gondola.view' },
+                children: [
+                    { 
+                        path: '',
+                        name: 'plannerate.gondola.view',
                         component: () => import('./../views/gondolas/Gondola.vue'),
                         props: true,
-                        children: [
-                            {
-                                path: 'criar',
-                                name: 'plannerate.gondola.create',
-                                component: () => import('./../views/gondolas/Create.vue'),
-                                props: true,
 
-                            },
-                            {
-                                path: 'editar',
-                                name: 'plannerate.gondola.edit',
-                                component: () => import('./../views/gondolas/Edit.vue'),
-                                props: true,
+                    },
+                    {
+                        path: 'criar',
+                        name: 'plannerate.gondola.create',
+                        component: () => import('./../views/gondolas/Create.vue'),
+                        props: true,
 
-                            },
-                        ]
-                    }
+                    },
+                    {
+                        path: 'editar',
+                        name: 'plannerate.gondola.edit',
+                        component: () => import('./../views/gondolas/Edit.vue'),
+                        props: true,
+
+                    },
                 ]
             }
         ]

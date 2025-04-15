@@ -6,12 +6,10 @@ import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 // Imports Internos
-import { useRedirect } from '../../../composables/useRedirect';
 import { apiService } from '../../../services';
 import { useEditorStore } from '../../../store/editor';
 import { useGondolaStore } from '../../../store/gondola'; // Importar o store da gôndola
 import { useShelfStore } from '../../../store/shelf'; // Importar o store de prateleiras
-import { Button } from './../../../components/ui/button'; // Adicionar import do Button se não for global
 import Category from './Category.vue'; // Assumindo que Category e Popover estão corretos
 import Popover from './Popover.vue';
 
@@ -40,7 +38,6 @@ const router = useRouter();
 const editorStore = useEditorStore();
 const gondolaStore = useGondolaStore(); // Usar o store da gôndola
 const shelfStore = useShelfStore(); // Usar o store de prateleiras
-const { redirectRemoveGondola } = useRedirect(router); // Composables
 
 // Estado Local
 /** Filtros aplicados localmente (ex: categoria). */
@@ -116,7 +113,7 @@ const navigateToAddSection = () => {
     // Adiciona verificação se a gôndola existe
     if (currentGondola.value) {
         router.push({
-            name: 'gondola.edit', // Rota para adicionar/editar seção (ajustar se necessário)
+            name: 'plannerate.gondola.edit', // Rota para adicionar/editar seção (ajustar se necessário)
             params: {
                 id: currentGondola.value.planogram_id, // Usar planogram_id do store
                 gondolaId: currentGondola.value.id, // Usar id do store
@@ -129,13 +126,14 @@ const navigateToAddSection = () => {
  * Confirma e remove a gôndola atual.
  * Atualiza o store, chama a API e redireciona.
  */
-const confirmRemoveGondola = async () => {
+const confirmDeleteGondola = async () => {
     // Adiciona verificação se a gôndola existe
     if (!currentGondola.value) return;
 
     try {
         const gondolaToRemove = currentGondola.value; // Guarda a referência antes de limpar
         const gondolaId = gondolaToRemove.id;
+        const planogramId = gondolaToRemove.planogram_id;
 
         // Limpa o store localmente *antes* da chamada API (Otimista)
         gondolaStore.clearGondola(); // Limpa a gondola do store
@@ -144,7 +142,10 @@ const confirmRemoveGondola = async () => {
         await apiService.delete(`gondolas/${gondolaId}`);
 
         // Redireciona após sucesso
-        redirectRemoveGondola(gondolaToRemove); // Passa o objeto gondola removido se necessário para o redirect
+        router.push({
+            name: 'plannerate.home', // Rota para criar gôndola
+            params: { id: planogramId }, // Usar planogram_id do store
+        });
     } catch (error) {
         console.error('Erro ao remover gôndola:', error);
         // TODO: Adicionar feedback de erro para o usuário (ex: toast)
@@ -157,11 +158,24 @@ const confirmRemoveGondola = async () => {
  * Confirma a remoção da prateleira selecionada.
  * Atualiza o store, chama a API e redireciona.
  */
-const showDeleteConfirm = ref(false); // Estado para controle do modal de confirmação
+// Define interface for modal types
+interface DeleteConfirmItem {
+    shelf?: boolean;
+    gondola?: boolean;
+}
+
+const showDeleteConfirm = ref<DeleteConfirmItem[]>([]); // Estado para controle do modal de confirmação
 const confirmRemoveShelf = async () => {
-    showDeleteConfirm.value = true; // Abre o modal de confirmação
+    showDeleteConfirm.value.push({
+        shelf: true,
+    }); // Abre o modal de confirmação
 };
-const confirmDelete = async () => {
+
+/**
+ * Confirma a exclusão da prateleira selecionada.
+ * Atualiza o store, chama a API e redireciona.
+ */
+const confirmDeleteShelf = async () => {
     // Adiciona verificação se a gôndola existe
     if (!shelfSelected.value) return;
     try {
@@ -171,8 +185,18 @@ const confirmDelete = async () => {
         console.error('Erro ao excluir prateleira:', error);
     }
 };
+
+/**
+ * Confirma a exclusão da gôndola selecionada.
+ * Atualiza o store, chama a API e redireciona.
+ */
+const confirmRemoveGondola = () => {
+    showDeleteConfirm.value.push({
+        gondola: true,
+    }); // Abre o modal de confirmação
+};
 const cancelDelete = () => {
-    showDeleteConfirm.value = false; // Fecha o modal de confirmação
+    showDeleteConfirm.value = [];
 };
 </script>
 
@@ -304,14 +328,26 @@ const cancelDelete = () => {
             </div>
         </div>
         <ConfirmModal
-            :isOpen="showDeleteConfirm"
-            @update:isOpen="showDeleteConfirm = $event"
+            :isOpen="showDeleteConfirm.some((item) => item.gondola)"
+            @update:isOpen="(isOpen) => !isOpen && (showDeleteConfirm = [])"
+            title="Excluir gondola"
+            message="Tem certeza que deseja a gondola? Esta ação não pode ser desfeita."
+            confirmButtonText="Excluir"
+            cancelButtonText="Cancelar"
+            :isDangerous="true"
+            @confirm="confirmDeleteGondola"
+            @cancel="cancelDelete"
+        />
+
+        <ConfirmModal
+            :isOpen="showDeleteConfirm.some((item) => item.shelf)"
+            @update:isOpen="(isOpen) => !isOpen && (showDeleteConfirm = [])"
             title="Excluir produto"
             message="Tem certeza que deseja excluir este produto? Esta ação não pode ser desfeita."
             confirmButtonText="Excluir"
             cancelButtonText="Cancelar"
             :isDangerous="true"
-            @confirm="confirmDelete"
+            @confirm="confirmDeleteShelf"
             @cancel="cancelDelete"
         />
     </div>

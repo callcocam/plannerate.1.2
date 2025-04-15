@@ -12,7 +12,10 @@ Route::middleware(['api', 'auth:sanctum'])
     ->prefix('api')
     ->name('api.')
     ->group(function () {
-        Route::resource('plannerate', PlannerateController::class);
+
+        Route::get('plannerate/show/{id}', [PlannerateController::class, 'show'])->name('plannerate.show');
+
+
         Route::resource('gondolas', GondolaController::class);
         Route::post('gondolas/{gondola}/sections/reorder', [GondolaController::class, 'reorder'])
             ->name('gondolas.sections.reorder');

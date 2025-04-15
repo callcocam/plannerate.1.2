@@ -1,22 +1,21 @@
 <template>
     <Dialog :open="isOpen">
-        <DialogPersonaCloseContent
-            class="flex max-h-[90vh] w-full max-w-2xl flex-col p-0 dark:border-gray-700 dark:bg-gray-800">
-            <DialogClose @click="fecharModal"
-                class="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+        <DialogPersonaCloseContent class="flex max-h-[90vh] w-full max-w-2xl flex-col p-0 dark:border-gray-700 dark:bg-gray-800">
+            <DialogClose
+                @click="fecharModal"
+                class="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+            >
                 <X class="h-4 w-4" />
                 <span class="sr-only">Close</span>
             </DialogClose>
             <!-- Cabeçalho Fixo -->
             <div class="border-b p-4 dark:border-gray-700">
                 <DialogTitle class="text-xl font-semibold dark:text-gray-100">Adicionar Nova Seção</DialogTitle>
-                <DialogDescription class="dark:text-gray-300">Preencha os detalhes da nova seção para a gôndola.
-                </DialogDescription>
+                <DialogDescription class="dark:text-gray-300">Preencha os detalhes da nova seção para a gôndola. </DialogDescription>
             </div>
 
             <!-- Mensagens de Erro -->
-            <div v-if="Object.keys(errors).length > 0"
-                class="border-b border-red-200 bg-red-50 p-4 dark:border-red-900/30 dark:bg-red-900/20">
+            <div v-if="Object.keys(errors).length > 0" class="border-b border-red-200 bg-red-50 p-4 dark:border-red-900/30 dark:bg-red-900/20">
                 <p class="mb-2 font-medium text-red-600 dark:text-red-400">Por favor, corrija os seguintes erros:</p>
                 <ul class="list-inside list-disc space-y-1 text-sm text-red-500 dark:text-red-400">
                     <li v-for="(error, key) in errors" :key="key">
@@ -33,21 +32,38 @@
                     <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
                         <div class="col-span-2">
                             <Label for="section_name" class="dark:text-gray-300">Nome da Seção</Label>
-                            <Input id="section_name" v-model="formData.name" type="text" placeholder="Ex: Seção A-1"
-                                class="mt-1 w-full dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200" />
+                            <Input
+                                id="section_name"
+                                v-model="formData.name"
+                                type="text"
+                                placeholder="Ex: Seção A-1"
+                                class="mt-1 w-full dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+                            />
                             <span v-if="errors?.name" class="mt-1 text-xs text-red-500">{{ errors.name[0] }}</span>
                         </div>
-                        
+
                         <div>
                             <Label for="width" class="dark:text-gray-300">Largura da Seção (cm)</Label>
-                            <Input id="width" v-model.number="formData.width" type="number" min="0" step="any"
-                                class="mt-1 w-full dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200" />
+                            <Input
+                                id="width"
+                                v-model.number="formData.width"
+                                type="number"
+                                min="0"
+                                step="any"
+                                class="mt-1 w-full dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+                            />
                             <span v-if="errors?.width" class="mt-1 text-xs text-red-500">{{ errors.width[0] }}</span>
                         </div>
                         <div>
                             <Label for="height" class="dark:text-gray-300">Altura da Seção (cm)</Label>
-                            <Input id="height" v-model.number="formData.height" type="number" min="0" step="any"
-                                class="mt-1 w-full dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200" />
+                            <Input
+                                id="height"
+                                v-model.number="formData.height"
+                                type="number"
+                                min="0"
+                                step="any"
+                                class="mt-1 w-full dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+                            />
                             <span v-if="errors?.height" class="mt-1 text-xs text-red-500">{{ errors.height[0] }}</span>
                         </div>
                     </div>
@@ -58,25 +74,39 @@
                     <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
                         <div>
                             <Label for="base_height" class="dark:text-gray-300">Altura da Base (cm)</Label>
-                            <Input id="base_height" v-model.number="formData.base_height" type="number" min="0"
+                            <Input
+                                id="base_height"
+                                v-model.number="formData.base_height"
+                                type="number"
+                                min="0"
                                 step="any"
-                                class="mt-1 w-full dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200" />
-                            <span v-if="errors?.base_height" class="mt-1 text-xs text-red-500">{{ errors.base_height[0]
-                                }}</span>
+                                class="mt-1 w-full dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+                            />
+                            <span v-if="errors?.base_height" class="mt-1 text-xs text-red-500">{{ errors.base_height[0] }}</span>
                         </div>
                         <div>
                             <Label for="base_width" class="dark:text-gray-300">Largura da Base (cm)</Label>
-                            <Input id="base_width" v-model.number="formData.base_width" type="number" min="0" step="any"
-                                class="mt-1 w-full dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200" />
-                            <span v-if="errors?.base_width" class="mt-1 text-xs text-red-500">{{ errors.base_width[0]
-                                }}</span>
+                            <Input
+                                id="base_width"
+                                v-model.number="formData.base_width"
+                                type="number"
+                                min="0"
+                                step="any"
+                                class="mt-1 w-full dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+                            />
+                            <span v-if="errors?.base_width" class="mt-1 text-xs text-red-500">{{ errors.base_width[0] }}</span>
                         </div>
                         <div>
                             <Label for="base_depth" class="dark:text-gray-300">Profundidade da Base (cm)</Label>
-                            <Input id="base_depth" v-model.number="formData.base_depth" type="number" min="0" step="any"
-                                class="mt-1 w-full dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200" />
-                            <span v-if="errors?.base_depth" class="mt-1 text-xs text-red-500">{{ errors.base_depth[0]
-                                }}</span>
+                            <Input
+                                id="base_depth"
+                                v-model.number="formData.base_depth"
+                                type="number"
+                                min="0"
+                                step="any"
+                                class="mt-1 w-full dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+                            />
+                            <span v-if="errors?.base_depth" class="mt-1 text-xs text-red-500">{{ errors.base_depth[0] }}</span>
                         </div>
                     </div>
 
@@ -86,34 +116,51 @@
                     <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
                         <div>
                             <Label for="cremalheira_width" class="dark:text-gray-300">Largura (cm)</Label>
-                            <Input id="cremalheira_width" v-model.number="formData.cremalheira_width" type="number"
-                                min="0" step="any"
-                                class="mt-1 w-full dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200" />
-                            <span v-if="errors?.cremalheira_width" class="mt-1 text-xs text-red-500">{{
-                                errors.cremalheira_width[0] }}</span>
+                            <Input
+                                id="cremalheira_width"
+                                v-model.number="formData.cremalheira_width"
+                                type="number"
+                                min="0"
+                                step="any"
+                                class="mt-1 w-full dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+                            />
+                            <span v-if="errors?.cremalheira_width" class="mt-1 text-xs text-red-500">{{ errors.cremalheira_width[0] }}</span>
                         </div>
                         <div>
                             <Label for="hole_height" class="dark:text-gray-300">Altura Furo (cm)</Label>
-                            <Input id="hole_height" v-model.number="formData.hole_height" type="number" min="0"
+                            <Input
+                                id="hole_height"
+                                v-model.number="formData.hole_height"
+                                type="number"
+                                min="0"
                                 step="any"
-                                class="mt-1 w-full dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200" />
-                            <span v-if="errors?.hole_height" class="mt-1 text-xs text-red-500">{{ errors.hole_height[0]
-                                }}</span>
+                                class="mt-1 w-full dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+                            />
+                            <span v-if="errors?.hole_height" class="mt-1 text-xs text-red-500">{{ errors.hole_height[0] }}</span>
                         </div>
                         <div>
                             <Label for="hole_width" class="dark:text-gray-300">Largura Furo (cm)</Label>
-                            <Input id="hole_width" v-model.number="formData.hole_width" type="number" min="0" step="any"
-                                class="mt-1 w-full dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200" />
-                            <span v-if="errors?.hole_width" class="mt-1 text-xs text-red-500">{{ errors.hole_width[0]
-                                }}</span>
+                            <Input
+                                id="hole_width"
+                                v-model.number="formData.hole_width"
+                                type="number"
+                                min="0"
+                                step="any"
+                                class="mt-1 w-full dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+                            />
+                            <span v-if="errors?.hole_width" class="mt-1 text-xs text-red-500">{{ errors.hole_width[0] }}</span>
                         </div>
                         <div>
                             <Label for="hole_spacing" class="dark:text-gray-300">Espaçamento Furos (cm)</Label>
-                            <Input id="hole_spacing" v-model.number="formData.hole_spacing" type="number" min="0"
+                            <Input
+                                id="hole_spacing"
+                                v-model.number="formData.hole_spacing"
+                                type="number"
+                                min="0"
                                 step="any"
-                                class="mt-1 w-full dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200" />
-                            <span v-if="errors?.hole_spacing" class="mt-1 text-xs text-red-500">{{
-                                errors.hole_spacing[0] }}</span>
+                                class="mt-1 w-full dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+                            />
+                            <span v-if="errors?.hole_spacing" class="mt-1 text-xs text-red-500">{{ errors.hole_spacing[0] }}</span>
                         </div>
                     </div>
 
@@ -123,34 +170,50 @@
                     <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
                         <div>
                             <Label for="shelf_width" class="dark:text-gray-300">Largura (cm)</Label>
-                            <Input id="shelf_width" v-model.number="formData.shelf_width" type="number" min="0"
+                            <Input
+                                id="shelf_width"
+                                v-model.number="formData.shelf_width"
+                                type="number"
+                                min="0"
                                 step="any"
-                                class="mt-1 w-full dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200" />
-                            <span v-if="errors?.shelf_width" class="mt-1 text-xs text-red-500">{{ errors.shelf_width[0]
-                                }}</span>
+                                class="mt-1 w-full dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+                            />
+                            <span v-if="errors?.shelf_width" class="mt-1 text-xs text-red-500">{{ errors.shelf_width[0] }}</span>
                         </div>
                         <div>
                             <Label for="shelf_height" class="dark:text-gray-300">Altura (cm)</Label>
-                            <Input id="shelf_height" v-model.number="formData.shelf_height" type="number" min="0"
+                            <Input
+                                id="shelf_height"
+                                v-model.number="formData.shelf_height"
+                                type="number"
+                                min="0"
                                 step="any"
-                                class="mt-1 w-full dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200" />
-                            <span v-if="errors?.shelf_height" class="mt-1 text-xs text-red-500">{{
-                                errors.shelf_height[0] }}</span>
+                                class="mt-1 w-full dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+                            />
+                            <span v-if="errors?.shelf_height" class="mt-1 text-xs text-red-500">{{ errors.shelf_height[0] }}</span>
                         </div>
                         <div>
                             <Label for="shelf_depth" class="dark:text-gray-300">Profundidade (cm)</Label>
-                            <Input id="shelf_depth" v-model.number="formData.shelf_depth" type="number" min="0"
+                            <Input
+                                id="shelf_depth"
+                                v-model.number="formData.shelf_depth"
+                                type="number"
+                                min="0"
                                 step="any"
-                                class="mt-1 w-full dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200" />
-                            <span v-if="errors?.shelf_depth" class="mt-1 text-xs text-red-500">{{ errors.shelf_depth[0]
-                                }}</span>
+                                class="mt-1 w-full dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+                            />
+                            <span v-if="errors?.shelf_depth" class="mt-1 text-xs text-red-500">{{ errors.shelf_depth[0] }}</span>
                         </div>
                         <div>
                             <Label for="num_shelves" class="dark:text-gray-300">Número de Prateleiras</Label>
-                            <Input id="num_shelves" v-model.number="formData.num_shelves" type="number" min="0"
-                                class="mt-1 w-full dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200" />
-                            <span v-if="errors?.num_shelves" class="mt-1 text-xs text-red-500">{{ errors.num_shelves[0]
-                                }}</span>
+                            <Input
+                                id="num_shelves"
+                                v-model.number="formData.num_shelves"
+                                type="number"
+                                min="0"
+                                class="mt-1 w-full dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+                            />
+                            <span v-if="errors?.num_shelves" class="mt-1 text-xs text-red-500">{{ errors.num_shelves[0] }}</span>
                         </div>
                     </div>
                     <div>
@@ -160,27 +223,26 @@
                                 <SelectValue placeholder="Selecione o tipo" />
                             </SelectTrigger>
                             <SelectContent class="dark:border-gray-600 dark:bg-gray-700">
-                                <SelectItem value="normal" class="dark:text-gray-200 dark:hover:bg-gray-600">Normal
-                                </SelectItem>
-                                <SelectItem value="hook" class="dark:text-gray-200 dark:hover:bg-gray-600">Gancheira
-                                </SelectItem>
+                                <SelectItem value="normal" class="dark:text-gray-200 dark:hover:bg-gray-600">Normal </SelectItem>
+                                <SelectItem value="hook" class="dark:text-gray-200 dark:hover:bg-gray-600">Gancheira </SelectItem>
                                 <!-- Adicionar outros tipos se necessário -->
                             </SelectContent>
                         </Select>
-                        <span v-if="errors?.product_type" class="mt-1 text-xs text-red-500">{{ errors.product_type[0]
-                            }}</span>
+                        <span v-if="errors?.product_type" class="mt-1 text-xs text-red-500">{{ errors.product_type[0] }}</span>
                     </div>
                 </form>
             </div>
 
             <!-- Rodapé Fixo -->
             <div class="flex justify-between border-t bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-                <Button variant="outline" @click="fecharModal"
-                    class="dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
+                <Button
+                    variant="outline"
+                    @click="fecharModal"
+                    class="dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                >
                     Cancelar
                 </Button>
-                <Button @click="enviarFormulario" :disabled="enviando"
-                    class="dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90">
+                <Button @click="enviarFormulario" :disabled="enviando" class="dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90">
                     <SaveIcon v-if="!enviando" class="mr-2 h-4 w-4" />
                     <Loader2Icon v-else class="mr-2 h-4 w-4 animate-spin" />
                     Adicionar Seção
@@ -192,14 +254,13 @@
 
 <script setup lang="ts">
 import { Loader2Icon, SaveIcon, X } from 'lucide-vue-next';
-import { reactive, ref, watch, onMounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router'; 
+import { onMounted, reactive, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { apiService } from '../../services';
 import { useToast } from './../../components/ui/toast';
 import { useEditorStore } from './../../store/editor';
-import { apiService } from '../../services';
 // Componente específico de Dialog para fechar ao clicar fora ou ESC
 import DialogPersonaCloseContent from '../../components/ui/dialog/DialogPersonaCloseContent.vue';
-
 
 const props = defineProps({
     open: {
@@ -283,10 +344,10 @@ watch(
                 hole_width: 2,
                 hole_spacing: 2,
                 shelf_width: 125, // Ajustado para ser um pouco menor que a largura da seção
-    shelf_height: 4,
-    shelf_depth: 40,
-    num_shelves: 4,
-    product_type: 'normal',
+                shelf_height: 4,
+                shelf_depth: 40,
+                num_shelves: 4,
+                product_type: 'normal',
             });
             errors.value = {};
             // Atualizar gondolaId caso a rota mude enquanto o modal está fechado
@@ -308,14 +369,13 @@ onMounted(() => {
     }
 });
 
-
 // Função para fechar o modal
 const fecharModal = () => {
     // Garante que volte para a visualização da gôndola correta
-        router.push({
-            name: 'gondola.view',
+    router.push({
+        name: 'gondola.view',
         params: { id: planogramId.value, gondolaId: gondolaId.value },
-    }); 
+    });
 };
 
 // Função para enviar o formulário de adição de seção
@@ -335,7 +395,7 @@ const enviarFormulario = async () => {
 
     // Preparar os dados para envio
     const dadosEnvio = { ...formData };
-    console.log(dadosEnvio)
+    console.log(dadosEnvio);
 
     try {
         // Endpoint: POST /api/gondolas/{gondolaId}/sections (Ajustar conforme sua API)

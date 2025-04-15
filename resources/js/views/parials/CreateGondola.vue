@@ -28,7 +28,7 @@
 import { PlusIcon, ShoppingBagIcon } from 'lucide-vue-next';
 import { useRoute, useRouter } from 'vue-router';
 import { Button } from '../../components/ui/button';
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
 
 const route = useRoute();
 
@@ -40,12 +40,18 @@ const gondolaId = computed(() => route.params.id);
 const openAddGondolaModal = () => {
     const query = {
         ...route.query,
-    };
-    console.log('query', route.params);
+    }; 
     router.push({
-        name: 'plannerate.gondola.create',
+        name: 'plannerate.create',
         params: { id: gondolaId.value },
         query,
     });
 };
+
+onMounted(() => {
+    // Verifica se o ID da gôndola está presente na rota
+    if (gondolaId.value) {
+        // Lógica para carregar os dados da gôndola, se necessário
+    }
+});
 </script>

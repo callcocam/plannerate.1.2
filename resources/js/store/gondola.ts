@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia';
-import { apiService } from '../services';
-import { useProductStore } from './product';
+import { apiService } from '../services'; 
 import { Shelf } from '../views/gondolas/sections/types';
 import { useToast } from '../components/ui/toast';
 

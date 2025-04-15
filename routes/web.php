@@ -30,6 +30,16 @@ Route::prefix(Plannerate::getPath())
         Route::get("/show/{planogram}", [PlannerateController::class, 'show'])
             ->name(sprintf('%s.show', Plannerate::getRoute()))
             ->middleware('can:plannerate.show');
+
+        Route::post("/store", [PlannerateController::class, 'store'])
+            ->name(sprintf('%s.store', Plannerate::getRoute()))
+            ->middleware('can:plannerate.store');
+            
+        Route::post("/update/{planogram}", [PlannerateController::class, 'update'])
+            ->name(sprintf('%s.update', Plannerate::getRoute()))
+            ->middleware('can:plannerate.update');
+
+
         Route::get("/show/{id}/gondola/{gondolaId}", [PlannerateController::class, 'show'])
             ->name(sprintf('%s.gondola.show', Plannerate::getRoute()))
             ->middleware('can:plannerate.gondola.show');
