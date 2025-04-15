@@ -292,7 +292,9 @@ export const useShelfStore = defineStore('shelf', {
                 this.isLoading = false;
             }
         },
+        justifyProducts(alignment: string) {
 
+        },
         /**
          * Reset completo do estado
          */

@@ -38,8 +38,7 @@ import { useRoute, useRouter } from 'vue-router';
 // Imports Internos
 // Removido apiService daqui, pois a chamada está no store
 import { useEditorStore } from '../../store/editor';
-import { useGondolaStore } from '../../store/gondola'; // Importar o novo store
-import MovableContainer from '../../components/MovableContainer.vue';
+import { useGondolaStore } from '../../store/gondola'; // Importar o novo store 
 import Info from './partials/Info.vue';
 import Sections from './sections/Sections.vue';
 
@@ -68,15 +67,15 @@ const fetchGondolaData = async () => {
 
 // Hook de Ciclo de Vida
 /** Ao montar o componente, chama a ação fetchGondola do store. */
-onMounted(() => {
+onMounted(async () => {
     // Chamar a ação do store para buscar os dados
-    gondolaStore.fetchGondola(gondolaId.value);
+    await gondolaStore.fetchGondola(gondolaId.value); 
 });
 
 // Watcher para o ID da rota (se gondolaId puder mudar)
 watch(() => route.params.gondolaId, (newId) => {
      if (newId && typeof newId === 'string') {
-        gondolaId.value = newId;
+        gondolaId.value = newId; 
         // Limpa a gôndola antiga e busca a nova
         // gondolaStore.clearGondola(); // Opcional: fetchGondola já limpa
         gondolaStore.fetchGondola(newId);

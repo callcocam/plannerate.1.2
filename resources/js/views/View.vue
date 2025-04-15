@@ -14,8 +14,7 @@ const props = defineProps({
 });
 
 const router = useRouter();
-
-console.log('props', props.record);
+ 
 
 const record = ref<any>(props.record); // Substitua 'any' pelo tipo correto, se possível
 

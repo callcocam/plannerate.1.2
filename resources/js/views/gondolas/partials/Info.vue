@@ -1,7 +1,16 @@
 // Info.vue - Componente Principal
 <script setup lang="ts">
 // Imports de Bibliotecas Externas
-import { ArrowLeftRight, Grid, Minus, Plus, Trash2 } from 'lucide-vue-next';
+import {
+    AlignHorizontalJustifyCenter,
+    AlignHorizontalJustifyEnd,
+    AlignHorizontalJustifyStart,
+    ArrowLeftRight,
+    Grid,
+    Minus,
+    Plus,
+    Trash2,
+} from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
@@ -198,6 +207,24 @@ const confirmRemoveGondola = () => {
 const cancelDelete = () => {
     showDeleteConfirm.value = [];
 };
+
+/**
+ * Justifica os produtos na prateleira selecionada.
+ * Atualiza o store, chama a API e redireciona. 
+ */
+const justifyProducts = async (alignment: string) => {
+    // Adiciona verificação se a gôndola existe
+    if (!currentGondola.value) return;
+    // Adiciona verificação se a prateleira existe
+    try {
+        console.log('Justificando produtos com alinhamento:', alignment);
+        // Chamar o método de justificação de produtos no gondolaStore
+        await shelfStore.justifyProducts(alignment);
+    } catch (error) {
+        console.error('Erro ao justificar produtos:', error);
+    }
+};
+
 </script>
 
 <template>
@@ -206,7 +233,7 @@ const cancelDelete = () => {
         <div class="p-4">
             <div class="flex items-center justify-between">
                 <!-- Controles de Visualização e Filtros -->
-                <div class="flex flex-col items-center space-x-8 md:flex-row">
+                <div class="flex flex-col items-center space-x-2 md:flex-row">
                     <!-- Label Dimensões (Poderia vir do store agora) -->
                     <h3 class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300">
                         <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -230,7 +257,7 @@ const cancelDelete = () => {
                                 variant="outline"
                                 size="icon"
                                 @click="updateScale(scaleFactor - 1)"
-                                class="!p-1 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                                class="h-8 w-8 !p-1 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
                                 :disabled="scaleFactor <= 2"
                             >
                                 <Minus class="h-4 w-4" />
@@ -241,7 +268,7 @@ const cancelDelete = () => {
                                 variant="outline"
                                 size="icon"
                                 @click="updateScale(scaleFactor + 1)"
-                                class="!p-1 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                                class="h-8 w-8 !p-1 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
                                 :disabled="scaleFactor >= 10"
                             >
                                 <Plus class="h-4 w-4" />
@@ -255,11 +282,45 @@ const cancelDelete = () => {
                         variant="outline"
                         size="icon"
                         @click="toggleGrid()"
-                        class="ml-4 !p-1 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                        class="ml-4 h-8 w-8 !p-1 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
                         :class="{ 'bg-gray-100 dark:bg-gray-700': showGrid }"
                         aria-label="Mostrar/Esconder Grade"
                     >
                         <Grid class="h-4 w-4" />
+                    </Button>
+
+                    <!-- Botão de Justificação de produtos align-vertical-justify-left-->
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        @click="justifyProducts('left')"
+                        class="h-8 w-8 !p-1 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                        aria-label="Justificar Produtos Verticalmente"
+                    >
+                        <AlignHorizontalJustifyStart class="h-4 w-4" />
+                    </Button>
+                    <!-- Botão de Justificação de produtos align-horizontal-justify-center-->
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        @click="justifyProducts('center')"
+                        class="h-8 w-8 !p-1 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                        aria-label="Justificar Produtos"
+                    >
+                        <AlignHorizontalJustifyCenter class="h-4 w-4" />
+                    </Button>
+                    <!-- Botão de Justificação de produtos align-vertical-justify-right-->
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        @click="justifyProducts('right')"
+                        class="h-8 w-8 !p-1 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                        aria-label="Justificar Produtos Verticalmente"
+                    >
+                        <AlignHorizontalJustifyEnd class="h-4 w-4" />
                     </Button>
 
                     <!-- Filtro de Categoria (condicional) -->
@@ -287,7 +348,7 @@ const cancelDelete = () => {
                         variant="outline"
                         size="icon"
                         @click="confirmRemoveShelf"
-                        class="!p-1 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                        class="h-8 w-8 !p-1 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
                         :class="{ 'bg-gray-100 dark:bg-gray-700': shelfSelected }"
                         aria-label="Selecionar Prateleiras"
                     >
