@@ -1,17 +1,8 @@
 <template>
-    <div class="product-group" :style="productGroupStyle">
+    <div class="product-group" >
         <!-- Renderize uma representação visual dos produtos -->
-        <div 
-            v-for="index in productCount" 
-            :key="index"
-            class="product-item"
-            :style="getProductStyle(index)"
-        >
-            <Product
-                :product="product"
-                :scale-factor="scaleFactor"
-                :product-spacing="0"  
-            />
+        <div v-for="index in productCount" :key="index" class="product-item" :style="productGroupStyle">
+            <Product :product="product" :scale-factor="scaleFactor" :product-spacing="0" />
         </div>
     </div>
 </template>
@@ -41,9 +32,8 @@ const productCount = computed(() => {
 const productGroupStyle = computed(() => {
     const productWidth = props.product.width * props.scaleFactor;
     // Calcula a largura total (produtos + espaçamentos)
-    const totalWidth = (props.product.width * props.quantity) * props.scaleFactor + 
-                      (props.quantity > 1 ? props.productSpacing * (props.quantity - 1) * props.scaleFactor : 0);
-    
+    const totalWidth = props.product.width * props.quantity * props.scaleFactor;
+
     return {
         display: 'flex',
         width: `${totalWidth}px`,
@@ -51,33 +41,7 @@ const productGroupStyle = computed(() => {
         position: 'relative' as const,
     };
 });
-
-// Função para calcular o estilo de cada produto individual
-const getProductStyle = (index: number) => {
-    const productWidth = props.product.width * props.scaleFactor;
-    const itemSpacing = props.productSpacing * props.scaleFactor;
-    
-    // Se tivermos muitos produtos (mais que MAX_VISUAL_PRODUCTS),
-    // ajustamos o espaçamento para distribuir proporcionalmente
-    let adjustedSpacing = itemSpacing;
-    if (props.quantity > MAX_VISUAL_PRODUCTS) {
-        const actualWidth = (props.product.width * props.quantity) * props.scaleFactor + 
-                          (props.quantity > 1 ? props.productSpacing * (props.quantity - 1) * props.scaleFactor : 0);
-        const visualWidth = productWidth * productCount.value + 
-                          (productCount.value > 1 ? itemSpacing * (productCount.value - 1) : 0);
-        
-        // Se não houver produtos suficientes para representar visualmente,
-        // ajustamos o espaçamento para manter a largura total correta
-        if (visualWidth < actualWidth && productCount.value > 1) {
-            adjustedSpacing = (actualWidth - (productWidth * productCount.value)) / (productCount.value - 1);
-        }
-    }
-    
-    return {
-        width: `${productWidth}px`,
-        marginRight: index < productCount.value ? `${adjustedSpacing}px` : '0',
-    };
-};
+ 
 </script>
 
 <style scoped>

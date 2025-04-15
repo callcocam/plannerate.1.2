@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia';
+import { apiService } from '../services';
 
 interface EditorState {
     content: string;
@@ -30,7 +31,7 @@ export const useEditorStore = defineStore('editor', {
     getters: {
         canUndo: (state) => state.historyIndex > 0,
         canRedo: (state) => state.historyIndex < state.history.length - 1,
-        isEmpty: (state) => !state.content || state.content.trim() === '',  
+        isEmpty: (state) => !state.content || state.content.trim() === '',
     },
 
     actions: {
@@ -67,6 +68,16 @@ export const useEditorStore = defineStore('editor', {
         },
         setScaleFactor(scaleFactor: number) {
             this.scaleFactor = scaleFactor;
+        },
+        updateScaleFactor(scale_factor: number) {
+            this.scaleFactor = scale_factor;
+            apiService.post(`/gondolas/${this.gondolaId}/scaleFactor`, { scale_factor })
+                .then((response) => {
+                    console.log('Scale factor updated successfully:', response.data);
+                })
+                .catch((error) => {
+                    console.error('Error updating scale factor:', error);
+                });
         },
         toggleGrid() {
             this.showGrid = !this.showGrid;

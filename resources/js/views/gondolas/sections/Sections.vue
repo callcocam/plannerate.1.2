@@ -52,9 +52,9 @@ import { Button } from '@/components/ui/button';
 // @ts-ignore
 // import {VueDraggableNext } from 'vue-draggable-next'
 import draggable from 'vuedraggable';
+import { apiService } from '../../../services';
 import { useEditorStore } from '../../../store/editor';
 import { useGondolaStore } from '../../../store/gondola';
-import { apiService } from '../../../services';
 
 interface Category {
     id: string | number;
@@ -113,6 +113,16 @@ const onDragEnd = () => {
 const deleteSection = (sectionToDelete: any) => {
     sortableSections.value = sortableSections.value.filter((s: any) => s.id !== sectionToDelete.id);
     console.warn(`Seção ${sectionToDelete.id} removida visualmente. Implementar chamada API e atualização do store.`);
+
+    apiService
+        .delete(`sections/${sectionToDelete.id}`)
+        .then(() => {
+            emit('shelves-updated', sortableSections.value);
+            console.log(`Seção ${sectionToDelete.id} removida com sucesso.`);
+        })
+        .catch((error) => {
+            console.error(`Erro ao remover seção ${sectionToDelete.id}:`, error);
+        });
 };
 
 const handleMoveShelfToSection = (shelf: any, sectionId: number) => {};

@@ -119,7 +119,7 @@ export const useProductStore = defineStore('product', {
         },
 
         // Função unificada para manipular layers
-        async handleLayerOperation(operation: LayerOperation, layer: Layer, shelfData: any, value?: number) {
+        async handleLayerOperation(operation: LayerOperation, layer: Layer, shelfId: any, value?: number) {
             const productId = this.selectedProductIds.has(layer.product_id) ? layer.product_id : '';
             if (!productId) return;
 
@@ -152,7 +152,7 @@ export const useProductStore = defineStore('product', {
                 }
 
                 // Atualiza os dados da prateleira
-                await this.updateShelfFromAPI(shelfData.shelf_id);
+                await this.updateShelfFromAPI(shelfId);
 
             } catch (error: any) {
                 const errorMessage = error.response?.data?.message || error.message || 'Falha na operação';
@@ -161,7 +161,7 @@ export const useProductStore = defineStore('product', {
 
                 // Tenta recuperar estado após erro
                 try {
-                    await this.updateShelfFromAPI(shelfData.shelf_id);
+                    await this.updateShelfFromAPI(shelfId);
                 } catch (e) {
                     console.error('Failed to recover after error:', e);
                 }
@@ -171,20 +171,20 @@ export const useProductStore = defineStore('product', {
         },
 
         // Funções específicas que usam a função generalizada
-        deleteProductFromLayer(product: Product, layer: Layer, shelfData: any) {
-            this.handleLayerOperation('delete', layer, shelfData);
+        deleteProductFromLayer(layer: Layer, shelfData: any) {
+            this.handleLayerOperation('delete', layer, shelfData.id);
         },
 
         removeLayer(layer: Layer, shelfData: any) {
-            this.handleLayerOperation('delete', layer, shelfData);
+            this.handleLayerOperation('delete', layer, shelfData.shelf_id);
         },
 
         updateLayerQuantity(layer: Layer, quantity: number, shelfData: any) {
-            this.handleLayerOperation('updateQuantity', layer, shelfData, quantity);
+            this.handleLayerOperation('updateQuantity', layer, shelfData.shelf_id, quantity);
         },
 
         updateLayerSpacing(layer: Layer, spacing: number, shelfData: any) {
-            this.handleLayerOperation('updateSpacing', layer, shelfData, spacing);
+            this.handleLayerOperation('updateSpacing', layer, shelfData.shelf_id, spacing);
         },
 
         // Funções de manipulação de contexto do produto

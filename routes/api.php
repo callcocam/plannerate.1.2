@@ -19,9 +19,15 @@ Route::middleware(['api', 'auth:sanctum'])
         Route::resource('gondolas', GondolaController::class);
         Route::post('gondolas/{gondola}/sections/reorder', [GondolaController::class, 'reorder'])
             ->name('gondolas.sections.reorder');
+
+        Route::post('gondolas/{gondola}/scaleFactor', [GondolaController::class, 'scaleFactor'])
+            ->name('gondolas.scaleFactor');
+
         Route::resource('sections', SectionController::class);
         Route::post('sections/{gondola}/shelves/reorder', [SectionController::class, 'updateInvertOrder'])
             ->name('sections.updateInvertOrder');
+        
+
         Route::resource('shelves', ShelfController::class)
             ->only(['index', 'show', 'store', 'update', 'destroy']);
             

@@ -344,16 +344,19 @@ class SectionController extends Controller
      * @param string $id
      * @return JsonResponse
      */
-    public function destroy(string $gondolaId, string $id)
+    public function destroy(Section $section)
     {
         try {
             DB::beginTransaction();
 
-            // Verificar se a gôndola existe
-            Gondola::findOrFail($gondolaId);
-
             // Buscar a seção
-            $section = Section::where('gondola_id', $gondolaId)->findOrFail($id);
+            $section->shelves->map(function ($shelf) {
+                $shelf->segments->map(function ($segment) {
+                    $segment->layer()->delete();
+                    $segment->delete();
+                });
+                $shelf->delete();
+            });
 
             // Excluir seção (soft delete)
             $section->delete();
@@ -372,9 +375,7 @@ class SectionController extends Controller
             ], 404);
         } catch (Throwable $e) {
             DB::rollBack();
-            Log::error('Erro ao excluir seção', [
-                'gondola_id' => $gondolaId,
-                'section_id' => $id,
+            Log::error('Erro ao excluir seção', [ 
                 'exception' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
@@ -452,14 +453,14 @@ class SectionController extends Controller
     public function updateInvertOrder(Request $request, Gondola $gondola)
     {
         $sections =  $gondola->sections()
-        ->with(
-            'shelves',
-            'shelves.segments',
-            'shelves.segments.layer',
-            'shelves.segments.layer.product',
-            'shelves.segments.layer.product.image',
-        )
-        ->orderBy('ordering', 'desc')->get();
+            ->with(
+                'shelves',
+                'shelves.segments',
+                'shelves.segments.layer',
+                'shelves.segments.layer.product',
+                'shelves.segments.layer.product.image',
+            )
+            ->orderBy('ordering', 'desc')->get();
         if (empty($sections)) {
             return response()->json([
                 'message' => 'Nenhuma seção encontrada para reordenar.',

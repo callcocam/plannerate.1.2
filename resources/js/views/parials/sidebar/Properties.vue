@@ -46,8 +46,7 @@ import { apiService } from '../../../services';
 import { useGondolaStore } from '../../../store/gondola';
 import { Product, useProductStore } from '../../../store/product';
 
-const productStore = useProductStore();
-const gondolaStore = useGondolaStore();
+const productStore = useProductStore(); 
 
 const selectedProducts = ref<Product[]>([]);
 const isLoadingDetails = ref(false);
@@ -57,8 +56,7 @@ const { selectedProductIds } = storeToRefs(productStore);
 watch(
     selectedProductIds,
     async (newIdsSet) => {
-        const idsToFetch = Array.from(newIdsSet);
-        console.log('Selected IDs changed, fetching details for:', idsToFetch);
+        const idsToFetch = Array.from(newIdsSet); 
 
         if (idsToFetch.length === 0) {
             selectedProducts.value = [];
@@ -70,8 +68,7 @@ watch(
             const productDetailsPromises = idsToFetch.map((id) => apiService.get<Product>(`products/${id}`));
 
             const fetchedProducts = await Promise.all(productDetailsPromises);
-            selectedProducts.value = fetchedProducts.filter((p): p is Product => !!p);
-            console.log('Updated selectedProducts details:', selectedProducts.value);
+            selectedProducts.value = fetchedProducts.filter((p): p is Product => !!p); 
         } catch (error) {
             console.error('Erro ao buscar detalhes dos produtos selecionados:', error);
             selectedProducts.value = [];
@@ -105,7 +102,7 @@ const confirmDelete = () => {
         return;
     }
     // Emitir evento de exclusão apenas quando confirmado
-    productStore.deleteProductFromLayer(selectedProduct, layer, shelf);
+    productStore.deleteProductFromLayer(layer, shelf);
 };
 const cancelDelete = () => {
     // Apenas fechar o modal

@@ -167,18 +167,18 @@ class GondolaController extends Controller
         try {
             DB::beginTransaction();
             $planogram = Planogram::findOrFail($request->input('planogram_id'));
-            $planogram->gondolas->map(function ($gondola) use ($request) {
-                // Atualizar gôndola
-                $gondola->sections->map(function ($section) use ($request) {
-                    // Atualizar seção
-                    $section->shelves->map(function ($shelf) use ($request) {
-                        // Atualizar prateleira
-                        $shelf->forceDelete();
-                    });
-                    $section->forceDelete();
-                });
-                $gondola->forceDelete();
-            });
+            // $planogram->gondolas->map(function ($gondola) use ($request) {
+            //     // Atualizar gôndola
+            //     $gondola->sections->map(function ($section) use ($request) {
+            //         // Atualizar seção
+            //         $section->shelves->map(function ($shelf) use ($request) {
+            //             // Atualizar prateleira
+            //             $shelf->forceDelete();
+            //         });
+            //         $section->forceDelete();
+            //     });
+            //     $gondola->forceDelete();
+            // });
 
             // Validar dados
             $validatedData = $request->validated();
@@ -526,10 +526,10 @@ class GondolaController extends Controller
     {
         try {
             DB::beginTransaction();
-            
+
             // Buscar a prateleira pelo ID
             $shelf = Shelf::with(['segments', 'segments.layer'])->findOrFail($id);
-            
+
             // Excluir segmentos e layers associados à prateleira
             if ($shelf->segments) {
                 foreach ($shelf->segments as $segment) {
@@ -541,12 +541,12 @@ class GondolaController extends Controller
                     $segment->forceDelete();
                 }
             }
-            
+
             // Excluir a prateleira
             $shelf->forceDelete();
-            
+
             DB::commit();
-            
+
             return response()->json([
                 'message' => 'Prateleira excluída com sucesso',
                 'status' => 'success'
@@ -565,7 +565,7 @@ class GondolaController extends Controller
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
             ]);
-            
+
             return response()->json([
                 'message' => 'Ocorreu um erro ao excluir a prateleira',
                 'status' => 'error'
@@ -573,4 +573,17 @@ class GondolaController extends Controller
         }
     }
 
+    public function scaleFactor(Request $request, Gondola $gondola): JsonResponse
+    {
+        $validated = $request->validate([
+            'scale_factor' => 'required|numeric|min:1|max:10',
+        ]);
+
+        $gondola->update($validated);
+
+        return response()->json([
+            'message' => 'Fator de escala atualizado com sucesso',
+            'status' => 'success'
+        ]);
+    }
 }

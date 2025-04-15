@@ -13,7 +13,7 @@
             :style="segmentsContainerStyle"
         >
             <template #item="{ element: segment }">
-                <Segment :key="segment.id" :shelf="shelf" :segment="segment" :scale-factor="scaleFactor" />
+                <Segment :key="segment.id" :shelf="shelf" :segment="segment" :scale-factor="scaleFactor" :section-width="sectionWidth"/>
             </template>
         </draggable>
         <ShelfControls

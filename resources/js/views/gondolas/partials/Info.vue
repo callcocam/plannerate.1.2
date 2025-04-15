@@ -81,9 +81,11 @@ const shelfSelected = computed(() => {
  * @param {number} newScale - O novo valor da escala.
  */
 const updateScale = (newScale: number) => {
+    editorStore.setGondolaId(currentGondola.value?.id); // Atualiza o ID da gôndola no store
     // Adiciona validação de limites se necessário, embora os botões já tenham :disabled
-    const clampedScale = Math.max(2, Math.min(10, newScale));
-    editorStore.setScaleFactor(clampedScale);
+    const clampedScale = Math.max(2, Math.min(10, newScale)); 
+    // Atualiza a escala da gôndola no store
+    editorStore.updateScaleFactor(clampedScale);
 };
 
 /** Alterna a visibilidade da grade no store. */

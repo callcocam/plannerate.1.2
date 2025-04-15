@@ -1,25 +1,26 @@
 <template>
     <div
-        class="layer group flex cursor-pointer justify-center"
+        class="layer group flex cursor-pointer justify-around"
         :style="layerStyle"
         @click="handleLayerClick"
         @dragstart="onDragStart"
         draggable="true"
-        :class="{ 'layer--selected': isSelected }"
-    >
-        <ProductGroup :product="layer.product" :quantity="layerQuantity" :scale-factor="scaleFactor" :product-spacing="layerSpacing" />
+        :class="{ 'layer--selected': isSelected }">
+        <Product  v-for="index in layer.quantity" :key="index" :product="layer.product"  :scale-factor="scaleFactor" :product-spacing="layerSpacing" />
     </div>
 </template>
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { useGondolaStore } from '../../../store/gondola'; // Corrected relative path
 import { useProductStore } from '../../../store/product'; // Corrected relative path
-import ProductGroup from './ProductGroup.vue'; // Importando o novo componente
+import Product from './Product.vue'; // Importando o novo componente
 import { LayerSegment, Segment } from './types';
 
 const props = defineProps<{
     layer: LayerSegment;
     segment: Segment;
     scaleFactor: number;
+    sectionWidth: number;
 }>();
 
 const emit = defineEmits<{
@@ -30,32 +31,49 @@ const emit = defineEmits<{
 }>();
 
 const productStore = useProductStore();
+const gondolaStore = useGondolaStore();
+const currentGondola = computed(() => gondolaStore.currentGondola);
 
 const layerSpacing = ref(props.layer.spacing);
 const layerQuantity = ref(props.layer.quantity || 1);
 const debounceTimer = ref<ReturnType<typeof setTimeout> | null>(null);
 const segmentSelected = ref(false);
 
+const layerWidth = () => {
+    let sectionWidth = props.sectionWidth;
+    currentGondola.value?.sections.map((section) => {
+        section.shelves.map((shelf) => {
+            shelf.segments.map((segment) => {
+                if (segment.id === props.segment.id) { 
+                    sectionWidth = sectionWidth - segment.layer.product.width;
+                    if (shelf.segments.length > 1) {
+                        sectionWidth = sectionWidth / shelf.segments.length;
+                    }
+                    if (sectionWidth < 0) {
+                        sectionWidth = 0;
+                    }
+                }
+            });
+        });
+    });
+    return sectionWidth;
+};
+
 const layerStyle = computed(() => {
     const topPosition = props.layer.layer_position * props.scaleFactor;
     const layerHeight = props.layer.product.height;
-
+    const sectionWidth = props.sectionWidth;
     // Calculamos a largura total, mas a renderização dos produtos será
     // responsabilidade do componente ProductGroup
-    const productWidth = props.layer.product.width;
-    const spacing = props.layer.spacing;
+    const productWidth = props.layer.product.width; 
     const quantity = props.layer.quantity;
-    const totalProductsWidth = productWidth * quantity;
-    const totalSpacingWidth = quantity > 1 ? spacing * quantity : 0;
-    const totalWidth = totalProductsWidth + totalSpacingWidth;
-    console.log('Total Width:', props.layer.quantity, props.layer.spacing);
+    const totalProductsWidth = productWidth * quantity; 
+    const finalWidth = layerWidth() ;
+    const totalWidth = totalProductsWidth + finalWidth; 
 
-    return {
-        position: 'absolute' as const,
-        left: '0px',
-        width: `${totalWidth * props.scaleFactor}px`,
-        height: `${layerHeight * props.scaleFactor}px`,
-        top: `${topPosition}px`,
+    return { 
+        width: `100%`,
+        height: `${layerHeight * props.scaleFactor}px`, 
         zIndex: '2',
     };
 });

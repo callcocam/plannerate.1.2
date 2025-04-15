@@ -60,8 +60,7 @@ export const useShelfStore = defineStore('shelf', {
          * @param shelf Prateleira a ser selecionada
          */
         selectShelf(shelf: Shelf | null) {
-            this.selectedShelf = shelf;
-            console.log('Shelf selected:', shelf);
+            this.selectedShelf = shelf; 
             if (shelf) {
                 this.lastSelectedShelfId = shelf.id;
             }

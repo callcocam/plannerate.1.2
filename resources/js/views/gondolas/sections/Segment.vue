@@ -1,5 +1,5 @@
 <template>
-    <div class="segment drag-segment-handle group relative flex items-center justify-center" :style="segmentStyle">
+    <div class="segment drag-segment-handle group relative flex items-center justify-around" :style="segmentStyle">
         <Layer
             v-for="(quantity, index) in segmentQuantity"
             :key="index"
@@ -7,6 +7,7 @@
             :segment="segment"
             :layer="segment.layer"
             :scale-factor="scaleFactor"
+            :section-width="sectionWidth"
             @increase="onIncreaseQuantity"
             @decrease="onDecreaseQuantity"
             @spacingIncrease="onSpacingIncrease"
@@ -16,6 +17,7 @@
 </template>
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { useGondolaStore } from '../../../store/gondola'; // Corrected relative path
 import { useProductStore } from '../../../store/product'; // Corrected relative path
 import Layer from './Layer.vue';
 import { LayerSegment as LayerType, Segment, Shelf } from './types';
@@ -26,6 +28,7 @@ const props = defineProps<{
     };
     shelf: Shelf;
     scaleFactor: number;
+    sectionWidth: number;
 }>();
 
 const segmentSelected = ref(false); // State to track if the segment is selected
@@ -35,6 +38,9 @@ const segmentQuantity = computed(() => {
 });
 
 const productStore = useProductStore(); // Instance of the product store
+const gondolaStore = useGondolaStore(); // Instance of the gondola store
+
+const layersWithSpacing = ref<LayerType[]>([]); // Array to store layers with spacing
 
 // Computed para o estilo do segmento
 // ----------------------------------------------------
@@ -43,18 +49,40 @@ const productStore = useProductStore(); // Instance of the product store
 /**
  * Calculate segment style based on properties and selection state
  */
+
+const layerWidth = () => {
+    let sectionWidth = props.sectionWidth;
+    currentGondola.value?.sections.map((section) => {
+        section.shelves.map((shelf) => {
+            shelf.segments.map((segment) => {
+                if (segment.id === props.segment.id) {
+                    sectionWidth = sectionWidth - segment.layer.product.width;
+                    if (shelf.segments.length > 1) {
+                        sectionWidth = sectionWidth / shelf.segments.length; 
+                    }
+                    if (sectionWidth < 0) {
+                        sectionWidth = 0;
+                    }
+                }
+            });
+        });
+    });
+    return sectionWidth;
+};
+const currentGondola = computed(() => {
+    return gondolaStore.currentGondola;
+});
 const segmentStyle = computed(() => {
     // Calculate segment dimensions
     const layerHeight = props.segment.layer.product.height * props.scaleFactor;
 
     // Cálculo atualizado da largura total, considerando produtos e espaçamento
     const productWidth = props.segment.layer.product.width;
-    const productQuantity = props.segment.layer.quantity;
-    const productSpacing = props.segment.layer.spacing;
+    const productQuantity = props.segment.layer.quantity; 
+    const layerWidthFinal = layerWidth();
 
     // Largura total: largura dos produtos + espaçamento entre eles
-    const totalWidth =
-        productWidth * productQuantity * props.scaleFactor + (productQuantity > 1 ? productSpacing * (productQuantity - 1) * props.scaleFactor : 0);
+    const totalWidth = (productWidth * productQuantity) * props.scaleFactor + layerWidthFinal;
 
     // Conditional style when segment is selected
     const selectedStyle = segmentSelected.value
