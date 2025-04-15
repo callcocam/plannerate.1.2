@@ -14,7 +14,7 @@
         <!-- Passa a gôndola do store para os filhos -->
         <div v-else-if="gondola" class="flex h-full w-full flex-col gap-6 overflow-hidden">
             <Info :gondola="gondola" />
-            <div class="flex flex-grow flex-col overflow-auto">
+            <div class="flex  flex-col overflow-auto relative">
                 <!-- <MovableContainer> -->
                 <Sections :gondola="gondola" :scale-factor="scaleFactor" />
                 <!-- </MovableContainer> -->

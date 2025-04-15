@@ -42,8 +42,8 @@ onMounted(() => {
                 <!-- Barra lateral esquerda com componente Products separado -->
                 <Products />
                 <!-- Área central rolável (vertical e horizontal) -->
-                <div class="flex h-full w-full flex-col gap-6 overflow-x-auto overflow-y-auto">
-                    <Gondolas />
+                <div class="flex h-full w-full flex-col gap-6 overflow-x-auto overflow-y-auto"> 
+                    <Gondolas :record="record"/>
                 </div>
                 <Properties />
             </div>
