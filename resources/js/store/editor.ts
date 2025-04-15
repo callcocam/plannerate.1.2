@@ -1,5 +1,6 @@
+// store/editor.ts
 import { defineStore } from 'pinia';
-import { apiService } from '../services';
+import { useEditorService } from '../services/editorService';
 
 interface EditorState {
     content: string;
@@ -12,6 +13,8 @@ interface EditorState {
     gondolaId: string | null;
     history: string[];
     historyIndex: number;
+    loading: boolean;
+    error: string | null;
 }
 
 export const useEditorStore = defineStore('editor', {
@@ -26,6 +29,8 @@ export const useEditorStore = defineStore('editor', {
         gondolaId: null,
         history: [],
         historyIndex: -1,
+        loading: false,
+        error: null
     }),
 
     getters: {
@@ -51,47 +56,67 @@ export const useEditorStore = defineStore('editor', {
         stopEditing() {
             this.isEditing = false;
         },
+
         setGondolas(gondolas: any[]) {
             this.gondolas = gondolas;
         },
+
         addGondola(gondola: any) {
             this.gondolas.push(gondola);
         },
+
         removeGondola(gondolaId: string) {
             this.gondolas = this.gondolas.filter((gondola) => gondola.id !== gondolaId);
         },
+
         updateGondola(gondolaId: string, updatedGondola: any) {
             const index = this.gondolas.findIndex((gondola) => gondola.id === gondolaId);
             if (index !== -1) {
                 this.gondolas[index] = { ...this.gondolas[index], ...updatedGondola };
             }
         },
+
         setScaleFactor(scaleFactor: number) {
             this.scaleFactor = scaleFactor;
         },
-        updateScaleFactor(scale_factor: number) {
-            this.scaleFactor = scale_factor;
-            apiService.post(`/gondolas/${this.gondolaId}/scaleFactor`, { scale_factor })
-                .then((response) => {
-                    console.log('Scale factor updated successfully:', response.data);
-                })
-                .catch((error) => {
-                    console.error('Error updating scale factor:', error);
-                });
+
+        async updateScaleFactor(scaleFactor: number) {
+            if (!this.gondolaId) return;
+
+            this.loading = true;
+            this.error = null;
+
+            try {
+                const editorService = useEditorService();
+                this.scaleFactor = scaleFactor;
+
+                await editorService.updateScaleFactor(this.gondolaId, scaleFactor);
+                console.log('Scale factor updated successfully');
+            } catch (error: any) {
+                this.error = error.response?.data?.message || error.message || 'Error updating scale factor';
+                console.error('Error updating scale factor:', error);
+            } finally {
+                this.loading = false;
+            }
         },
+
         toggleGrid() {
             this.showGrid = !this.showGrid;
         },
+
         setGondolaId(gondolaId: string | null) {
             this.gondolaId = gondolaId;
         },
+
         setSelectedElements(elements: string[]) {
             this.selectedElements = elements;
         },
+
         clearSelectedElements() {
             this.selectedElements = [];
             this.selectedElement = null;
         },
+
         clearSelectedElement() {
             this.selectedElement = null;
         },
@@ -117,6 +142,40 @@ export const useEditorStore = defineStore('editor', {
             if (this.canRedo) {
                 this.historyIndex++;
                 this.content = this.history[this.historyIndex];
+            }
+        },
+
+        async saveContent() {
+            if (!this.gondolaId || !this.content) return;
+
+            this.loading = true;
+            this.error = null;
+
+            try {
+                const editorService = useEditorService();
+                await editorService.saveContent(this.gondolaId, this.content);
+                console.log('Content saved successfully');
+            } catch (error: any) {
+                this.error = error.response?.data?.message || error.message || 'Error saving content';
+                console.error('Error saving content:', error);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async fetchGondolas() {
+            this.loading = true;
+            this.error = null;
+
+            try {
+                const editorService = useEditorService();
+                const response = await editorService.fetchGondolas();
+                this.setGondolas(response.data);
+            } catch (error: any) {
+                this.error = error.response?.data?.message || error.message || 'Error fetching gondolas';
+                console.error('Error fetching gondolas:', error);
+            } finally {
+                this.loading = false;
             }
         },
 

@@ -1,5 +1,6 @@
+// store/product.ts
 import { defineStore } from 'pinia';
-import { apiService } from '../services';
+import { useProductService } from '../services/productService';
 import { useGondolaStore } from './gondola';
 import { Layer } from '../views/gondolas/sections/types';
 import { useToast } from '../components/ui/toast';
@@ -107,8 +108,11 @@ export const useProductStore = defineStore('product', {
         async updateShelfFromAPI(shelfId: string) {
             try {
                 const gondolaStore = useGondolaStore();
-                const response = await apiService.get(`/shelves/${shelfId}`);
+                const productService = useProductService();
+
+                const response = await productService.getShelf(shelfId);
                 const resetShelf = response.data;
+
                 gondolaStore.updateShelf(resetShelf.id, resetShelf, false);
                 return resetShelf;
             } catch (error: any) {
@@ -124,6 +128,7 @@ export const useProductStore = defineStore('product', {
             if (!productId) return;
 
             this.loading = true;
+            const productService = useProductService();
 
             try {
                 // Preparação de acordo com a operação
@@ -132,27 +137,27 @@ export const useProductStore = defineStore('product', {
                         this.productContextData.delete(layer.product_id);
                         this.selectedProductIds.delete(layer.product_id);
                         this.selectedProduct = null;
-                        await apiService.delete(`/layers/${layer.id}`);
+                        await productService.deleteLayer(layer.id);
                         this.showToast('success', 'Camada removida', 'Camada removida com sucesso');
                         break;
 
                     case 'updateQuantity':
                         if (value === undefined) value = 1;
                         this.setProductContextData(productId, { quantity: value });
-                        await apiService.put(`/layers/${layer.id}`, { quantity: value });
+                        await productService.updateLayerQuantity(layer.id, value);
                         this.showToast('success', 'Quantidade atualizada', 'Quantidade atualizada com sucesso');
                         break;
 
                     case 'updateSpacing':
                         if (value === undefined) value = 0;
                         this.setProductContextData(productId, { spacing: value });
-                        await apiService.put(`/layers/${layer.id}`, { spacing: value });
+                        await productService.updateLayerSpacing(layer.id, value);
                         this.showToast('success', 'Espaçamento atualizado', 'Espaçamento atualizado com sucesso');
                         break;
                 }
 
                 // Atualiza os dados da prateleira
-                await this.updateShelfFromAPI(shelfId, false);
+                await this.updateShelfFromAPI(shelfId);
 
             } catch (error: any) {
                 const errorMessage = error.response?.data?.message || error.message || 'Falha na operação';
@@ -161,7 +166,7 @@ export const useProductStore = defineStore('product', {
 
                 // Tenta recuperar estado após erro
                 try {
-                    await this.updateShelfFromAPI(shelfId, false);
+                    await this.updateShelfFromAPI(shelfId);
                 } catch (e) {
                     console.error('Failed to recover after error:', e);
                 }
@@ -196,19 +201,23 @@ export const useProductStore = defineStore('product', {
             this.productContextData.set(productId, newContext);
         },
 
-        // Função placeholder para sincronização
+        // Sincronização com o backend
         async syncWithBackend() {
-            console.warn('syncWithBackend action called - Placeholder implementation using apiService');
             this.loading = true;
             this.error = null;
+
             try {
+                const productService = useProductService();
                 const dataToSend = Object.fromEntries(this.productContextData);
-                console.log('Data to send (placeholder):', dataToSend);
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                console.log('Simulated API call successful (using apiService pattern)');
+
+                // Enviar dados para o backend
+                await productService.syncProductContext(dataToSend);
+
+                this.showToast('success', 'Sincronização concluída', 'Dados sincronizados com sucesso');
             } catch (error: any) {
                 this.error = error.response?.data?.message || error.message || 'Failed to sync with backend';
                 console.error('Error syncing with backend:', error);
+                this.showToast('error', 'Erro na sincronização', this.error);
             } finally {
                 this.loading = false;
             }

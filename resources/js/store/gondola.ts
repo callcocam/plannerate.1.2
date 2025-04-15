@@ -1,5 +1,6 @@
+// store/gondola.ts
 import { defineStore } from 'pinia';
-import { apiService } from '../services'; 
+import { useGondolaService } from '../services/gondolaService';
 import { Shelf } from '../views/gondolas/sections/types';
 import { useToast } from '../components/ui/toast';
 
@@ -33,11 +34,11 @@ export const useGondolaStore = defineStore('gondola', {
     actions: {
         /**
          * Busca uma gôndola específica pelo ID
-         * @param gondolaId ID da gôndola a ser carregada
          */
         async fetchGondola(gondolaId: string) {
             if (!gondolaId) return;
 
+            const gondolaService = useGondolaService();
             this.isLoading = true;
             this.error = null;
 
@@ -45,8 +46,8 @@ export const useGondolaStore = defineStore('gondola', {
                 // Limpa o estado atual para evitar misturar dados
                 this.clearGondola();
 
-                // Busca os dados da API
-                const response = await apiService.get(`gondolas/${gondolaId}`);
+                // Busca os dados via serviço
+                const response = await gondolaService.fetchGondola(gondolaId);
 
                 // Atualiza o estado com o resultado
                 this.currentGondola = response.data;
@@ -59,16 +60,16 @@ export const useGondolaStore = defineStore('gondola', {
                 this.isLoading = false;
             }
         },
+
         /**
-         * seta a seção atual
-         * @param section seção atual
+         * Seta a seção atual
          */
         setCurrentSection(section: any) {
             this.currentSection = section;
         },
+
         /**
-         * seta a prateleira atual
-         * @param shelf prateleira atual
+         * Seta a prateleira atual
          */
         setCurrentShelf(shelf: any) {
             this.currentShelf = shelf;
@@ -80,7 +81,11 @@ export const useGondolaStore = defineStore('gondola', {
         clearGondola() {
             this.currentGondola = null;
             this.error = null;
-        }, 
+        },
+
+        /**
+         * Calcula os IDs dos produtos presentes na gôndola atual
+         */
         productsInCurrentGondolaIds() {
             const gondola = this.currentGondola;
             if (!gondola?.sections) {
@@ -104,9 +109,9 @@ export const useGondolaStore = defineStore('gondola', {
 
             return finalIds;
         },
+
         /**
-         * Atualiza a ordernação das seções 
-         * @param sesionData seção a ser atualizada 
+         * Atualiza a ordenação das seções 
          */
         invertSectionOrder(sectionData: any) {
             if (!this.currentGondola || !sectionData) return;
@@ -117,174 +122,132 @@ export const useGondolaStore = defineStore('gondola', {
                     sections: sectionData
                 }
             });
-            this.productsInCurrentGondolaIds(); // Recalculate used IDs
+            this.productsInCurrentGondolaIds(); // Recalcula IDs usados
         },
 
         /**
          * Atualiza os dados de uma prateleira
-         * @param shelfId ID da prateleira
-         * @param shelfData Dados atualizados da prateleira
          */
         async updateShelf(shelfId: string, shelfData: any, save: boolean = true) {
             if (!this.currentGondola || !shelfId || !shelfData) return;
+
             try {
                 // 1. Primeiro, atualizamos o estado localmente para feedback imediato
                 const updatedSections = this.currentGondola.sections.map((section: any) => {
-                    // Procura a prateleira correta em cada seção
                     if (section.shelves) {
                         const updatedShelves = section.shelves.map((shelf: any) => {
                             if (shelf.id === shelfId) {
-                                // Retorna um novo objeto com os dados atualizados
                                 return { ...shelf, ...shelfData };
                             }
                             return shelf;
                         });
-                        // Retorna uma nova seção com as prateleiras atualizadas
                         return { ...section, shelves: updatedShelves };
                     }
                     return section;
                 });
-                // Atualiza o estado da gôndola com as seções atualizadas
+
+                // Atualiza o estado da gôndola
                 this.currentGondola = {
                     ...this.currentGondola,
                     sections: updatedSections
                 };
 
-
                 if (save) {
-                    this.productsInCurrentGondolaIds(); // Recalculate used IDs
-                    // 2. Em seguida, enviamos a atualização para o backend
-                    const response = await apiService.put(`shelves/${shelfId}`, shelfData);
+                    this.productsInCurrentGondolaIds();
+                    // 2. Enviamos a atualização para o backend via serviço
+                    const gondolaService = useGondolaService();
+                    await gondolaService.updateShelf(shelfId, shelfData);
                 }
-                // 3. Opcionalmente, você pode atualizar o estado novamente com a resposta do servidor
-                // se necessário para garantir consistência
-                // return response.data;
             } catch (error: any) {
                 console.error(`Erro ao atualizar prateleira ${shelfId}:`, error);
-                // Em caso de erro, você pode querer desfazer a alteração local
-                // ou recarregar a gôndola inteira
-                // this.fetchGondola(this.currentGondola.id);
                 throw error;
             }
         },
+
         /**
          * Atualiza o segmento de uma prateleira
-         * @param shelfId ID da prateleira
-         * @param segmentId ID do segmento a ser atualizado
-         * @param segmentData Dados atualizados do segmento
          */
         async updateSegment(shelfId: string, segmentId: string, segmentData: any, reorder: boolean = false) {
             if (!this.currentGondola || !shelfId || !segmentId || !segmentData) return;
+
+            const gondolaService = useGondolaService();
+
             try {
-                // 1. Primeiro, atualizamos o estado localmente para feedback imediato
+                // 1. Atualizamos o estado localmente para feedback imediato
                 const updatedSections = this.currentGondola.sections.map((section: any) => {
-                    // Procura a prateleira correta em cada seção
                     if (section.shelves) {
                         const updatedShelves = section.shelves.map((shelf: any) => {
                             if (shelf.id === shelfId) {
-                                // Procura o segmento correto na prateleira
-                                const updatedSegments = shelf.segments.map((segment: any) => { 
+                                const updatedSegments = shelf.segments.map((segment: any) => {
                                     if (segment.id === segmentId) {
-                                        // Retorna um novo objeto com os dados do segmento atualizados
                                         return { ...segment, ...segmentData };
                                     }
                                     return segment;
                                 });
-                                // Retorna uma nova prateleira com os segmentos atualizados
                                 return { ...shelf, segments: updatedSegments };
                             }
                             return shelf;
                         });
-                        // Retorna uma nova seção com as prateleiras atualizadas
                         return { ...section, shelves: updatedShelves };
                     }
                     return section;
                 });
-                // Atualiza o estado da gôndola com as seções atualizadas
+
+                // Atualiza o estado da gôndola
                 this.currentGondola = {
                     ...this.currentGondola,
                     sections: updatedSections
-                }; 
+                };
 
-                // 2. Em seguida, enviamos a atualização para o backend
-                // Se o segmento for reordenado, envie a atualização de ordem
+                // 2. Enviamos a atualização para o backend via serviço
                 if (reorder) {
-                    const response = await apiService.put(`segments/${shelfId}/reorder`, {
-                        ordering: segmentData
-                    });
-                    console.log('Resposta do servidor:', response.data);
+                    await gondolaService.reorderSegments(shelfId, segmentData);
                 } else {
-                    // Caso contrário, envie a atualização normal
-                    const response = await apiService.put(`segments/${segmentId}`, segmentData);
-                    console.log('Resposta do servidor:', response.data); 
+                    await gondolaService.updateSegment(segmentId, segmentData);
                 }
-                // 3. Opcionalmente, você pode atualizar o estado novamente com a resposta do servidor
-                // se necessário para garantir consistência
-                // return response.data;
             } catch (error: any) {
-                console.error(`Erro ao atualizar segmento ${segmentId} da prateleira ${shelfId}:`, error);
-                // Em caso de erro, você pode querer desfazer a alteração local
-                // ou recarregar a gôndola inteira
-                // this.fetchGondola(this.currentGondola.id);
+                console.error(`Erro ao atualizar segmento ${segmentId}:`, error);
                 throw error;
             }
         },
 
-
         /**
          * Atualiza a posição vertical de uma prateleira
-         * @param shelfId ID da prateleira
-         * @param newPosition Nova posição vertical em cm
          */
         async updateShelfPosition(shelfId: string | number, newPosition: number) {
             if (!this.currentGondola || !shelfId) return;
 
             try {
-                // 1. Primeiro, atualizamos o estado localmente para feedback imediato
+                // 1. Atualizamos o estado localmente
                 const updatedSections = this.currentGondola.sections.map((section: any) => {
-                    // Procura a prateleira correta em cada seção
                     if (section.shelves) {
                         const updatedShelves = section.shelves.map((shelf: any) => {
                             if (shelf.id === shelfId) {
-                                // Retorna um novo objeto com a posição atualizada
                                 return { ...shelf, shelf_position: newPosition };
                             }
                             return shelf;
                         });
-
-                        // Retorna uma nova seção com as prateleiras atualizadas
                         return { ...section, shelves: updatedShelves };
                     }
                     return section;
                 });
 
-                // Atualiza o estado da gôndola com as seções atualizadas
                 this.currentGondola = {
                     ...this.currentGondola,
                     sections: updatedSections
                 };
 
-                // 2. Em seguida, enviamos a atualização para o backend
-                // const response = await apiService.put(`shelves/${shelfId}/position`, {
-                //   position: newPosition
-                // });
-
-                // 3. Opcionalmente, você pode atualizar o estado novamente com a resposta do servidor
-                // se necessário para garantir consistência
-
-                // return response.data;
+                // 2. Enviamos a atualização para o backend via serviço
+                const gondolaService = useGondolaService();
+                await gondolaService.updateShelfPosition(shelfId, newPosition);
             } catch (error: any) {
                 console.error(`Erro ao atualizar posição da prateleira ${shelfId}:`, error);
-                // Em caso de erro, você pode querer desfazer a alteração local
-                // ou recarregar a gôndola inteira
-                // this.fetchGondola(this.currentGondola.id);
                 throw error;
             }
         },
 
         /**
          * Atualiza os dados de uma gôndola
-         * @param gondolaData Dados atualizados da gôndola
          */
         updateGondola(gondolaData: any) {
             if (!this.currentGondola || !gondolaData) return;
@@ -293,13 +256,11 @@ export const useGondolaStore = defineStore('gondola', {
                 ...this.currentGondola,
                 ...gondolaData
             };
-            this.productsInCurrentGondolaIds(); // This now updates productIdsInGondola
+            this.productsInCurrentGondolaIds();
         },
 
         /**
-         * Atualiza a ordem das prateleiras dentro de uma seção específica.
-         * @param sectionId ID da seção
-         * @param orderedShelves Array de prateleiras ordenadas
+         * Atualiza a ordem das prateleiras dentro de uma seção
          */
         updateShelvesOrder(sectionId: string, orderedShelves: Shelf[]) {
             if (!this.currentGondola || !sectionId || !orderedShelves) return;
@@ -323,19 +284,16 @@ export const useGondolaStore = defineStore('gondola', {
         },
 
         /**
-         * Transfere uma prateleira de uma seção para outra.
-         * @param shelfId ID da prateleira a ser movida.
-         * @param oldSectionId ID da seção de origem.
-         * @param newSectionId ID da seção de destino.
-         * @param newRelativeX Nova posição X da prateleira, relativa à seção de destino.
+         * Transfere uma prateleira de uma seção para outra
          */
-        transferShelf(shelfId: string, oldSectionId: string, newSectionId: string, newRelativeX: number) {
+        async transferShelf(shelfId: string, oldSectionId: string, newSectionId: string, newRelativeX: number) {
             if (!this.currentGondola?.sections || !shelfId || !oldSectionId || !newSectionId) {
                 console.error('Missing data for shelf transfer.');
                 return;
             }
 
             const { toast } = useToast();
+            const gondolaService = useGondolaService();
             let shelfToMove: Shelf | null = null;
             let oldSectionIndex = -1;
             let newSectionIndex = -1;
@@ -349,7 +307,6 @@ export const useGondolaStore = defineStore('gondola', {
                     oldSectionIndex = index;
                     const shelfIndex = section.shelves?.findIndex((s: Shelf) => s.id === shelfId);
                     if (shelfIndex !== undefined && shelfIndex > -1) {
-                        // Remove a prateleira da seção antiga e guarda o objeto
                         shelfToMove = section.shelves.splice(shelfIndex, 1)[0];
                     }
                 }
@@ -358,30 +315,26 @@ export const useGondolaStore = defineStore('gondola', {
                 }
             });
 
-            // Verifica se tudo foi encontrado e a prateleira foi removida
+            // Verifica se tudo foi encontrado
             if (oldSectionIndex === -1 || newSectionIndex === -1 || !shelfToMove) {
-                console.error('Could not find sections or shelf for transfer.', { oldSectionIndex, newSectionIndex, shelfToMove });
+                console.error('Could not find sections or shelf for transfer.');
                 return;
             }
 
-            // Atualiza os dados da prateleira movida (com casting explícito)
+            // Atualiza os dados da prateleira movida
             if (shelfToMove) {
                 (shelfToMove as Shelf).section_id = newSectionId;
                 (shelfToMove as Shelf).shelf_x_position = newRelativeX;
-                // (shelfToMove as Shelf).ordering = newSections[newSectionIndex].shelves?.length + 1 || 1; 
             }
 
             // Adiciona a prateleira à nova seção
             if (!newSections[newSectionIndex].shelves) {
                 newSections[newSectionIndex].shelves = [];
             }
-            // Adiciona apenas se shelfToMove não for null (garantido pelo check acima, mas bom ter)
+
             if (shelfToMove) {
                 newSections[newSectionIndex].shelves.push(shelfToMove);
             }
-
-            // Opcional: Reordenar as prateleiras na seção de destino se necessário
-            // newSections[newSectionIndex].shelves.sort((a, b) => a.ordering - b.ordering);
 
             // Atualiza o estado da gôndola
             this.currentGondola = {
@@ -389,41 +342,39 @@ export const useGondolaStore = defineStore('gondola', {
                 sections: newSections
             };
 
-            console.log(`Shelf ${shelfId} transferred from section ${oldSectionId} to ${newSectionId}`);
+            // Chama o serviço para persistir no backend
+            try {
+                await gondolaService.transferShelf(shelfId, newSectionId, newRelativeX);
 
-            // TODO: Chamar API para persistir a transferência no backend
-            // Exemplo:
-            apiService.patch(`shelves/${shelfId}/transfer`, { section_id: newSectionId, shelf_x_position: newRelativeX }).then((response) => {
                 toast({
                     title: 'Prateleira transferida com sucesso',
                     description: 'A prateleira foi transferida para a seção ' + newSectionId + ' com sucesso',
                     variant: 'default'
                 });
-            }).catch((error) => {
+            } catch (error) {
                 console.error('Erro ao transferir prateleira:', error);
                 toast({
                     title: 'Erro ao transferir prateleira',
                     description: 'Ocorreu um erro ao transferir a prateleira',
                     variant: 'destructive'
                 });
-            });
-            // Atualiza a lista de produtos em uso, pois a estrutura mudou
+            }
+
+            // Atualiza a lista de produtos em uso
             this.productsInCurrentGondolaIds();
         },
+
         /**
-         * Transfer layer (através do segment) de uma prateleira para outra
-         * @param segmentId ID do segmento a ser movido
-         * @param oldShelfId ID da prateleira de origem
-         * @param newShelfId ID da prateleira de destino
-         * @param newRelativeX Nova posição X do segmento, relativa à prateleira de destino
+         * Transfere um segmento/layer de uma prateleira para outra
          */
-        transferLayer(segmentId: string, oldShelfId: string, newShelfId: string, newRelativeX: number) { 
+        async transferLayer(segmentId: string, oldShelfId: string, newShelfId: string, newRelativeX: number) {
             if (!this.currentGondola?.sections || !segmentId || !oldShelfId || !newShelfId) {
                 console.error('Missing data for segment/layer transfer.');
                 return;
             }
 
             const { toast } = useToast();
+            const gondolaService = useGondolaService();
             let segmentToMove: any | null = null;
             let oldShelf: any = null;
             let newShelf: any = null;
@@ -443,7 +394,6 @@ export const useGondolaStore = defineStore('gondola', {
                             oldSectionId = section.id;
                             const segmentIndex = shelf.segments?.findIndex((s: any) => s.id === segmentId);
                             if (segmentIndex !== undefined && segmentIndex > -1) {
-                                // Remove o segmento da prateleira antiga e guarda o objeto
                                 segmentToMove = shelf.segments.splice(segmentIndex, 1)[0];
                             }
                         }
@@ -456,9 +406,9 @@ export const useGondolaStore = defineStore('gondola', {
                 }
             });
 
-            // Verifica se tudo foi encontrado e o segmento foi removido
+            // Verifica se tudo foi encontrado
             if (!oldShelf || !newShelf || !segmentToMove) {
-                console.error('Could not find shelf or segment for transfer.', { oldShelf, newShelf, segmentToMove });
+                console.error('Could not find shelf or segment for transfer.');
                 return;
             }
 
@@ -466,11 +416,10 @@ export const useGondolaStore = defineStore('gondola', {
             if (segmentToMove) {
                 segmentToMove.shelf_id = newShelfId;
                 segmentToMove.position_x = newRelativeX;
-                // Opcionalmente, atualizar a ordem se necessário
+
                 if (!newShelf.segments) {
                     newShelf.segments = [];
                 }
-                // A ordem pode ser baseada na posição ou definida manualmente
                 segmentToMove.ordering = newShelf.segments.length + 1;
             }
 
@@ -483,30 +432,29 @@ export const useGondolaStore = defineStore('gondola', {
                 sections: newSections
             };
 
-            console.log(`Segment with layer transferred from shelf ${oldShelfId} to ${newShelfId}`);
+            // Chama o serviço para persistir no backend
+            try {
+                await gondolaService.transferSegment(segmentId, newShelfId, {
+                    position_x: newRelativeX
+                });
 
-            // Chamada API para persistir a transferência no backend
-            apiService.put(`segments/${segmentId}/transfer`, { 
-                shelf_id: newShelfId,  
-            }).then((response) => {
                 toast({
                     title: 'Segmento transferido com sucesso',
                     description: 'O produto foi transferido para outra prateleira com sucesso',
                     variant: 'default'
                 });
-            }).catch((error) => { 
+            } catch (error) {
                 toast({
                     title: 'Erro ao transferir segmento',
                     description: 'Ocorreu um erro ao transferir o produto para outra prateleira',
                     variant: 'destructive'
                 });
-                // Opcionalmente, reverter a alteração no estado
+                // Recarrega a gôndola em caso de erro
                 this.fetchGondola(this.currentGondola.id);
-            });
+            }
 
             // Atualiza a lista de produtos em uso
             this.productsInCurrentGondolaIds();
         },
- 
     },
 });

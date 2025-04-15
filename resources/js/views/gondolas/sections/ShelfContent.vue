@@ -20,7 +20,7 @@ const props = defineProps<{
 const dragShelfActive = ref(false); // Estado para rastrear se a prateleira está sendo arrastada
 const shelftext = ref(`Shelf (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`); // Texto da prateleira
 // Definir Emits
-const emit = defineEmits(['drop-product', 'drop-layer']); // Para quando um produto é solto na prateleira
+const emit = defineEmits(['drop-product', 'drop-layer', 'drop-layer-copy']); // Para quando um produto é solto na prateleira
 watch(dragShelfActive, (newValue) => {
     if (newValue) {
         // Adicionar lógica para quando a prateleira está sendo arrastada
@@ -56,19 +56,22 @@ const handleDrop = (event: DragEvent) => {
     event.preventDefault();
     if (event.dataTransfer) {
         const layerData = event.dataTransfer.getData('text/layer');
+        const layerDataCopy = event.dataTransfer.getData('text/layer/copy');
         const productData = event.dataTransfer.getData('text/product');
+        console.log('productData', event.dataTransfer);
         if (productData) {
-            try {
-                const product = JSON.parse(productData);
-                // Emitir evento para o componente pai (Section) lidar com a adição
-                emit('drop-product', product, props.shelf, { x: event.offsetX, y: event.offsetY });
-            } catch (e) {
-                console.error('Erro ao processar dados do produto solto:', e);
-            }
+            const product = JSON.parse(productData);
+            // Emitir evento para o componente pai (Section) lidar com a adição
+            emit('drop-product', product, props.shelf, { x: event.offsetX, y: event.offsetY });
         } else if (layerData) {
             const layer = JSON.parse(layerData);
             // Emitir evento para o componente pai (Section) lidar com a adição
             emit('drop-layer', layer, props.shelf, { x: event.offsetX, y: event.offsetY });
+        } else if (layerDataCopy) {
+            const layer = JSON.parse(layerDataCopy);
+            // Emitir evento para o componente pai (Section) lidar com a adição
+            console.log('layerDataCopy', layer);
+            emit('drop-layer-copy', layer, props.shelf, { x: event.offsetX, y: event.offsetY });
         }
         // TODO: Remover feedback visual
         if (event.currentTarget) {

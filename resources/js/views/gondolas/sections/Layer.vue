@@ -1,17 +1,17 @@
 <template>
     <div
-        class="layer group flex cursor-pointer justify-around"
+        class="layer group flex cursor-pointer items-center justify-center"
         :style="layerStyle"
         @click="handleLayerClick"
         @dragstart="onDragStart"
         draggable="true"
-        :class="{ 'layer--selected': isSelected }">
-        <Product  v-for="index in layer.quantity" :key="index" :product="layer.product"  :scale-factor="scaleFactor" :product-spacing="layerSpacing" />
+        :class="{ 'layer--selected': isSelected }"
+    >
+        <Product v-for="index in layer.quantity" :key="index" :product="layer.product" :scale-factor="scaleFactor" :product-spacing="layerSpacing" />
     </div>
 </template>
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
-import { useGondolaStore } from '../../../store/gondola'; // Corrected relative path
 import { useProductStore } from '../../../store/product'; // Corrected relative path
 import Product from './Product.vue'; // Importando o novo componente
 import { LayerSegment, Segment } from './types';
@@ -31,23 +31,20 @@ const emit = defineEmits<{
 }>();
 
 const productStore = useProductStore();
-const gondolaStore = useGondolaStore();
-const currentGondola = computed(() => gondolaStore.currentGondola);
 
 const layerSpacing = ref(props.layer.spacing);
 const layerQuantity = ref(props.layer.quantity || 1);
 const debounceTimer = ref<ReturnType<typeof setTimeout> | null>(null);
 const segmentSelected = ref(false);
- 
 
-const layerStyle = computed(() => { 
-    const layerHeight = props.layer.product.height; 
+const layerStyle = computed(() => {
+    const layerHeight = props.layer.product.height;
     // Calculamos a largura total, mas a renderização dos produtos será
-    // responsabilidade do componente ProductGroup 
+    // responsabilidade do componente ProductGroup
 
-    return { 
+    return {
         width: `100%`,
-        height: `${layerHeight * props.scaleFactor}px`, 
+        height: `${layerHeight * props.scaleFactor}px`,
         zIndex: '2',
     };
 });
@@ -94,15 +91,30 @@ const handleLayerClick = (event: MouseEvent) => {
 const onDragStart = (event: DragEvent) => {
     // Adicionar lógica para quando a prateleira está sendo arrastada
     if (event.dataTransfer) {
-        event.dataTransfer.setData(
-            'text/layer',
-            JSON.stringify({
-                ...props.layer,
-                segment: props.segment,
-            }),
-        );
-
-        event.dataTransfer.effectAllowed = 'move';
+        // Vamos verificar se a tecla Ctrl ou Meta está pressionada
+        const isCtrlOrMetaPressed = event.ctrlKey || event.metaKey;
+        console.log('isCtrlOrMetaPressed', isCtrlOrMetaPressed);
+        if (isCtrlOrMetaPressed) {
+            // Se a tecla Ctrl ou Meta estiver pressionada, vamos permitir o movimento
+            event.dataTransfer.effectAllowed = 'copy';
+            event.dataTransfer.setData(
+                'text/layer/copy',
+                JSON.stringify({
+                    ...props.layer,
+                    segment: props.segment,
+                }),
+            );
+        } else {
+            // Caso contrário, vamos permitir apenas a cópia
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData(
+                'text/layer',
+                JSON.stringify({
+                    ...props.layer,
+                    segment: props.segment,
+                }),
+            );
+        }
     }
 };
 
@@ -129,7 +141,7 @@ const onDecreaseQuantity = async () => {
             quantity: (layerQuantity.value -= 1),
         });
     }
-}; 
+};
 // ----------------------------------------------------
 // Lifecycle hooks
 // ----------------------------------------------------
@@ -144,7 +156,7 @@ onMounted(() => {
             } else if (event.key === 'ArrowLeft') {
                 event.preventDefault();
                 await onDecreaseQuantity();
-            } 
+            }
         }
     });
 });

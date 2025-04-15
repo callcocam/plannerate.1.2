@@ -13,7 +13,7 @@
             :style="segmentsContainerStyle"
         >
             <template #item="{ element: segment }">
-                <Segment :key="segment.id" :shelf="shelf" :segment="segment" :scale-factor="scaleFactor" :section-width="sectionWidth"/>
+                <Segment :key="segment.id" :shelf="shelf" :segment="segment" :scale-factor="scaleFactor" :section-width="sectionWidth" />
             </template>
         </draggable>
         <ShelfControls
@@ -30,6 +30,7 @@
         <ShelfContent
             :shelf="shelf"
             @drop-product="(product: Product, shelf: Shelf, dropPosition: any) => $emit('drop-product', product, shelf, dropPosition)"
+            @drop-layer-copy="(product: Product, shelf: Shelf, dropPosition: any) => $emit('drop-layer-copy', product, shelf, dropPosition)"
             @drop-layer="(layer: Layer, shelf: Shelf) => updateLayer(layer, shelf)"
         />
         <!-- </div> -->
@@ -40,11 +41,11 @@
 import { computed, defineEmits, defineProps, onMounted, onUnmounted, ref } from 'vue';
 import draggable from 'vuedraggable';
 import { useGondolaStore } from '../../../store/gondola';
+import { useShelfStore } from '../../../store/shelf';
 import Segment from './Segment.vue';
 import ShelfContent from './ShelfContent.vue';
 import ShelfControls from './ShelfControls.vue'; // Importar o componente ShelfControls
 import { Layer, Product, Segment as SegmentType, Shelf } from './types';
-import { useShelfStore } from '../../../store/shelf';
 
 // Definir Props
 const props = defineProps<{
@@ -61,7 +62,7 @@ const props = defineProps<{
 const shelfElement = ref<HTMLElement | null>(null);
 
 // Definir Emits
-const emit = defineEmits(['drop-product']); // Para quando um produto é solto na prateleira
+const emit = defineEmits(['drop-product', 'drop-layer-copy']); // Para quando um produto é solto na prateleira
 const gondolaStore = useGondolaStore(); // Instanciar o gondola store
 const shelfStore = useShelfStore(); // Instanciar o shelf store
 // --- Computeds para Estilos ---
@@ -73,7 +74,7 @@ const shelfStyle = computed(() => {
         // Aplicamos a posição sem o sinal negativo para corrigir a direção do movimento
         return {
             position: 'absolute' as const,
-            left: `${leftPosition -4}px`, // CORRIGIDO: Removido o sinal negativo
+            left: `${leftPosition - 4}px`, // CORRIGIDO: Removido o sinal negativo
             width: `${props.sectionWidth * props.scaleFactor}px`,
             height: `${props.shelf.shelf_height * props.scaleFactor}px`,
             top: `${topPosition}px`,
@@ -117,7 +118,7 @@ const sortableSegments = computed<SegmentType[]>({
 
 const updateLayer = (layer: Layer, shelf: Shelf) => {
     // Emitir evento para o componente pai (Section) lidar com a atualização
-    gondolaStore.transferLayer(layer.segment_id, layer.segment.shelf_id, shelf.id, 0); 
+    gondolaStore.transferLayer(layer.segment_id, layer.segment.shelf_id, shelf.id, 0);
 };
 /**
  * Computed property para estilo do container de segmentos
@@ -138,7 +139,7 @@ const controlDeleteShelf = (event: KeyboardEvent) => {
     if ((event.key === 'Delete' || event.key === 'Backspace') && event.ctrlKey) {
         console.log('Ctrl+Delete pressed, deleting shelf');
         event.preventDefault();
-        
+
         // Verificar se há uma prateleira selecionada
         if (shelfStore.hasSelection) {
             shelfStore.deleteSelectedShelf();
@@ -162,7 +163,7 @@ onMounted(() => {
     if (shelfElement.value) {
         shelfElement.value.addEventListener('click', selectShelfClick);
     }
-    
+
     // Adicionar listener global para capturar Ctrl+Delete
     document.addEventListener('keydown', globalKeyHandler);
 });
@@ -172,7 +173,7 @@ onUnmounted(() => {
     if (shelfElement.value) {
         shelfElement.value.removeEventListener('click', selectShelfClick);
     }
-    
+
     // Remover listener global
     document.removeEventListener('keydown', globalKeyHandler);
 });

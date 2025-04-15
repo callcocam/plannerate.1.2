@@ -1,0 +1,74 @@
+// services/gondolaService.ts  
+
+import apiService from "./api";
+
+export const useGondolaService = () => {
+    /**
+     * Busca uma gôndola específica pelo ID
+     */
+    const fetchGondola = async (gondolaId: string) => {
+        return apiService.get(`gondolas/${gondolaId}`);
+    };
+
+    /**
+     * Atualiza os dados de uma prateleira
+     */
+    const updateShelf = async (shelfId: string, shelfData: any) => {
+        return apiService.put(`shelves/${shelfId}`, shelfData);
+    };
+
+    /**
+     * Atualiza a posição vertical de uma prateleira
+     */
+    const updateShelfPosition = async (shelfId: string | number, newPosition: number) => {
+        return apiService.patch(`shelves/${shelfId}/position`, {
+            position: newPosition
+        });
+    };
+
+    /**
+     * Transfere uma prateleira de uma seção para outra
+     */
+    const transferShelf = async (shelfId: string, newSectionId: string, newRelativeX: number) => {
+        return apiService.patch(`shelves/${shelfId}/transfer`, {
+            section_id: newSectionId,
+            shelf_x_position: newRelativeX
+        });
+    };
+
+    /**
+     * Atualiza o segmento de uma prateleira
+     */
+    const updateSegment = async (segmentId: string, segmentData: any) => {
+        return apiService.put(`segments/${segmentId}`, segmentData);
+    };
+
+    /**
+     * Reordena os segmentos de uma prateleira
+     */
+    const reorderSegments = async (shelfId: string, ordering: any) => {
+        return apiService.put(`segments/${shelfId}/reorder`, {
+            ordering: ordering
+        });
+    };
+
+    /**
+     * Transfere um segmento de uma prateleira para outra
+     */
+    const transferSegment = async (segmentId: string, newShelfId: string, positionData?: any) => {
+        return apiService.put(`segments/${segmentId}/transfer`, {
+            shelf_id: newShelfId,
+            ...positionData
+        });
+    };
+
+    return {
+        fetchGondola,
+        updateShelf,
+        updateShelfPosition,
+        transferShelf,
+        updateSegment,
+        reorderSegments,
+        transferSegment
+    };
+};
