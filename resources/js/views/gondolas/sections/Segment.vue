@@ -1,5 +1,5 @@
 <template>
-    <div class="segment drag-segment-handle group relative flex items-center justify-between" :style="segmentStyle">
+    <div class="segment drag-segment-handle group relative flex items-center justify-center" :style="segmentStyle">
         <Layer
             v-for="(quantity, index) in segmentQuantity"
             :key="index"

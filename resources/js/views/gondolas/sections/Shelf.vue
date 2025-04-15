@@ -1,6 +1,6 @@
 <template>
     <div
-        class="shelf relative flex flex-col items-end justify-around border-y border-gray-400 bg-gray-700 text-gray-50 dark:bg-gray-800"
+        class="shelf relative flex flex-col items-center justify-around border-y border-gray-400 bg-gray-700 text-gray-50 dark:bg-gray-800"
         :style="shelfStyle"
         ref="shelfElement"
     >
@@ -9,7 +9,7 @@
             v-model="sortableSegments"
             item-key="id"
             handle=".drag-segment-handle"
-            class="relative flex w-full items-end justify-around"
+            class="relative flex w-full items-end justify-center"
             :style="segmentsContainerStyle"
         >
             <template #item="{ element: segment }">

@@ -1,50 +1,47 @@
 import { defineStore } from 'pinia';
-// Remove direct axios import if no longer needed elsewhere, or keep if used for other things
-// import axios from 'axios'; 
-import { apiService } from '../services'; // Import your apiService
+import { apiService } from '../services';
 import { useGondolaStore } from './gondola';
 import { Layer } from '../views/gondolas/sections/types';
 import { useToast } from '../components/ui/toast';
-// Interface para representar um produto
+
+// Interfaces
 export interface Product {
     id: string;
     name: string;
     description: string;
-    price: number; // Assuming price is still relevant
+    price: number;
     image?: string;
     image_url?: string;
-    width: number; // Width of the product in base units (e.g., mm)
-    height: number; // Height of the product in base units (e.g., mm)
+    width: number;
+    height: number;
     depth?: number;
     sku?: string;
-    layer: Layer; // Assuming Layer is a type that represents the layer information
+    layer: Layer;
     category_id?: string;
     created_at?: string;
     updated_at?: string;
 }
 
-// Interface para dados contextuais de um produto (quantidade, espaçamento)
 export interface ProductContext {
     quantity: number;
-    spacing: number; // Spacing *after* this product in the layer/context
+    spacing: number;
 }
 
-// Interface para o estado da store
 export interface ProductState {
-    /**
-     * IDs dos produtos selecionados (na UI, ex: Layers).
-     * Usado para controlar quais produtos estão atualmente selecionados.
-     */
-    selectedProduct: Product | null; // Produto selecionado (na UI, ex: Layers)
-    selectedProductIds: Set<string>; // IDs dos produtos selecionados (na UI, ex: Layers)
-    productContextData: Map<string, ProductContext>; // Dados contextuais por ID de produto
-    loading: boolean; // Indicador de carregamento para chamadas API
-    error: string | null; // Armazena mensagens de erro
+    selectedProduct: Product | null;
+    selectedProductIds: Set<string>;
+    productContextData: Map<string, ProductContext>;
+    loading: boolean;
+    error: string | null;
 }
+
+// Tipos para as operações na layer
+type LayerOperation = 'delete' | 'updateQuantity' | 'updateSpacing';
+type ToastMessageType = 'success' | 'error';
 
 export const useProductStore = defineStore('product', {
     state: (): ProductState => ({
-        selectedProduct: null, // Produto selecionado (na UI, ex: Layers)
+        selectedProduct: null,
         selectedProductIds: new Set(),
         productContextData: new Map(),
         loading: false,
@@ -52,64 +49,38 @@ export const useProductStore = defineStore('product', {
     }),
 
     getters: {
-        /**
-         * Retorna o Set de IDs dos produtos selecionados (na UI).
-         */
         getSelectedProductIds: (state: ProductState): Set<string> => state.selectedProductIds,
 
-        /**
-         * Retorna um array com os objetos Product completos selecionados (na UI).
-         */
         getSelectedProducts: (state: ProductState): Product[] => {
             console.warn('getSelectedProducts getter needs revision after removing allProducts state.');
             return [];
         },
 
-        /**
-         * Retorna os dados contextuais (quantidade, espaçamento) para um produto específico.
-         * @returns (productId: string) => ProductContext | undefined
-         */
         getProductContext: (state: ProductState) => {
             return (productId: string): ProductContext | undefined => {
                 return state.productContextData.get(productId);
             };
         },
 
-        /**
-         * Retorna o estado de carregamento.
-         */
         isLoading: (state: ProductState): boolean => state.loading,
 
-        /**
-         * Retorna a mensagem de erro.
-         */
         getError: (state: ProductState): string | null => state.error,
     },
 
     actions: {
-        /**
-         * Adiciona um produto à seleção.
-         * @param productId ID do produto a selecionar.
-         */
+        // Funções de seleção de produtos
         selectProduct(productId: string) {
             this.selectedProductIds.add(productId);
         },
 
-        /**
-         * Remove um produto da seleção.
-         * @param productId ID do produto a deselecionar.
-         */
         deselectProduct(productId: string) {
             this.selectedProductIds.delete(productId);
         },
+
         setSelectedProduct(product: Product) {
             this.selectedProduct = product;
         },
 
-        /**
-         * Alterna a seleção de um produto (seleciona se não estiver, deseleciona se estiver).
-         * @param productId ID do produto a alternar.
-         */
         toggleProductSelection(productId: string) {
             if (this.selectedProductIds.has(productId)) {
                 this.selectedProductIds.delete(productId);
@@ -118,162 +89,105 @@ export const useProductStore = defineStore('product', {
             }
         },
 
-        /**
-         * Limpa toda a seleção de produtos.
-         */
         clearSelection() {
             this.selectedProductIds.clear();
         },
-        /**
-         * Remove produto da layer.
-         * @param product Produto a ser removido.
-         * @param layer Layer da camada a ser removida.
-         * @param shelfData Dados da prateleira (não utilizado atualmente, mas pode ser útil no futuro).
-         */
-        deleteProductFromLayer(product: Product, layer: Layer, shelfData: any) {
-            this.removeLayer(layer, shelfData);
-            // Remove o produto do contexto
-            this.productContextData.delete(product.id);
-            // Remove o produto da seleção
-            this.selectedProductIds.delete(product.id);
-            this.selectedProduct = null;
-        },
-        /**
-         * Remove produto e layer da gondola.
-         * @param layer Layer da camada a ser removida.
-         * @param shelfData Dados da prateleira (não utilizado atualmente, mas pode ser útil no futuro).
-         */
-        removeLayer(layer: Layer, shelfData: any) {
-            const gondolaStore = useGondolaStore();
+
+        // Função generalizada para gerenciar mensagens toast
+        showToast(type: ToastMessageType, title: string, description: string) {
             const { toast } = useToast();
-            const productId = this.selectedProductIds.has(layer.product_id) ? layer.product_id : '';
-            if (productId) {
-                this.setProductContextData(productId, { quantity: 0 });
-                // Remove a camada no backend
-                apiService.delete(`/layers/${layer.id}`)
-                    .then(() => {
-
-                        toast({
-                            title: 'Camada removida',
-                            description: 'Camada removida com sucesso',
-                            variant: 'default',
-                        });
-                        // Remove a camada no gondolaStore 
-                        apiService.get(`/shelves/${shelfData.id}`)
-                            .then((response: any) => {
-                                const resetShelf = response.data;
-                                gondolaStore.updateShelf(resetShelf.id, resetShelf, false);
-                            }).catch((error: any) => {
-                                this.error = error.response?.data?.message || error.message || 'Failed to fetch updated layer';
-                                console.error('Error fetching updated layer:', error);
-                            });
-                    })
-                    .catch((error: any) => {
-                        console.error('Error removing layer:', error.response?.data?.message || error.message || 'Failed to remove layer');
-                        toast({
-                            title: 'Erro ao remover camada',
-                            description: error.response?.data?.message || error.message || 'Falha ao remover camada',
-                            variant: 'destructive',
-                        });
-                        apiService.get(`/shelves/${shelfData.id}`)
-                            .then((response: any) => {
-                                const resetShelf = response.data;
-                                gondolaStore.updateShelf(resetShelf.id, resetShelf, false);
-                            }).catch((error: any) => {
-                                this.error = error.response?.data?.message || error.message || 'Failed to fetch updated layer';
-                                console.error('Error fetching updated layer:', error);
-                            });
-                    })
-                    .finally(() => {
-                        // Reset loading state if needed
-                        this.loading = false;
-                    });
-            }
+            toast({
+                title,
+                description,
+                variant: type === 'success' ? 'default' : 'destructive',
+            });
         },
 
-        /**
-         * Atualiza a quantidade de um produto selecionado.
-         * @param layer Layer da camada a ser atualizada.
-         * @param quantity Nova quantidade do produto.
-         * @param shelfData Dados da prateleira (não utilizado atualmente, mas pode ser útil no futuro).
-         */
-        updateLayerQuantity(layer: Layer, quantity: number, shelfData: any) {
-            const productId = this.selectedProductIds.has(layer.product_id) ? layer.product_id : '';
-            const gondolaStore = useGondolaStore();
-            const { toast } = useToast();
-            if (productId) {
-
-                this.setProductContextData(productId, { quantity });
-                // Atualiza a quantidade no backend
-                apiService.put(`/layers/${layer.id}`, {
-                    // spacing: layer.spacing,
-                    quantity: quantity,
-                }).then(() => {
-                    // Atualiza a quantidade no gondolaStore
-                    gondolaStore.updateSegment(shelfData.shelf_id, shelfData.id, shelfData, false);
-                    toast({
-                        title: 'Quantidade atualizada',
-                        description: 'Quantidade atualizada com sucesso',
-                        variant: 'default',
-                    });
-                }).catch((error: any) => {
-                    console.error('Error updating layer quantity:', error.response?.data?.message || error.message || 'Failed to update layer quantity');
-                    toast({
-                        title: 'Erro ao atualizar quantidade',
-                        description: error.response?.data?.message || error.message || 'Falha ao atualizar quantidade',
-                        variant: 'destructive',
-                    });
-                    gondolaStore.updateSegment(shelfData.shelf_id, {
-                        ...shelfData,
-                        quantity: quantity--
-                    }, false);
-
-                }).finally(() => {
-
-                });
-            }
-        },
-        /**
-         * Atualiza o espaçamento de um produto selecionado.
-         * @param layer Layer da camada a ser atualizada.
-         * @param spacing Novo espaçamento do produto.
-         */
-        updateLayerSpacing(layer: Layer, spacing: number, shelfData: any) {
-            const productId = this.selectedProductIds.has(layer.product_id) ? layer.product_id : '';
-            if (productId) {
+        // Função generalizada para atualizar shelf através da API
+        async updateShelfFromAPI(shelfId: string) {
+            try {
                 const gondolaStore = useGondolaStore();
-                const { toast } = useToast();
-                this.setProductContextData(productId, { spacing });
-                // Atualiza o espaçamento no backend
-                apiService.put(`/layers/${layer.id}`, {
-                    // quantity: layer.quantity,
-                    spacing: spacing,
-                })
-                    .then(() => {
-                        gondolaStore.updateSegment(shelfData.shelf_id, shelfData.id, shelfData, false);
-                    })
-                    .catch((error: any) => {
-                        console.error('Error updating layer spacing:', error);
-                        toast({
-                            title: 'Erro ao atualizar quantidade',
-                            description: error.response?.data?.message || error.message || 'Falha ao atualizar quantidade',
-                            variant: 'destructive',
-                        });
-                        gondolaStore.updateSegment(shelfData.shelf_id, {
-                            ...shelfData,
-                            spacing: spacing--
-                        }, false);
-                    });
+                const response = await apiService.get(`/shelves/${shelfId}`);
+                const resetShelf = response.data;
+                gondolaStore.updateShelf(resetShelf.id, resetShelf, false);
+                return resetShelf;
+            } catch (error: any) {
+                this.error = error.response?.data?.message || error.message || 'Failed to fetch updated shelf data';
+                console.error('Error fetching updated shelf data:', error);
+                throw error;
             }
         },
 
+        // Função unificada para manipular layers
+        async handleLayerOperation(operation: LayerOperation, layer: Layer, shelfData: any, value?: number) {
+            const productId = this.selectedProductIds.has(layer.product_id) ? layer.product_id : '';
+            if (!productId) return;
 
-        /**
-         * Define ou atualiza os dados contextuais (quantidade, espaçamento) para um produto.
-         * Se o produto já tiver dados, os novos valores serão mesclados.
-         * @param productId ID do produto.
-         * @param context Partial<ProductContext> Novos dados contextuais (pode fornecer só quantity ou só spacing).
-         */
+            this.loading = true;
+
+            try {
+                // Preparação de acordo com a operação
+                switch (operation) {
+                    case 'delete':
+                        this.productContextData.delete(layer.product_id);
+                        this.selectedProductIds.delete(layer.product_id);
+                        this.selectedProduct = null;
+                        await apiService.delete(`/layers/${layer.id}`);
+                        this.showToast('success', 'Camada removida', 'Camada removida com sucesso');
+                        break;
+
+                    case 'updateQuantity':
+                        if (value === undefined) value = 1;
+                        this.setProductContextData(productId, { quantity: value });
+                        await apiService.put(`/layers/${layer.id}`, { quantity: value });
+                        this.showToast('success', 'Quantidade atualizada', 'Quantidade atualizada com sucesso');
+                        break;
+
+                    case 'updateSpacing':
+                        if (value === undefined) value = 0;
+                        this.setProductContextData(productId, { spacing: value });
+                        await apiService.put(`/layers/${layer.id}`, { spacing: value });
+                        this.showToast('success', 'Espaçamento atualizado', 'Espaçamento atualizado com sucesso');
+                        break;
+                }
+
+                // Atualiza os dados da prateleira
+                await this.updateShelfFromAPI(shelfData.shelf_id);
+
+            } catch (error: any) {
+                const errorMessage = error.response?.data?.message || error.message || 'Falha na operação';
+                console.error(`Error in layer operation ${operation}:`, errorMessage);
+                this.showToast('error', 'Erro na operação', errorMessage);
+
+                // Tenta recuperar estado após erro
+                try {
+                    await this.updateShelfFromAPI(shelfData.shelf_id);
+                } catch (e) {
+                    console.error('Failed to recover after error:', e);
+                }
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        // Funções específicas que usam a função generalizada
+        deleteProductFromLayer(product: Product, layer: Layer, shelfData: any) {
+            this.handleLayerOperation('delete', layer, shelfData);
+        },
+
+        removeLayer(layer: Layer, shelfData: any) {
+            this.handleLayerOperation('delete', layer, shelfData);
+        },
+
+        updateLayerQuantity(layer: Layer, quantity: number, shelfData: any) {
+            this.handleLayerOperation('updateQuantity', layer, shelfData, quantity);
+        },
+
+        updateLayerSpacing(layer: Layer, spacing: number, shelfData: any) {
+            this.handleLayerOperation('updateSpacing', layer, shelfData, spacing);
+        },
+
+        // Funções de manipulação de contexto do produto
         setProductContextData(productId: string, context: Partial<ProductContext>) {
             const existingContext = this.productContextData.get(productId) || { quantity: 1, spacing: 0 };
             const newContext = { ...existingContext, ...context };
@@ -282,11 +196,7 @@ export const useProductStore = defineStore('product', {
             this.productContextData.set(productId, newContext);
         },
 
-        /**
-         * [Placeholder] Envia os dados contextuais (quantidade, espaçamento) para o backend.
-         * A implementação real precisará coletar os dados relevantes do productContextData
-         * e enviá-los para a API apropriada usando apiService.
-         */
+        // Função placeholder para sincronização
         async syncWithBackend() {
             console.warn('syncWithBackend action called - Placeholder implementation using apiService');
             this.loading = true;

@@ -1,6 +1,6 @@
 <template>
     <div
-        class="layer group flex cursor-pointer"
+        class="layer group flex cursor-pointer justify-center"
         :style="layerStyle"
         @click="handleLayerClick"
         @dragstart="onDragStart"
@@ -43,9 +43,12 @@ const layerStyle = computed(() => {
     // Calculamos a largura total, mas a renderização dos produtos será
     // responsabilidade do componente ProductGroup
     const productWidth = props.layer.product.width;
-    const totalProductsWidth = productWidth * props.layer.quantity;
-    const totalSpacingWidth = props.layer.quantity > 1 ? props.layer.spacing * (props.layer.quantity - 1) : 0;
+    const spacing = props.layer.spacing;
+    const quantity = props.layer.quantity;
+    const totalProductsWidth = productWidth * quantity;
+    const totalSpacingWidth = quantity > 1 ? spacing * quantity : 0;
     const totalWidth = totalProductsWidth + totalSpacingWidth;
+    console.log('Total Width:', props.layer.quantity, props.layer.spacing);
 
     return {
         position: 'absolute' as const,
@@ -96,15 +99,18 @@ const handleLayerClick = (event: MouseEvent) => {
     }
 };
 // Function to handle drag start event
-const onDragStart = (event: DragEvent) => { 
+const onDragStart = (event: DragEvent) => {
     // Adicionar lógica para quando a prateleira está sendo arrastada
-    if (event.dataTransfer) { 
-        event.dataTransfer.setData('text/layer', JSON.stringify({ 
-                ...props.layer, 
-                segment: props.segment, 
-        }));
+    if (event.dataTransfer) {
+        event.dataTransfer.setData(
+            'text/layer',
+            JSON.stringify({
+                ...props.layer,
+                segment: props.segment,
+            }),
+        );
 
-        event.dataTransfer.effectAllowed = 'move'; 
+        event.dataTransfer.effectAllowed = 'move';
     }
 };
 
@@ -114,7 +120,6 @@ const onIncreaseQuantity = async () => {
     if (productStore.selectedProductIds.size > 1) {
         return;
     }
-    console.log('Layer quantity increased:', layerQuantity.value);
     emit('increase', {
         ...props.layer,
         quantity: (layerQuantity.value += 1),

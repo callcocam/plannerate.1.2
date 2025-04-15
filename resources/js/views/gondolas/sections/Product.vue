@@ -31,10 +31,7 @@ const productStyle = computed(() => {
         alignItems: 'center',
         justifyContent: 'center',
         position: 'relative' as const,
-        boxSizing: 'border-box' as const,
-        border: '1px solid #ddd',
-        borderRadius: '2px',
-        backgroundColor: '#f9f9f9',
+        boxSizing: 'border-box' as const, 
     };
 });
 
