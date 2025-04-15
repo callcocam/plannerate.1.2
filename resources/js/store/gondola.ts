@@ -183,8 +183,7 @@ export const useGondolaStore = defineStore('gondola', {
                         const updatedShelves = section.shelves.map((shelf: any) => {
                             if (shelf.id === shelfId) {
                                 // Procura o segmento correto na prateleira
-                                const updatedSegments = shelf.segments.map((segment: any) => {
-                                    console.log('segment', segment);
+                                const updatedSegments = shelf.segments.map((segment: any) => { 
                                     if (segment.id === segmentId) {
                                         // Retorna um novo objeto com os dados do segmento atualizados
                                         return { ...segment, ...segmentData };
@@ -205,9 +204,7 @@ export const useGondolaStore = defineStore('gondola', {
                 this.currentGondola = {
                     ...this.currentGondola,
                     sections: updatedSections
-                };
-
-                this.productsInCurrentGondolaIds(); // Recalculate used IDs
+                }; 
 
                 // 2. Em seguida, enviamos a atualização para o backend
                 // Se o segmento for reordenado, envie a atualização de ordem

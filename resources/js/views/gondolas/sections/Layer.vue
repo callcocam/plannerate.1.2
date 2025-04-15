@@ -38,38 +38,12 @@ const layerSpacing = ref(props.layer.spacing);
 const layerQuantity = ref(props.layer.quantity || 1);
 const debounceTimer = ref<ReturnType<typeof setTimeout> | null>(null);
 const segmentSelected = ref(false);
+ 
 
-const layerWidth = () => {
-    let sectionWidth = props.sectionWidth;
-    currentGondola.value?.sections.map((section) => {
-        section.shelves.map((shelf) => {
-            shelf.segments.map((segment) => {
-                if (segment.id === props.segment.id) { 
-                    sectionWidth = sectionWidth - segment.layer.product.width;
-                    if (shelf.segments.length > 1) {
-                        sectionWidth = sectionWidth / shelf.segments.length;
-                    }
-                    if (sectionWidth < 0) {
-                        sectionWidth = 0;
-                    }
-                }
-            });
-        });
-    });
-    return sectionWidth;
-};
-
-const layerStyle = computed(() => {
-    const topPosition = props.layer.layer_position * props.scaleFactor;
-    const layerHeight = props.layer.product.height;
-    const sectionWidth = props.sectionWidth;
+const layerStyle = computed(() => { 
+    const layerHeight = props.layer.product.height; 
     // Calculamos a largura total, mas a renderização dos produtos será
-    // responsabilidade do componente ProductGroup
-    const productWidth = props.layer.product.width; 
-    const quantity = props.layer.quantity;
-    const totalProductsWidth = productWidth * quantity; 
-    const finalWidth = layerWidth() ;
-    const totalWidth = totalProductsWidth + finalWidth; 
+    // responsabilidade do componente ProductGroup 
 
     return { 
         width: `100%`,
@@ -155,34 +129,7 @@ const onDecreaseQuantity = async () => {
             quantity: (layerQuantity.value -= 1),
         });
     }
-};
-// Function to increase spacing
-const onSpacingIncrease = async () => {
-    if (productStore.selectedProductIds.size > 1) {
-        return;
-    }
-    layerQuantity.value = props.layer.quantity;
-    emit('spacingIncrease', {
-        ...props.layer,
-        spacing: layerSpacing.value++,
-        quantity: layerQuantity.value,
-    });
-};
-// Function to decrease spacing
-const onSpacingDecrease = async () => {
-    if (productStore.selectedProductIds.size > 1) {
-        return;
-    }
-    layerQuantity.value = props.layer.quantity;
-    if (layerSpacing.value > 0) {
-        emit('spacingDecrease', {
-            ...props.layer,
-            spacing: layerSpacing.value--,
-            quantity: layerQuantity.value,
-        });
-    }
-};
-
+}; 
 // ----------------------------------------------------
 // Lifecycle hooks
 // ----------------------------------------------------
@@ -197,19 +144,7 @@ onMounted(() => {
             } else if (event.key === 'ArrowLeft') {
                 event.preventDefault();
                 await onDecreaseQuantity();
-            }
-            //Verifica se a tecla pressionada é a tecla de espaço
-            else if (event.key === ' ') {
-                event.preventDefault();
-                // Chama a função de aumentar a quantidade
-                await onSpacingIncrease();
-            }
-            //Verifica se a tecla pressionada é a tecla de espaço
-            else if (event.key === 'Backspace') {
-                event.preventDefault();
-                // Chama a função de diminuir a quantidade
-                await onSpacingDecrease();
-            }
+            } 
         }
     });
 });

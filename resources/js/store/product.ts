@@ -152,7 +152,7 @@ export const useProductStore = defineStore('product', {
                 }
 
                 // Atualiza os dados da prateleira
-                await this.updateShelfFromAPI(shelfId);
+                await this.updateShelfFromAPI(shelfId, false);
 
             } catch (error: any) {
                 const errorMessage = error.response?.data?.message || error.message || 'Falha na operação';
@@ -161,7 +161,7 @@ export const useProductStore = defineStore('product', {
 
                 // Tenta recuperar estado após erro
                 try {
-                    await this.updateShelfFromAPI(shelfId);
+                    await this.updateShelfFromAPI(shelfId, false);
                 } catch (e) {
                     console.error('Failed to recover after error:', e);
                 }
