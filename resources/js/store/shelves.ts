@@ -3,6 +3,7 @@ import { defineStore } from 'pinia';
 import { Shelf } from '../types/shelves';
 import { useToast } from '../components/ui/toast';
 import { useGondolaStore } from './gondola';
+import { useEditorStore } from './editor';
 import { apiService } from '../services';
 import { useGondolaService } from '../services/gondolaService';
 interface ShelfState {
@@ -104,6 +105,7 @@ export const useShelvesStore = defineStore('shelves', {
             const gondolaStore = useGondolaStore();
             const { currentGondola } = gondolaStore
             if (!currentGondola || !shelfId || !shelfData) return;
+            const { startLoading, stopLoading } = useEditorStore();
             try {
                 // 1. Primeiro, atualizamos o estado localmente para feedback imediato
                 const updatedSections = currentGondola.sections.map((section: any) => {
@@ -126,6 +128,7 @@ export const useShelvesStore = defineStore('shelves', {
                 });
 
                 if (save) {
+                    startLoading();
                     gondolaStore.productsInCurrentGondolaIds();
                     // 2. Enviamos a atualização para o backend via serviço
                     const gondolaService = useGondolaService();
@@ -134,30 +137,8 @@ export const useShelvesStore = defineStore('shelves', {
             } catch (error: any) {
                 console.error(`Erro ao atualizar prateleira ${shelfId}:`, error);
                 throw error;
-            }
-        },
-        // Método específico para atualizar a posição da prateleira
-        updateShelfPosition(shelfId: string, position: number, persist: boolean = true) {
-            const shelfIndex = this.shelves.findIndex(shelf => shelf.id === shelfId);
-            if (shelfIndex === -1) return;
-
-            this.shelves[shelfIndex] = {
-                ...this.shelves[shelfIndex],
-                shelf_position: position
-            };
-
-            // Se for a prateleira selecionada, atualiza ela também
-            if (this.selectedShelf && this.selectedShelf.id === shelfId) {
-                this.selectedShelf = {
-                    ...this.selectedShelf,
-                    shelf_position: position
-                };
-            }
-
-            // Se persist for true, aqui você chamaria uma API para persistir a mudança
-            if (persist) {
-                // apiService.updateShelfPosition(shelfId, position);
-                console.log(`Persistindo posição da prateleira ${shelfId}: ${position}`);
+            } finally {
+                stopLoading();
             }
         },
         // Método para transferir uma prateleira para outra seção
@@ -237,9 +218,9 @@ export const useShelvesStore = defineStore('shelves', {
             // Atualiza a lista de produtos em uso
             // gondolaStore.productsInCurrentGondolaIds();
         },
-        /**
-                * Atualiza a ordem das prateleiras dentro de uma seção
-                */
+            /**
+            * Atualiza a ordem das prateleiras dentro de uma seção
+            */
         updateShelvesOrder(sectionId: string, orderedShelves: Shelf[]) {
             if (!this.currentGondola || !sectionId || !orderedShelves) return;
 
@@ -286,11 +267,13 @@ export const useShelvesStore = defineStore('shelves', {
                 });
                 return response.data;
             } catch (error: any) {
+                this.error = error.message || 'Erro ao adicionar prateleira';
                 toast({
                     title: 'Erro ao adicionar',
-                    description: error.response.data.message || 'Erro ao adicionar a prateleira.',
+                    description: this.error,
                     variant: 'destructive'
                 });
+                console.error('Erro ao adicionar prateleira:', error);
                 throw error;
             } finally {
                 this.isLoading = false;

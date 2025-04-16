@@ -247,10 +247,7 @@ const handleClickOutside = (event: MouseEvent) => {
     if (!clickedElement.closest('.layer')) {
         productStore.clearSelection();
     }
-    if (!clickedElement.closest('.shelf')) {
-        shelfStore.clearSelection();
-        shelfStore.clearShelfSelectedIs();
-    }
+    
     if (!clickedElement.closest('.shelves')) {
         shelvesStore.clearSelection();
         shelvesStore.clearSelectedShelfIds();
@@ -263,7 +260,7 @@ const handleClickOutside = (event: MouseEvent) => {
 };
 
 const handleDoubleClick = async (event: MouseEvent) => {
-    const newShelf: ShelfType = {
+    const newShelf: any = {
         id: `shelf-${Date.now()}`,
         name: `shelf-${Date.now()}`,
         gondola_id: gondolaStore.currentGondola.id,
@@ -279,18 +276,16 @@ const handleDoubleClick = async (event: MouseEvent) => {
 
     try {
         const response = await shelfService.addShelf(newShelf);
-        shelfStore.addShelf(response.data || newShelf);
-
+        shelvesStore.addShelf(response.data || newShelf);
         toast({
             title: 'Sucesso',
             description: 'Nova prateleira adicionada',
             variant: 'default',
         });
     } catch (error) {
-        console.error('Erro ao adicionar prateleira:', error);
         toast({
             title: 'Erro',
-            description: 'Falha ao adicionar prateleira',
+            description: error.response?.data?.message || 'Falha ao adicionar prateleira',
             variant: 'destructive',
         });
     }

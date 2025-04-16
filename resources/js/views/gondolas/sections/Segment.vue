@@ -38,9 +38,7 @@ const segmentQuantity = computed(() => {
 });
 
 const productStore = useProductStore(); // Instance of the product store
-const gondolaStore = useGondolaStore(); // Instance of the gondola store
-
-const layersWithSpacing = ref<LayerType[]>([]); // Array to store layers with spacing
+const gondolaStore = useGondolaStore(); // Instance of the gondola store 
 
 // Computed para o estilo do segmento
 // ----------------------------------------------------
@@ -53,18 +51,20 @@ const layersWithSpacing = ref<LayerType[]>([]); // Array to store layers with sp
 const layerWidth = () => {
     let sectionWidth = props.sectionWidth;
     currentGondola.value?.sections.map((section) => {
-        section.shelves.map((shelf) => {
-            shelf.segments.map((segment) => {
-                if (segment.id === props.segment.id) {
-                    sectionWidth = sectionWidth - segment.layer.product.width;
-                    if (shelf.segments.length > 1) {
-                        sectionWidth = sectionWidth / shelf.segments.length; 
+        section.shelves.map((shelf: Shelf) => {
+            if (shelf?.segments?.length > 0) {
+                shelf.segments.map((segment) => {
+                    if (segment.id === props.segment.id) {
+                        sectionWidth = sectionWidth - segment.layer.product.width;
+                        if (shelf.segments.length > 1) {
+                            sectionWidth = sectionWidth / shelf.segments.length;
+                        }
+                        if (sectionWidth < 0) {
+                            sectionWidth = 0;
+                        }
                     }
-                    if (sectionWidth < 0) {
-                        sectionWidth = 0;
-                    }
-                }
-            });
+                });
+            }
         });
     });
     return sectionWidth;
@@ -78,11 +78,11 @@ const segmentStyle = computed(() => {
 
     // Cálculo atualizado da largura total, considerando produtos e espaçamento
     const productWidth = props.segment.layer.product.width;
-    const productQuantity = props.segment.layer.quantity; 
+    const productQuantity = props.segment.layer.quantity;
     const layerWidthFinal = layerWidth();
 
     // Largura total: largura dos produtos + espaçamento entre eles
-    const totalWidth = (productWidth * productQuantity) * props.scaleFactor + layerWidthFinal;
+    const totalWidth = productWidth * productQuantity * props.scaleFactor + layerWidthFinal;
 
     // Conditional style when segment is selected
     const selectedStyle = segmentSelected.value

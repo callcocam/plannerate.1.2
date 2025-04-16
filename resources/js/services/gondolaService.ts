@@ -35,8 +35,7 @@ export const useGondolaService = () => {
             shelf_x_position: newRelativeX
         });
     };
- 
-   
+  
 
     return {
         fetchGondola,

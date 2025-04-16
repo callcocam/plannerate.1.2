@@ -59,6 +59,12 @@ export const useEditorStore = defineStore('editor', {
         setLoading(loading: boolean) {
             this.loading = loading;
         },
+        startLoading() {
+            this.loading = true;
+        },
+        stopLoading() {
+            this.loading = false;
+        },
         setError(error: string | null) {
             this.error = error;
         },
