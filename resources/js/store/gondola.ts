@@ -1,6 +1,6 @@
 // store/gondola.ts
 import { defineStore } from 'pinia';
-import { useGondolaService } from '../services/gondolaService';  
+import { useGondolaService } from '../services/gondolaService';
 
 interface GondolaState {
     currentGondola: any | null;
@@ -80,6 +80,30 @@ export const useGondolaStore = defineStore('gondola', {
             this.currentGondola = null;
             this.error = null;
         },
+        getCurrentGondolaAlignment() {
+            if (!this.currentGondola) return 'justify';
+            // Se a gôndola não estiver carregada, retorna 'justify' como padrão
+            return this.currentGondola.alignment;
+        },
+        getAligmentLeft() {
+            if (!this.currentGondola) return false;
+            // Se a gôndola não estiver carregada, retorna 'justify' como padrão
+            return this.currentGondola.alignment === 'left';
+        },
+        getAligmentCenter() {
+            if (!this.currentGondola) return false;
+            // Se a gôndola não estiver carregada, retorna 'justify' como padrão
+            return this.currentGondola.alignment === 'center';
+        },
+        getAligmentRight() {
+            if (!this.currentGondola) return false;
+            // Se a gôndola não estiver carregada, retorna 'justify' como padrão
+            return this.currentGondola.alignment === 'right';
+        },
+        getAligmentJustify() {
+            if (!this.currentGondola) return false;
+            return this.currentGondola.alignment === 'justify';
+        },
 
         /**
          * Calcula os IDs dos produtos presentes na gôndola atual
@@ -112,18 +136,18 @@ export const useGondolaStore = defineStore('gondola', {
          */
         invertSectionOrder(sectionData: any) {
             if (!this.currentGondola || !sectionData) return;
-           
+
             // Atualiza o estado da gôndola com as seções atualizadas
             this.currentGondola = {
                 ...this.currentGondola,
                 sections: sectionData
-            }; 
+            };
             // this.productsInCurrentGondolaIds(); // Recalcula IDs usados
-        }, 
-       
-         /**
-         * Atualiza os dados de uma gôndola
-         */
+        },
+
+        /**
+        * Atualiza os dados de uma gôndola
+        */
         updateGondola(gondolaData: any, reload: boolean = false) {
             if (!this.currentGondola || !gondolaData) return;
 
@@ -134,7 +158,29 @@ export const useGondolaStore = defineStore('gondola', {
             // Se necessário, recarrega os dados da gôndola
             if (reload) {
                 this.productsInCurrentGondolaIds();
-            } 
+            }
         },
+        async justifyProducts(alignment: string) {
+            if (!this.currentGondola) return;
+
+            const gondolaService = useGondolaService();
+            // this.isLoading = true;
+            this.error = null;
+
+            try {
+                // Limpa o estado atual para evitar misturar dados
+                
+                // Busca os dados via serviço
+                const response = await gondolaService.updateGondolaAlignment(this.currentGondola.id, alignment);
+
+                // Atualiza o estado com o resultado
+                this.currentGondola = response.data;
+            } catch (error: any) {
+                this.error = error.message || 'Erro ao carregar gôndola';
+                console.error('Erro ao carregar gôndola:', error);
+            } finally {
+                this.isLoading = false;
+            }
+        }
     },
 });

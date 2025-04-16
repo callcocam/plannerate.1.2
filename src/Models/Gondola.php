@@ -31,6 +31,7 @@ class Gondola extends Model
         'flow',
         'num_modulos',
         'scale_factor',
+        'alignment',
         'status',
     ];
 

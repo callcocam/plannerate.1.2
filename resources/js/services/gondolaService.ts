@@ -11,6 +11,22 @@ export const useGondolaService = () => {
     };
 
     /**
+     * Atualiza os dados de uma gôndola
+     */
+    const updateGondola = async (gondolaId: string, gondolaData: any) => {
+        return apiService.put(`gondolas/${gondolaId}`, gondolaData);
+    };
+
+    /**
+     * Atualiza alinhamento de uma gôndola
+     */
+    const updateGondolaAlignment = async (gondolaId: string, alignment: string) => {
+        return apiService.post(`gondolas/${gondolaId}/alignment`, {
+            alignment
+        });
+    };
+
+    /**
      * Atualiza os dados de uma prateleira
      */
     const updateShelf = async (shelfId: string, shelfData: any) => {
@@ -35,12 +51,14 @@ export const useGondolaService = () => {
             shelf_x_position: newRelativeX
         });
     };
-  
+
 
     return {
         fetchGondola,
         updateShelf,
         updateShelfPosition,
-        transferShelf,  
+        transferShelf,
+        updateGondola,
+        updateGondolaAlignment
     };
 };

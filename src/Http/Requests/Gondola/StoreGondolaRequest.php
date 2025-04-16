@@ -26,6 +26,7 @@ class StoreGondolaRequest extends BaseFormRequest
             'flow' => ['nullable', 'string', Rule::in(['left_to_right', 'right_to_left'])],
             'scale_factor' => ['nullable', 'integer', 'min:1'],
             'status' => ['nullable', 'string', Rule::in(array_column(GondolaStatus::cases(), 'value'))],
+            'alignment' => ['nullable', 'string', 'max:255'],
 
             // Dados da seção (aninhados)
             'section' => ['nullable', 'array'],

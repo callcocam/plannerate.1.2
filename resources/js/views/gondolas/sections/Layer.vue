@@ -12,6 +12,7 @@
 </template>
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { useGondolaStore } from '../../../store/gondola';
 import { useProductStore } from '../../../store/product'; // Corrected relative path
 import Product from './Product.vue'; // Importando o novo componente
 import { LayerSegment, Segment } from './types';
@@ -31,6 +32,7 @@ const emit = defineEmits<{
 }>();
 
 const productStore = useProductStore();
+const gondolaStore = useGondolaStore(); // Instance of the gondola store
 
 const layerSpacing = ref(props.layer.spacing);
 const layerQuantity = ref(props.layer.quantity || 1);
@@ -39,11 +41,23 @@ const segmentSelected = ref(false);
 
 const layerStyle = computed(() => {
     const layerHeight = props.layer.product.height;
-    // Calculamos a largura total, mas a renderização dos produtos será
-    // responsabilidade do componente ProductGroup
+    const productWidth = props.layer.product.width;
+    const quantity = props.layer.quantity || 1;
+    let layerWidthFinal = `100%`;
+    if (gondolaStore.getAligmentLeft()) {
+        layerWidthFinal = `${productWidth * quantity * props.scaleFactor}px`;
+    } else if (gondolaStore.getAligmentRight()) {
+        layerWidthFinal = `${productWidth * quantity * props.scaleFactor}px`;
+    } else if (gondolaStore.getAligmentCenter()) {
+        layerWidthFinal = `100%`;
+    } else if (gondolaStore.getAligmentJustify()) {
+        layerWidthFinal = `100%`;
+    } else {
+        layerWidthFinal = `${productWidth * quantity * props.scaleFactor}px`;
+    }
 
     return {
-        width: `100%`,
+        width: layerWidthFinal,
         height: `${layerHeight * props.scaleFactor}px`,
         zIndex: '2',
     };
@@ -52,7 +66,7 @@ const layerStyle = computed(() => {
 // Computed property to check if this layer's product is selected
 const isSelected = computed(() => {
     if (!props.layer.product?.id) return false;
-    const productId = props.layer.product?.id ;
+    const productId = props.layer.product?.id;
     const layerId = props.layer.id;
     // Ensure ID is treated as string for the Set comparison
     return productStore.isSelectedProductIds.has(String(productId).concat('-').concat(layerId));
@@ -60,7 +74,7 @@ const isSelected = computed(() => {
 
 // Click handler function
 const handleLayerClick = (event: MouseEvent) => {
-    const productId = props.layer.product?.id ;
+    const productId = props.layer.product?.id;
     const layerId = props.layer.id;
     if (!productId) {
         console.error('Layer clicked, but product ID is missing.');
@@ -97,7 +111,7 @@ const onDragStart = (event: DragEvent) => {
     // Adicionar lógica para quando a prateleira está sendo arrastada
     if (event.dataTransfer) {
         // Vamos verificar se a tecla Ctrl ou Meta está pressionada
-        const isCtrlOrMetaPressed = event.ctrlKey || event.metaKey; 
+        const isCtrlOrMetaPressed = event.ctrlKey || event.metaKey;
         if (isCtrlOrMetaPressed) {
             // Se a tecla Ctrl ou Meta estiver pressionada, vamos permitir o movimento
             event.dataTransfer.effectAllowed = 'copy';

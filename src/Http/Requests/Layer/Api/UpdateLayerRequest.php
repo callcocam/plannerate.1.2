@@ -22,14 +22,14 @@ class UpdateLayerRequest extends FormRequest
 
     public function rules(): array
     {
-        return [ 
+        return [
             'quantity' => [
                 'sometimes',
                 'required',
                 'integer',
                 'min:1',
                 new ShelfWidthSpaceValidation($this->route('layer')->id, $this->request->all()),
-            ], 
+            ],
             'spacing' => [
                 'sometimes',
                 'required',
@@ -37,6 +37,7 @@ class UpdateLayerRequest extends FormRequest
                 'min:0',
                 new ShelfSpacingValidation($this->route('layer')->id, $this->request->all()),
             ],
+            'alignment' => ['nullable', 'string', 'max:255'],
         ];
     }
 

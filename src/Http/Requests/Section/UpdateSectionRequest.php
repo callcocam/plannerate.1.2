@@ -44,6 +44,7 @@ class UpdateSectionRequest extends BaseFormRequest
             'hole_spacing' => ['nullable', 'integer', 'min:0'],
             'ordering' => ['nullable', 'integer', 'min:0'],
             'settings' => ['nullable', 'array'],
+            'alignment' => ['nullable', 'string', 'max:255'],
             'status' => ['nullable', 'string', Rule::in(array_column(SectionStatus::cases(), 'value'))],
             
             // Campos adicionais para atualização de prateleiras

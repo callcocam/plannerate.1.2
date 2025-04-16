@@ -33,6 +33,7 @@ class StoreSectionRequest extends BaseFormRequest
             'hole_width' => ['nullable', 'integer', 'min:0'],
             'hole_spacing' => ['nullable', 'integer', 'min:0'],
             'ordering' => ['nullable', 'integer', 'min:0'],
+            'alignment' => ['nullable', 'string', 'max:255'],
             'settings' => ['nullable', 'array'],
             'status' => ['nullable', 'string', Rule::in(array_column(SectionStatus::cases(), 'value'))],
             

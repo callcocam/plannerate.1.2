@@ -41,6 +41,7 @@ class Section extends Model
         'hole_height',
         'hole_width',
         'hole_spacing',
+        'alignment',
         'ordering',
         'settings',
         'status',

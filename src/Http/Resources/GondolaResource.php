@@ -26,6 +26,7 @@ class GondolaResource extends JsonResource
             'thickness' => $this->thickness, // espessura da gramalheira
             'scale_factor' => $this->scale_factor,
             'location' => $this->location,
+            'alignment' => $this->alignment,
             'status' => [
                 'value' => $this->status->value,
                 'label' => $this->status->label(),

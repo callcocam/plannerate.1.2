@@ -24,6 +24,7 @@ interface Segment {
     id: string;               // ID único do segmento, ex: "01jry47dsydth3vze2rhc1as9g"
     layer: Layer;             // Informações sobre a camada associada
     ordering: number;         // Ordem do segmento, ex: 1
+    alignment: string;         // Alinhamento, ex: "left"
     position: number;         // Posição do segmento, ex: 0
     quantity: number;         // Quantidade, ex: 1
     settings: SegmentSetting[] | null; // Configurações do segmento

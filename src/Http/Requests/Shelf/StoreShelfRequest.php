@@ -39,6 +39,7 @@ class StoreShelfRequest extends BaseFormRequest
                 'array',
                 new ShelfStoreSpacingValidation(),
             ], 
+            'alignment' => ['nullable', 'string', 'max:255'],
         ];
     }
 }

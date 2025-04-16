@@ -27,6 +27,7 @@ class Segment extends Model
         'quantity', 
         'spacing',
         'settings',
+        'alignment',
         'status',
     ];
 

@@ -31,6 +31,7 @@ class ShelfResource extends JsonResource
             'spacing' => $this->spacing,
             'settings' => $this->settings,
             'status' => $this->status,
+            'alignment' => $this->alignment,
             'segments' => SegmentResource::collection($this->whenLoaded('segments')),
             'section' => new SectionResource($this->whenLoaded('section')),
             'reload' => now()->format('Y-m-d H:i:s'),

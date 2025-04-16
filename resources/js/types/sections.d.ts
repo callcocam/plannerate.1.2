@@ -24,6 +24,7 @@ interface Status {
     shelf_depth: number;
     section_id: string;
     shelf_x_position: number;
+    alignment: string;
     // ... outras propriedades conforme necessário
   }
   
@@ -41,6 +42,7 @@ interface Status {
     name: string;                // Nome da seção, ex: "0# Main Section"
     num_shelves: number;         // Número de prateleiras, ex: 4
     ordering: number;            // Ordenação, ex: 0
+    alignment: string;          // Alinhamento, ex: "left"
     settings: Settings;          // Configurações, ex: { holes: Array(32) }
     shelf_height: number | null; // Altura da prateleira, ex: null
     shelves: Shelf[];            // Lista de prateleiras, ex: [Proxy(Object), ...]

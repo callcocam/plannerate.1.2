@@ -23,17 +23,18 @@ class UpdateLayerRequest extends FormRequest
     {
         return [
             'validated' => [
-                'sometimes', 
+                'sometimes',
                 'integer',
                 'min:0',
                 new ShelfWidthSpaceValidation($this->route('layer')->id, $this->request->all()),
             ],
             'quantity' => [
-                'sometimes', 
+                'sometimes',
                 'integer',
                 'min:1',
                 new ShelfWidthSpaceValidation($this->route('layer')->id, $this->request->all()),
             ],
+            'alignment' => ['nullable', 'string', 'max:255'],
             'settings' => [
                 'nullable',
                 'array',

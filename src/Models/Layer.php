@@ -27,6 +27,7 @@ class Layer extends Model
         'quantity',  
         'spacing',
         'status',
+        'alignment',
         'settings',
     ];
 

@@ -9,7 +9,13 @@
             v-model="sortableSegments"
             item-key="id"
             handle=".drag-segment-handle"
-            class="relative flex w-full items-end justify-center"
+            class="relative flex w-full items-end"
+            :class="{
+                'justify-center': alignment === 'center',
+                'justify-start': alignment === 'left',
+                'justify-end': alignment === 'right',
+                'justify-around': alignment === 'justify',
+            }"
             :style="segmentsContainerStyle"
         >
             <template #item="{ element: segment }">
@@ -65,6 +71,20 @@ const shelfElement = ref<HTMLElement | null>(null);
 const emit = defineEmits(['drop-product', 'drop-layer-copy']); // Para quando um produto é solto na prateleira
 const shelvesStore = useShelvesStore();
 const segmentStore = useSegmentStore(); // Instanciar o segment store
+
+const alignment = computed(() => { 
+    if (props.shelf?.alignment) {
+        return props.shelf?.alignment;
+    }
+    if (props.shelf?.section?.alignment) {
+        return props.shelf?.section?.alignment;
+    }
+    if (props.shelf?.section?.gondola?.alignment) {
+        return props.shelf?.section?.gondola?.alignment;
+    }
+    // Verifica se a prateleira está alinhada à esquerda ou direita
+    return 'justify';
+});
 // --- Computeds para Estilos ---
 const shelfStyle = computed(() => {
     // Convertemos a posição da prateleira para pixels usando o fator de escala

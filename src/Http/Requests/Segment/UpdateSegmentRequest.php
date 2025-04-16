@@ -30,6 +30,7 @@ class UpdateSegmentRequest extends FormRequest
             'width' => 'sometimes|numeric|min:0',
             'ordering' => 'sometimes|integer|min:0',
             'position' => 'sometimes|integer|min:0',
+            'alignment' => ['nullable', 'string', 'max:255'],
         ];
     }
 }

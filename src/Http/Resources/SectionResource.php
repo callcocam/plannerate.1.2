@@ -34,6 +34,7 @@ class SectionResource extends JsonResource
             'shelf_height' => $this->shelf_height, // espessura da prateleira
             'cremalheira_width' => $this->cremalheira_width,
             'ordering' => $this->ordering,
+            'alignment' => $this->alignment,
             'settings' => $this->settings,
             'status' => [
                 'value' => $this->status->value,
@@ -41,6 +42,7 @@ class SectionResource extends JsonResource
                 'color' => $this->status->color(),
             ],
             'shelves' => ShelfResource::collection($this->whenLoaded('shelves')),
+            'gondola' => new GondolaResource($this->whenLoaded('gondola')),
         ];
     }
 }

@@ -27,6 +27,7 @@ class UpdateSegmentRequest extends FormRequest
                 'min:1',
                 new ShelfHeightSpaceValidation($this->route('segment')->id, $this->request->all()),
             ], 
+            'alignment' => ['nullable', 'string', 'max:255'],
         ];
     }
 }

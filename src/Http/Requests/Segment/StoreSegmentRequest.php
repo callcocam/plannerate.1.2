@@ -28,6 +28,7 @@ class StoreSegmentRequest extends BaseFormRequest
             'spacing' => 'nullable|numeric|min:0',
             'settings' => 'nullable|array',
             'position' => 'nullable|integer|min:0',
+            'alignment' => ['nullable', 'string', 'max:255'],
             'status' => 'sometimes|string|in:draft,published',
             'product' => [
                 'required',

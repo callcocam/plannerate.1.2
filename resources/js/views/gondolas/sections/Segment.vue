@@ -9,7 +9,7 @@
             :scale-factor="scaleFactor"
             :section-width="sectionWidth"
             @increase="onIncreaseQuantity"
-            @decrease="onDecreaseQuantity" 
+            @decrease="onDecreaseQuantity"
         />
     </div>
 </template>
@@ -36,7 +36,7 @@ const segmentQuantity = computed(() => {
 });
 
 const productStore = useProductStore(); // Instance of the product store
-const gondolaStore = useGondolaStore(); // Instance of the gondola store 
+const gondolaStore = useGondolaStore(); // Instance of the gondola store
 
 // Computed para o estilo do segmento
 // ----------------------------------------------------
@@ -77,7 +77,14 @@ const segmentStyle = computed(() => {
     // Cálculo atualizado da largura total, considerando produtos e espaçamento
     const productWidth = props.segment.layer.product.width;
     const productQuantity = props.segment.layer.quantity;
-    const layerWidthFinal = layerWidth();
+    let layerWidthFinal = 0;
+     if (gondolaStore.getAligmentCenter()) {
+        layerWidthFinal = productWidth * props.scaleFactor;
+    } else if (gondolaStore.getAligmentJustify()) {
+        layerWidthFinal = layerWidth();
+    } else {
+        layerWidthFinal = 0;
+    }
 
     // Largura total: largura dos produtos + espaçamento entre eles
     const totalWidth = productWidth * productQuantity * props.scaleFactor + layerWidthFinal;
@@ -112,7 +119,7 @@ const onDecreaseQuantity = (layer: LayerType) => {
         ...props.segment,
         layer,
     });
-}; 
+};
 </script>
 
 <style scoped>

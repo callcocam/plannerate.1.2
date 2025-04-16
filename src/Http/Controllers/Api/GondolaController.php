@@ -127,7 +127,9 @@ class GondolaController extends Controller
                 'sections.shelves.segments',
                 'sections.shelves.segments.layer',
                 'sections.shelves.segments.layer.product',
-                'sections.shelves.segments.layer.product.image'
+                'sections.shelves.segments.layer.product.image',
+                'sections.shelves.section',
+                'sections.shelves.section.gondola',
             ])
                 ->findOrFail($id);
 
@@ -585,5 +587,44 @@ class GondolaController extends Controller
             'message' => 'Fator de escala atualizado com sucesso',
             'status' => 'success'
         ]);
+    }
+
+    public function alignment(Request $request, Gondola $gondola): JsonResponse
+    {
+        $validated = $request->validate([
+            'alignment' => 'required|string|min:1|max:10',
+        ]);
+
+        try {
+
+            $gondola->update($validated);
+            $data = $gondola->load([
+                'sections',
+                'sections.shelves',
+                'sections.shelves.segments',
+                'sections.shelves.segments.layer',
+                'sections.shelves.segments.layer.product',
+                'sections.shelves.segments.layer.product.image',
+                'sections.shelves.section',
+                'sections.shelves.section.gondola',
+            ]);
+            return response()->json([
+                'message' => 'Alinhamento atualizado com sucesso',
+                'data' => $data,
+                'status' => 'success'
+            ]);
+        } catch (Throwable $e) {
+            Log::error('Erro ao atualizar alinhamento', [
+                'gondola_id' => $gondola->id,
+                'exception' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'message' => 'Ocorreu um erro ao atualizar o alinhamento',
+                'status' => 'error'
+            ], 500);
+        }
     }
 }

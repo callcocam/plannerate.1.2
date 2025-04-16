@@ -35,7 +35,8 @@ class UpdateShelfRequest extends FormRequest
             'ordering' => ['sometimes', 'required', 'integer', 'min:0'],
             'position' => ['sometimes', 'required', 'numeric', 'min:0'], 
             'segment' => ['sometimes', 'required', 'array'], 
-            'status' => ['sometimes', 'required', Rule::enum(ShelfStatus::class)]
+            'status' => ['sometimes', 'required', Rule::enum(ShelfStatus::class)],
+            'alignment' => ['nullable', 'string', 'max:255'],
         ];
     }
 }

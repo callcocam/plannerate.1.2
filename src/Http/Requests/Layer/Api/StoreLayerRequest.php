@@ -34,6 +34,7 @@ class StoreLayerRequest extends BaseFormRequest
             'spacing' => 'nullable|numeric|min:0',
             'settings' => 'nullable|array',
             'status' => 'sometimes|string|in:draft,published',
+            'alignment' => ['nullable', 'string', 'max:255'],
         ];
     }
 }

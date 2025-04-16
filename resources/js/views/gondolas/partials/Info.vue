@@ -18,7 +18,7 @@ import { useRouter } from 'vue-router';
 import { apiService } from '../../../services';
 import { useEditorStore } from '../../../store/editor';
 import { useGondolaStore } from '../../../store/gondola'; // Importar o store da gôndola
-import { useShelfStore } from '../../../store/shelf'; // Importar o store de prateleiras
+import { useShelvesStore } from '../../../store/shelves';
 import Category from './Category.vue'; // Assumindo que Category e Popover estão corretos
 import Popover from './Popover.vue';
 
@@ -46,7 +46,7 @@ const emit = defineEmits(['update:invertOrder', 'update:category']);
 const router = useRouter();
 const editorStore = useEditorStore();
 const gondolaStore = useGondolaStore(); // Usar o store da gôndola
-const shelfStore = useShelfStore(); // Usar o store de prateleiras
+const shelvesStore = useShelvesStore();
 
 // Estado Local
 /** Filtros aplicados localmente (ex: categoria). */
@@ -72,7 +72,7 @@ const shelfWidth = computed(() => currentGondola.value?.shelf_width || 0);
 
 const shelfSelected = computed(() => {
     // Verifica se há prateleiras selecionadas
-    return shelfStore.selectedShelf;
+    return shelvesStore.selectedShelf;
 });
 
 // Métodos
@@ -83,7 +83,7 @@ const shelfSelected = computed(() => {
 const updateScale = (newScale: number) => {
     editorStore.setGondolaId(currentGondola.value?.id); // Atualiza o ID da gôndola no store
     // Adiciona validação de limites se necessário, embora os botões já tenham :disabled
-    const clampedScale = Math.max(2, Math.min(10, newScale)); 
+    const clampedScale = Math.max(2, Math.min(10, newScale));
     // Atualiza a escala da gôndola no store
     editorStore.updateScaleFactor(clampedScale);
 };
@@ -191,7 +191,7 @@ const confirmDeleteShelf = async () => {
     if (!shelfSelected.value) return;
     try {
         // Chamar o método de exclusão da prateleira no gondolaStore
-        await shelfStore.deleteSelectedShelf();
+        await shelvesStore.deleteSelectedShelf();
     } catch (error) {
         console.error('Erro ao excluir prateleira:', error);
     }
@@ -212,21 +212,19 @@ const cancelDelete = () => {
 
 /**
  * Justifica os produtos na prateleira selecionada.
- * Atualiza o store, chama a API e redireciona. 
+ * Atualiza o store, chama a API e redireciona.
  */
 const justifyProducts = async (alignment: string) => {
     // Adiciona verificação se a gôndola existe
     if (!currentGondola.value) return;
     // Adiciona verificação se a prateleira existe
-    try {
-        console.log('Justificando produtos com alinhamento:', alignment);
+    try { 
         // Chamar o método de justificação de produtos no gondolaStore
-        await shelfStore.justifyProducts(alignment);
+        await gondolaStore.justifyProducts(alignment);
     } catch (error) {
         console.error('Erro ao justificar produtos:', error);
     }
 };
-
 </script>
 
 <template>

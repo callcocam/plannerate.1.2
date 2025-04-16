@@ -31,6 +31,7 @@ class Shelf extends Model
         'spacing',
         'ordering',
         'settings',
+        'alignment',
         'status',
     ];
 
