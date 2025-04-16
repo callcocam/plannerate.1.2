@@ -19,8 +19,7 @@
         "php": "^8.2",
         "spatie/laravel-package-tools": "^1.16",
         "illuminate/contracts": "^12.0",
-        "intervention/image-laravel": "^1.5",
-        "callcocam/lara-gatekeeper": "^1.0",
+        "intervention/image-laravel": "^1.5", 
         "callcocam/tall-sluggable": "dev-main",
         "callcocam/lara-gatekeeper": "dev-main",
         "maatwebsite/excel": "^3.1"
