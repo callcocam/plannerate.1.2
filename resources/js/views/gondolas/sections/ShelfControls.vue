@@ -266,6 +266,9 @@ const handleMouseUp = () => {
                 // Soltou na mesma seção ou fora de uma zona de transferência válida
                 shelvesStore.updateShelf(currentShelfData.id, { shelf_x_position: 0 });
             }
+        }else if (dragType.value === 'vertical') {
+            const newYPosition = props.shelf.shelf_position;
+            shelvesStore.updateShelf(props.shelf.id, { shelf_position: newYPosition });
         }
     }
 

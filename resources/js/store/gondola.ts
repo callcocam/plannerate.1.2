@@ -124,14 +124,17 @@ export const useGondolaStore = defineStore('gondola', {
          /**
          * Atualiza os dados de uma gôndola
          */
-        updateGondola(gondolaData: any) {
+        updateGondola(gondolaData: any, reload: boolean = false) {
             if (!this.currentGondola || !gondolaData) return;
 
             this.currentGondola = {
                 ...this.currentGondola,
                 ...gondolaData
             };
-            this.productsInCurrentGondolaIds();
+            // Se necessário, recarrega os dados da gôndola
+            if (reload) {
+                this.productsInCurrentGondolaIds();
+            } 
         },
     },
 });

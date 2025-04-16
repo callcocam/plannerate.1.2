@@ -5,7 +5,7 @@
                 <template #item="{ element: section, index }">
                     <div :key="section.id">
                         <div class="flex items-center">
-                            <Cremalheira :section="section" :scale-factor="scaleFactor" @delete-section="deleteSection"  @edit-section="editSection">
+                            <Cremalheira :section="section" :scale-factor="scaleFactor" @delete-section="deleteSection" @edit-section="editSection">
                                 <template #actions>
                                     <Button
                                         size="sm"
@@ -16,27 +16,70 @@
                                     </Button>
                                 </template>
                             </Cremalheira>
-                            <Section
-                                :key="section.id"
-                                :section-index="index"
-                                :section="section"
-                                :scale-factor="scaleFactor"
-                                :selected-category="selectedCategory"
-                                :sections-container="sectionsContainer"
-                                @move-shelf-to-section="handleMoveShelfToSection"
-                                @segment-select="$emit('segment-select', $event)"
-                                @update-shelves="handleMoveSegmentToSection"
-                                @update:quantity="updateSegmentQuantity"
-                                @update:segments="handleMoveSegmentToSection"
-                                @delete-section="deleteSection"
-                            />
+                            <ContextMenu>
+                                <ContextMenuTrigger>
+                                    <Section
+                                        :key="section.id"
+                                        :section-index="index"
+                                        :section="section"
+                                        :scale-factor="scaleFactor"
+                                        :selected-category="selectedCategory"
+                                        :sections-container="sectionsContainer"
+                                        @move-shelf-to-section="handleMoveShelfToSection"
+                                        @segment-select="$emit('segment-select', $event)"
+                                        @update-shelves="handleMoveSegmentToSection"
+                                        @update:quantity="updateSegmentQuantity"
+                                        @update:segments="handleMoveSegmentToSection"
+                                        @delete-section="deleteSection"
+                                    />
+                                </ContextMenuTrigger>
+                                <ContextMenuContent class="w-64">
+                                    <ContextMenuItem inset @click="editSection(section)">
+                                        Editar
+                                        <ContextMenuShortcut>⌘E</ContextMenuShortcut>
+                                    </ContextMenuItem>
+                                    <ContextMenuItem inset @click="(e) => addShelf(e, section)">
+                                        Adicionar prateleira
+                                        <ContextMenuShortcut>⌘A</ContextMenuShortcut>
+                                    </ContextMenuItem>
+                                    <ContextMenuSeparator />
+                                    <ContextMenuSub>
+                                        <ContextMenuSubTrigger inset> Alinhamento </ContextMenuSubTrigger>
+                                        <ContextMenuSubContent class="w-48">
+                                            <ContextMenuItem inset>
+                                                Alinhar à esquerda
+                                                <ContextMenuShortcut>⌘⇧L</ContextMenuShortcut>
+                                            </ContextMenuItem>
+                                            <ContextMenuItem inset>
+                                                Alinhar ao centro
+                                                <ContextMenuShortcut>⌘⇧C</ContextMenuShortcut>
+                                            </ContextMenuItem>
+                                            <ContextMenuItem inset>
+                                                Alinhar à direita
+                                                <ContextMenuShortcut>⌘⇧R</ContextMenuShortcut>
+                                            </ContextMenuItem>
+                                        </ContextMenuSubContent>
+                                    </ContextMenuSub>
+                                    <ContextMenuSeparator />
+                                    <ContextMenuItem inset disabled>
+                                        Excluir
+                                        <ContextMenuShortcut>⌘D</ContextMenuShortcut>
+                                    </ContextMenuItem>
+                                </ContextMenuContent>
+                            </ContextMenu>
                         </div>
                     </div>
                 </template>
             </draggable>
 
             <div v-if="lastSectionData" class="flex items-center">
-                <Cremalheira :section="lastSectionData" :scale-factor="scaleFactor" :is-last-section="true" :key="`rack-end-${lastSectionData.id}`" @edit-section="editSection"/>
+                <Cremalheira
+                    :section="lastSectionData"
+                    :scale-factor="scaleFactor"
+                    :is-last-section="true"
+                    :key="`rack-end-${lastSectionData.id}`"
+                    @edit-section="editSection"
+                />
             </div>
         </div>
     </div>
@@ -56,6 +99,8 @@ import { apiService } from '../../../services';
 import { useEditorStore } from '../../../store/editor';
 import { useGondolaStore } from '../../../store/gondola';
 import { useSectionStore } from '../../../store/section';
+import { useShelvesStore } from '../../../store/shelves';
+import { Section as SectionType } from '../../../types/sections';
 
 interface Category {
     id: string | number;
@@ -76,6 +121,7 @@ const emit = defineEmits(['sections-reordered', 'shelves-updated', 'move-shelf-t
 const editorStore = useEditorStore();
 const gondolaStore = useGondolaStore();
 const sectionStore = useSectionStore();
+const shelvesStore = useShelvesStore();
 
 const scaleFactor = computed(() => {
     return editorStore.scaleFactor;
@@ -135,9 +181,16 @@ const updateSegmentQuantity = (segment: any) => {};
 
 const editSection = (section: any) => {
     // Emitir evento para abrir o modal de edição da seção
-    sectionStore.setSelectedSection(section); 
+    sectionStore.setSelectedSection(section);
     sectionStore.startEditing();
-    
+};
+
+const addShelf = async (event, section: SectionType) => { 
+    shelvesStore.handleDoubleClick({
+        shelf_position: event.offsetY * scaleFactor.value,
+        section_id: section.id,
+    });
+    event.stopPropagation();
 };
 </script>
 

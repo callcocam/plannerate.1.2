@@ -91,13 +91,15 @@ export const useSegmentStore = defineStore('segment', {
          * Atualiza o segmento de uma prateleira
          */
         async updateSegment(shelfId: string, segmentId: string, segmentData: any, reorder: boolean = false) {
-            if (!this.currentGondola || !shelfId || !segmentId || !segmentData) return;
+            const gondolaStore = useGondolaStore();
+            const { currentGondola } = gondolaStore;
+            if (!currentGondola || !shelfId || !segmentId || !segmentData) return;
 
             const segmentService = useSegmentService();
 
             try {
                 // 1. Atualizamos o estado localmente para feedback imediato
-                const updatedSections = this.currentGondola.sections.map((section: any) => {
+                const updatedSections = currentGondola.sections.map((section: any) => {
                     if (section.shelves) {
                         const updatedShelves = section.shelves.map((shelf: any) => {
                             if (shelf.id === shelfId) {
@@ -117,10 +119,10 @@ export const useSegmentStore = defineStore('segment', {
                 });
 
                 // Atualiza o estado da gôndola
-                this.currentGondola = {
-                    ...this.currentGondola,
+                gondolaStore.updateGondola({
+                    ...currentGondola,
                     sections: updatedSections
-                };
+                });
 
                 // 2. Enviamos a atualização para o backend via serviço
                 if (reorder) {
@@ -202,7 +204,7 @@ export const useSegmentStore = defineStore('segment', {
             let newSectionId: string = '';
 
             // Cria uma cópia profunda para manipulação segura
-            const newSections = JSON.parse(JSON.stringify(this.currentGondola.sections));
+            const newSections = JSON.parse(JSON.stringify(currentGondola.sections));
 
             // Encontra as prateleiras e o segmento
             newSections.forEach((section: any) => {

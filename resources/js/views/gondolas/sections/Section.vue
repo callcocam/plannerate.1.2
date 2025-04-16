@@ -247,7 +247,7 @@ const handleClickOutside = (event: MouseEvent) => {
     if (!clickedElement.closest('.layer')) {
         productStore.clearSelection();
     }
-    
+
     if (!clickedElement.closest('.shelves')) {
         shelvesStore.clearSelection();
         shelvesStore.clearSelectedShelfIds();
@@ -259,38 +259,12 @@ const handleClickOutside = (event: MouseEvent) => {
     }
 };
 
-const handleDoubleClick = async (event: MouseEvent) => {
-    const newShelf: any = {
-        id: `shelf-${Date.now()}`,
-        name: `shelf-${Date.now()}`,
-        gondola_id: gondolaStore.currentGondola.id,
-        section_id: props.section.id,
-        shelf_position: event.offsetY / props.scaleFactor,
-        shelf_height: 4,
-        quantity: 0,
-        spacing: 0,
-        ordering: 1,
-        status: 'published',
-        segments: [],
-    };
-
-    try {
-        const response = await shelfService.addShelf(newShelf);
-        shelvesStore.addShelf(response.data || newShelf);
-        toast({
-            title: 'Sucesso',
-            description: 'Nova prateleira adicionada',
-            variant: 'default',
-        });
-    } catch (error) {
-        toast({
-            title: 'Erro',
-            description: error.response?.data?.message || 'Falha ao adicionar prateleira',
-            variant: 'destructive',
-        });
-    }
-
+const handleDoubleClick = async (event: MouseEvent) => { 
     event.stopPropagation();
+    shelvesStore.handleDoubleClick({
+        shelf_position: event.offsetY / props.scaleFactor,
+        section_id: props.section.id,
+    });
 };
 
 // --- Lifecycle Hooks for Listeners ---

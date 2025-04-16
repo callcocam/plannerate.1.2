@@ -6,6 +6,7 @@ import { useGondolaStore } from './gondola';
 import { useEditorStore } from './editor';
 import { apiService } from '../services';
 import { useGondolaService } from '../services/gondolaService';
+import { useShelfService } from '../services/shelfService';
 interface ShelfState {
     shelves: Array<Shelf>;
     selectedShelf: Shelf | null;
@@ -125,14 +126,14 @@ export const useShelvesStore = defineStore('shelves', {
                 gondolaStore.updateGondola({
                     ...currentGondola,
                     sections: updatedSections
-                });
+                }, false);
 
                 if (save) {
                     startLoading();
-                    gondolaStore.productsInCurrentGondolaIds();
                     // 2. Enviamos a atualização para o backend via serviço
                     const gondolaService = useGondolaService();
                     await gondolaService.updateShelf(shelfId, shelfData);
+                    gondolaStore.productsInCurrentGondolaIds();
                 }
             } catch (error: any) {
                 console.error(`Erro ao atualizar prateleira ${shelfId}:`, error);
@@ -195,12 +196,13 @@ export const useShelvesStore = defineStore('shelves', {
             gondolaStore.updateGondola({
                 ...currentGondola,
                 sections: newSections
-            });
+            }, false);
 
             // Chama o serviço para persistir no backend
             try {
                 await gondolaService.transferShelf(shelfId, toSectionId, newPosition);
-
+              
+                gondolaStore.productsInCurrentGondolaIds();
                 toast({
                     title: 'Prateleira transferida com sucesso',
                     description: 'A prateleira foi transferida para a seção ' + toSectionId + ' com sucesso',
@@ -218,9 +220,9 @@ export const useShelvesStore = defineStore('shelves', {
             // Atualiza a lista de produtos em uso
             // gondolaStore.productsInCurrentGondolaIds();
         },
-            /**
-            * Atualiza a ordem das prateleiras dentro de uma seção
-            */
+        /**
+        * Atualiza a ordem das prateleiras dentro de uma seção
+        */
         updateShelvesOrder(sectionId: string, orderedShelves: Shelf[]) {
             if (!this.currentGondola || !sectionId || !orderedShelves) return;
 
@@ -280,6 +282,25 @@ export const useShelvesStore = defineStore('shelves', {
             }
         },
 
+        async handleDoubleClick(data) {
+            const gondolaStore = useGondolaStore();
+            if (gondolaStore.currentGondola) {
+                const newShelf: any = {
+                    id: `shelf-${Date.now()}`,
+                    name: `shelf-${Date.now()}`,
+                    gondola_id: gondolaStore.currentGondola.id,
+                    section_id: data.section_id,
+                    shelf_position: data.shelf_position,
+                    shelf_height: 4,
+                    quantity: 0,
+                    spacing: 0,
+                    ordering: 1,
+                    status: 'published',
+                    segments: [],
+                };
+                this.addShelf(newShelf);
+            }
+        },
         /**
          * Remove a prateleira selecionada
          */
