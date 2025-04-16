@@ -2,9 +2,9 @@
 <script setup lang="ts">
 // Imports de Bibliotecas Externas
 import {
-    AlignHorizontalJustifyCenter,
-    AlignHorizontalJustifyEnd,
-    AlignHorizontalJustifyStart,
+    AlignCenterVertical,
+    AlignEndVertical, 
+    AlignStartVertical,
     ArrowLeftRight,
     Grid,
     Minus,
@@ -69,6 +69,7 @@ const sectionWidth = computed(() => currentGondola.value?.section_width || 0);
 const sectionHeight = computed(() => currentGondola.value?.section_height || 0);
 /** Largura da prateleira (do store). */
 const shelfWidth = computed(() => currentGondola.value?.shelf_width || 0);
+
 
 const shelfSelected = computed(() => {
     // Verifica se há prateleiras selecionadas
@@ -296,9 +297,11 @@ const justifyProducts = async (alignment: string) => {
                         size="icon"
                         @click="justifyProducts('left')"
                         class="h-8 w-8 !p-1 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-                        aria-label="Justificar Produtos Verticalmente"
+                        :class="{ 'bg-gray-100 dark:bg-gray-700': gondolaStore.getAligmentLeft() }"
+                        aria-label="Justificar Produtos Verticalmente à Esquerda"
+                        title="Justificar Produtos Verticalmente à Esquerda"
                     >
-                        <AlignHorizontalJustifyStart class="h-4 w-4" />
+                        <AlignStartVertical class="h-4 w-4" />
                     </Button>
                     <!-- Botão de Justificação de produtos align-horizontal-justify-center-->
                     <Button
@@ -307,9 +310,11 @@ const justifyProducts = async (alignment: string) => {
                         size="icon"
                         @click="justifyProducts('center')"
                         class="h-8 w-8 !p-1 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                        :class="{ 'bg-gray-100 dark:bg-gray-700': gondolaStore.getAligmentCenter() }"
                         aria-label="Justificar Produtos"
+                        title="Justificar Produtos Verticalmente"
                     >
-                        <AlignHorizontalJustifyCenter class="h-4 w-4" />
+                        <AlignCenterVertical  class="h-4 w-4" />
                     </Button>
                     <!-- Botão de Justificação de produtos align-vertical-justify-right-->
                     <Button
@@ -318,9 +323,11 @@ const justifyProducts = async (alignment: string) => {
                         size="icon"
                         @click="justifyProducts('right')"
                         class="h-8 w-8 !p-1 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-                        aria-label="Justificar Produtos Verticalmente"
+                        :class="{ 'bg-gray-100 dark:bg-gray-700': gondolaStore.getAligmentRight() }"
+                        aria-label="Justificar Produtos Verticalmente à Direita"
+                        title="Justificar Produtos Verticalmente à Direita"
                     >
-                        <AlignHorizontalJustifyEnd class="h-4 w-4" />
+                        <AlignEndVertical  class="h-4 w-4" />
                     </Button>
 
                     <!-- Filtro de Categoria (condicional) -->
