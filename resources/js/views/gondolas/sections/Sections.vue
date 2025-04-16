@@ -135,11 +135,8 @@ const updateSegmentQuantity = (segment: any) => {};
 
 const editSection = (section: any) => {
     // Emitir evento para abrir o modal de edição da seção
-    sectionStore.setSelectedSection(section);
-    sectionStore.setModalSectionEditOpen(true);
-    sectionStore.setModalSectionEditTitle('Editar Seção');
-    sectionStore.setModalSectionEditDescription('Edite os detalhes da seção');
-    console.log('Emitindo evento para abrir modal de edição da seção:', section);
+    sectionStore.setSelectedSection(section); 
+    sectionStore.startEditing();
     
 };
 </script>

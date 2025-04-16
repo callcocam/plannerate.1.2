@@ -3,6 +3,8 @@
  * Interfaces para tipagem do componente
  */
 
+import { Shelf as ShelfSetting } from "../../../types/shelves";
+
 // Interface para o produto
 interface Product {
     id: string | number;
@@ -40,7 +42,7 @@ interface Segment {
 }
 
 // Interface para uma prateleira
-interface Shelf {
+interface Shelf extends ShelfSetting {
     id: string;
     shelf_height: number;
     shelf_position: number;

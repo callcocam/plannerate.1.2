@@ -46,6 +46,7 @@ import Segment from './Segment.vue';
 import ShelfContent from './ShelfContent.vue';
 import ShelfControls from './ShelfControls.vue'; // Importar o componente ShelfControls
 import { Layer, Product, Segment as SegmentType, Shelf } from './types';
+import { useShelvesStore } from '../../../store/shelves';
 
 // Definir Props
 const props = defineProps<{
@@ -63,8 +64,8 @@ const shelfElement = ref<HTMLElement | null>(null);
 
 // Definir Emits
 const emit = defineEmits(['drop-product', 'drop-layer-copy']); // Para quando um produto é solto na prateleira
-const gondolaStore = useGondolaStore(); // Instanciar o gondola store
-const shelfStore = useShelfStore(); // Instanciar o shelf store
+const gondolaStore = useGondolaStore(); // Instanciar o gondola store 
+const shelvesStore = useShelvesStore()
 // --- Computeds para Estilos ---
 const shelfStyle = computed(() => {
     // Convertemos a posição da prateleira para pixels usando o fator de escala
@@ -131,51 +132,49 @@ const segmentsContainerStyle = computed(() => {
 });
 
 const selectShelfClick = (event: MouseEvent) => {
-    // Emitir evento para o componente pai (Section) lidar com o clique
-    shelfStore.selectShelf(props.shelf);
+    // Emitir evento para o componente pai (Section) lidar com o clique 
+    shelvesStore.setSelectedShelf(props.shelf); 
+    shelvesStore.startEditing()
     // Emitir evento para o componente pai (Section) lidar com o clique
     event.stopPropagation(); // Impede que o evento de clique se propague para outros elementos
     // Verifica se a tecla Ctrl ou Meta está pressionada
     const isCtrlOrMetaPressed = event.ctrlKey || event.metaKey;
     if (isCtrlOrMetaPressed) {
         // Se a tecla Ctrl ou Meta estiver pressionada, alterna a seleção
-        shelfStore.toggleShelfSelected(props.shelf.id);
+        shelvesStore.setSelectedShelfIds(props.shelf.id);
     } else {
         // Caso contrário, seleciona apenas a prateleira atual
-        const isCurrentlySelected = shelfStore.isShelfSelected(props.shelf.id);
-        const selectionSize = shelfStore.shelfSelectedIs.size;
+        const isCurrentlySelected = shelvesStore.isShelfSelected(props.shelf.id);
+        const selectionSize = shelvesStore.selectedShelfIds.size;
         if (isCurrentlySelected && selectionSize === 1) {
             // Se a prateleira já estiver selecionada e for a única selecionada, desmarque-a
-            shelfStore.clearSelection();
-            shelfStore.clearShelfSelectedIs();
+            shelvesStore.clearSelection();
+            shelvesStore.clearSelectedShelfIds();
         } else {
             // Caso contrário, selecione apenas a prateleira atual 
-            shelfStore.clearShelfSelectedIs(); 
-            shelfStore.setShelfSelectedIs(props.shelf.id);
+            shelvesStore.clearSelectedShelfIds(); 
+            shelvesStore.setSelectedShelfIds(props.shelf.id);
         }
     }
 };
 const controlDeleteShelf = (event: KeyboardEvent) => {
     // Verificar se Ctrl+Delete foi pressionado
-    if ((event.key === 'Delete' || event.key === 'Backspace') && event.ctrlKey) {
-        console.log('Ctrl+Delete pressed, deleting shelf');
+    if ((event.key === 'Delete' || event.key === 'Backspace') && event.ctrlKey) { 
         event.preventDefault();
 
         // Verificar se há uma prateleira selecionada
-        if (shelfStore.hasSelection) {
-            shelfStore.deleteSelectedShelf();
-        } else {
-            // Se não houver seleção, mas o evento veio da prateleira atual, seleciona e exclui
-
-            shelfStore.selectShelf(props.shelf);
-            shelfStore.deleteSelectedShelf();
-        }
+        // if (shelvesStore.hasSelection) {
+        //     // shelvesStore.deleteSelectedShelf();
+        // } else {
+        //     // Se não houver seleção, mas o evento veio da prateleira atual, seleciona e exclui 
+        //     shelvesStore.deleteSelectedShelf();
+        // }
     }
 };
 
 // Handler global para capturar Ctrl+Delete em qualquer parte da aplicação
 const globalKeyHandler = (event: KeyboardEvent) => {
-    if (shelfStore.selectedShelf && shelfStore.selectedShelf.id === props.shelf.id) {
+    if (shelvesStore.selectedShelf && shelvesStore.selectedShelf.id === props.shelf.id) {
         controlDeleteShelf(event);
     }
 };

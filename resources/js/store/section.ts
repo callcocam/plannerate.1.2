@@ -7,9 +7,7 @@ interface SectionState {
     selectedSection: Section | null;
     selectedSectionId: string | null;
     selectedSectionIds: Set<string>;
-    modalSectionEditOpen: boolean;
-    modalSectionEditTitle: string;
-    modalSectionEditDescription: string;
+    isEditing: boolean;
 }
 
 export const useSectionStore = defineStore('section', {
@@ -18,9 +16,7 @@ export const useSectionStore = defineStore('section', {
         selectedSection: null,
         selectedSectionId: null,
         selectedSectionIds: new Set<string>(),
-        modalSectionEditOpen: false,
-        modalSectionEditTitle: '',
-        modalSectionEditDescription: '',
+        isEditing: false,
     }),
 
     getters: {
@@ -35,31 +31,31 @@ export const useSectionStore = defineStore('section', {
         },
         getSelectedSectionIds: (state) => {
             return Array.from(state.selectedSectionIds);
+        },
+        isEditingSection: (state) => {
+            return state.isEditing;
         }
     },
 
     actions: {
-        setSections(sections: Array<{
-            id: string;
-            name: string;
-            description: string;
-            created_at: string;
-            updated_at: string;
-            deleted_at: string | null;
-        }>) {
+        setSections(sections: Array<Section>) {
             this.sections = sections;
         },
-        setSelectedSection(section: {
-            id: string;
-            name: string;
-            description: string;
-            created_at: string;
-            updated_at: string;
-        } | null) {
+        setSelectedSection(section: Section | null) {
             this.selectedSection = section;
+            if (section) {
+                this.selectedSectionId = section.id;
+            } else {
+                this.selectedSectionId = null;
+            }
         },
         setSelectedSectionId(id: string | null) {
             this.selectedSectionId = id;
+            if (id) {
+                this.selectedSection = this.sections.find(section => section.id === id) || null;
+            } else {
+                this.selectedSection = null;
+            }
         },
         addSelectedSectionId(id: string) {
             this.selectedSectionIds.add(id);
@@ -73,19 +69,30 @@ export const useSectionStore = defineStore('section', {
         setSelectedSectionIds(ids: string[]) {
             this.selectedSectionIds = new Set(ids);
         },
-        setModalSectionEditOpen(open: boolean) {
-            this.modalSectionEditOpen = open;
+        startEditing() {
+            this.isEditing = true;
         },
-        setModalSectionEditTitle(title: string) {
-            this.modalSectionEditTitle = title;
+        finishEditing() {
+            this.isEditing = false;
         },
-        setModalSectionEditDescription(description: string) {
-            this.modalSectionEditDescription = description;
-        },
-        clearModalSectionEdit() {
-            this.modalSectionEditOpen = false;
-            this.modalSectionEditTitle = '';
-            this.modalSectionEditDescription = '';
-        },
+        updateSection(updatedSection: Partial<Section>) {
+            if (!this.selectedSectionId) return;
+
+            const sectionIndex = this.sections.findIndex(section => section.id === this.selectedSectionId);
+            if (sectionIndex === -1) return;
+
+            this.sections[sectionIndex] = {
+                ...this.sections[sectionIndex],
+                ...updatedSection
+            };
+
+            // Atualiza também a seção selecionada
+            if (this.selectedSection) {
+                this.selectedSection = {
+                    ...this.selectedSection,
+                    ...updatedSection
+                };
+            }
+        }
     }
 });
