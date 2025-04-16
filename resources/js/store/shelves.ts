@@ -1,6 +1,10 @@
 // store/shelf.ts
 import { defineStore } from 'pinia';
 import { Shelf } from '../types/shelves';
+import { useToast } from '../components/ui/toast';
+import { useGondolaStore } from './gondola';
+import { apiService } from '../services';
+import { useGondolaService } from '../services/gondolaService';
 interface ShelfState {
     shelves: Array<Shelf>;
     selectedShelf: Shelf | null;
@@ -78,6 +82,7 @@ export const useShelvesStore = defineStore('shelves', {
         },
         clearSelection() {
             this.selectedShelf = null;
+            this.finishEditing()
         },
         setSelectedShelfIds(shelfId: string) {
             if (this.selectedShelfIds.has(shelfId)) {
@@ -92,23 +97,43 @@ export const useShelvesStore = defineStore('shelves', {
         finishEditing() {
             this.isEditing = false;
         },
-        updateShelf(updatedShelf: Partial<Shelf>) {
-            if (!this.selectedShelfId) return;
+        /**
+                 * Atualiza os dados de uma prateleira
+                 */
+        async updateShelf(shelfId: string, shelfData: any, save: boolean = true) {
+            const gondolaStore = useGondolaStore();
+            const { currentGondola } = gondolaStore
+            if (!currentGondola || !shelfId || !shelfData) return;
+            try {
+                // 1. Primeiro, atualizamos o estado localmente para feedback imediato
+                const updatedSections = currentGondola.sections.map((section: any) => {
+                    if (section.shelves) {
+                        const updatedShelves = section.shelves.map((shelf: any) => {
+                            if (shelf.id === shelfId) {
+                                return { ...shelf, ...shelfData };
+                            }
+                            return shelf;
+                        });
+                        return { ...section, shelves: updatedShelves };
+                    }
+                    return section;
+                });
 
-            const shelfIndex = this.shelves.findIndex(shelf => shelf.id === this.selectedShelfId);
-            if (shelfIndex === -1) return;
+                // Atualiza o estado da gôndola
+                gondolaStore.updateGondola({
+                    ...currentGondola,
+                    sections: updatedSections
+                });
 
-            this.shelves[shelfIndex] = {
-                ...this.shelves[shelfIndex],
-                ...updatedShelf
-            };
-
-            // Atualiza também a prateleira selecionada
-            if (this.selectedShelf) {
-                this.selectedShelf = {
-                    ...this.selectedShelf,
-                    ...updatedShelf
-                };
+                if (save) {
+                    gondolaStore.productsInCurrentGondolaIds();
+                    // 2. Enviamos a atualização para o backend via serviço
+                    const gondolaService = useGondolaService();
+                    await gondolaService.updateShelf(shelfId, shelfData);
+                }
+            } catch (error: any) {
+                console.error(`Erro ao atualizar prateleira ${shelfId}:`, error);
+                throw error;
             }
         },
         // Método específico para atualizar a posição da prateleira
@@ -137,9 +162,16 @@ export const useShelvesStore = defineStore('shelves', {
         },
         // Método para transferir uma prateleira para outra seção
         transferShelf(shelfId: string, fromSectionId: string, toSectionId: string, newPosition: number = 0) {
-            const shelfIndex = this.shelves.findIndex(shelf => shelf.id === shelfId);
-            if (shelfIndex === -1) return;
+            const gondolaStore = useGondolaStore();
+            const { currentGondola } = gondolaStore
+            if (!currentGondola || !shelfId || !fromSectionId || !toSectionId) return;
+            // Atualiza a seção da prateleira localmente
 
+            const section = currentGondola.sections.findIndex(section => section.id === fromSectionId);
+            if (section === -1) return;
+            const shelfIndex = section.shelves.findIndex(shelf => shelf.id === shelfId);
+            if (shelfIndex === -1) return;  
+            
             this.shelves[shelfIndex] = {
                 ...this.shelves[shelfIndex],
                 section_id: toSectionId,
@@ -160,6 +192,98 @@ export const useShelvesStore = defineStore('shelves', {
             // Aqui você chamaria uma API para persistir a transferência
             // apiService.transferShelf(shelfId, fromSectionId, toSectionId, newPosition);
             console.log(`Transferindo prateleira ${shelfId} da seção ${fromSectionId} para ${toSectionId} na posição ${newPosition}`);
+        },
+
+        async addShelf(shelf: Shelf) {
+            this.isLoading = true;
+            this.error = null;
+            const { toast } = useToast();
+            const gondolaStore = useGondolaStore();
+            try {
+                const response = await apiService.post('shelves', shelf);
+                this.selectedShelf = response.data;
+                gondolaStore.updateGondola({
+                    sections: gondolaStore.currentGondola.sections.map((section: any) => {
+                        if (section.id === shelf.section_id) {
+                            return {
+                                ...section,
+                                shelves: [...section.shelves, response.data]
+                            };
+                        }
+                        return section;
+                    })
+                });
+                toast({
+                    title: 'Prateleira adicionada',
+                    description: 'A prateleira foi adicionada com sucesso.',
+                    variant: 'default'
+                });
+                return response.data;
+            } catch (error: any) {
+                toast({
+                    title: 'Erro ao adicionar',
+                    description: error.response.data.message || 'Erro ao adicionar a prateleira.',
+                    variant: 'destructive'
+                });
+                throw error;
+            } finally {
+                this.isLoading = false;
+            }
+        },
+
+        /**
+         * Remove a prateleira selecionada
+         */
+        async deleteSelectedShelf() {
+            if (!this.selectedShelf) return;
+
+            this.isLoading = true;
+            this.error = null;
+            const { toast } = useToast();
+            const shelfId = this.selectedShelf.id;
+            const gondolaStore = useGondolaStore();
+            try {
+                // Primeiro, atualizamos o estado local para feedback imediato (abordagem otimista)
+                const updatedSections = gondolaStore.currentGondola.sections.map((section: any) => {
+                    if (section.shelves) {
+                        // Filtramos a prateleira do array de prateleiras
+                        const updatedShelves = section.shelves.filter((shelf: any) => shelf.id !== shelfId);
+                        // Retornamos a seção atualizada com as prateleiras filtradas
+                        return { ...section, shelves: updatedShelves };
+                    }
+                    return section;
+                });
+
+                // Atualizamos o estado da gôndola com as seções atualizadas
+                gondolaStore.updateGondola({ sections: updatedSections });
+                // Chama a API para excluir a prateleira
+                await apiService.delete(`/shelves/${shelfId}`);
+
+                // Notifica o usuário e limpa a seleção
+                toast({
+                    title: 'Prateleira excluída',
+                    description: 'A prateleira foi excluída com sucesso.',
+                    variant: 'default'
+                });
+
+                // Remove a prateleira da lista de visíveis
+                this.selectedShelf = null;
+
+                return true;
+            } catch (error: any) {
+                this.error = error.message || 'Erro ao excluir prateleira';
+
+                toast({
+                    title: 'Erro ao excluir',
+                    description: this.error,
+                    variant: 'destructive'
+                });
+
+                console.error('Erro ao excluir prateleira:', error);
+                throw error;
+            } finally {
+                this.isLoading = false;
+            }
         }
     }
 });

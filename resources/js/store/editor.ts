@@ -56,7 +56,12 @@ export const useEditorStore = defineStore('editor', {
         stopEditing() {
             this.isEditing = false;
         },
-
+        setLoading(loading: boolean) {
+            this.loading = loading;
+        },
+        setError(error: string | null) {
+            this.error = error;
+        },
         setGondolas(gondolas: any[]) {
             this.gondolas = gondolas;
         },

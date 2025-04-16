@@ -123,47 +123,7 @@ export const useGondolaStore = defineStore('gondola', {
                 }
             });
             this.productsInCurrentGondolaIds(); // Recalcula IDs usados
-        },
-
-        /**
-         * Atualiza os dados de uma prateleira
-         */
-        async updateShelf(shelfId: string, shelfData: any, save: boolean = true) {
-            if (!this.currentGondola || !shelfId || !shelfData) return;
-
-            try {
-                // 1. Primeiro, atualizamos o estado localmente para feedback imediato
-                const updatedSections = this.currentGondola.sections.map((section: any) => {
-                    if (section.shelves) {
-                        const updatedShelves = section.shelves.map((shelf: any) => {
-                            if (shelf.id === shelfId) {
-                                return { ...shelf, ...shelfData };
-                            }
-                            return shelf;
-                        });
-                        return { ...section, shelves: updatedShelves };
-                    }
-                    return section;
-                });
-
-                // Atualiza o estado da gôndola
-                this.currentGondola = {
-                    ...this.currentGondola,
-                    sections: updatedSections
-                };
-
-                if (save) {
-                    this.productsInCurrentGondolaIds();
-                    // 2. Enviamos a atualização para o backend via serviço
-                    const gondolaService = useGondolaService();
-                    await gondolaService.updateShelf(shelfId, shelfData);
-                }
-            } catch (error: any) {
-                console.error(`Erro ao atualizar prateleira ${shelfId}:`, error);
-                throw error;
-            }
-        },
-
+        }, 
         /**
          * Atualiza o segmento de uma prateleira
          */

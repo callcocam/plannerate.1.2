@@ -2,6 +2,7 @@
 import { defineStore } from 'pinia';
 import { useProductService } from '../services/productService';
 import { useGondolaStore } from './gondola';
+import { useShelvesStore } from './shelves';
 import { Layer } from '../views/gondolas/sections/types';
 import { useToast } from '../components/ui/toast';
 
@@ -123,13 +124,13 @@ export const useProductStore = defineStore('product', {
         // Função generalizada para atualizar shelf através da API
         async updateShelfFromAPI(shelfId: string) {
             try {
-                const gondolaStore = useGondolaStore();
+                const shelvesStore = useShelvesStore();
                 const productService = useProductService();
 
                 const response = await productService.getShelf(shelfId);
                 const resetShelf = response.data;
 
-                gondolaStore.updateShelf(resetShelf.id, resetShelf, false);
+                shelvesStore.updateShelf(resetShelf.id, resetShelf, false);
                 return resetShelf;
             } catch (error: any) {
                 this.error = error.response?.data?.message || error.message || 'Failed to fetch updated shelf data';

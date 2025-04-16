@@ -33,7 +33,9 @@ import { useSegmentService } from '../../../services/segmentService';
 import { useShelfService } from '../../../services/shelfService';
 import { useGondolaStore } from '../../../store/gondola';
 import { useProductStore } from '../../../store/product';
+import { useSectionStore } from '../../../store/section';
 import { useShelfStore } from '../../../store/shelf';
+import { useShelvesStore } from '../../../store/shelves';
 import { useToast } from './../../../components/ui/toast';
 import Shelf from './Shelf.vue';
 import { Layer, Product, Section, Segment, Shelf as ShelfType } from './types';
@@ -54,6 +56,8 @@ const emit = defineEmits(['update:segments']);
 const gondolaStore = useGondolaStore();
 const productStore = useProductStore();
 const shelfStore = useShelfStore();
+const shelvesStore = useShelvesStore();
+const sectionStore = useSectionStore();
 
 // Services
 const { toast } = useToast();
@@ -149,7 +153,7 @@ const handleSectionDrop = async (event: DragEvent) => {
                     const response = await shelfService.updateShelfPosition(shelf.id, newPosition);
 
                     // Atualizar o estado local
-                    gondolaStore.updateShelf(shelf.id, {
+                    shelvesStore.updateShelf(shelf.id, {
                         shelf_position: newPosition,
                     });
 
@@ -189,7 +193,7 @@ const handleProductDropOnShelf = async (product: Product, shelf: ShelfType, drop
 
     try {
         const response = await segmentService.addSegment(shelf.id, newSegment);
-        gondolaStore.updateShelf(response.data.id, response.data);
+        shelvesStore.updateShelf(response.data.id, response.data);
 
         toast({
             title: 'Sucesso',
@@ -210,7 +214,7 @@ const handleLayerCopy = async (layer: Layer, shelf: ShelfType, dropPosition: any
     const newSegment = createSegmentFromProduct(layer.product, shelf, layer.quantity);
     try {
         const response = await segmentService.copySegment(shelf.id, newSegment);
-        gondolaStore.updateShelf(response.data.id, response.data, false);
+        shelvesStore.updateShelf(response.data.id, response.data, false);
 
         toast({
             title: 'Sucesso',
@@ -247,6 +251,15 @@ const handleClickOutside = (event: MouseEvent) => {
         shelfStore.clearSelection();
         shelfStore.clearShelfSelectedIs();
     }
+    if (!clickedElement.closest('.shelves')) {
+        shelvesStore.clearSelection();
+        shelvesStore.clearSelectedShelfIds();
+    }
+
+    if (!clickedElement.closest('.sections')) {
+        sectionStore.setSelectedSection(null);
+        sectionStore.clearSelectedSectionIds();
+    }
 };
 
 const handleDoubleClick = async (event: MouseEvent) => {
@@ -262,7 +275,7 @@ const handleDoubleClick = async (event: MouseEvent) => {
         ordering: 1,
         status: 'published',
         segments: [],
-    } as ShelfType;
+    };
 
     try {
         const response = await shelfService.addShelf(newShelf);

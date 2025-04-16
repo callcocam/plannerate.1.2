@@ -1,5 +1,5 @@
 <template>
-    <div class="h-full w-full overflow-y-auto border-l border-gray-200 bg-white p-6">
+    <div class="shelves h-full w-full overflow-y-auto border-l border-gray-200 bg-white p-6">
         <div class="space-y-6">
             <!-- Modo de edição -->
             <form @submit.prevent="saveChanges" class="space-y-4">
@@ -26,6 +26,9 @@
                         <div class="space-y-1">
                             <Label for="status">Status</Label>
                             <Select v-model="formData.status">
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Selecionar" />
+                                </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="published">Publicado</SelectItem>
                                     <SelectItem value="draft">Rascunho</SelectItem>
@@ -85,105 +88,44 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, Ref, ref, watch } from 'vue';
 
 import { useShelvesStore } from '../../../store/shelves';
 import { Shelf } from '../../../types/shelves';
 
 const shelvesStore = useShelvesStore();
 
-const selectedShelf = computed(() => shelvesStore.getSelectedShelf);
-const isEditing = computed(() => shelvesStore.isEditingShelf);
+const selectedShelf = computed(() => shelvesStore.getSelectedShelf) as Ref<Shelf>;
 
 // Inicializa o formulário com valores padrão
-const formData = ref<Partial<Shelf>>({
-    code: '',
-    product_type: 'normal',
-    status: 'published',
-    shelf_width: 0,
-    shelf_height: 0,
-    shelf_depth: 0,
-    shelf_position: 0,
-    spacing: 0,
-    ordering: 0,
-});
+const formData = ref<Shelf>(selectedShelf.value);
 
 // Atualiza o formulário quando a prateleira selecionada muda
 watch(
     selectedShelf,
     (newShelf) => {
         if (newShelf) {
-            formData.value = {
-                code: newShelf.code,
-                product_type: newShelf.product_type,
-                status: newShelf.status,
-                shelf_width: newShelf.shelf_width,
-                shelf_height: newShelf.shelf_height,
-                shelf_depth: newShelf.shelf_depth,
-                shelf_position: newShelf.shelf_position,
-                spacing: newShelf.spacing,
-                ordering: newShelf.ordering,
-            };
+            formData.value = newShelf;
         }
     },
     { immediate: true },
 );
-
-// Métodos para gerenciar a edição
-const startEditing = () => {
-    shelvesStore.startEditing();
-};
 
 const cancelEditing = () => {
     shelvesStore.finishEditing();
 
     // Reset do formulário para os valores originais
     if (selectedShelf.value) {
-        formData.value = {
-            code: selectedShelf.value.code,
-            product_type: selectedShelf.value.product_type,
-            status: selectedShelf.value.status,
-            shelf_width: selectedShelf.value.shelf_width,
-            shelf_height: selectedShelf.value.shelf_height,
-            shelf_depth: selectedShelf.value.shelf_depth,
-            shelf_position: selectedShelf.value.shelf_position,
-            spacing: selectedShelf.value.spacing,
-            ordering: selectedShelf.value.ordering,
-        };
+        formData.value = selectedShelf.value;
     }
 };
 
 const saveChanges = () => {
-    shelvesStore.updateShelf(formData.value);
-    shelvesStore.finishEditing();
-
-    // Aqui você poderia adicionar uma chamada para API para persistir as alterações
-    // Por exemplo:
-    // apiService.updateShelf(selectedShelf.value.id, formData.value);
+    if (!formData.value) return;
+    // Validação simples
+    shelvesStore.updateShelf(formData.value.id, formData.value, true);
+    shelvesStore.finishEditing(); 
 };
-
-// Funções auxiliares
-const formatDate = (dateString: string) => {
-    if (!dateString) return '';
-
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-    }).format(date);
-};
-
-const getStatusClass = (status: string) => {
-    switch (status) {
-        case 'published':
-            return 'bg-green-100 text-green-800';
-        case 'draft':
-            return 'bg-yellow-100 text-yellow-800';
-        default:
-            return 'bg-gray-100 text-gray-800';
-    }
-};
+ 
+ 
 </script>

@@ -40,8 +40,7 @@
 <script setup lang="ts">
 import { computed, defineEmits, defineProps, onMounted, onUnmounted, ref } from 'vue';
 import draggable from 'vuedraggable';
-import { useGondolaStore } from '../../../store/gondola';
-import { useShelfStore } from '../../../store/shelf';
+import { useGondolaStore } from '../../../store/gondola'; 
 import Segment from './Segment.vue';
 import ShelfContent from './ShelfContent.vue';
 import ShelfControls from './ShelfControls.vue'; // Importar o componente ShelfControls
@@ -111,7 +110,7 @@ const sortableSegments = computed<SegmentType[]>({
             ordering: index + 1,
         }));
         // Emitir evento para o componente pai (Section) lidar com a atualização
-        gondolaStore.updateShelf(props.shelf.id, {
+        shelvesStore.updateShelf(props.shelf.id, {
             segments: reorderedSegments,
         });
     },

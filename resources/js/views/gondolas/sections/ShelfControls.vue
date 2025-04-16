@@ -31,6 +31,7 @@ import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-vue-next';
 import { nextTick, ref } from 'vue';
 import { useGondolaStore } from '../../../store/gondola';
 import { Shelf } from './types';
+import { useShelvesStore } from '../../../store/shelves';
 
 /**
  * Props do componente
@@ -50,6 +51,7 @@ const emit = defineEmits(['transfer-section']);
 
 // Store para interagir com o estado global das gôndolas
 const gondolaStore = useGondolaStore();
+const shelvesStore = useShelvesStore();
 
 // Estado para controlar a visibilidade dos botões
 const isHovering = ref(false);
@@ -92,6 +94,8 @@ const handleVerticalDragStart = (e: MouseEvent) => {
     initialMouseY.value = e.clientY;
     initialShelfY.value = props.shelf.shelf_position || 0;
 
+    console.log('Iniciando arrasto vertical', initialMouseY.value, initialShelfY.value);
+
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
 
@@ -121,8 +125,7 @@ const handleHorizontalDragStart = (e: MouseEvent, direction: 'left' | 'right') =
  * Handler para o movimento do mouse durante arrasto
  */
 const handleMouseMove = (e: MouseEvent) => {
-    if (!isDragging.value) return;
-
+    if (!isDragging.value) return; 
     // Verifica se o movimento excedeu o limiar mínimo
     if (!hasExceededThreshold.value) {
         if (dragType.value === 'vertical') {
@@ -157,10 +160,9 @@ const handleVerticalMove = (e: MouseEvent) => {
     if (relativeY < 0 || relativeY > containerRect.height) return;
 
     const maxYPosition = props.sectionHeight * props.scaleFactor - props.baseHeight - props.shelf.shelf_height;
-    if (relativeY >= maxYPosition) return;
-
+    if (relativeY >= maxYPosition) return; 
     // Atualiza a posição visual imediatamente (sem persistir)
-    gondolaStore.updateShelf(
+    shelvesStore.updateShelf(
         props.shelf.id,
         {
             shelf_position: relativeY / props.scaleFactor,
@@ -185,7 +187,7 @@ const handleHorizontalMove = (e: MouseEvent) => {
     let newRelativeX = initialShelfX.value + deltaX;
 
     // Atualiza a posição visual imediatamente (sem persistir)
-    gondolaStore.updateShelf(props.shelf.id, { shelf_x_position: newRelativeX }, false);
+    shelvesStore.updateShelf(props.shelf.id, { shelf_x_position: newRelativeX }, false);
 
     // Usar nextTick para garantir que o DOM atualizou com a nova posição visual
     nextTick(() => {
@@ -259,10 +261,10 @@ const handleMouseUp = () => {
                 const newRelativeX = 0;
 
                 // Chamar a nova ação do store para transferência
-                gondolaStore.transferShelf(currentShelfData.id, String(currentShelfData.section_id), targetSectionId, newRelativeX);
+                shelvesStore.transferShelf(currentShelfData.id, String(currentShelfData.section_id), targetSectionId, newRelativeX);
             } else {
                 // Soltou na mesma seção ou fora de uma zona de transferência válida
-                gondolaStore.updateShelf(currentShelfData.id, { shelf_x_position: 0 });
+                shelvesStore.updateShelf(currentShelfData.id, { shelf_x_position: 0 });
             }
         }
     }

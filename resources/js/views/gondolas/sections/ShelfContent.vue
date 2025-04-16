@@ -14,8 +14,8 @@
 
 <script setup lang="ts">
 import { defineEmits, defineProps, ref, watch, computed } from 'vue';
-import { Shelf } from './types';
-import { useShelfStore } from '../../../store/shelf'; // Importar o store de prateleiras
+import { Shelf } from './types'; 
+import { useShelvesStore } from '../../../store/shelves';
 
 // Definir Props
 const props = defineProps<{
@@ -25,8 +25,8 @@ const dragShelfActive = ref(false); // Estado para rastrear se a prateleira est�
 const shelftext = ref(`Shelf (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`); // Texto da prateleira
 // Definir Emits
 const emit = defineEmits(['drop-product', 'drop-layer', 'drop-layer-copy']); // Para quando um produto é solto na prateleira
-
-const shelfStore = useShelfStore(); // Instanciar o shelf store
+ 
+const shelvesStore = useShelvesStore(); // Instanciar o shelves store
 
 watch(dragShelfActive, (newValue) => {
     if (newValue) {
@@ -40,7 +40,7 @@ watch(dragShelfActive, (newValue) => {
 
 const isSelected = computed(() => {
     // Verifica se a prateleira está selecionada
-    return shelfStore.isShelfSelected(props.shelf.id);
+    return shelvesStore.isShelfSelected(props.shelf.id);
 });
 // --- Lógica de Drag and Drop (para produtos) ---
 const handleDragOver = (event: DragEvent) => {
