@@ -36,7 +36,7 @@ import { useProductStore } from '../../../store/product';
 import { useShelfStore } from '../../../store/shelf';
 import { useToast } from './../../../components/ui/toast';
 import Shelf from './Shelf.vue';
-import { Product, Section, Segment, Shelf as ShelfType } from './types';
+import { Layer, Product, Section, Segment, Shelf as ShelfType } from './types';
 
 // Definir Props
 const props = defineProps<{
@@ -87,7 +87,7 @@ const sectionStyle = computed(() => {
 });
 
 // --- Helpers ---
-const createSegmentFromProduct = (product: Product, shelf: ShelfType): Segment => {
+const createSegmentFromProduct = (product: Product, shelf: ShelfType, layerQuantity: number): Segment => {
     return {
         gondolaId: gondolaStore.currentGondola.id,
         id: `segment-${Date.now()}-${shelf.segments?.length}`,
@@ -101,13 +101,11 @@ const createSegmentFromProduct = (product: Product, shelf: ShelfType): Segment =
         preserveState: false,
         status: 'published',
         layer: {
-            product_id: product.id,
-            product_name: product.name,
-            product_image: product.image,
+            product_id: product.id, 
             product: product,
             height: product.height,
             spacing: 0,
-            quantity: 1,
+            quantity: layerQuantity,
             status: 'published',
         },
     };
@@ -187,7 +185,7 @@ const handleSectionDrop = async (event: DragEvent) => {
 
 // --- Lógica de Eventos para Produtos ---
 const handleProductDropOnShelf = async (product: Product, shelf: ShelfType, dropPosition: any) => {
-    const newSegment = createSegmentFromProduct(product, shelf);
+    const newSegment = createSegmentFromProduct(product, shelf, 1);
 
     try {
         const response = await segmentService.addSegment(shelf.id, newSegment);
@@ -208,12 +206,11 @@ const handleProductDropOnShelf = async (product: Product, shelf: ShelfType, drop
     }
 };
 
-const handleLayerCopy = async (product: Product, shelf: ShelfType, dropPosition: any) => {
-    const newSegment = createSegmentFromProduct(product, shelf);
-
+const handleLayerCopy = async (layer: Layer, shelf: ShelfType, dropPosition: any) => {
+    const newSegment = createSegmentFromProduct(layer.product, shelf, layer.quantity);
     try {
         const response = await segmentService.copySegment(shelf.id, newSegment);
-        gondolaStore.updateShelf(response.data.id, response.data);
+        gondolaStore.updateShelf(response.data.id, response.data, false);
 
         toast({
             title: 'Sucesso',

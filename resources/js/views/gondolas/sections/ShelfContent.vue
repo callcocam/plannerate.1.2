@@ -57,8 +57,7 @@ const handleDrop = (event: DragEvent) => {
     if (event.dataTransfer) {
         const layerData = event.dataTransfer.getData('text/layer');
         const layerDataCopy = event.dataTransfer.getData('text/layer/copy');
-        const productData = event.dataTransfer.getData('text/product');
-        console.log('productData', event.dataTransfer);
+        const productData = event.dataTransfer.getData('text/product'); 
         if (productData) {
             const product = JSON.parse(productData);
             // Emitir evento para o componente pai (Section) lidar com a adição
@@ -69,8 +68,7 @@ const handleDrop = (event: DragEvent) => {
             emit('drop-layer', layer, props.shelf, { x: event.offsetX, y: event.offsetY });
         } else if (layerDataCopy) {
             const layer = JSON.parse(layerDataCopy);
-            // Emitir evento para o componente pai (Section) lidar com a adição
-            console.log('layerDataCopy', layer);
+            // Emitir evento para o componente pai (Section) lidar com a adição 
             emit('drop-layer-copy', layer, props.shelf, { x: event.offsetX, y: event.offsetY });
         }
         // TODO: Remover feedback visual

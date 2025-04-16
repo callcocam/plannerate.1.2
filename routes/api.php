@@ -47,6 +47,9 @@ Route::middleware(['api', 'auth:sanctum'])
         Route::post('shelves/{shelf}/segments', [ShelfController::class, 'segment'])
             ->name('shelves.segments');
 
+        Route::post('shelves/{shelf}/segments/copy', [ShelfController::class, 'segmentCopy'])
+            ->name('shelves.segments.copy');
+
         Route::patch('shelves/{shelf}/transfer', [ShelfController::class, 'transfer'])
             ->name('shelves.transfer');
 

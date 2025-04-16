@@ -29,7 +29,7 @@
             :isOpen="showDeleteConfirm"
             @update:isOpen="showDeleteConfirm = $event"
             title="Excluir produto"
-            message="Tem certeza que deseja excluir este produto? Esta ação não pode ser desfeita." 
+            message="Tem certeza que deseja excluir este produto? Esta ação não pode ser desfeita."
             confirmButtonText="Excluir"
             cancelButtonText="Cancelar"
             :isDangerous="true"
@@ -43,10 +43,9 @@ import { TrashIcon } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
 import { ref, watch } from 'vue';
 import { apiService } from '../../../services';
-import { useGondolaStore } from '../../../store/gondola';
 import { Product, useProductStore } from '../../../store/product';
 
-const productStore = useProductStore(); 
+const productStore = useProductStore();
 
 const selectedProducts = ref<Product[]>([]);
 const isLoadingDetails = ref(false);
@@ -65,10 +64,17 @@ watch(
 
         isLoadingDetails.value = true;
         try {
-            const productDetailsPromises = idsToFetch.map((id) => apiService.get<Product>(`products/${id}`));
+            const productDetailsPromises = idsToFetch.map((id) => {
+                // 01jqp9bx3d9y5yrq9zbq5jn2xh-01jrxvnattkdkscdjefqfvh2k5
+                //pegar o id do produto
+                // const id = id.split('-')[0]; // Extrair o ID do produto
+                const idParts = id.split('-');
+                const productId = idParts[0]; // ID do produto
+                return apiService.get<Product>(`products/${productId}`);
+            });
 
             const fetchedProducts = await Promise.all(productDetailsPromises);
-            selectedProducts.value = fetchedProducts.filter((p): p is Product => !!p); 
+            selectedProducts.value = fetchedProducts.filter((p): p is Product => !!p);
         } catch (error) {
             console.error('Erro ao buscar detalhes dos produtos selecionados:', error);
             selectedProducts.value = [];
@@ -90,7 +96,7 @@ const confirmDelete = () => {
         console.error('No product selected');
         return;
     }
-    
+
     const layer = selectedProduct.layer;
     if (!layer) {
         console.error('Layer not found for the selected product');

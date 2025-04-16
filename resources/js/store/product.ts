@@ -31,6 +31,7 @@ export interface ProductContext {
 export interface ProductState {
     selectedProduct: Product | null;
     selectedProductIds: Set<string>;
+    isSelectedProductIds: Set<string>;
     productContextData: Map<string, ProductContext>;
     loading: boolean;
     error: string | null;
@@ -44,6 +45,7 @@ export const useProductStore = defineStore('product', {
     state: (): ProductState => ({
         selectedProduct: null,
         selectedProductIds: new Set(),
+        isSelectedProductIds: new Set(),
         productContextData: new Map(),
         loading: false,
         error: null,
@@ -51,6 +53,8 @@ export const useProductStore = defineStore('product', {
 
     getters: {
         getSelectedProductIds: (state: ProductState): Set<string> => state.selectedProductIds,
+
+        getIsSelectedProductIds: (state: ProductState): Set<string> => state.isSelectedProductIds,
 
         getSelectedProducts: (state: ProductState): Product[] => {
             console.warn('getSelectedProducts getter needs revision after removing allProducts state.');
@@ -73,11 +77,15 @@ export const useProductStore = defineStore('product', {
         selectProduct(productId: string) {
             this.selectedProductIds.add(productId);
         },
-
+        isSelectedProduct(productId: string) {
+            return this.isSelectedProductIds.add(productId);
+        },
         deselectProduct(productId: string) {
             this.selectedProductIds.delete(productId);
         },
-
+        isDeselectedProduct(productId: string) {
+            this.isSelectedProductIds.delete(productId);
+        },
         setSelectedProduct(product: Product) {
             this.selectedProduct = product;
         },
@@ -89,9 +97,17 @@ export const useProductStore = defineStore('product', {
                 this.selectedProductIds.add(productId);
             }
         },
+        isToggleSelectedProduct(productId: string) {
+            if (this.isSelectedProductIds.has(productId)) {
+                this.isSelectedProductIds.delete(productId);
+            } else {
+                this.isSelectedProductIds.add(productId);
+            }
+        },
 
         clearSelection() {
             this.selectedProductIds.clear();
+            this.isSelectedProductIds.clear();
         },
 
         // Função generalizada para gerenciar mensagens toast

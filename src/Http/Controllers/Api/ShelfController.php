@@ -94,7 +94,7 @@ class ShelfController extends Controller
 
         // Processa atualização normal
         try {
-            DB::beginTransaction(); 
+            DB::beginTransaction();
             $segments = data_get($validated, 'segments');
             if ($segments) {
                 foreach ($segments as $segment) {
@@ -179,6 +179,40 @@ class ShelfController extends Controller
         }
     }
 
+    public function segmentCopy(StoreShelfRequest $request, Shelf $shelf)
+    {
+        $validated = $request->validated();
+
+        // Processa atualização normal com possível adição de segmento/camada
+        $segment = data_get($validated, 'segment');
+        $layer = data_get($segment, 'layer');
+        try {
+            if ($segment) {
+                DB::beginTransaction();
+                $newSegment =  $shelf->segments()->create($segment);
+                if ($newSegment) {
+                    $newSegment->layer()->create($layer);
+                }
+                DB::commit();
+            }
+            $shelf->load([
+                'segments',
+                'segments.layer',
+                'segments.layer.product',
+                'segments.layer.product.image',
+            ]);
+            return response()->json([
+                'message' => 'Segmento copiado com sucesso',
+                'data' => new ShelfResource($shelf),
+            ], 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'error' => 'Erro ao copiar segmento: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function transfer(Request $request, Shelf $shelf)
     {
         $validated = $request->all();
@@ -188,5 +222,4 @@ class ShelfController extends Controller
             'data' => new ShelfResource($shelf),
         ], 200);
     }
-    
 }

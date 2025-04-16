@@ -52,13 +52,16 @@ const layerStyle = computed(() => {
 // Computed property to check if this layer's product is selected
 const isSelected = computed(() => {
     if (!props.layer.product?.id) return false;
+    const productId = props.layer.product?.id ;
+    const layerId = props.layer.id;
     // Ensure ID is treated as string for the Set comparison
-    return productStore.selectedProductIds.has(String(props.layer.product.id));
+    return productStore.isSelectedProductIds.has(String(productId).concat('-').concat(layerId));
 });
 
 // Click handler function
 const handleLayerClick = (event: MouseEvent) => {
-    const productId = props.layer.product?.id;
+    const productId = props.layer.product?.id ;
+    const layerId = props.layer.id;
     if (!productId) {
         console.error('Layer clicked, but product ID is missing.');
         return;
@@ -70,10 +73,11 @@ const handleLayerClick = (event: MouseEvent) => {
         // Toggle selection for this product (adds if not present, removes if present)
         segmentSelected.value = !segmentSelected.value; // Toggle the segment selection
         productStore.toggleProductSelection(productIdAsString);
+        productStore.isToggleSelectedProduct(productIdAsString.concat('-').concat(layerId));
     } else {
         // Check current selection state for the clicked product
-        const isCurrentlySelected = productStore.selectedProductIds.has(productIdAsString);
-        const selectionSize = productStore.selectedProductIds.size;
+        const isCurrentlySelected = productStore.isSelectedProductIds.has(productIdAsString);
+        const selectionSize = productStore.isSelectedProductIds.size;
 
         if (isCurrentlySelected && selectionSize === 1) {
             // Clicked on the item that was already the only selected item -> Deselect it
@@ -84,6 +88,7 @@ const handleLayerClick = (event: MouseEvent) => {
             // -> Clear previous selection and select only this one
             productStore.clearSelection();
             productStore.selectProduct(productIdAsString);
+            productStore.isSelectedProduct(productIdAsString.concat('-').concat(layerId));
         }
     }
 };
@@ -92,8 +97,7 @@ const onDragStart = (event: DragEvent) => {
     // Adicionar lógica para quando a prateleira está sendo arrastada
     if (event.dataTransfer) {
         // Vamos verificar se a tecla Ctrl ou Meta está pressionada
-        const isCtrlOrMetaPressed = event.ctrlKey || event.metaKey;
-        console.log('isCtrlOrMetaPressed', isCtrlOrMetaPressed);
+        const isCtrlOrMetaPressed = event.ctrlKey || event.metaKey; 
         if (isCtrlOrMetaPressed) {
             // Se a tecla Ctrl ou Meta estiver pressionada, vamos permitir o movimento
             event.dataTransfer.effectAllowed = 'copy';
