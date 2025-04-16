@@ -19,6 +19,8 @@ interface ShelfState {
     lastSelectedShelfId: string | null;
     // Controle de modo de exibição das prateleiras
     displayMode: 'default' | 'compact' | 'expanded';
+
+    shelfSelectedIs: Set<string>;
 }
 
 export const useShelfStore = defineStore('shelf', {
@@ -29,7 +31,8 @@ export const useShelfStore = defineStore('shelf', {
         isLoading: false,
         error: null,
         lastSelectedShelfId: null,
-        displayMode: 'default'
+        displayMode: 'default',
+        shelfSelectedIs: new Set<string>(),
     }),
 
     getters: {
@@ -52,6 +55,11 @@ export const useShelfStore = defineStore('shelf', {
          * Retorna o modo de exibição atual
          */
         getDisplayMode: (state) => state.displayMode,
+
+        /**
+         * Retorna o ids das prateleiras selecionadas
+         */
+        getShelfSelectedIs: (state) => state.shelfSelectedIs,
     },
 
     actions: {
@@ -60,7 +68,7 @@ export const useShelfStore = defineStore('shelf', {
          * @param shelf Prateleira a ser selecionada
          */
         selectShelf(shelf: Shelf | null) {
-            this.selectedShelf = shelf; 
+            this.selectedShelf = shelf;
             if (shelf) {
                 this.lastSelectedShelfId = shelf.id;
             }
@@ -85,7 +93,37 @@ export const useShelfStore = defineStore('shelf', {
                 ...data
             };
         },
-
+        /**
+         * seta prateleira selecionada
+         * @param shelfId id da prateleira
+         */
+        setShelfSelectedIs(shelfId: string) {
+            if (this.shelfSelectedIs.has(shelfId)) {
+                this.shelfSelectedIs.delete(shelfId);
+            } else {
+                this.shelfSelectedIs.add(shelfId);
+            }
+        },
+        toggleShelfSelected(shelfId: string) {
+            if (this.shelfSelectedIs.has(shelfId)) {
+                this.shelfSelectedIs.delete(shelfId);
+            } else {
+                this.shelfSelectedIs.add(shelfId);
+            }
+        },
+        /**
+         * Verifica se uma prateleira está selecionada
+         * @param shelfId id da prateleira
+         */
+        isShelfSelected(shelfId: string) {
+            return this.shelfSelectedIs.has(shelfId);
+        },
+        /**
+         * Limpa a seleção de prateleiras
+         */
+        clearShelfSelectedIs() {
+            this.shelfSelectedIs.clear();
+        },
         /**
          * Busca detalhes de uma prateleira específica pelo ID
          * @param shelfId ID da prateleira

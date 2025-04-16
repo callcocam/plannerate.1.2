@@ -21,8 +21,7 @@
 </template>
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { useRoute } from 'vue-router';
-import { useEditorStore } from '../../store/editor';
+import { useRoute } from 'vue-router'; 
 import { NavigationMenu, NavigationMenuItem, NavigationMenuLink, NavigationMenuList } from './../../components/ui/navigation-menu';
 const props = defineProps({
     record: {
@@ -32,8 +31,7 @@ const props = defineProps({
 });
 const route = useRoute();
 const id = ref<string>(route.params.id as string);
-
-const editorStore = useEditorStore();
+ 
 
 const gondolas = computed(() => {
     return props.record.gondolas || [];
@@ -42,6 +40,5 @@ const gondolas = computed(() => {
 const getLink = (gondola: any, id: any) => ({
     name: 'gondola.view',
     params: { id, gondolaId: gondola.id },
-});
-console.log('gondolas', gondolas.value);
+}); 
 </script>

@@ -101,7 +101,7 @@ const createSegmentFromProduct = (product: Product, shelf: ShelfType, layerQuant
         preserveState: false,
         status: 'published',
         layer: {
-            product_id: product.id, 
+            product_id: product.id,
             product: product,
             height: product.height,
             spacing: 0,
@@ -242,6 +242,10 @@ const handleClickOutside = (event: MouseEvent) => {
 
     if (!clickedElement.closest('.layer')) {
         productStore.clearSelection();
+    }
+    if (!clickedElement.closest('.shelf')) {
+        shelfStore.clearSelection();
+        shelfStore.clearShelfSelectedIs();
     }
 };
 

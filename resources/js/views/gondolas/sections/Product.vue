@@ -2,14 +2,7 @@
     <div class="product" :style="productStyle">
         <!-- Aqui você pode adicionar a representação visual do produto -->
         <!-- Pode ser uma imagem, um retângulo colorido, ou qualquer outro elemento visual -->
-        <div class="product-content" :style="contentStyle">
-            <!-- Se tiver uma imagem do produto -->
-            <img v-if="product.image_url" :src="product.image_url" :alt="product.name" class="product-image" />
-            <!-- Representação visual alternativa se não houver imagem -->
-            <div v-else class="product-placeholder">
-                {{ product.name ? product.name.charAt(0) : 'P' }}
-            </div>
-        </div>
+        <div class="product-content" :style="contentStyle"></div>
     </div>
 </template>
 
@@ -26,12 +19,13 @@ const props = defineProps<{
 const productStyle = computed(() => {
     return {
         width: `${props.product.width * props.scaleFactor}px`,
-        height: `${props.product.height * props.scaleFactor}px`,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+        height: `${props.product.height * props.scaleFactor}px`, 
         position: 'relative' as const,
-        boxSizing: 'border-box' as const, 
+        boxSizing: 'border-box' as const,
+        backgroundImage: props.product.image_url ? `url(${props.product.image_url})` : 'none',
+        backgroundSize: 'contain',
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: 'center',
     };
 });
 

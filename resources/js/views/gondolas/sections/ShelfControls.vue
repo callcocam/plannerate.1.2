@@ -1,22 +1,25 @@
 <template>
     <div class="shelf-controls" @mouseenter="isHovering = true" @mouseleave="isHovering = false">
         <!-- Área central para movimento vertical da prateleira -->
-        <div class="absolute inset-0 z-10 flex h-full w-full cursor-ns-resize items-center justify-center"
-            @mousedown="handleVerticalDragStart"></div>
+        <div class="absolute inset-0 z-10 flex h-full w-full cursor-ns-resize items-center justify-center" @mousedown="handleVerticalDragStart"></div>
         <transition name="fade">
             <!-- Botão para mover horizontalmente para a esquerda -->
-            <div v-show="isHovering"
+            <div
+                v-show="isHovering"
                 class="absolute left-0 top-0 z-20 flex h-full w-5 cursor-e-resize items-center justify-center bg-blue-500 hover:bg-blue-600"
-                @mousedown="(e) => handleHorizontalDragStart(e, 'left')">
+                @mousedown="(e) => handleHorizontalDragStart(e, 'left')"
+            >
                 <ChevronLeftIcon class="h-4 w-4 text-white" />
             </div>
         </transition>
 
         <transition name="fade">
             <!-- Botão para mover horizontalmente para a direita -->
-            <div v-show="isHovering"
+            <div
+                v-show="isHovering"
                 class="absolute right-0 top-0 z-20 flex h-full w-5 cursor-e-resize items-center justify-center bg-blue-500 hover:bg-blue-600"
-                @mousedown="(e) => handleHorizontalDragStart(e, 'right')">
+                @mousedown="(e) => handleHorizontalDragStart(e, 'right')"
+            >
                 <ChevronRightIcon class="h-4 w-4 text-white" />
             </div>
         </transition>
@@ -25,7 +28,7 @@
 
 <script setup lang="ts">
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-vue-next';
-import { ref, nextTick } from 'vue';
+import { nextTick, ref } from 'vue';
 import { useGondolaStore } from '../../../store/gondola';
 import { Shelf } from './types';
 
@@ -64,39 +67,15 @@ const initialMouseX = ref(0);
 const initialMouseY = ref(0);
 const initialShelfX = ref(0);
 const initialShelfY = ref(0);
- 
+
 // Estado para rastrear a seção alvo potencial
 const potentialTargetSectionId = ref<string | null>(null);
 // Estado para feedback visual na seção alvo
 const targetSectionElement = ref<HTMLElement | null>(null);
 
-/**
- * Manipula movimento horizontal da prateleira usando os botões
- */
-const moveHorizontal = (direction: 'left' | 'right') => {
-    // Obtém a posição atual, ou assume 0 se não definida
-    const currentPosition = props.shelf.shelf_x_position || 0;
-
-    // Define o incremento de movimento (unidades lógicas)
-    const moveIncrement = 10;
-
-    // Calcula a nova posição baseada na direção
-    let newPosition = currentPosition;
-
-    if (direction === 'left') {
-        newPosition = Math.max(0, currentPosition - moveIncrement);
-    } else {
-        const maxPosition = props.sectionWidth - (props.shelf.shelf_width || props.sectionWidth);
-        newPosition = Math.min(maxPosition, currentPosition + moveIncrement);
-    }
-
-    // Apenas atualiza se a posição de fato mudou
-    if (newPosition !== currentPosition) {
-        gondolaStore.updateShelf(props.shelf.id, {
-            shelf_x_position: newPosition,
-        });
-    }
-};
+// Configurações de limites de movimento
+const MOVEMENT_THRESHOLD = 5; // Pixels mínimos para considerar um movimento real (ajuste conforme necessário)
+const hasExceededThreshold = ref(false);
 
 /**
  * Inicia o arrasto vertical
@@ -106,6 +85,7 @@ const handleVerticalDragStart = (e: MouseEvent) => {
 
     isDragging.value = true;
     dragType.value = 'vertical';
+    hasExceededThreshold.value = false;
 
     initialMouseY.value = e.clientY;
     initialShelfY.value = props.shelf.shelf_position || 0;
@@ -123,14 +103,10 @@ const handleHorizontalDragStart = (e: MouseEvent, direction: 'left' | 'right') =
     isDragging.value = true;
     dragType.value = 'horizontal';
     dragDirection.value = direction;
-    initialMouseX.value = e.clientX; // CORRIGIDO: Usar clientX em vez de offsetX
-    initialShelfX.value = props.shelf.shelf_x_position || 0;
+    hasExceededThreshold.value = false;
 
-    // console.log('Iniciando arrasto horizontal:', {
-    //     direction,
-    //     initialMouseX: initialMouseX.value,
-    //     initialShelfX: initialShelfX.value
-    // });
+    initialMouseX.value = e.clientX;
+    initialShelfX.value = props.shelf.shelf_x_position || 0;
 
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
@@ -144,6 +120,19 @@ const handleHorizontalDragStart = (e: MouseEvent, direction: 'left' | 'right') =
  */
 const handleMouseMove = (e: MouseEvent) => {
     if (!isDragging.value) return;
+
+    // Verifica se o movimento excedeu o limiar mínimo
+    if (!hasExceededThreshold.value) {
+        if (dragType.value === 'vertical') {
+            const deltaY = Math.abs(e.clientY - initialMouseY.value);
+            if (deltaY < MOVEMENT_THRESHOLD) return;
+        } else if (dragType.value === 'horizontal') {
+            const deltaX = Math.abs(e.clientX - initialMouseX.value);
+            if (deltaX < MOVEMENT_THRESHOLD) return;
+        }
+        // Se chegou aqui, o movimento excedeu o limiar
+        hasExceededThreshold.value = true;
+    }
 
     if (dragType.value === 'vertical') {
         handleVerticalMove(e);
@@ -183,10 +172,8 @@ const handleVerticalMove = (e: MouseEvent) => {
 const handleHorizontalMove = (e: MouseEvent) => {
     if (!props.sectionsContainer || !props.shelfElement) return;
 
-    const containerRect = props.sectionsContainer.getBoundingClientRect();
     const currentSectionElement = props.shelfElement.parentElement;
     if (!currentSectionElement) return;
-    const currentSectionRect = currentSectionElement.getBoundingClientRect();
 
     const deltaX = e.clientX - initialMouseX.value;
     let newRelativeX = initialShelfX.value + deltaX;
@@ -209,7 +196,7 @@ const handleHorizontalMove = (e: MouseEvent) => {
 
         const sectionElements = props.sectionsContainer?.querySelectorAll('[data-section-id]');
 
-        sectionElements?.forEach(element => {
+        sectionElements?.forEach((element) => {
             const sectionEl = element as HTMLElement;
             const sectionId = sectionEl.dataset.sectionId;
 
@@ -225,21 +212,18 @@ const handleHorizontalMove = (e: MouseEvent) => {
 
             // Verifica se mais da metade da prateleira está sobre a outra seção
             if (overlapWidth > shelfRect.width * 0.1) {
-                // console.log(`Overlapping section ${sectionId}`);
                 potentialTargetSectionId.value = sectionId;
                 targetSectionElement.value = sectionEl; // Guarda o elemento para highlight
                 sectionEl.classList.add('section-drop-target-highlight'); // Adiciona classe para feedback
                 foundTarget = true;
-                // Poderia adicionar return aqui se só pode estar sobre uma seção por vez
             }
         });
 
         // Se não encontrou alvo, garante que o ID e o highlight sejam removidos
         if (!foundTarget) {
             potentialTargetSectionId.value = null;
-            // Simplified check: Just ensure the element exists
             if (targetSectionElement.value) {
-                (targetSectionElement.value as HTMLElement).classList.remove('section-drop-target-highlight');
+                targetSectionElement.value?.classList.remove('section-drop-target-highlight');
                 targetSectionElement.value = null;
             }
         }
@@ -253,13 +237,13 @@ const handleHorizontalMove = (e: MouseEvent) => {
  */
 const handleMouseUp = () => {
     // Remover highlight visual ao soltar
-    // Simplified check: Just ensure the element exists
     if (targetSectionElement.value) {
-        (targetSectionElement.value as HTMLElement).classList.remove('section-drop-target-highlight');
+        targetSectionElement.value.classList.remove('section-drop-target-highlight');
         targetSectionElement.value = null;
     }
 
-    if (isDragging.value) {
+    // Só processa o final do movimento se o limiar foi excedido
+    if (isDragging.value && hasExceededThreshold.value) {
         if (dragType.value === 'vertical') {
             gondolaStore.updateShelf(props.shelf.id, { shelf_position: props.shelf.shelf_position });
         } else if (dragType.value === 'horizontal') {
@@ -267,18 +251,13 @@ const handleMouseUp = () => {
             const currentShelfData = props.shelf;
 
             if (targetSectionId && targetSectionId !== currentShelfData.section_id) {
-                // console.log(`Transferring shelf ${currentShelfData.id} to section ${targetSectionId}`);
-
                 // ALWAYS set position to 0 relative to the new section
                 const newRelativeX = 0;
 
                 // Chamar a nova ação do store para transferência
-                // No longer need to check elements if we always set X to 0
                 gondolaStore.transferShelf(currentShelfData.id, String(currentShelfData.section_id), targetSectionId, newRelativeX);
-
             } else {
                 // Soltou na mesma seção ou fora de uma zona de transferência válida
-                // console.log(`Persisting shelf ${currentShelfData.id} horizontal position in section ${currentShelfData.section_id}`);
                 gondolaStore.updateShelf(currentShelfData.id, { shelf_x_position: currentShelfData.shelf_x_position });
             }
         }
@@ -287,6 +266,7 @@ const handleMouseUp = () => {
     // Resetar estados e cursores
     isDragging.value = false;
     dragType.value = null;
+    hasExceededThreshold.value = false;
     potentialTargetSectionId.value = null; // Resetar target ID
     document.body.style.cursor = '';
 
@@ -325,6 +305,8 @@ const handleMouseUp = () => {
     outline-offset: -2px;
     /* Para ficar dentro da borda */
     background-color: rgba(0, 0, 255, 0.05);
-    transition: outline 0.1s ease-in-out, background-color 0.1s ease-in-out;
+    transition:
+        outline 0.1s ease-in-out,
+        background-color 0.1s ease-in-out;
 }
 </style>

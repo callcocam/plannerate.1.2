@@ -1,17 +1,21 @@
 <template>
     <div
         class="flex h-full w-full items-center justify-center text-center text-xs text-gray-100 dark:text-gray-700"
+        :class="{ 
+            'border border-dashed border-blue-500 dark:border-blue-400': isSelected,
+        }"
         @dragover.prevent="handleDragOver"
         @drop.prevent="handleDrop"
-        @dragleave="handleDragLeave"
+        @dragleave="handleDragLeave"  
     >
         {{ shelftext }}
     </div>
 </template>
 
 <script setup lang="ts">
-import { defineEmits, defineProps, ref, watch } from 'vue';
+import { defineEmits, defineProps, ref, watch, computed } from 'vue';
 import { Shelf } from './types';
+import { useShelfStore } from '../../../store/shelf'; // Importar o store de prateleiras
 
 // Definir Props
 const props = defineProps<{
@@ -21,6 +25,9 @@ const dragShelfActive = ref(false); // Estado para rastrear se a prateleira est�
 const shelftext = ref(`Shelf (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`); // Texto da prateleira
 // Definir Emits
 const emit = defineEmits(['drop-product', 'drop-layer', 'drop-layer-copy']); // Para quando um produto é solto na prateleira
+
+const shelfStore = useShelfStore(); // Instanciar o shelf store
+
 watch(dragShelfActive, (newValue) => {
     if (newValue) {
         // Adicionar lógica para quando a prateleira está sendo arrastada
@@ -29,6 +36,11 @@ watch(dragShelfActive, (newValue) => {
         // Adicionar lógica para quando a prateleira não está mais sendo arrastada
         shelftext.value = `Shelf (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`;
     }
+});
+
+const isSelected = computed(() => {
+    // Verifica se a prateleira está selecionada
+    return shelfStore.isShelfSelected(props.shelf.id);
 });
 // --- Lógica de Drag and Drop (para produtos) ---
 const handleDragOver = (event: DragEvent) => {
@@ -78,6 +90,7 @@ const handleDrop = (event: DragEvent) => {
     }
     dragShelfActive.value = false; // Desativa o estado de arrastar a prateleira
 };
+
 </script>
 
 <style scoped>

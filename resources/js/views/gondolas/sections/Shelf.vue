@@ -133,6 +133,27 @@ const segmentsContainerStyle = computed(() => {
 const selectShelfClick = (event: MouseEvent) => {
     // Emitir evento para o componente pai (Section) lidar com o clique
     shelfStore.selectShelf(props.shelf);
+    // Emitir evento para o componente pai (Section) lidar com o clique
+    event.stopPropagation(); // Impede que o evento de clique se propague para outros elementos
+    // Verifica se a tecla Ctrl ou Meta está pressionada
+    const isCtrlOrMetaPressed = event.ctrlKey || event.metaKey;
+    if (isCtrlOrMetaPressed) {
+        // Se a tecla Ctrl ou Meta estiver pressionada, alterna a seleção
+        shelfStore.toggleShelfSelected(props.shelf.id);
+    } else {
+        // Caso contrário, seleciona apenas a prateleira atual
+        const isCurrentlySelected = shelfStore.isShelfSelected(props.shelf.id);
+        const selectionSize = shelfStore.shelfSelectedIs.size;
+        if (isCurrentlySelected && selectionSize === 1) {
+            // Se a prateleira já estiver selecionada e for a única selecionada, desmarque-a
+            shelfStore.clearSelection();
+            shelfStore.clearShelfSelectedIs();
+        } else {
+            // Caso contrário, selecione apenas a prateleira atual 
+            shelfStore.clearShelfSelectedIs(); 
+            shelfStore.setShelfSelectedIs(props.shelf.id);
+        }
+    }
 };
 const controlDeleteShelf = (event: KeyboardEvent) => {
     // Verificar se Ctrl+Delete foi pressionado
@@ -145,6 +166,7 @@ const controlDeleteShelf = (event: KeyboardEvent) => {
             shelfStore.deleteSelectedShelf();
         } else {
             // Se não houver seleção, mas o evento veio da prateleira atual, seleciona e exclui
+
             shelfStore.selectShelf(props.shelf);
             shelfStore.deleteSelectedShelf();
         }
