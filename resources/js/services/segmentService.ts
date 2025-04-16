@@ -23,11 +23,31 @@ export const useSegmentService = () => {
     const deleteSegment = (segmentId: string) => {
         return apiService.delete(`segments/${segmentId}`);
     };
+    /**
+        * Reordena os segmentos de uma prateleira
+        */
+    const reorderSegments = async (shelfId: string, ordering: any) => {
+        return apiService.put(`segments/${shelfId}/reorder`, {
+            ordering: ordering
+        });
+    };
+    
 
+    /**
+     * Transfere um segmento de uma prateleira para outra
+     */
+    const transferSegment = async (segmentId: string, newShelfId: string, positionData?: any) => {
+        return apiService.put(`segments/${segmentId}/transfer`, {
+            shelf_id: newShelfId,
+            ...positionData
+        });
+    };
     return {
         addSegment,
         copySegment,
         updateSegment,
         deleteSegment,
+        reorderSegments,
+        transferSegment,
     };
 };

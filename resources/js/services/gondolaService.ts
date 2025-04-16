@@ -35,40 +35,13 @@ export const useGondolaService = () => {
             shelf_x_position: newRelativeX
         });
     };
-
-    /**
-     * Atualiza o segmento de uma prateleira
-     */
-    const updateSegment = async (segmentId: string, segmentData: any) => {
-        return apiService.put(`segments/${segmentId}`, segmentData);
-    };
-
-    /**
-     * Reordena os segmentos de uma prateleira
-     */
-    const reorderSegments = async (shelfId: string, ordering: any) => {
-        return apiService.put(`segments/${shelfId}/reorder`, {
-            ordering: ordering
-        });
-    };
-
-    /**
-     * Transfere um segmento de uma prateleira para outra
-     */
-    const transferSegment = async (segmentId: string, newShelfId: string, positionData?: any) => {
-        return apiService.put(`segments/${segmentId}/transfer`, {
-            shelf_id: newShelfId,
-            ...positionData
-        });
-    };
+ 
+   
 
     return {
         fetchGondola,
         updateShelf,
         updateShelfPosition,
-        transferShelf,
-        updateSegment,
-        reorderSegments,
-        transferSegment
+        transferShelf,  
     };
 };

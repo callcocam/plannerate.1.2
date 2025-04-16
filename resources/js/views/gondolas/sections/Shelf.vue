@@ -40,12 +40,13 @@
 <script setup lang="ts">
 import { computed, defineEmits, defineProps, onMounted, onUnmounted, ref } from 'vue';
 import draggable from 'vuedraggable';
-import { useGondolaStore } from '../../../store/gondola'; 
+import { useGondolaStore } from '../../../store/gondola';
+import { useSegmentStore } from '../../../store/segment';
+import { useShelvesStore } from '../../../store/shelves';
 import Segment from './Segment.vue';
 import ShelfContent from './ShelfContent.vue';
 import ShelfControls from './ShelfControls.vue'; // Importar o componente ShelfControls
 import { Layer, Product, Segment as SegmentType, Shelf } from './types';
-import { useShelvesStore } from '../../../store/shelves';
 
 // Definir Props
 const props = defineProps<{
@@ -63,8 +64,9 @@ const shelfElement = ref<HTMLElement | null>(null);
 
 // Definir Emits
 const emit = defineEmits(['drop-product', 'drop-layer-copy']); // Para quando um produto é solto na prateleira
-const gondolaStore = useGondolaStore(); // Instanciar o gondola store 
-const shelvesStore = useShelvesStore()
+const gondolaStore = useGondolaStore(); // Instanciar o gondola store
+const shelvesStore = useShelvesStore();
+const segmentStore = useSegmentStore(); // Instanciar o segment store
 // --- Computeds para Estilos ---
 const shelfStyle = computed(() => {
     // Convertemos a posição da prateleira para pixels usando o fator de escala
@@ -118,7 +120,7 @@ const sortableSegments = computed<SegmentType[]>({
 
 const updateLayer = (layer: Layer, shelf: Shelf) => {
     // Emitir evento para o componente pai (Section) lidar com a atualização
-    gondolaStore.transferLayer(layer.segment_id, layer.segment.shelf_id, shelf.id, 0);
+    segmentStore.transferLayer(layer.segment_id, layer.segment.shelf_id, shelf.id, 0);
 };
 /**
  * Computed property para estilo do container de segmentos
@@ -131,9 +133,9 @@ const segmentsContainerStyle = computed(() => {
 });
 
 const selectShelfClick = (event: MouseEvent) => {
-    // Emitir evento para o componente pai (Section) lidar com o clique 
-    shelvesStore.setSelectedShelf(props.shelf); 
-    shelvesStore.startEditing()
+    // Emitir evento para o componente pai (Section) lidar com o clique
+    shelvesStore.setSelectedShelf(props.shelf);
+    shelvesStore.startEditing();
     // Emitir evento para o componente pai (Section) lidar com o clique
     event.stopPropagation(); // Impede que o evento de clique se propague para outros elementos
     // Verifica se a tecla Ctrl ou Meta está pressionada
@@ -150,24 +152,18 @@ const selectShelfClick = (event: MouseEvent) => {
             shelvesStore.clearSelection();
             shelvesStore.clearSelectedShelfIds();
         } else {
-            // Caso contrário, selecione apenas a prateleira atual 
-            shelvesStore.clearSelectedShelfIds(); 
+            // Caso contrário, selecione apenas a prateleira atual
+            shelvesStore.clearSelectedShelfIds();
             shelvesStore.setSelectedShelfIds(props.shelf.id);
         }
     }
 };
 const controlDeleteShelf = (event: KeyboardEvent) => {
     // Verificar se Ctrl+Delete foi pressionado
-    if ((event.key === 'Delete' || event.key === 'Backspace') && event.ctrlKey) { 
+    if ((event.key === 'Delete' || event.key === 'Backspace') && event.ctrlKey) {
         event.preventDefault();
 
-        // Verificar se há uma prateleira selecionada
-        // if (shelvesStore.hasSelection) {
-        //     // shelvesStore.deleteSelectedShelf();
-        // } else {
-        //     // Se não houver seleção, mas o evento veio da prateleira atual, seleciona e exclui 
-        //     shelvesStore.deleteSelectedShelf();
-        // }
+        shelvesStore.deleteSelectedShelf();
     }
 };
 

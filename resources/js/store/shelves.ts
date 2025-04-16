@@ -237,7 +237,29 @@ export const useShelvesStore = defineStore('shelves', {
             // Atualiza a lista de produtos em uso
             // gondolaStore.productsInCurrentGondolaIds();
         },
+        /**
+                * Atualiza a ordem das prateleiras dentro de uma seção
+                */
+        updateShelvesOrder(sectionId: string, orderedShelves: Shelf[]) {
+            if (!this.currentGondola || !sectionId || !orderedShelves) return;
 
+            const updatedSections = this.currentGondola.sections.map((section: any) => {
+                if (section.id === sectionId) {
+                    return {
+                        ...section,
+                        shelves: orderedShelves
+                    };
+                }
+                return section;
+            });
+
+            this.currentGondola = {
+                ...this.currentGondola,
+                sections: updatedSections
+            };
+
+            this.productsInCurrentGondolaIds();
+        },
         async addShelf(shelf: Shelf) {
             this.isLoading = true;
             this.error = null;

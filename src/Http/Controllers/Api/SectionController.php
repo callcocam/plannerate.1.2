@@ -471,10 +471,7 @@ class SectionController extends Controller
             $order = [];
             foreach ($sections as $index => $section) {
                 $section->update(['ordering' =>  $count - $index]);
-                $order[] = [
-                    'id' => $section->id,
-                    'ordering' => $count - $index,
-                ];
+                $order[] =$section;
             }
         } catch (\Exception $e) {
             return response()->json([
@@ -485,7 +482,15 @@ class SectionController extends Controller
 
         return response()->json([
             'message' => 'Seções reordenadas com sucesso',
-            'data' => SectionResource::collection($sections),
+            'data' => SectionResource::collection($gondola->sections()
+            ->with(
+                'shelves',
+                'shelves.segments',
+                'shelves.segments.layer',
+                'shelves.segments.layer.product',
+                'shelves.segments.layer.product.image',
+            )
+            ->orderBy('ordering', 'desc')->get()),
             'order' => $order,
         ], 200);
     }
