@@ -25,6 +25,7 @@ return new class extends Migration
             $table->integer('shelf_depth')->default(40)->nullable(); // Profundidade da prateleira em centímetros 
             $table->integer('shelf_position')->default(0)->nullable(); // Posição vertical em centímetros
             $table->integer('ordering')->default(0)->nullable(); // Ordem de exibição/posição
+            $table->enum('alignment', ['left', 'right', 'center', 'justify'])->nullable();
             $table->integer('spacing')->default(0)->nullable(); // Espaçamento ente as camadas
             $table->json('settings')->nullable(); // Configurações
             $table->enum('status', array_column(ShelfStatus::cases(), 'value'))

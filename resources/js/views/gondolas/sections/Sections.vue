@@ -34,37 +34,41 @@
                                     />
                                 </ContextMenuTrigger>
                                 <ContextMenuContent class="w-64">
-                                    <ContextMenuItem inset @click="editSection(section)">
-                                        Editar
-                                        <ContextMenuShortcut>⌘E</ContextMenuShortcut>
-                                    </ContextMenuItem>
-                                    <ContextMenuItem inset @click="(e) => addShelf(e, section)">
-                                        Adicionar prateleira
-                                        <ContextMenuShortcut>⌘A</ContextMenuShortcut>
-                                    </ContextMenuItem>
-                                    <ContextMenuSeparator />
-                                    <ContextMenuSub>
-                                        <ContextMenuSubTrigger inset> Alinhamento </ContextMenuSubTrigger>
-                                        <ContextMenuSubContent class="w-48">
-                                            <ContextMenuItem inset>
-                                                Alinhar à esquerda
-                                                <ContextMenuShortcut>⌘⇧L</ContextMenuShortcut>
-                                            </ContextMenuItem>
-                                            <ContextMenuItem inset>
-                                                Alinhar ao centro
-                                                <ContextMenuShortcut>⌘⇧C</ContextMenuShortcut>
-                                            </ContextMenuItem>
-                                            <ContextMenuItem inset>
-                                                Alinhar à direita
-                                                <ContextMenuShortcut>⌘⇧R</ContextMenuShortcut>
-                                            </ContextMenuItem>
-                                        </ContextMenuSubContent>
-                                    </ContextMenuSub>
-                                    <ContextMenuSeparator />
-                                    <ContextMenuItem inset disabled>
-                                        Excluir
-                                        <ContextMenuShortcut>⌘D</ContextMenuShortcut>
-                                    </ContextMenuItem>
+                                    <ContextMenuRadioGroup model-value="modulos">
+                                        <ContextMenuLabel inset> Modulos </ContextMenuLabel>
+                                        <ContextMenuSeparator />
+                                        <ContextMenuItem inset @click="editSection(section)">
+                                            Editar
+                                            <ContextMenuShortcut>⌘E</ContextMenuShortcut>
+                                        </ContextMenuItem>
+                                        <ContextMenuItem inset @click="(e) => addShelf(e, section)">
+                                            Adicionar prateleira
+                                            <ContextMenuShortcut>⌘A</ContextMenuShortcut>
+                                        </ContextMenuItem>
+                                        <ContextMenuSeparator />
+                                        <ContextMenuSub>
+                                            <ContextMenuSubTrigger inset> Alinhamento </ContextMenuSubTrigger>
+                                            <ContextMenuSubContent class="w-48">
+                                                <ContextMenuItem inset>
+                                                    à esquerda
+                                                    <ContextMenuShortcut>⌘⇧L</ContextMenuShortcut>
+                                                </ContextMenuItem>
+                                                <ContextMenuItem inset>
+                                                    ao centro
+                                                    <ContextMenuShortcut>⌘⇧C</ContextMenuShortcut>
+                                                </ContextMenuItem>
+                                                <ContextMenuItem inset>
+                                                    à direita
+                                                    <ContextMenuShortcut>⌘⇧R</ContextMenuShortcut>
+                                                </ContextMenuItem>
+                                            </ContextMenuSubContent>
+                                        </ContextMenuSub>
+                                        <ContextMenuSeparator />
+                                        <ContextMenuItem inset disabled>
+                                            Excluir
+                                            <ContextMenuShortcut>⌘D</ContextMenuShortcut>
+                                        </ContextMenuItem>
+                                    </ContextMenuRadioGroup>
                                 </ContextMenuContent>
                             </ContextMenu>
                         </div>
@@ -185,7 +189,7 @@ const editSection = (section: any) => {
     sectionStore.startEditing();
 };
 
-const addShelf = async (event, section: SectionType) => { 
+const addShelf = async (event, section: SectionType) => {
     shelvesStore.handleDoubleClick({
         shelf_position: event.offsetY * scaleFactor.value,
         section_id: section.id,

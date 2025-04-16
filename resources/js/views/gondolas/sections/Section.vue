@@ -9,21 +9,58 @@
         ref="sectionRef"
     >
         <!-- Conteúdo da Seção (Prateleiras) -->
-        <Shelf
-            v-for="shelf in section.shelves"
-            :key="shelf.id"
-            :shelf="shelf"
-            :scale-factor="scaleFactor"
-            :section-width="props.section.width"
-            :section-height="props.section.height"
-            :base-height="baseHeight"
-            :rack-width="section.rackWidth || section.cremalheira_width || 4"
-            :sections-container="sectionsContainer"
-            :section-index="sectionIndex"
-            @drop-product="handleProductDropOnShelf"
-            @drop-layer-copy="handleLayerCopy"
-            @drag-shelf="handleShelfDragStart"
-        />
+        <ContextMenu>
+            <ContextMenuTrigger>
+                <Shelf
+                    v-for="shelf in section.shelves"
+                    :key="shelf.id"
+                    :shelf="shelf"
+                    :scale-factor="scaleFactor"
+                    :section-width="props.section.width"
+                    :section-height="props.section.height"
+                    :base-height="baseHeight"
+                    :rack-width="section.rackWidth || section.cremalheira_width || 4"
+                    :sections-container="sectionsContainer"
+                    :section-index="sectionIndex"
+                    @drop-product="handleProductDropOnShelf"
+                    @drop-layer-copy="handleLayerCopy"
+                    @drag-shelf="handleShelfDragStart"
+                />
+            </ContextMenuTrigger>
+            <ContextMenuContent class="w-64">
+                <ContextMenuRadioGroup model-value="modulos">
+                    <ContextMenuLabel inset> Prateleiras </ContextMenuLabel>
+                    <ContextMenuSeparator />
+                    <ContextMenuItem inset>
+                        Editar
+                        <ContextMenuShortcut>⌘]</ContextMenuShortcut>
+                    </ContextMenuItem>
+                    <ContextMenuSeparator />
+                    <ContextMenuSub>
+                        <ContextMenuSubTrigger inset> Alinhamento </ContextMenuSubTrigger>
+                        <ContextMenuSubContent class="w-48">
+                            <ContextMenuItem inset>
+                                à esquerda
+                                <ContextMenuShortcut>⌘⇧L</ContextMenuShortcut>
+                            </ContextMenuItem>
+                            <ContextMenuItem inset>
+                                ao centro
+                                <ContextMenuShortcut>⌘⇧C</ContextMenuShortcut>
+                            </ContextMenuItem>
+                            <ContextMenuItem inset>
+                                à direita
+                                <ContextMenuShortcut>⌘⇧R</ContextMenuShortcut>
+                            </ContextMenuItem>
+                        </ContextMenuSubContent>
+                    </ContextMenuSub>
+                    <ContextMenuSeparator />
+                    <ContextMenuItem inset disabled>
+                        Excluir
+                        <ContextMenuShortcut>⌘D</ContextMenuShortcut>
+                    </ContextMenuItem>
+                </ContextMenuRadioGroup>
+            </ContextMenuContent>
+        </ContextMenu>
     </div>
 </template>
 
@@ -259,7 +296,7 @@ const handleClickOutside = (event: MouseEvent) => {
     }
 };
 
-const handleDoubleClick = async (event: MouseEvent) => { 
+const handleDoubleClick = async (event: MouseEvent) => {
     event.stopPropagation();
     shelvesStore.handleDoubleClick({
         shelf_position: event.offsetY / props.scaleFactor,

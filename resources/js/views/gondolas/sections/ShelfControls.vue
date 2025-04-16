@@ -92,9 +92,7 @@ const handleVerticalDragStart = (e: MouseEvent) => {
     hasExceededThreshold.value = false;
 
     initialMouseY.value = e.clientY;
-    initialShelfY.value = props.shelf.shelf_position || 0;
-
-    console.log('Iniciando arrasto vertical', initialMouseY.value, initialShelfY.value);
+    initialShelfY.value = props.shelf.shelf_position || 0; 
 
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
@@ -127,7 +125,7 @@ const handleHorizontalDragStart = (e: MouseEvent, direction: 'left' | 'right') =
 const handleMouseMove = (e: MouseEvent) => {
     if (!isDragging.value) return; 
     // Verifica se o movimento excedeu o limiar mínimo
-    if (!hasExceededThreshold.value) {
+    if (!hasExceededThreshold.value) { 
         if (dragType.value === 'vertical') {
             const deltaY = Math.abs(e.clientY - initialMouseY.value);
             if (deltaY < MOVEMENT_THRESHOLD) return;
@@ -151,12 +149,11 @@ const handleMouseMove = (e: MouseEvent) => {
  */
 const handleVerticalMove = (e: MouseEvent) => {
     if (!props.shelfElement) return;
-
-    const containerRect = props.shelfElement.parentElement?.getBoundingClientRect();
+    const containerRect = props.shelfElement.parentElement?.parentElement?.getBoundingClientRect();
     if (!containerRect) return;
-
-    const relativeY = e.clientY - containerRect.top;
-
+    
+    const relativeY = e.clientY - containerRect.top; 
+    
     if (relativeY < 0 || relativeY > containerRect.height) return;
 
     const maxYPosition = props.sectionHeight * props.scaleFactor - props.baseHeight - props.shelf.shelf_height;

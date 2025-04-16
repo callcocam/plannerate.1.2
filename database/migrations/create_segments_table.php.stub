@@ -20,6 +20,7 @@ return new class extends Migration
             $table->integer('width')->nullable();  // Largura em centímetros
             $table->integer('height')->nullable(); // Altura em centímetros
             $table->integer('ordering')->default(0)->nullable(); // Ordem de exibição/posição
+            $table->enum('alignment', ['left', 'right', 'center', 'justify'])->nullable();
             $table->integer('position')->nullable(); // Posição vertical em centímetros
             $table->integer('quantity')->default(1)->nullable(); // Quantidade de camadas
             $table->integer('spacing')->nullable(); // Espaçamento entre as camadas
