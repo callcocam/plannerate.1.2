@@ -5,7 +5,7 @@
                 <template #item="{ element: section, index }">
                     <div :key="section.id">
                         <div class="flex items-center">
-                            <Cremalheira :section="section" :scale-factor="scaleFactor" @delete-section="deleteSection">
+                            <Cremalheira :section="section" :scale-factor="scaleFactor" @delete-section="deleteSection"  @edit-section="editSection">
                                 <template #actions>
                                     <Button
                                         size="sm"
@@ -36,7 +36,7 @@
             </draggable>
 
             <div v-if="lastSectionData" class="flex items-center">
-                <Cremalheira :section="lastSectionData" :scale-factor="scaleFactor" :is-last-section="true" :key="`rack-end-${lastSectionData.id}`" />
+                <Cremalheira :section="lastSectionData" :scale-factor="scaleFactor" :is-last-section="true" :key="`rack-end-${lastSectionData.id}`" @edit-section="editSection"/>
             </div>
         </div>
     </div>
@@ -55,6 +55,7 @@ import draggable from 'vuedraggable';
 import { apiService } from '../../../services';
 import { useEditorStore } from '../../../store/editor';
 import { useGondolaStore } from '../../../store/gondola';
+import { useSectionStore } from '../../../store/section';
 
 interface Category {
     id: string | number;
@@ -74,6 +75,7 @@ const emit = defineEmits(['sections-reordered', 'shelves-updated', 'move-shelf-t
 
 const editorStore = useEditorStore();
 const gondolaStore = useGondolaStore();
+const sectionStore = useSectionStore();
 
 const scaleFactor = computed(() => {
     return editorStore.scaleFactor;
@@ -130,6 +132,16 @@ const handleMoveShelfToSection = (shelf: any, sectionId: number) => {};
 const handleMoveSegmentToSection = (segment: any, sectionId: number) => {};
 
 const updateSegmentQuantity = (segment: any) => {};
+
+const editSection = (section: any) => {
+    // Emitir evento para abrir o modal de edição da seção
+    sectionStore.setSelectedSection(section);
+    sectionStore.setModalSectionEditOpen(true);
+    sectionStore.setModalSectionEditTitle('Editar Seção');
+    sectionStore.setModalSectionEditDescription('Edite os detalhes da seção');
+    console.log('Emitindo evento para abrir modal de edição da seção:', section);
+    
+};
 </script>
 
 <style scoped>
