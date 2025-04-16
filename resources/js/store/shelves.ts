@@ -161,37 +161,81 @@ export const useShelvesStore = defineStore('shelves', {
             }
         },
         // Método para transferir uma prateleira para outra seção
-        transferShelf(shelfId: string, fromSectionId: string, toSectionId: string, newPosition: number = 0) {
+        async transferShelf(shelfId: string, fromSectionId: string, toSectionId: string, newPosition: number = 0) {
             const gondolaStore = useGondolaStore();
             const { currentGondola } = gondolaStore
             if (!currentGondola || !shelfId || !fromSectionId || !toSectionId) return;
             // Atualiza a seção da prateleira localmente
+            const { toast } = useToast();
+            const gondolaService = useGondolaService();
+            let shelfToMove: Shelf | null = null;
+            let oldSectionIndex = -1;
+            let newSectionIndex = -1;
 
-            const section = currentGondola.sections.findIndex(section => section.id === fromSectionId);
-            if (section === -1) return;
-            const shelfIndex = section.shelves.findIndex(shelf => shelf.id === shelfId);
-            if (shelfIndex === -1) return;  
-            
-            this.shelves[shelfIndex] = {
-                ...this.shelves[shelfIndex],
-                section_id: toSectionId,
-                shelf_position: newPosition,
-                shelf_x_position: 0 // Reset posição horizontal ao transferir
-            };
+            // Cria uma cópia profunda para manipulação segura
+            const newSections = JSON.parse(JSON.stringify(currentGondola.sections));
 
-            // Se for a prateleira selecionada, atualiza ela também
-            if (this.selectedShelf && this.selectedShelf.id === shelfId) {
-                this.selectedShelf = {
-                    ...this.selectedShelf,
-                    section_id: toSectionId,
-                    shelf_position: newPosition,
-                    shelf_x_position: 0
-                };
+            // Encontra as seções e a prateleira
+            newSections.forEach((section: any, index: number) => {
+                if (section.id === fromSectionId) {
+                    oldSectionIndex = index;
+                    const shelfIndex = section.shelves?.findIndex((s: Shelf) => s.id === shelfId);
+                    if (shelfIndex !== undefined && shelfIndex > -1) {
+                        shelfToMove = section.shelves.splice(shelfIndex, 1)[0];
+                    }
+                }
+                if (section.id === toSectionId) {
+                    newSectionIndex = index;
+                }
+            });
+
+            // Verifica se tudo foi encontrado
+            if (oldSectionIndex === -1 || newSectionIndex === -1 || !shelfToMove) {
+                console.error('Could not find sections or shelf for transfer.');
+                return;
             }
 
-            // Aqui você chamaria uma API para persistir a transferência
-            // apiService.transferShelf(shelfId, fromSectionId, toSectionId, newPosition);
-            console.log(`Transferindo prateleira ${shelfId} da seção ${fromSectionId} para ${toSectionId} na posição ${newPosition}`);
+            // Atualiza os dados da prateleira movida
+            if (shelfToMove) {
+                (shelfToMove as Shelf).section_id = toSectionId;
+                (shelfToMove as Shelf).shelf_x_position = newPosition;
+            }
+
+            // Adiciona a prateleira à nova seção
+            if (!newSections[newSectionIndex].shelves) {
+                newSections[newSectionIndex].shelves = [];
+            }
+
+            if (shelfToMove) {
+                newSections[newSectionIndex].shelves.push(shelfToMove);
+            }
+
+            // Atualiza o estado da gôndola
+            gondolaStore.updateGondola({
+                ...currentGondola,
+                sections: newSections
+            });
+
+            // Chama o serviço para persistir no backend
+            try {
+                await gondolaService.transferShelf(shelfId, toSectionId, newPosition);
+
+                toast({
+                    title: 'Prateleira transferida com sucesso',
+                    description: 'A prateleira foi transferida para a seção ' + toSectionId + ' com sucesso',
+                    variant: 'default'
+                });
+            } catch (error) {
+                console.error('Erro ao transferir prateleira:', error);
+                toast({
+                    title: 'Erro ao transferir prateleira',
+                    description: 'Ocorreu um erro ao transferir a prateleira',
+                    variant: 'destructive'
+                });
+            }
+
+            // Atualiza a lista de produtos em uso
+            // gondolaStore.productsInCurrentGondolaIds();
         },
 
         async addShelf(shelf: Shelf) {
