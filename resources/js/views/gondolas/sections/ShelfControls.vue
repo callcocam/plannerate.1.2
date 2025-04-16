@@ -74,7 +74,9 @@ const potentialTargetSectionId = ref<string | null>(null);
 const targetSectionElement = ref<HTMLElement | null>(null);
 
 // Configurações de limites de movimento
-const MOVEMENT_THRESHOLD = 5; // Pixels mínimos para considerar um movimento real (ajuste conforme necessário)
+const MOVEMENT_THRESHOLD = 5; // Pixels mínimos para considerar um movimento real
+const SHELF_SNAP_GRID = 20; // Valor em cm para o "snap to grid" das prateleiras (múltiplos de 20cm)
+const SHELF_SNAP_TOLERANCE = 3; // Tolerância em cm para considerar uma posição como válida (reduzida)
 const hasExceededThreshold = ref(false);
 
 /**
@@ -157,6 +159,7 @@ const handleVerticalMove = (e: MouseEvent) => {
     const maxYPosition = props.sectionHeight * props.scaleFactor - props.baseHeight - props.shelf.shelf_height;
     if (relativeY >= maxYPosition) return;
 
+    // Atualiza a posição visual imediatamente (sem persistir)
     gondolaStore.updateShelf(
         props.shelf.id,
         {
@@ -164,6 +167,9 @@ const handleVerticalMove = (e: MouseEvent) => {
         },
         false,
     );
+
+    // Não é necessário verificar alvos válidos durante o movimento
+    // A validação só ocorrerá quando o usuário soltar o mouse
 };
 
 /**
@@ -223,7 +229,8 @@ const handleHorizontalMove = (e: MouseEvent) => {
         if (!foundTarget) {
             potentialTargetSectionId.value = null;
             if (targetSectionElement.value) {
-                targetSectionElement.value?.classList.remove('section-drop-target-highlight');
+                //@ts-ignore
+                targetSectionElement.value.classList.remove('section-drop-target-highlight');
                 targetSectionElement.value = null;
             }
         }
@@ -244,12 +251,9 @@ const handleMouseUp = () => {
 
     // Só processa o final do movimento se o limiar foi excedido
     if (isDragging.value && hasExceededThreshold.value) {
-        if (dragType.value === 'vertical') {
-            gondolaStore.updateShelf(props.shelf.id, { shelf_position: props.shelf.shelf_position });
-        } else if (dragType.value === 'horizontal') {
+        if (dragType.value === 'horizontal') {
             const targetSectionId = potentialTargetSectionId.value;
             const currentShelfData = props.shelf;
-
             if (targetSectionId && targetSectionId !== currentShelfData.section_id) {
                 // ALWAYS set position to 0 relative to the new section
                 const newRelativeX = 0;
@@ -258,7 +262,7 @@ const handleMouseUp = () => {
                 gondolaStore.transferShelf(currentShelfData.id, String(currentShelfData.section_id), targetSectionId, newRelativeX);
             } else {
                 // Soltou na mesma seção ou fora de uma zona de transferência válida
-                gondolaStore.updateShelf(currentShelfData.id, { shelf_x_position: currentShelfData.shelf_x_position });
+                gondolaStore.updateShelf(currentShelfData.id, { shelf_x_position: 0 });
             }
         }
     }
@@ -266,6 +270,7 @@ const handleMouseUp = () => {
     // Resetar estados e cursores
     isDragging.value = false;
     dragType.value = null;
+    dragDirection.value = null;
     hasExceededThreshold.value = false;
     potentialTargetSectionId.value = null; // Resetar target ID
     document.body.style.cursor = '';

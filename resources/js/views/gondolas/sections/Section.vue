@@ -260,6 +260,7 @@ const handleDoubleClick = async (event: MouseEvent) => {
         quantity: 0,
         spacing: 0,
         ordering: 1,
+        status: 'published',
         segments: [],
     } as ShelfType;
 
