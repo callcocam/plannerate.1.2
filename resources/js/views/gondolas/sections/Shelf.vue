@@ -40,7 +40,6 @@
 <script setup lang="ts">
 import { computed, defineEmits, defineProps, onMounted, onUnmounted, ref } from 'vue';
 import draggable from 'vuedraggable';
-import { useGondolaStore } from '../../../store/gondola';
 import { useSegmentStore } from '../../../store/segment';
 import { useShelvesStore } from '../../../store/shelves';
 import Segment from './Segment.vue';
@@ -64,24 +63,17 @@ const shelfElement = ref<HTMLElement | null>(null);
 
 // Definir Emits
 const emit = defineEmits(['drop-product', 'drop-layer-copy']); // Para quando um produto é solto na prateleira
-const gondolaStore = useGondolaStore(); // Instanciar o gondola store
 const shelvesStore = useShelvesStore();
 const segmentStore = useSegmentStore(); // Instanciar o segment store
 // --- Computeds para Estilos ---
 const shelfStyle = computed(() => {
     // Convertemos a posição da prateleira para pixels usando o fator de escala
     const topPosition = props.shelf.shelf_position * props.scaleFactor;
+    const moveStyle = {};
     if (props.shelf?.shelf_x_position !== undefined) {
         const leftPosition = props.shelf.shelf_x_position;
         // Aplicamos a posição sem o sinal negativo para corrigir a direção do movimento
-        return {
-            position: 'absolute' as const,
-            left: `${leftPosition - 4}px`, // CORRIGIDO: Removido o sinal negativo
-            width: `${props.sectionWidth * props.scaleFactor}px`,
-            height: `${props.shelf.shelf_height * props.scaleFactor}px`,
-            top: `${topPosition}px`,
-            zIndex: '1',
-        };
+        moveStyle['left'] = `${leftPosition}px`;
     }
 
     // Retornamos o estilo final com tipagem correta (as CSSProperties)
@@ -92,6 +84,7 @@ const shelfStyle = computed(() => {
         height: `${props.shelf.shelf_height * props.scaleFactor}px`,
         top: `${topPosition}px`,
         zIndex: '1',
+        ...moveStyle,
     };
 });
 
@@ -162,7 +155,6 @@ const controlDeleteShelf = (event: KeyboardEvent) => {
     // Verificar se Ctrl+Delete foi pressionado
     if ((event.key === 'Delete' || event.key === 'Backspace') && event.ctrlKey) {
         event.preventDefault();
-
         shelvesStore.deleteSelectedShelf();
     }
 };
