@@ -9,9 +9,7 @@
             :scale-factor="scaleFactor"
             :section-width="sectionWidth"
             @increase="onIncreaseQuantity"
-            @decrease="onDecreaseQuantity"
-            @spacingIncrease="onSpacingIncrease"
-            @spacingDecrease="onSpacingDecrease"
+            @decrease="onDecreaseQuantity" 
         />
     </div>
 </template>
@@ -114,21 +112,7 @@ const onDecreaseQuantity = (layer: LayerType) => {
         ...props.segment,
         layer,
     });
-};
-// Function to increase spacing
-const onSpacingIncrease = (layer: LayerType) => {
-    productStore.updateLayerSpacing(layer, layer.spacing, {
-        ...props.segment,
-        layer,
-    });
-};
-// Function to decrease spacing
-const onSpacingDecrease = (layer: LayerType) => {
-    productStore.updateLayerSpacing(layer, layer.spacing, {
-        ...props.segment,
-        layer,
-    });
-};
+}; 
 </script>
 
 <style scoped>
