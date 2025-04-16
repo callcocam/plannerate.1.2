@@ -45,19 +45,23 @@
                                             Adicionar prateleira
                                             <ContextMenuShortcut>⌘A</ContextMenuShortcut>
                                         </ContextMenuItem>
+                                        <ContextMenuItem inset @click="inverterModule(section)">
+                                            Inverter ordem
+                                            <ContextMenuShortcut>⌘I</ContextMenuShortcut>
+                                        </ContextMenuItem>  
                                         <ContextMenuSeparator />
                                         <ContextMenuSub>
                                             <ContextMenuSubTrigger inset> Alinhamento </ContextMenuSubTrigger>
                                             <ContextMenuSubContent class="w-48">
-                                                <ContextMenuItem inset>
+                                                <ContextMenuItem inset @click="justifyModule(section, 'left')">
                                                     à esquerda
                                                     <ContextMenuShortcut>⌘⇧L</ContextMenuShortcut>
                                                 </ContextMenuItem>
-                                                <ContextMenuItem inset>
+                                                <ContextMenuItem inset @click="justifyModule(section, 'justify')">
                                                     ao centro
                                                     <ContextMenuShortcut>⌘⇧C</ContextMenuShortcut>
                                                 </ContextMenuItem>
-                                                <ContextMenuItem inset>
+                                                <ContextMenuItem inset @click="justifyModule(section, 'right')">
                                                     à direita
                                                     <ContextMenuShortcut>⌘⇧R</ContextMenuShortcut>
                                                 </ContextMenuItem>
@@ -195,6 +199,13 @@ const addShelf = async (event, section: SectionType) => {
         section_id: section.id,
     });
     event.stopPropagation();
+};
+
+const justifyModule = (section: SectionType, alignment: string) => {
+    sectionStore.justifyProducts(section, alignment);
+};
+const inverterModule = (section: SectionType) => {
+    sectionStore.inverterProducts(section);
 };
 </script>
 

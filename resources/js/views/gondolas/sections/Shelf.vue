@@ -76,6 +76,7 @@ const alignment = computed(() => {
     if (props.shelf?.alignment) {
         return props.shelf?.alignment;
     }
+    console.log('alignment', props.shelf.section?.alignment);
     if (props.shelf?.section?.alignment) {
         return props.shelf?.section?.alignment;
     }

@@ -150,7 +150,7 @@ export const useGondolaStore = defineStore('gondola', {
         */
         updateGondola(gondolaData: any, reload: boolean = false) {
             if (!this.currentGondola || !gondolaData) return;
-
+            console.log("gondolaData", gondolaData);
             this.currentGondola = {
                 ...this.currentGondola,
                 ...gondolaData
@@ -169,7 +169,7 @@ export const useGondolaStore = defineStore('gondola', {
 
             try {
                 // Limpa o estado atual para evitar misturar dados
-                
+
                 // Busca os dados via serviço
                 const response = await gondolaService.updateGondolaAlignment(this.currentGondola.id, alignment);
 

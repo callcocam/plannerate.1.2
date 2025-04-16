@@ -1,6 +1,8 @@
 // store/editor.ts
 import { defineStore } from 'pinia';
 import { Section } from '../types/sections';
+import { useGondolaStore } from './gondola';
+import { useSectionService } from '../services/sectionService';
 
 interface SectionState {
     sections: Array<Section>;
@@ -93,6 +95,33 @@ export const useSectionStore = defineStore('section', {
                     ...updatedSection
                 };
             }
-        }
+        },
+        async justifyProducts(section: Section, alignment: string) {
+            const gondolaStore = useGondolaStore();
+            const { currentGondola } = gondolaStore;
+            console.log("currentGondola", currentGondola);
+            if (!currentGondola) return;
+
+            const sectionService = useSectionService();
+
+
+            const response = await sectionService.updateSectionAlignment(section.id, alignment);
+
+            const sections = response.data;
+            // Atualiza o estado da seção
+            gondolaStore.updateGondola(sections);
+        },
+        async inverterProducts(section: Section) {
+            const sectionService = useSectionService();
+            try {
+                const response = await sectionService.inverterShelves(section.id);
+
+                const invertedSections = response.data;
+
+
+            } catch (error) {
+                console.error('Error inverting products:', error);
+            }
+        },
     }
 });

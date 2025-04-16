@@ -375,7 +375,7 @@ class SectionController extends Controller
             ], 404);
         } catch (Throwable $e) {
             DB::rollBack();
-            Log::error('Erro ao excluir seção', [ 
+            Log::error('Erro ao excluir seção', [
                 'exception' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
@@ -471,7 +471,7 @@ class SectionController extends Controller
             $order = [];
             foreach ($sections as $index => $section) {
                 $section->update(['ordering' =>  $count - $index]);
-                $order[] =$section;
+                $order[] = $section;
             }
         } catch (\Exception $e) {
             return response()->json([
@@ -483,15 +483,93 @@ class SectionController extends Controller
         return response()->json([
             'message' => 'Seções reordenadas com sucesso',
             'data' => SectionResource::collection($gondola->sections()
-            ->with(
-                'shelves',
-                'shelves.segments',
-                'shelves.segments.layer',
-                'shelves.segments.layer.product',
-                'shelves.segments.layer.product.image',
-            )
-            ->orderBy('ordering', 'desc')->get()),
+                ->with(
+                    'shelves',
+                    'shelves.segments',
+                    'shelves.segments.layer',
+                    'shelves.segments.layer.product',
+                    'shelves.segments.layer.product.image',
+                )
+                ->orderBy('ordering', 'desc')->get()),
             'order' => $order,
         ], 200);
+    }
+
+
+    public function alignment(Request $request, Section $section): JsonResponse
+    {
+        $validated = $request->validate([
+            'alignment' => 'required|string|min:1|max:10',
+        ]);
+
+        try {
+
+            $section->update($validated);
+            $gondola = $section->gondola;
+            $data = $gondola->load([
+                'sections',
+                'sections.shelves',
+                'sections.shelves.segments',
+                'sections.shelves.segments.layer',
+                'sections.shelves.segments.layer.product',
+                'sections.shelves.segments.layer.product.image',
+                'sections.shelves.section',
+                'sections.shelves.section.gondola',
+            ]);
+            return response()->json([
+                'message' => 'Alinhamento atualizado com sucesso',
+                'data' => $data,
+                'status' => 'success'
+            ]);
+        } catch (Throwable $e) {
+            Log::error('Erro ao atualizar alinhamento', [
+                'section_id' => $section->id,
+                'exception' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'message' => 'Ocorreu um erro ao atualizar o alinhamento',
+                'status' => 'error'
+            ], 500);
+        }
+    }
+
+    public function inverterShelves(Section $section): JsonResponse
+    {
+
+        try {
+            $shelves = $section->shelves;
+            $count = $shelves->count();
+            foreach ($shelves as $index => $shelf) {
+                $shelf->update(['ordering' =>  $count - $index]);
+            }
+            return response()->json([
+                'message' => 'Inversão de produtos atualizada com sucesso',
+                'status' => 'success',
+                'data' => new SectionResource($section->load([
+                    'shelves',
+                    'shelves.segments',
+                    'shelves.segments.layer',
+                    'shelves.segments.layer.product',
+                    'shelves.segments.layer.product.image',
+                    'shelves.section',
+                    'shelves.section.gondola',
+                ]))
+            ]);
+        } catch (Throwable $e) {
+            Log::error('Erro ao inverter produtos', [
+                'section_id' => $section->id,
+                'exception' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'message' => $e->getMessage(),
+                'status' => 'error'
+            ], 500);
+        }
     }
 }

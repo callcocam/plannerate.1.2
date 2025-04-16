@@ -22,14 +22,20 @@ Route::middleware(['api', 'auth:sanctum'])
 
         Route::post('gondolas/{gondola}/scaleFactor', [GondolaController::class, 'scaleFactor'])
             ->name('gondolas.scaleFactor');
-            
+
         Route::post('gondolas/{gondola}/alignment', [GondolaController::class, 'alignment'])
             ->name('gondolas.alignment');
 
         Route::resource('sections', SectionController::class);
+
         Route::post('sections/{gondola}/shelves/reorder', [SectionController::class, 'updateInvertOrder'])
             ->name('sections.updateInvertOrder');
 
+        Route::post('sections/{section}/alignment', [SectionController::class, 'alignment'])
+            ->name('sections.alignment');
+
+        Route::post('sections/{section}/inverterShelves', [SectionController::class, 'inverterShelves'])
+            ->name('sections.inverterShelves');
 
         Route::resource('shelves', ShelfController::class)
             ->only(['index', 'show', 'store', 'update', 'destroy']);
@@ -37,6 +43,7 @@ Route::middleware(['api', 'auth:sanctum'])
         // Rota para excluir prateleira pelo GondolaController
         Route::delete('gondolas/shelves/{id}', [GondolaController::class, 'destroyShelf'])
             ->name('gondolas.shelves.destroy');
+
 
         Route::resource('segments', SegmentController::class)
             ->only(['index', 'show', 'store', 'update', 'destroy']);
