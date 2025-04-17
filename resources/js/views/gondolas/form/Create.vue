@@ -120,22 +120,22 @@ import { useRoute, useRouter } from 'vue-router';
 // Internal Services & Stores Imports 
 
 // Composables
-import { useWizard } from '../../composables/useWizard';
-import { useGondolaCreateForm } from '../../composables/useGondolaCreateForm';
+import { useWizard } from '@plannerate/composables/useWizard';
+import { useGondolaCreateForm } from '@plannerate/composables/useGondolaCreateForm';
 
 // Type Imports 
 
 // UI Components Imports
-import DialogPersonaCloseContent from './../../components/ui/dialog/DialogPersonaCloseContent.vue';
-import { useToast } from './../../components/ui/toast';
+import DialogPersonaCloseContent from '@plannerate/components/ui/dialog/DialogPersonaCloseContent.vue';
+import { useToast } from '@plannerate/components/ui/toast';
 
 // Dynamic/Async Import of Step Components for Optimization
-const StepGondola = defineAsyncComponent(() => import('./partials/modal/StepGondola.vue'));
-const StepModule = defineAsyncComponent(() => import('./partials/modal/StepModule.vue'));
-const StepBase = defineAsyncComponent(() => import('./partials/modal/StepBase.vue'));
-const StepCremalheira = defineAsyncComponent(() => import('./partials/modal/StepCremalheira.vue'));
-const StepShelves = defineAsyncComponent(() => import('./partials/modal/StepShelves.vue'));
-const StepReview = defineAsyncComponent(() => import('./partials/modal/StepReview.vue'));
+const StepGondola = defineAsyncComponent(() => import('@plannerate/views/gondolas/form/modal/StepGondola.vue'));
+const StepModule = defineAsyncComponent(() => import('@plannerate/views/gondolas/form/modal/StepModule.vue'));
+const StepBase = defineAsyncComponent(() => import('@plannerate/views/gondolas/form/modal/StepBase.vue'));
+const StepCremalheira = defineAsyncComponent(() => import('@plannerate/views/gondolas/form/modal/StepCremalheira.vue'));
+const StepShelves = defineAsyncComponent(() => import('@plannerate/views/gondolas/form/modal/StepShelves.vue'));
+const StepReview = defineAsyncComponent(() => import('@plannerate/views/gondolas/form/modal/StepReview.vue'));
 
 // Component Props Definition
 /**

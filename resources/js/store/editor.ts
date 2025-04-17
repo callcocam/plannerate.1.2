@@ -1,12 +1,13 @@
 import { defineStore } from 'pinia';
 import { ref, computed, watch } from 'vue';
 import { isEqual } from 'lodash-es'; // Usaremos lodash para comparações profundas
+import type { Gondola } from '@plannerate/types/gondola'; // Ajustar path se necessário
 
 // Interface para representar o estado do planograma (pode ser mais detalhada)
 interface PlanogramState {
     id: string | null;
-    name: string | null; 
-    gondolas: any[]; // Detalhar este tipo depois
+    name: string | null;
+    gondolas: Gondola[]; // Usar o tipo Gondola importado
     // Outras propriedades do planograma
 }
 
@@ -62,31 +63,14 @@ export const useEditorStore = defineStore('editor', () => {
      * Esta função deve ser chamada APÓS cada mutação significativa no currentState.
      */
     function recordChange() {
-        if (isTimeTraveling.value) return; // Não gravar se estiver navegando no histórico
-        if (!currentState.value) return;
-
+        if (isTimeTraveling.value || !currentState.value) return;
         const newState = JSON.parse(JSON.stringify(currentState.value));
-
-        // Se o estado atual for igual ao último estado no histórico, não faz nada
-        if (historyIndex.value >= 0 && isEqual(newState, history.value[historyIndex.value].state)) {
-            return;
-        }
-
-        // Remove futuros estados se estivermos desfazendo e fizemos uma nova alteração
+        if (historyIndex.value >= 0 && isEqual(newState, history.value[historyIndex.value].state)) return;
         if (historyIndex.value < history.value.length - 1) {
             history.value.splice(historyIndex.value + 1);
         }
-
-        // Adiciona o novo estado ao histórico
         history.value.push({ timestamp: Date.now(), state: newState });
         historyIndex.value = history.value.length - 1;
-
-        // Limitar o tamanho do histórico (opcional)
-        // const MAX_HISTORY = 50;
-        // if (history.value.length > MAX_HISTORY) {
-        //     history.value.shift();
-        //     historyIndex.value--;
-        // }
     }
 
     /**
@@ -143,6 +127,22 @@ export const useEditorStore = defineStore('editor', () => {
         return currentState.value?.gondolas.find((gondola: any) => gondola.id === gondolaId);
     }
 
+    /**
+     * Adiciona uma nova gôndola ao estado atual.
+     * @param newGondola - O objeto da nova gôndola retornada pela API.
+     */
+    function addGondola(newGondola: Gondola) {
+        if (currentState.value) {
+            // Garante que o array gondolas existe
+            if (!Array.isArray(currentState.value.gondolas)) {
+                currentState.value.gondolas = [];
+            }
+            currentState.value.gondolas.push(newGondola);
+            recordChange(); // Registra a adição como uma mudança
+            console.log('Gondola added to store:', newGondola);
+        }
+    }
+
     // Adicione aqui mais ações para manipular gondolas, seções, prateleiras, etc.
     // Ex: addGondola, updateSection, removeShelf, addProductToLayer...
     // Cada uma dessas ações deve modificar `currentState.value` e chamar `recordChange()`
@@ -172,6 +172,7 @@ export const useEditorStore = defineStore('editor', () => {
         saveChanges,
         updatePlanogramProperty,
         getGondola,
+        addGondola, // Expor a nova action
         // Expor outras actions aqui
     };
 });

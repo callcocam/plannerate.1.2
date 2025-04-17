@@ -5,10 +5,11 @@
         <div class="flex items-center justify-between">
             <div class="space-y-1">
                 <div class="flex items-center gap-2">
-                    <h2 class="text-2xl font-bold tracking-tight dark:text-gray-100">{{ planogram.name }}</h2>
+                    <h2 class="text-2xl font-bold tracking-tight dark:text-gray-100">{{ editorStore.currentState?.name || planogram.name }}</h2>
                     <Badge :variant="getStatusVariant(planogram.status)">
                         {{ planogram.status }}
                     </Badge>
+                    <span v-if="editorStore.hasChanges" class="ml-2 text-xs text-yellow-600 dark:text-yellow-400">(Não salvo)</span>
                 </div>
                 <p class="text-sm text-muted-foreground dark:text-gray-400">
                     ID: {{ planogram.id }} | Criado em: {{ formatDate(planogram.created_at) }}
@@ -16,6 +17,27 @@
             </div>
 
             <div class="flex items-center gap-2">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    @click="editorStore.undo"
+                    :disabled="!editorStore.canUndo"
+                    class="dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 disabled:opacity-50"
+                >
+                    <Undo2Icon class="mr-2 h-4 w-4" />
+                    Desfazer
+                </Button>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    @click="editorStore.redo"
+                    :disabled="!editorStore.canRedo"
+                    class="dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 disabled:opacity-50"
+                >
+                    <Redo2Icon class="mr-2 h-4 w-4" />
+                    Refazer
+                </Button>
+                <div class="h-6 w-px bg-gray-300 dark:bg-gray-600 mx-2"></div>
                 <Button
                     variant="outline"
                     size="sm"
@@ -29,7 +51,13 @@
                     <PencilIcon class="mr-2 h-4 w-4" />
                     Editar
                 </Button>
-                <Button size="sm" class="dark:hover:bg-primary-800">
+                <Button 
+                    size="sm" 
+                    @click="editorStore.saveChanges"
+                    :disabled="!editorStore.hasChanges" 
+                    class="dark:hover:bg-primary-800 disabled:opacity-50"
+                    :variant="editorStore.hasChanges ? 'default' : 'outline'"
+                >
                     <SaveIcon class="mr-2 h-4 w-4" />
                     Salvar
                 </Button>
@@ -69,22 +97,24 @@
 </template>
 
 <script setup lang="ts">
-import { PencilIcon, PlusCircleIcon, SaveIcon } from 'lucide-vue-next';
+import { PencilIcon, PlusCircleIcon, SaveIcon, Undo2Icon, Redo2Icon } from 'lucide-vue-next';
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router'; 
+import { useEditorStore } from '@plannerate/store/editor';
 
 const router = useRouter();
 const route = useRoute();
+const editorStore = useEditorStore();
 
 // Props para receber os dados do planograma do Inertia
- defineProps({
+const props = defineProps({
     planogram: {
         type: Object,
         required: true,
     },
 }); 
 
-const gondolaId = computed(() => route.params.id);
+const planogramId = computed(() => props.planogram?.id || route.params.id);
 
 // Emitir eventos para o componente pai
 const emit = defineEmits(['close', 'gondola-added']);
@@ -92,14 +122,9 @@ const emit = defineEmits(['close', 'gondola-added']);
 
 // Função para abrir o modal de adicionar gôndola
 const openAddGondolaModal = () => {
-    const query = {
-        ...route.query,
-    };
-    console.log('query', route.params);
     router.push({
         name: 'plannerate.gondola.create',
-        params: { id: gondolaId.value },
-        query,
+        params: { id: planogramId.value },
     });
 };
 

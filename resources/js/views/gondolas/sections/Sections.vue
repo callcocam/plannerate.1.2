@@ -34,7 +34,6 @@
                     </div>
                 </template>
             </draggable>
-
             <div v-if="lastSectionData" class="flex items-center">
                 <Cremalheira
                     :section="lastSectionData"
