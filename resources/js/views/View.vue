@@ -1,42 +1,35 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import Gondolas from './gondolas/Gondolas.vue'; 
-import Products from './partials/sidebar/Products.vue';
-import Properties from './partials/sidebar/Properties.vue'; 
-import PlannerateHeader from './partials/Header.vue';
+import { computed, watch, onMounted } from 'vue';
+import { useRoute } from 'vue-router';
+import Gondolas from '@plannerate/views/gondolas/Gondolas.vue'; 
+import Products from '@plannerate/views/partials/sidebar/Products.vue';
+import Properties from '@plannerate/views/partials/sidebar/Properties.vue'; 
+import PlannerateHeader from '@plannerate/views/partials/Header.vue';
+import { useEditorStore } from '@plannerate/store/editor';
+import { useEditorService } from '@plannerate/services/editorService'; 
+const route = useRoute() as any; 
+const editorService = useEditorService();
+const editorStore = useEditorStore(); 
 
-const props = defineProps({
-    id: {
-        type: String,
-        required: true
-    },
-    gondolaId: {
-        type: String,
-        required: true
-    },
-    record: {
-        type: Object,
-        default: () => null,
-    },
-});
-
-const router = useRouter();
-const route = useRoute();
-
-const planogramData = ref<any>(props.record);
-const currentGondolaId = ref(props.gondolaId);
-
-// Monitora mudanças na rota para atualizar o ID da gondola
-watch(() => route.params.gondolaId, (newGondolaId) => {
-    if (newGondolaId && newGondolaId !== currentGondolaId.value) {
-        currentGondolaId.value = newGondolaId as string;
+// Observa a prop 'record' para inicializar/atualizar o store
+watch(() => route.params, async (newRecord) => {
+    if (newRecord && newRecord.id) {
+        if (!editorStore.currentState || editorStore.currentState.id !== newRecord.id) {
+            const response = await editorService.fetchPlanogram(newRecord.id);
+            editorStore.initialize(response.data);
+            console.log('Editor store initialized with ID:', newRecord.id);
+        }
     }
-}, { immediate: true });
+}, { immediate: true, deep: true });
 
-// Garantir que os dados do planograma permaneçam consistentes
-const gondolas = computed(() => {
-    return planogramData.value?.gondolas || [];
+// Usa o estado do store diretamente
+const planogramData = computed(() => editorStore.currentState); 
+ 
+
+onMounted(async () => {
+    const response = await editorService.fetchPlanogram(route.params.id);
+    editorStore.initialize(response.data);
+
 });
 </script>
 
@@ -45,14 +38,15 @@ const gondolas = computed(() => {
         <PlannerateHeader :planogram="planogramData" />
         <div>
             <div class="flex h-full w-full gap-6 overflow-hidden">
-                <!-- Barra lateral esquerda com componente Products separado -->
                 <Products />
-                <!-- Área central rolável (vertical e horizontal) -->
                 <div class="flex h-full w-full flex-col gap-6 overflow-x-auto overflow-y-auto"> 
                     <Gondolas :record="planogramData"/>
                 </div>
                 <Properties />
             </div>
         </div>
+    </div>
+    <div v-else class="flex h-64 items-center justify-center">
+        <p>Carregando dados do planograma...</p>
     </div>
 </template>

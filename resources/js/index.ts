@@ -36,17 +36,17 @@ const pinia = createPinia();
 const install = (app: App, options: PluginOptions = {}): void => {
     // Registro de componentes globais
     registerMainComponents(app);
-    
+
     // Registro automático de componentes UI
     registerUIComponents(app);
-    
+    console.log('plannerate');
     // Configuração de plugins
     app.use(router);
     app.use(pinia);
-    
+
     // Configuração global
     app.config.globalProperties.$plannerate = options;
-    
+
     // Configuração de injeção para acesso em componentes
     app.provide('plannerateOptions', options);
 }
@@ -66,14 +66,14 @@ const registerMainComponents = (app: App): void => {
  */
 const registerUIComponents = (app: App): void => {
     const componentRegistry: string[] = [];
-    
+
     // Importação de componentes UI usando glob do Vite
     Object.entries<{ default: Component }>(
         import.meta.glob<{ default: Component }>('./components/ui/**/*.vue', { eager: true })
     ).forEach(([path, definition]) => {
         const componentFileName = path.split('/').pop() || '';
         const originalName = componentFileName.replace(/\.\w+$/, '');
-        
+
         if (componentRegistry.indexOf(originalName) === -1) {
             app.component(originalName, definition.default);
             componentRegistry.push(originalName);

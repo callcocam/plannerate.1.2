@@ -23,11 +23,13 @@
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
+    "lodash-es": "^4.17.21",
     "pinia": "^2.1.0",
     "vue": "^3.3.0",
     "vue-router": "^4.2.0"
   },
   "devDependencies": {
+    "@types/lodash-es": "^4.17.7",
     "@types/node": "^20.2.5",
     "@vitejs/plugin-vue": "^4.2.3",
     "autoprefixer": "^10.4.14",

@@ -8,16 +8,11 @@
 
 namespace Callcocam\Plannerate\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
-use Callcocam\Plannerate\Facades\Plannerate;
-use Callcocam\Plannerate\Http\Requests\Planogram\StorePlanogramRequest;
-use Callcocam\Plannerate\Http\Requests\Planogram\UpdatePlanogramRequest;
+use App\Http\Controllers\Controller; 
 use Callcocam\Plannerate\Http\Resources\PlanogramResource;
 use Callcocam\Plannerate\Models\Planogram;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Http\JsonResponse; 
 use Illuminate\Support\Facades\Log;
 use Throwable;
 

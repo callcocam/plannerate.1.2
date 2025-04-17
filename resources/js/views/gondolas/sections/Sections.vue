@@ -51,18 +51,14 @@
 <script setup lang="ts">
 import { MoveIcon } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
-import Cremalheira from './Cremalheira.vue';
-import Section from './Section.vue';
-// @ts-ignore
-import { Button } from '@/components/ui/button';
-// @ts-ignore
+import Cremalheira from '@plannerate/views/gondolas/sections/Cremalheira.vue';
+import Section from '@plannerate/views/gondolas/sections/Section.vue'; 
+
 // import {VueDraggableNext } from 'vue-draggable-next'
 import draggable from 'vuedraggable';
-import { apiService } from '../../../services';
-import { useEditorStore } from '../../../store/editor-old';
-import { useGondolaStore } from '../../../store/gondola';
-import { useSectionStore } from '../../../store/section';
-import { useShelvesStore } from '../../../store/shelves';
+import { apiService } from '@plannerate/services'; 
+import { useGondolaStore } from '@plannerate/store/gondola';
+import { useSectionStore } from '@plannerate/store/section'; 
 
 interface Category {
     id: string | number;
@@ -74,19 +70,21 @@ const props = defineProps({
         type: Object as () => Category | null,
         default: null,
     },
+    scaleFactor: {
+        type: Number,
+        default: 3,
+    },
 });
 
 const sectionsContainer = ref<HTMLElement | null>(null);
 
 const emit = defineEmits(['sections-reordered', 'shelves-updated', 'move-shelf-to-section', 'segment-select']);
-
-const editorStore = useEditorStore();
+ 
 const gondolaStore = useGondolaStore();
-const sectionStore = useSectionStore();
-const shelvesStore = useShelvesStore();
+const sectionStore = useSectionStore(); 
 
 const scaleFactor = computed(() => {
-    return editorStore.scaleFactor;
+    return props.scaleFactor;
 });
 
 const gondolaSections = computed(() => gondolaStore.currentGondola?.sections || []);

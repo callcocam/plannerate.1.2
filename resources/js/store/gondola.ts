@@ -1,6 +1,7 @@
 // store/gondola.ts
 import { defineStore } from 'pinia';
 import { useGondolaService } from '../services/gondolaService';
+import { useEditorStore } from './editor';
 
 interface GondolaState {
     currentGondola: any | null;
@@ -11,6 +12,7 @@ interface GondolaState {
     productIdsInGondola: string[];
     isLoading: boolean;
     error: string | null;
+    scaleFactor: number;
 }
 
 export const useGondolaStore = defineStore('gondola', {
@@ -22,7 +24,8 @@ export const useGondolaStore = defineStore('gondola', {
         notInGondola: null,
         productIdsInGondola: [],
         isLoading: false,
-        error: null
+        error: null,
+        scaleFactor: 3
     }),
 
     getters: {
@@ -37,6 +40,9 @@ export const useGondolaStore = defineStore('gondola', {
             if (!gondolaId) return;
 
             const gondolaService = useGondolaService();
+            const editorStore = useEditorStore();
+            const gondola = editorStore.getGondola(gondolaId);
+            console.log('gondola', gondola);
             this.isLoading = true;
             this.error = null;
 
@@ -71,6 +77,9 @@ export const useGondolaStore = defineStore('gondola', {
          */
         setCurrentShelf(shelf: any) {
             this.currentShelf = shelf;
+        },
+        setScaleFactor(scaleFactor: number) {
+            this.scaleFactor = scaleFactor;
         },
 
         /**
@@ -127,7 +136,8 @@ export const useGondolaStore = defineStore('gondola', {
             });
 
             const finalIds = Array.from(productIds);
-            this.productIdsInGondola = finalIds;
+            console.log('finalIds', finalIds);
+            // this.productIdsInGondola = finalIds;
 
             return finalIds;
         },

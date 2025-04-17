@@ -4,7 +4,7 @@ import NotFound from '../views/NotFound.vue';
 // Define your routes
 const routes: Array<RouteRecordRaw> = [
     {
-        path: '/plannerate/show/:id',
+        path: '/plannerate/editor/:id',
         name: 'plannerate.home',
         component: () => import('../views/Home.vue'),
         props: true,

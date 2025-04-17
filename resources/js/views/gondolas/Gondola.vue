@@ -36,19 +36,18 @@ import { computed, onMounted, ref, watch } from 'vue'; // Adicionado watch
 import { useRoute } from 'vue-router';
 
 // Imports Internos
-// Removido apiService daqui, pois a chamada está no store
-import { useEditorStore } from '../../store/editor-old';
-import { useGondolaStore } from '../../store/gondola'; // Importar o novo store
-import Info from './partials/Info.vue';
-import Sections from './sections/Sections.vue';
+// Removido apiService daqui, pois a chamada está no store 
+import { useGondolaStore } from '@plannerate/store/gondola'; // Importar o novo store
+import Info from '@plannerate/views/gondolas/partials/Info.vue';
+import Sections from '@plannerate/views/gondolas/sections/Sections.vue';
 
 // Hooks e Stores
-const route = useRoute();
-const editorStore = useEditorStore();
+const route = useRoute(); 
 const gondolaStore = useGondolaStore(); // Instanciar o gondola store
+ 
 
 // Computeds (para props que não vêm do gondolaStore)
-const scaleFactor = computed(() => editorStore.scaleFactor);
+const scaleFactor = 3;
 
 // Estado Reativo (apenas ID da rota)
 const gondolaId = ref<string>(route.params.gondolaId as string);
@@ -56,7 +55,7 @@ const gondolaId = ref<string>(route.params.gondolaId as string);
 const gondola = computed(() => {
     const gondola = gondolaStore.currentGondola;
     if (!gondola) return null;
-    editorStore.setScaleFactor(gondola.scale_factor); // Atualiza o scaleFactor no editorStore
+    gondolaStore.setScaleFactor(gondola.scale_factor); // Atualiza o scaleFactor no editorStore
     return gondola;
 });
 

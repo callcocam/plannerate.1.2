@@ -14,8 +14,8 @@ export default defineConfig({
     }),
   ],
   resolve: {
-    alias: {
-      '@': resolve(__dirname, 'resources/js'),
+    alias: { 
+      '@plannerate/': resolve(__dirname, 'resources/js/'),
     },
   },
   build: {

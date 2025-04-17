@@ -5,27 +5,27 @@ export const useEditorService = () => {
   /**
    * Atualiza o fator de escala de uma gôndola
    */
-  const updateScaleFactor = (gondolaId: string, scaleFactor: number) => {
-    return apiService.post(`/gondolas/${gondolaId}/scaleFactor`, { scale_factor: scaleFactor });
+  const updateScaleFactor = (planogramId: string, scaleFactor: number) => {
+    return apiService.post(`/plannerate/${planogramId}/scaleFactor`, { scale_factor: scaleFactor });
   };
 
   /**
    * Salva o conteúdo do editor
    */
-  const saveContent = (gondolaId: string, content: string) => {
-    return apiService.post(`/gondolas/${gondolaId}/content`, { content });
+  const saveContent = (planogramId: string, content: string) => {
+    return apiService.post(`/plannerate/${planogramId}/content`, { content });
   };
 
   /**
-   * Carrega as gôndolas disponíveis
+   * Carrega o planograma
    */
-  const fetchGondolas = () => {
-    return apiService.get('/gondolas');
+  const fetchPlanogram = (planogramId: string) => {
+    return apiService.get(`/plannerate/${planogramId}`);
   };
 
   return {
     updateScaleFactor,
     saveContent,
-    fetchGondolas
+    fetchPlanogram
   };
 };
