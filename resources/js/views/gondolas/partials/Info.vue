@@ -15,10 +15,10 @@ import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 // Imports Internos
-import { apiService } from '../../../services';
-import { useEditorStore } from '../../../store/editor-old';
-import { useGondolaStore } from '../../../store/gondola'; // Importar o store da gôndola
-import { useShelvesStore } from '../../../store/shelves';
+import { apiService } from '@plannerate/services';
+import { useEditorStore } from '@plannerate/store/editor';
+import { useGondolaStore } from '@plannerate/store/gondola'; // Importar o store da gôndola
+import { useShelvesStore } from '@plannerate/store/shelves';
 import Category from './Category.vue'; // Assumindo que Category e Popover estão corretos
 import Popover from './Popover.vue';
 
@@ -43,10 +43,10 @@ defineProps({
 const emit = defineEmits(['update:invertOrder', 'update:category']);
 
 // Hooks e Stores
-const router = useRouter();
-const editorStore = useEditorStore();
-const gondolaStore = useGondolaStore(); // Usar o store da gôndola
+const router = useRouter(); 
+const gondolaStore = useGondolaStore();
 const shelvesStore = useShelvesStore();
+const editorStore = useEditorStore(); // Instanciar editorStore
 
 // Estado Local
 /** Filtros aplicados localmente (ex: categoria). */
@@ -56,9 +56,9 @@ const filters = ref({
 
 // Propriedades Computadas (Ligadas aos Stores)
 /** Fator de escala atual do editor. */
-const scaleFactor = computed(() => editorStore.scaleFactor);
+const scaleFactor = computed(() => editorStore.currentScaleFactor);
 /** Visibilidade da grade no editor. */
-const showGrid = computed(() => editorStore.showGrid);
+const showGrid = computed(() => editorStore.isGridVisible);
 /** Gôndola atual do store. */
 const currentGondola = computed(() => gondolaStore.currentGondola);
 /** Seções da gôndola atual (do store). */
@@ -74,12 +74,10 @@ const shelfSelected = computed(() => {
  * Atualiza o fator de escala no store.
  * @param {number} newScale - O novo valor da escala.
  */
-const updateScale = (newScale: number) => {
-    editorStore.setGondolaId(currentGondola.value?.id); // Atualiza o ID da gôndola no store
-    // Adiciona validação de limites se necessário, embora os botões já tenham :disabled
+const updateScale = (newScale: number) => { 
     const clampedScale = Math.max(2, Math.min(10, newScale));
-    // Atualiza a escala da gôndola no store
-    editorStore.updateScaleFactor(clampedScale);
+    // Atualiza a escala no editorStore
+    editorStore.setScaleFactor(clampedScale);
 };
 
 /** Alterna a visibilidade da grade no store. */
@@ -90,11 +88,16 @@ const toggleGrid = () => {
 /** Emite evento para inverter a ordem das seções da gôndola pai. */
 const invertSectionOrder = () => {
     // Adiciona verificação se a gôndola existe
-    if (currentGondola.value) {
-        apiService.post(`sections/${currentGondola.value.id}/shelves/reorder`).then((response) => {
-            // Emitir evento para o componente pai (Sections) lidar com a atualização
-            gondolaStore.invertSectionOrder(response.data);
-        });
+    if (currentGondola.value?.id) { // Verifica se currentGondola e seu ID existem
+        // Chama a action do editorStore para inverter a ordem no estado
+        editorStore.invertGondolaSectionOrder(currentGondola.value.id);
+        // REMOVIDO: Chamada API direta
+        // apiService.post(`sections/${currentGondola.value.id}/shelves/reorder`).then((response) => {
+        //     // REMOVIDO: Chamada ao gondolaStore
+        //     // gondolaStore.invertSectionOrder(response.data);
+        // });
+    } else {
+        console.warn('Não é possível inverter a ordem: Gôndola atual não definida.');
     }
 };
 
@@ -250,35 +253,33 @@ const justifyProducts = async (alignment: string) => {
                                 type="button"
                                 variant="outline"
                                 size="icon"
-                                @click="updateScale(scaleFactor - 1)"
-                                class="h-8 w-8 !p-1 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-                                :disabled="scaleFactor <= 2"
+                                :disabled="scaleFactor <= 2"  
+                                @click="updateScale(scaleFactor - 1)" 
                             >
                                 <Minus class="h-4 w-4" />
                             </Button>
-                            <span class="w-8 text-center text-sm font-medium text-gray-700 dark:text-gray-300">{{ scaleFactor }}x</span>
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                {{ scaleFactor }}x
+                            </span>
                             <Button
                                 type="button"
                                 variant="outline"
                                 size="icon"
-                                @click="updateScale(scaleFactor + 1)"
-                                class="h-8 w-8 !p-1 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-                                :disabled="scaleFactor >= 10"
+                                :disabled="scaleFactor >= 10" 
+                                @click="updateScale(scaleFactor + 1)" 
                             >
                                 <Plus class="h-4 w-4" />
                             </Button>
                         </div>
                     </div>
 
-                    <!-- Botão de Toggle Grid -->
+                    <!-- Botão de Grade -->
                     <Button
                         type="button"
                         variant="outline"
                         size="icon"
-                        @click="toggleGrid()"
-                        class="ml-4 h-8 w-8 !p-1 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-                        :class="{ 'bg-gray-100 dark:bg-gray-700': showGrid }"
-                        aria-label="Mostrar/Esconder Grade"
+                        @click="toggleGrid"
+                        :class="{ 'bg-accent text-accent-foreground': showGrid }" 
                     >
                         <Grid class="h-4 w-4" />
                     </Button>

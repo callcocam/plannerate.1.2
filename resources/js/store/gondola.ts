@@ -6,26 +6,20 @@ import { useEditorStore } from './editor';
 interface GondolaState {
     currentGondola: any | null;
     currentSection: any | null;
-    currentShelf: any | null;
-    currentProduct: any | null;
     notInGondola: any | null;
     productIdsInGondola: string[];
     isLoading: boolean;
     error: string | null;
-    scaleFactor: number;
 }
 
 export const useGondolaStore = defineStore('gondola', {
     state: (): GondolaState => ({
         currentGondola: null,
         currentSection: null,
-        currentShelf: null,
-        currentProduct: null,
         notInGondola: null,
         productIdsInGondola: [],
         isLoading: false,
         error: null,
-        scaleFactor: 3
     }),
 
     getters: {
@@ -70,16 +64,6 @@ export const useGondolaStore = defineStore('gondola', {
          */
         setCurrentSection(section: any) {
             this.currentSection = section;
-        },
-
-        /**
-         * Seta a prateleira atual
-         */
-        setCurrentShelf(shelf: any) {
-            this.currentShelf = shelf;
-        },
-        setScaleFactor(scaleFactor: number) {
-            this.scaleFactor = scaleFactor;
         },
 
         /**
@@ -159,7 +143,7 @@ export const useGondolaStore = defineStore('gondola', {
         * Atualiza os dados de uma gôndola
         */
         updateGondola(gondolaData: any, reload: boolean = false) {
-            if (!this.currentGondola || !gondolaData) return; 
+            if (!this.currentGondola || !gondolaData) return;
             this.currentGondola = {
                 ...this.currentGondola,
                 ...gondolaData

@@ -38,47 +38,54 @@ import { useRoute } from 'vue-router';
 // Imports Internos
 // Removido apiService daqui, pois a chamada está no store 
 import { useGondolaStore } from '@plannerate/store/gondola'; // Importar o novo store
+import { useEditorStore } from '@plannerate/store/editor'; // <-- Importar editorStore
 import Info from '@plannerate/views/gondolas/partials/Info.vue';
 import Sections from '@plannerate/views/gondolas/sections/Sections.vue';
 
 // Hooks e Stores
 const route = useRoute(); 
-const gondolaStore = useGondolaStore(); // Instanciar o gondola store
+const gondolaStore = useGondolaStore();
+const editorStore = useEditorStore(); // <-- Instanciar editorStore
  
 
-// Computeds (para props que não vêm do gondolaStore)
-const scaleFactor = 3;
+// Computeds
+const scaleFactor = computed(() => editorStore.currentScaleFactor); // <-- Ler do editorStore
 
 // Estado Reativo (apenas ID da rota)
 const gondolaId = ref<string>(route.params.gondolaId as string);
 
-const gondola = computed(() => {
-    const gondola = gondolaStore.currentGondola;
-    if (!gondola) return null;
-    gondolaStore.setScaleFactor(gondola.scale_factor); // Atualiza o scaleFactor no editorStore
-    return gondola;
-});
+// A computed `gondola` apenas retorna o valor do store
+const gondola = computed(() => gondolaStore.currentGondola);
 
 // Hook de Ciclo de Vida
 /** Ao montar o componente, chama a ação fetchGondola do store. */
 onMounted(async () => {
-    // Chamar a ação do store para buscar os dados
     await gondolaStore.fetchGondola(gondolaId.value);
+    // Opcional: Se você realmente precisa definir a escala inicial 
+    // baseada na gôndola carregada, faça APÓS o fetch e use o editorStore:
+    // if (gondolaStore.currentGondola?.scale_factor) {
+    //     editorStore.setScaleFactor(gondolaStore.currentGondola.scale_factor);
+    // }
 });
 
 // Watcher para o ID da rota (se gondolaId puder mudar)
 watch(
     () => route.params.gondolaId,
-    (newId) => {
+    async (newId) => { // Adicionado async
         if (newId && typeof newId === 'string') {
             gondolaId.value = newId;
-            // Limpa a gôndola antiga e busca a nova
-            // gondolaStore.clearGondola(); // Opcional: fetchGondola já limpa
-            gondolaStore.fetchGondola(newId);
+            await gondolaStore.fetchGondola(newId);
+            // Opcional: Resetar escala ao mudar de gôndola?
+            // if (gondolaStore.currentGondola?.scale_factor) {
+            //     editorStore.setScaleFactor(gondolaStore.currentGondola.scale_factor);
+            // } else {
+            //     // Definir um padrão se a nova gôndola não tiver escala
+            //     editorStore.setScaleFactor(3); 
+            // }
         }
     },
     { immediate: false },
-); // immediate: false para não rodar na montagem inicial (já coberto pelo onMounted)
+);
 
 // Limpar store ao desmontar (opcional, depende se quer manter ao navegar para trás)
 // import { onUnmounted } from 'vue';
