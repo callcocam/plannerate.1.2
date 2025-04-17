@@ -14,7 +14,10 @@ const routes: Array<RouteRecordRaw> = [
                 path: '',
                 name: 'plannerate.index',
                 component: () => import('../views/Create.vue'),
-                props: true,
+                props: route => ({ 
+                    id: route.params.id,
+                    record: route.params.record 
+                }),
                 children: [
                     {
                         path: 'criar',
@@ -27,9 +30,8 @@ const routes: Array<RouteRecordRaw> = [
             {
                 path: 'gondola/:gondolaId',
                 name: 'gondola.view',
-                component: () => import('../views/View.vue'),
-                props: true,
-                redirect: { name: 'plannerate.gondola.view' },
+                component: () => import('../views/View.vue'), 
+                redirect: { name: 'plannerate.gondola.view' },  
                 children: [
                     { 
                         path: '',
@@ -61,19 +63,11 @@ const routes: Array<RouteRecordRaw> = [
 // Create the router instance
 const router = createRouter({
     history: createWebHistory(),
-    routes
+    routes,
+    // Usar algoritmo de correspondência de rotas mais preciso
+    strict: true,
+    
 });
-
-// Navegação global para gerenciar a lógica de gondolas
-router.beforeEach((to, from, next) => {
-    // Se estamos em uma rota com planograma mas não especificamos gondola
-    if (to.name === 'plannerate.index' && to.params.id) {
-        // A lógica de verificação e redirecionamento está no componente Create.vue
-        // Isso permite carregamento inicial mais rápido
-        next();
-    } else {
-        next();
-    }
-});
+ 
 
 export default router;

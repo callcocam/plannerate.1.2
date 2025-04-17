@@ -59,7 +59,7 @@ import { Button } from '@/components/ui/button';
 // import {VueDraggableNext } from 'vue-draggable-next'
 import draggable from 'vuedraggable';
 import { apiService } from '../../../services';
-import { useEditorStore } from '../../../store/editor';
+import { useEditorStore } from '../../../store/editor-old';
 import { useGondolaStore } from '../../../store/gondola';
 import { useSectionStore } from '../../../store/section';
 import { useShelvesStore } from '../../../store/shelves';

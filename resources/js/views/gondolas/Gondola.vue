@@ -37,7 +37,7 @@ import { useRoute } from 'vue-router';
 
 // Imports Internos
 // Removido apiService daqui, pois a chamada está no store
-import { useEditorStore } from '../../store/editor';
+import { useEditorStore } from '../../store/editor-old';
 import { useGondolaStore } from '../../store/gondola'; // Importar o novo store
 import Info from './partials/Info.vue';
 import Sections from './sections/Sections.vue';

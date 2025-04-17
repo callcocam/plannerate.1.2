@@ -16,7 +16,7 @@ import { useRouter } from 'vue-router';
 
 // Imports Internos
 import { apiService } from '../../../services';
-import { useEditorStore } from '../../../store/editor';
+import { useEditorStore } from '../../../store/editor-old';
 import { useGondolaStore } from '../../../store/gondola'; // Importar o store da gôndola
 import { useShelvesStore } from '../../../store/shelves';
 import Category from './Category.vue'; // Assumindo que Category e Popover estão corretos
@@ -27,7 +27,7 @@ import Popover from './Popover.vue';
  * Props do componente Info.
  * @property {Array} categories - Lista de categorias disponíveis para filtro.
  */
-const props = defineProps({
+defineProps({
     categories: {
         type: Array as () => any[], // Tipar categoria se possível
         default: () => [],
@@ -62,14 +62,7 @@ const showGrid = computed(() => editorStore.showGrid);
 /** Gôndola atual do store. */
 const currentGondola = computed(() => gondolaStore.currentGondola);
 /** Seções da gôndola atual (do store). */
-const sections = computed(() => currentGondola.value?.sections || []);
-/** Largura da seção (do store). */
-const sectionWidth = computed(() => currentGondola.value?.section_width || 0);
-/** Altura da seção (do store). */
-const sectionHeight = computed(() => currentGondola.value?.section_height || 0);
-/** Largura da prateleira (do store). */
-const shelfWidth = computed(() => currentGondola.value?.shelf_width || 0);
-
+const sections = computed(() => currentGondola.value?.sections || []); 
 
 const shelfSelected = computed(() => {
     // Verifica se há prateleiras selecionadas
@@ -397,7 +390,7 @@ const justifyProducts = async (alignment: string) => {
         </div>
         <ConfirmModal
             :isOpen="showDeleteConfirm.some((item) => item.gondola)"
-            @update:isOpen="(isOpen) => !isOpen && (showDeleteConfirm = [])"
+            @update:isOpen="(isOpen: boolean) => !isOpen && (showDeleteConfirm = [])"
             title="Excluir gondola"
             message="Tem certeza que deseja a gondola? Esta ação não pode ser desfeita."
             confirmButtonText="Excluir"
@@ -409,7 +402,7 @@ const justifyProducts = async (alignment: string) => {
 
         <ConfirmModal
             :isOpen="showDeleteConfirm.some((item) => item.shelf)"
-            @update:isOpen="(isOpen) => !isOpen && (showDeleteConfirm = [])"
+            @update:isOpen="(isOpen: boolean) => !isOpen && (showDeleteConfirm = [])"
             title="Excluir produto"
             message="Tem certeza que deseja excluir este produto? Esta ação não pode ser desfeita."
             confirmButtonText="Excluir"

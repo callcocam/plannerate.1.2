@@ -3,7 +3,7 @@ import { defineStore } from 'pinia';
 import { Shelf } from '../types/shelves';
 import { useToast } from '../components/ui/toast';
 import { useGondolaStore } from './gondola';
-import { useEditorStore } from './editor';
+import { useEditorStore } from './editor-old';
 import { apiService } from '../services';
 import { useGondolaService } from '../services/gondolaService';
 import { useShelfService } from '../services/shelfService';
