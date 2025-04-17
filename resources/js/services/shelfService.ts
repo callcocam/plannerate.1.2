@@ -1,6 +1,6 @@
 // services/shelfService.ts 
-
-import { Shelf } from "../views/gondolas/sections/types";
+ 
+import { Shelf } from "../types/shelves";
 import apiService from "./api";
 
 export const useShelfService = () => {

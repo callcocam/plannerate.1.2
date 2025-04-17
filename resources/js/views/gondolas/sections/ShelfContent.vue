@@ -13,9 +13,9 @@
 </template>
 
 <script setup lang="ts">
-import { defineEmits, defineProps, ref, watch, computed } from 'vue';
-import { Shelf } from './types'; 
+import { defineEmits, defineProps, ref, watch, computed } from 'vue'; 
 import { useShelvesStore } from '../../../store/shelves';
+import { Shelf } from '../../../types/shelves';
 
 // Definir Props
 const props = defineProps<{

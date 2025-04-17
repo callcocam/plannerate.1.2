@@ -1,6 +1,7 @@
 import { Section } from "./sections";
+import { Segment as SegmentType } from "./segment";
 
-interface Segment {
+interface Segment extends SegmentType {
     // Defina as propriedades de um segmento aqui
     id: string;
     position: number;

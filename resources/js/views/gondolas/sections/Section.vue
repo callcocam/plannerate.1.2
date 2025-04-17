@@ -18,7 +18,7 @@
                     :scale-factor="scaleFactor"
                     :section-width="props.section.width"
                     :section-height="props.section.height"
-                    :base-height="baseHeight" 
+                    :base-height="baseHeight"
                     :sections-container="sectionsContainer"
                     :section-index="sectionIndex"
                     @drop-product="handleProductDropOnShelf"
@@ -74,16 +74,15 @@
 <script setup lang="ts">
 import { computed, defineEmits, defineProps, onMounted, onUnmounted, ref } from 'vue';
 import { useSegmentService } from '../../../services/segmentService';
-import { useShelfService } from '../../../services/shelfService';
-import { useGondolaStore } from '../../../store/gondola';
+import { useShelfService } from '../../../services/shelfService'; 
 import { useProductStore } from '../../../store/product';
 import { useSectionStore } from '../../../store/section';
 import { useShelvesStore } from '../../../store/shelves';
 import { Section } from '../../../types/sections';
+import { Layer, Product, Segment } from '../../../types/segment';
+import { Shelf as ShelfType } from '../../../types/shelves';
 import { useToast } from './../../../components/ui/toast';
 import Shelf from './Shelf.vue';
-import { Layer, Product, Segment } from './types';
-import { Shelf as ShelfType } from '../../../types/shelves';
 
 // Definir Props
 const props = defineProps<{
@@ -97,8 +96,7 @@ const props = defineProps<{
 // Definir Emits
 const emit = defineEmits(['update:segments']);
 
-// Stores
-const gondolaStore = useGondolaStore();
+// Stores 
 const productStore = useProductStore();
 const shelvesStore = useShelvesStore();
 const sectionStore = useSectionStore();
@@ -157,26 +155,29 @@ const inverterModule = () => {
 
 // --- Helpers ---
 const createSegmentFromProduct = (product: Product, shelf: ShelfType, layerQuantity: number): Segment => {
-    return {
-        gondolaId: gondolaStore.currentGondola.id,
-        id: `segment-${Date.now()}-${shelf.segments?.length}`,
+    const segmentId = `segment-${Date.now()}-${shelf.segments?.length}`;
+    return { 
+        user_id: null,
+        tenant_id: '',
         width: parseInt(props.section.width.toString()),
         ordering: (shelf.segments?.length || 0) + 1,
         quantity: 1,
         shelf_id: shelf.id,
-        section_id: props.section.id,
         spacing: 0,
         position: 0,
-        preserveState: false,
+        alignment: '',
+        settings: null,
         status: 'published',
         layer: {
+            id: `layer-${Date.now()}`,
             product_id: product.id,
             product: product,
-            height: product.height,
-            spacing: 0,
             quantity: layerQuantity,
             status: 'published',
-        },
+            height: product.height,
+            segment_id: segmentId,
+            
+        }
     };
 };
 

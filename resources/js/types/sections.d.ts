@@ -1,3 +1,4 @@
+import { Shelf as ShelfType } from "./shelves";
 interface Status {
     value: string;
     label: string;
@@ -15,7 +16,7 @@ interface Status {
     holes: Hole[];
   }
   
-  interface Shelf {
+  interface Shelf extends ShelfType{
     // Defina as propriedades de uma prateleira
     id: string;
     shelf_height: number;
@@ -51,6 +52,7 @@ interface Status {
     tenant_id: string;           // ID do tenant, ex: "01jrarbd7tccz0mks7trekbbrh"
     user_id: string;             // ID do usuário, ex: "01jrarbjws41jye4zs2ppr2vwe"
     width: number;               // Largura da seção, ex: 130
+    gondola: any;               // Gôndola associada, ex: { id: "01jry465k5769kzy98andhxqe9", ... }
   }
   
   // Exemplo de uso:

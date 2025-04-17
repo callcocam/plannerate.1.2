@@ -2,27 +2,9 @@
 import { defineStore } from 'pinia';
 import { useProductService } from '../services/productService';
 import { useGondolaStore } from './gondola';
-import { useShelvesStore } from './shelves';
-import { Layer } from '../views/gondolas/sections/types';
-import { useToast } from '../components/ui/toast';
-
-// Interfaces
-export interface Product {
-    id: string;
-    name: string;
-    description: string;
-    price: number;
-    image?: string;
-    image_url?: string;
-    width: number;
-    height: number;
-    depth?: number;
-    sku?: string;
-    layer: Layer;
-    category_id?: string;
-    created_at?: string;
-    updated_at?: string;
-}
+import { useShelvesStore } from './shelves'; 
+import { useToast } from '../components/ui/toast'; 
+import { Layer, Product } from '../types/segment';
 
 export interface ProductContext {
     quantity: number;

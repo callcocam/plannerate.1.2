@@ -1,16 +1,37 @@
 // types/segment.ts
+interface Product {
+    id: string;
+    name: string;
+    description: string;
+    price: number;
+    image?: string;
+    image_url?: string;
+    width: number;
+    height: number;
+    depth?: number;
+    sku?: string;
+    layer: Layer;
+    category_id?: string;
+    created_at?: string;
+    updated_at?: string;
+}
 
 // Interface para o objeto Layer dentro do Segment
 interface Layer {
     id: string;
-    tenant_id: string;
-    user_id: string | null;
+    tenant_id?: string;
+    user_id?: string | null;
     segment_id: string;
     product_id: string;
     // Adicione outras propriedades conforme necessário
     ordering?: number;
     position?: number;
-    quantity?: number;
+    quantity: number;
+    spacing?: number;
+    height?: number;
+    status?: 'published' | 'draft' | string;
+    product: Product;
+    segment?: Segment;
 }
 
 // Interface para configurações do segmento (se necessário)
@@ -21,18 +42,19 @@ interface SegmentSetting {
 
 // Interface principal para Segment
 interface Segment {
-    id: string;               // ID único do segmento, ex: "01jry47dsydth3vze2rhc1as9g"
-    layer: Layer;             // Informações sobre a camada associada
-    ordering: number;         // Ordem do segmento, ex: 1
-    alignment: string;         // Alinhamento, ex: "left"
+    id?: string;               // ID único do segmento, ex: "01jry47dsydth3vze2rhc1as9g"
+    user_id?: string | null;   // ID do usuário, ex: null
+    tenant_id?: string;        // ID do tenant, ex: "01jrarbd7tccz0mks7trekbbrh"
+    shelf_id: string;         // ID da prateleira associada, ex: "01jry465ktkffnxvtqyzaynm9e"
     position: number;         // Posição do segmento, ex: 0
     quantity: number;         // Quantidade, ex: 1
-    settings: SegmentSetting[] | null; // Configurações do segmento
-    shelf_id: string;         // ID da prateleira associada, ex: "01jry465ktkffnxvtqyzaynm9e"
     spacing: number;          // Espaçamento, ex: 0
-    tenant_id: string;        // ID do tenant, ex: "01jrarbd7tccz0mks7trekbbrh"
-    user_id: string | null;   // ID do usuário, ex: null
+    ordering: number;         // Ordem do segmento, ex: 1
+    alignment: string;         // Alinhamento, ex: "left"
     width: number;            // Largura do segmento em cm, ex: 130
+    settings: SegmentSetting[] | null; // Configurações do segmento
+    status: 'published' | 'draft' | string; // Status do segmento, ex: "published"
+    layer: Layer;             // Informações sobre a camada associada
 }
 
 // Exemplo de uso:
@@ -42,4 +64,4 @@ interface Segment {
 //   ...
 // };
 
-export type { Segment, Layer, SegmentSetting };
+export type { Segment, Layer, SegmentSetting, Product };

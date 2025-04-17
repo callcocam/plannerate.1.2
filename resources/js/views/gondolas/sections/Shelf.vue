@@ -90,11 +90,11 @@ import { computed, defineEmits, defineProps, onMounted, onUnmounted, ref } from 
 import draggable from 'vuedraggable';
 import { useSegmentStore } from '../../../store/segment';
 import { useShelvesStore } from '../../../store/shelves';
+import { Layer, Product, Segment as SegmentType } from '../../../types/segment';
 import { Shelf } from '../../../types/shelves';
 import Segment from './Segment.vue';
 import ShelfContent from './ShelfContent.vue';
 import ShelfControls from './ShelfControls.vue'; // Importar o componente ShelfControls
-import { Layer, Product, Segment as SegmentType } from './types';
 
 // Definir Props
 const props = defineProps<{
@@ -175,6 +175,10 @@ const sortableSegments = computed<SegmentType[]>({
 
 const updateLayer = (layer: Layer, shelf: Shelf) => {
     // Emitir evento para o componente pai (Section) lidar com a atualização
+    if (!layer.segment) {
+        // Se o segmento não existir, não faz nada
+        return;
+    }
     segmentStore.transferLayer(layer.segment_id, layer.segment.shelf_id, shelf.id, 0);
 };
 /**

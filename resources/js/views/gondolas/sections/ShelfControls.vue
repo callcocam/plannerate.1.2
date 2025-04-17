@@ -29,9 +29,9 @@
 <script setup lang="ts">
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-vue-next';
 import { nextTick, ref } from 'vue';
-import { useGondolaStore } from '../../../store/gondola';
-import { Shelf } from './types';
+import { useGondolaStore } from '../../../store/gondola'; 
 import { useShelvesStore } from '../../../store/shelves';
+import { Shelf } from '../../../types/shelves';
 
 /**
  * Props do componente
@@ -49,8 +49,7 @@ const props = defineProps<{
 // Emits para comunicar com componentes pai
 const emit = defineEmits(['transfer-section']);
 
-// Store para interagir com o estado global das gôndolas
-const gondolaStore = useGondolaStore();
+// Store para interagir com o estado global das gôndolas 
 const shelvesStore = useShelvesStore();
 
 // Estado para controlar a visibilidade dos botões
