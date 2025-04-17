@@ -16,65 +16,20 @@
                                     </Button>
                                 </template>
                             </Cremalheira>
-                            <ContextMenu>
-                                <ContextMenuTrigger>
-                                    <Section
-                                        :key="section.id"
-                                        :section-index="index"
-                                        :section="section"
-                                        :scale-factor="scaleFactor"
-                                        :selected-category="selectedCategory"
-                                        :sections-container="sectionsContainer"
-                                        @move-shelf-to-section="handleMoveShelfToSection"
-                                        @segment-select="$emit('segment-select', $event)"
-                                        @update-shelves="handleMoveSegmentToSection"
-                                        @update:quantity="updateSegmentQuantity"
-                                        @update:segments="handleMoveSegmentToSection"
-                                        @delete-section="deleteSection"
-                                    />
-                                </ContextMenuTrigger>
-                                <ContextMenuContent class="w-64">
-                                    <ContextMenuRadioGroup model-value="modulos">
-                                        <ContextMenuLabel inset> Modulos </ContextMenuLabel>
-                                        <ContextMenuSeparator />
-                                        <ContextMenuItem inset @click="editSection(section)">
-                                            Editar
-                                            <ContextMenuShortcut>⌘E</ContextMenuShortcut>
-                                        </ContextMenuItem>
-                                        <ContextMenuItem inset @click="(e) => addShelf(e, section)">
-                                            Adicionar prateleira
-                                            <ContextMenuShortcut>⌘A</ContextMenuShortcut>
-                                        </ContextMenuItem>
-                                        <ContextMenuItem inset @click="inverterModule(section)">
-                                            Inverter ordem
-                                            <ContextMenuShortcut>⌘I</ContextMenuShortcut>
-                                        </ContextMenuItem>  
-                                        <ContextMenuSeparator />
-                                        <ContextMenuSub>
-                                            <ContextMenuSubTrigger inset> Alinhamento </ContextMenuSubTrigger>
-                                            <ContextMenuSubContent class="w-48">
-                                                <ContextMenuItem inset @click="justifyModule(section, 'left')">
-                                                    à esquerda
-                                                    <ContextMenuShortcut>⌘⇧L</ContextMenuShortcut>
-                                                </ContextMenuItem>
-                                                <ContextMenuItem inset @click="justifyModule(section, 'justify')">
-                                                    ao centro
-                                                    <ContextMenuShortcut>⌘⇧C</ContextMenuShortcut>
-                                                </ContextMenuItem>
-                                                <ContextMenuItem inset @click="justifyModule(section, 'right')">
-                                                    à direita
-                                                    <ContextMenuShortcut>⌘⇧R</ContextMenuShortcut>
-                                                </ContextMenuItem>
-                                            </ContextMenuSubContent>
-                                        </ContextMenuSub>
-                                        <ContextMenuSeparator />
-                                        <ContextMenuItem inset disabled>
-                                            Excluir
-                                            <ContextMenuShortcut>⌘D</ContextMenuShortcut>
-                                        </ContextMenuItem>
-                                    </ContextMenuRadioGroup>
-                                </ContextMenuContent>
-                            </ContextMenu>
+                            <Section
+                                :key="section.id"
+                                :section-index="index"
+                                :section="section"
+                                :scale-factor="scaleFactor"
+                                :selected-category="selectedCategory"
+                                :sections-container="sectionsContainer"
+                                @move-shelf-to-section="handleMoveShelfToSection"
+                                @segment-select="$emit('segment-select', $event)"
+                                @update-shelves="handleMoveSegmentToSection"
+                                @update:quantity="updateSegmentQuantity"
+                                @update:segments="handleMoveSegmentToSection"
+                                @delete-section="deleteSection"
+                            />
                         </div>
                     </div>
                 </template>
@@ -108,7 +63,6 @@ import { useEditorStore } from '../../../store/editor';
 import { useGondolaStore } from '../../../store/gondola';
 import { useSectionStore } from '../../../store/section';
 import { useShelvesStore } from '../../../store/shelves';
-import { Section as SectionType } from '../../../types/sections';
 
 interface Category {
     id: string | number;
@@ -191,21 +145,6 @@ const editSection = (section: any) => {
     // Emitir evento para abrir o modal de edição da seção
     sectionStore.setSelectedSection(section);
     sectionStore.startEditing();
-};
-
-const addShelf = async (event, section: SectionType) => {
-    shelvesStore.handleDoubleClick({
-        shelf_position: event.offsetY * scaleFactor.value,
-        section_id: section.id,
-    });
-    event.stopPropagation();
-};
-
-const justifyModule = (section: SectionType, alignment: string) => {
-    sectionStore.justifyProducts(section, alignment);
-};
-const inverterModule = (section: SectionType) => {
-    sectionStore.inverterProducts(section);
 };
 </script>
 

@@ -540,10 +540,12 @@ class SectionController extends Controller
     {
 
         try {
-            $shelves = $section->shelves;
-            $count = $shelves->count();
-            foreach ($shelves as $index => $shelf) {
-                $shelf->update(['ordering' =>  $count - $index]);
+            $positions = $section->shelves()->orderBy('shelf_position', 'desc')->pluck('shelf_position')->toArray();
+             
+            $shelves = $section->shelves()->orderBy('shelf_position', 'asc')->get();
+            foreach ($shelves as $index => $s) {
+                $position = $positions[$index];
+                $s->update(['shelf_position' => $position]);
             }
             return response()->json([
                 'message' => 'Inversão de produtos atualizada com sucesso',

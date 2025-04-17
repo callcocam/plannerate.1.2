@@ -1,16 +1,16 @@
 <template>
-    <div
-        class="bg-gray-800"
-        :style="sectionStyle"
-        :data-section-id="section.id"
-        @dragover.prevent="handleSectionDragOver"
-        @drop.prevent="handleSectionDrop"
-        @dragleave="handleSectionDragLeave"
-        ref="sectionRef"
-    >
-        <!-- Conteúdo da Seção (Prateleiras) -->
-        <ContextMenu>
-            <ContextMenuTrigger>
+    <ContextMenu>
+        <ContextMenuTrigger>
+            <div
+                class="bg-gray-800"
+                :style="sectionStyle"
+                :data-section-id="section.id"
+                @dragover.prevent="handleSectionDragOver"
+                @drop.prevent="handleSectionDrop"
+                @dragleave="handleSectionDragLeave"
+                ref="sectionRef"
+            >
+                <!-- Conteúdo da Seção (Prateleiras) -->
                 <Shelf
                     v-for="shelf in section.shelves"
                     :key="shelf.id"
@@ -18,50 +18,57 @@
                     :scale-factor="scaleFactor"
                     :section-width="props.section.width"
                     :section-height="props.section.height"
-                    :base-height="baseHeight"
-                    :rack-width="section.rackWidth || section.cremalheira_width || 4"
+                    :base-height="baseHeight" 
                     :sections-container="sectionsContainer"
                     :section-index="sectionIndex"
                     @drop-product="handleProductDropOnShelf"
                     @drop-layer-copy="handleLayerCopy"
                     @drag-shelf="handleShelfDragStart"
                 />
-            </ContextMenuTrigger>
-            <ContextMenuContent class="w-64">
-                <ContextMenuRadioGroup model-value="modulos">
-                    <ContextMenuLabel inset> Prateleiras </ContextMenuLabel>
-                    <ContextMenuSeparator />
-                    <ContextMenuItem inset>
-                        Editar
-                        <ContextMenuShortcut>⌘]</ContextMenuShortcut>
-                    </ContextMenuItem>
-                    <ContextMenuSeparator />
-                    <ContextMenuSub>
-                        <ContextMenuSubTrigger inset> Alinhamento </ContextMenuSubTrigger>
-                        <ContextMenuSubContent class="w-48">
-                            <ContextMenuItem inset>
-                                à esquerda
-                                <ContextMenuShortcut>⌘⇧L</ContextMenuShortcut>
-                            </ContextMenuItem>
-                            <ContextMenuItem inset>
-                                ao centro
-                                <ContextMenuShortcut>⌘⇧C</ContextMenuShortcut>
-                            </ContextMenuItem>
-                            <ContextMenuItem inset>
-                                à direita
-                                <ContextMenuShortcut>⌘⇧R</ContextMenuShortcut>
-                            </ContextMenuItem>
-                        </ContextMenuSubContent>
-                    </ContextMenuSub>
-                    <ContextMenuSeparator />
-                    <ContextMenuItem inset disabled>
-                        Excluir
-                        <ContextMenuShortcut>⌘D</ContextMenuShortcut>
-                    </ContextMenuItem>
-                </ContextMenuRadioGroup>
-            </ContextMenuContent>
-        </ContextMenu>
-    </div>
+            </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent class="w-64">
+            <ContextMenuRadioGroup model-value="modulos">
+                <ContextMenuLabel inset> Modulos </ContextMenuLabel>
+                <ContextMenuSeparator />
+                <ContextMenuItem inset @click="editSection()">
+                    Editar
+                    <ContextMenuShortcut>⌘E</ContextMenuShortcut>
+                </ContextMenuItem>
+                <ContextMenuItem inset @click="(e) => addShelf(e)">
+                    Adicionar prateleira
+                    <ContextMenuShortcut>⌘A</ContextMenuShortcut>
+                </ContextMenuItem>
+                <ContextMenuItem inset @click="inverterModule()">
+                    Inverter ordem
+                    <ContextMenuShortcut>⌘I</ContextMenuShortcut>
+                </ContextMenuItem>
+                <ContextMenuSeparator />
+                <ContextMenuSub>
+                    <ContextMenuSubTrigger inset> Alinhamento </ContextMenuSubTrigger>
+                    <ContextMenuSubContent class="w-48">
+                        <ContextMenuItem inset @click="justifyModule('left')">
+                            à esquerda
+                            <ContextMenuShortcut>⌘⇧L</ContextMenuShortcut>
+                        </ContextMenuItem>
+                        <ContextMenuItem inset @click="justifyModule('justify')">
+                            ao centro
+                            <ContextMenuShortcut>⌘⇧C</ContextMenuShortcut>
+                        </ContextMenuItem>
+                        <ContextMenuItem inset @click="justifyModule('right')">
+                            à direita
+                            <ContextMenuShortcut>⌘⇧R</ContextMenuShortcut>
+                        </ContextMenuItem>
+                    </ContextMenuSubContent>
+                </ContextMenuSub>
+                <ContextMenuSeparator />
+                <ContextMenuItem inset disabled>
+                    Excluir
+                    <ContextMenuShortcut>⌘D</ContextMenuShortcut>
+                </ContextMenuItem>
+            </ContextMenuRadioGroup>
+        </ContextMenuContent>
+    </ContextMenu>
 </template>
 
 <script setup lang="ts">
@@ -71,11 +78,12 @@ import { useShelfService } from '../../../services/shelfService';
 import { useGondolaStore } from '../../../store/gondola';
 import { useProductStore } from '../../../store/product';
 import { useSectionStore } from '../../../store/section';
-import { useShelfStore } from '../../../store/shelf';
 import { useShelvesStore } from '../../../store/shelves';
+import { Section } from '../../../types/sections';
 import { useToast } from './../../../components/ui/toast';
 import Shelf from './Shelf.vue';
-import { Layer, Product, Section, Segment, Shelf as ShelfType } from './types';
+import { Layer, Product, Segment } from './types';
+import { Shelf as ShelfType } from '../../../types/shelves';
 
 // Definir Props
 const props = defineProps<{
@@ -92,7 +100,6 @@ const emit = defineEmits(['update:segments']);
 // Stores
 const gondolaStore = useGondolaStore();
 const productStore = useProductStore();
-const shelfStore = useShelfStore();
 const shelvesStore = useShelvesStore();
 const sectionStore = useSectionStore();
 
@@ -126,6 +133,27 @@ const sectionStyle = computed(() => {
         transition: 'border-color 0.2s ease-in-out, background-color 0.2s ease-in-out',
     };
 });
+
+const editSection = () => {
+    // Emitir evento para abrir o modal de edição da seção
+    sectionStore.setSelectedSection(props.section);
+    sectionStore.startEditing();
+};
+
+const addShelf = async (event) => {
+    shelvesStore.handleDoubleClick({
+        shelf_position: event.offsetY * props.scaleFactor,
+        section_id: props.section.id,
+    });
+    event.stopPropagation();
+};
+
+const justifyModule = (alignment: string) => {
+    sectionStore.justifyProducts(props.section, alignment);
+};
+const inverterModule = () => {
+    sectionStore.inverterProducts(props.section);
+};
 
 // --- Helpers ---
 const createSegmentFromProduct = (product: Product, shelf: ShelfType, layerQuantity: number): Segment => {

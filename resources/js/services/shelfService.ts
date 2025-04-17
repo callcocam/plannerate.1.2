@@ -22,10 +22,20 @@ export const useShelfService = () => {
         return apiService.delete(`shelves/${shelfId}`);
     };
 
+    const updateShelfAlignment = (shelfId: string, alignment: string) => {
+        return apiService.post(`shelves/${shelfId}/alignment`, { alignment });
+    };
+
+    const inverterShelves = (shelfId: string) => {
+        return apiService.post(`sections/${shelfId}/inverterShelves`);
+    };
+
     return {
         addShelf,
         updateShelf,
         updateShelfPosition,
         deleteShelf,
+        updateShelfAlignment,
+        inverterShelves,
     };
 };

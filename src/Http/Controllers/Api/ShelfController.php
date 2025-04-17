@@ -222,4 +222,25 @@ class ShelfController extends Controller
             'data' => new ShelfResource($shelf),
         ], 200);
     }
+
+    public function inverterSegments(Request $request, Shelf $shelf)
+    {
+        $validated = $request->all();
+        $shelf->update($validated);
+        return response()->json([
+            'message' => 'Segmentos invertidos com sucesso',
+            'data' => new ShelfResource($shelf),
+        ], 200);
+    }
+    public function alignment(Request $request, Shelf $shelf)
+    {
+        $validated = $request->validate([
+            'alignment' => 'required|string|max:255',
+        ]);
+        $shelf->update($validated);
+        return response()->json([
+            'message' => 'Alinhamento atualizado com sucesso',
+            'data' => new ShelfResource($shelf),
+        ], 200);
+    }
 }

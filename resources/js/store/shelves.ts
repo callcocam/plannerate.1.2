@@ -201,7 +201,7 @@ export const useShelvesStore = defineStore('shelves', {
             // Chama o serviço para persistir no backend
             try {
                 await gondolaService.transferShelf(shelfId, toSectionId, newPosition);
-              
+
                 gondolaStore.productsInCurrentGondolaIds();
                 toast({
                     title: 'Prateleira transferida com sucesso',
@@ -353,6 +353,22 @@ export const useShelvesStore = defineStore('shelves', {
                 throw error;
             } finally {
                 this.isLoading = false;
+            }
+        },
+        async setSectionAlignment(sectionId: string, alignment: string) {
+            const gondolaStore = useGondolaStore();
+            const { currentGondola } = gondolaStore;
+            if (!currentGondola) return;
+
+            const shelfService = useShelfService();
+
+            try {
+                const response = await shelfService.updateShelfAlignment(sectionId, alignment);
+                const sections = response.data;
+                // Atualiza o estado da gôndola
+                this.updateShelf(sectionId, { alignment }, false);
+            } catch (error) {
+                console.error('Erro ao atualizar alinhamento da seção:', error);
             }
         }
     }

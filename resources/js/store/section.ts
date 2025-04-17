@@ -111,17 +111,66 @@ export const useSectionStore = defineStore('section', {
             // Atualiza o estado da seção
             gondolaStore.updateGondola(sections);
         },
-        async inverterProducts(section: Section) {
-            const sectionService = useSectionService();
-            try {
-                const response = await sectionService.inverterShelves(section.id);
+        async inverterProducts(data: Section) {
+            const sectionId = data.id;
+            
+            const gondolaStore = useGondolaStore();
+            const currentGondola = gondolaStore.currentGondola;
+            this.sections = currentGondola?.sections || [];
+            // Encontra a seção pelo ID
+            const sectionIndex = this.sections.findIndex(section => section.id === sectionId);
+            if (sectionIndex === -1) return;
 
-                const invertedSections = response.data;
+            const section = this.sections[sectionIndex];
+            if (!section.shelves || section.shelves.length <= 1) return; // Nada a fazer se não houver prateleiras suficientes
 
+            // Cria uma cópia das prateleiras para manipulação
+            const shelves = [...section.shelves];
 
-            } catch (error) {
-                console.error('Error inverting products:', error);
+            // Ordena as prateleiras pela posição atual (do menor para o maior)
+            shelves.sort((a, b) => a.shelf_position - b.shelf_position);
+
+            // Armazena as posições originais em um array
+            const originalPositions = shelves.map(shelf => shelf.shelf_position);
+
+            // Cria um mapa de ID da prateleira para sua nova posição (invertida)
+            const newPositionsMap = new Map();
+            shelves.forEach((shelf, index) => {
+                // Pega a posição do lado oposto no array de posições
+                const newPosition = originalPositions[originalPositions.length - 1 - index];
+                newPositionsMap.set(shelf.id, newPosition);
+            });
+
+            // Atualiza as posições das prateleiras
+            section.shelves.forEach(shelf => {
+                const newPosition = newPositionsMap.get(shelf.id);
+                if (newPosition !== undefined) {
+                    // Aqui você poderia chamar uma API para persistir as mudanças
+                    // Exemplo:
+                    // apiService.updateShelfPosition(shelf.id, newPosition);
+
+                    // Atualiza a posição no estado local
+                    shelf.shelf_position = newPosition;
+                }
+            });
+
+            // Atualiza a seção no estado
+            this.sections[sectionIndex] = { ...section };
+
+            // Se esta seção estiver selecionada, atualize também a seleção
+            if (this.selectedSection && this.selectedSection.id === sectionId) {
+                this.selectedSection = { ...section };
             }
+
+            gondolaStore.updateGondola({
+                ...currentGondola,
+                sections: this.sections
+            });
+
+            console.log('Posições das prateleiras invertidas com sucesso');
+
+            // Retorna a seção atualizada para possível uso futuro
+            return section;
         },
     }
 });

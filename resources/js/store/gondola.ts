@@ -149,8 +149,7 @@ export const useGondolaStore = defineStore('gondola', {
         * Atualiza os dados de uma gôndola
         */
         updateGondola(gondolaData: any, reload: boolean = false) {
-            if (!this.currentGondola || !gondolaData) return;
-            console.log("gondolaData", gondolaData);
+            if (!this.currentGondola || !gondolaData) return; 
             this.currentGondola = {
                 ...this.currentGondola,
                 ...gondolaData

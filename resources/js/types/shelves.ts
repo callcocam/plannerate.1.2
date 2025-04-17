@@ -1,3 +1,5 @@
+import { Section } from "./sections";
+
 interface Segment {
     // Defina as propriedades de um segmento aqui
     id: string;
@@ -35,6 +37,7 @@ interface Shelf {
 
     // Propriedades adicionais que podem ser úteis em alguns cenários
     shelf_x_position?: number;        // Posição horizontal da prateleira (opcional)
+    section: Section;               // Seção associada à prateleira
 }
 
 // Exemplo de uso:
