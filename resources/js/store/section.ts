@@ -3,6 +3,7 @@ import { defineStore } from 'pinia';
 import { Section } from '../types/sections';
 import { useGondolaStore } from './gondola';
 import { useSectionService } from '../services/sectionService';
+import { useShelfService } from '../services/shelfService';
 
 interface SectionState {
     sections: Array<Section>;
@@ -111,9 +112,10 @@ export const useSectionStore = defineStore('section', {
             // Atualiza o estado da seção
             gondolaStore.updateGondola(sections);
         },
-        async inverterProducts(data: Section) {
+        async inverterShelves(data: Section) {
             const sectionId = data.id;
             
+            const shelfService  = useShelfService();
             const gondolaStore = useGondolaStore();
             const currentGondola = gondolaStore.currentGondola;
             this.sections = currentGondola?.sections || [];
@@ -147,7 +149,7 @@ export const useSectionStore = defineStore('section', {
                 if (newPosition !== undefined) {
                     // Aqui você poderia chamar uma API para persistir as mudanças
                     // Exemplo:
-                    // apiService.updateShelfPosition(shelf.id, newPosition);
+                    shelfService.updateShelfPosition(shelf.id, newPosition);
 
                     // Atualiza a posição no estado local
                     shelf.shelf_position = newPosition;

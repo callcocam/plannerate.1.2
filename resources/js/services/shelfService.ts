@@ -13,7 +13,7 @@ export const useShelfService = () => {
     };
 
     const updateShelfPosition = (shelfId: string, position: number) => {
-        return apiService.patch(`shelves/${shelfId}`, {
+        return apiService.post(`shelves/${shelfId}/updatePosition`, {
             shelf_position: position,
         });
     };

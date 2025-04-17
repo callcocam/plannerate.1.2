@@ -243,4 +243,16 @@ class ShelfController extends Controller
             'data' => new ShelfResource($shelf),
         ], 200);
     }
+
+    public function updatePosition(Request $request, Shelf $shelf)
+    {
+        $validated = $request->validate([
+            'shelf_position' => 'required|integer',
+        ]);
+        $shelf->update($validated);
+        return response()->json([
+            'message' => 'Posição atualizada com sucesso',
+            'data' => new ShelfResource($shelf),
+        ], 200);
+    }
 }

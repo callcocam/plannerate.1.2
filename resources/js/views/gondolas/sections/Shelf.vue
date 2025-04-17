@@ -48,7 +48,7 @@
             <ContextMenuRadioGroup model-value="modulos">
                 <ContextMenuLabel inset> Prateleiras </ContextMenuLabel>
                 <ContextMenuSeparator />
-                <ContextMenuItem inset>
+                <ContextMenuItem inset @click="selectShelfClick">
                     Editar
                     <ContextMenuShortcut>⌘]</ContextMenuShortcut>
                 </ContextMenuItem>

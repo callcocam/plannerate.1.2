@@ -150,7 +150,10 @@ const justifyModule = (alignment: string) => {
     sectionStore.justifyProducts(props.section, alignment);
 };
 const inverterModule = () => {
-    sectionStore.inverterProducts(props.section);
+    // const shelves = [...props.section.shelves];
+    // const invertedShelves = shelves.reverse();
+    // console.log('Inverted Shelves:', invertedShelves);
+    sectionStore.inverterShelves(props.section);
 };
 
 // --- Helpers ---

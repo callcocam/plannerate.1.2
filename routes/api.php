@@ -69,9 +69,12 @@ Route::middleware(['api', 'auth:sanctum'])
 
         Route::post('shelves/{shelf}/alignment', [ShelfController::class, 'alignment'])
             ->name('shelves.alignment');
-            
+
         Route::post('shelves/{shelf}/inverterSegments', [ShelfController::class, 'inverterSegments'])
             ->name('shelves.invert');
+
+        Route::post('shelves/{shelf}/updatePosition', [ShelfController::class, 'updatePosition'])
+            ->name('shelves.updatePosition');
 
 
         Route::resource('layers',  LayerController::class)
