@@ -12,11 +12,11 @@
         </div>
         <!-- Conteúdo Principal -->
         <!-- Passa a gôndola do store para os filhos -->
-        <div v-else-if="gondola" class="flex h-full w-full flex-col gap-6 overflow-hidden">
-            <Info :gondola="gondola" />
+        <div v-else-if="initialGondola && editorGondola" class="flex h-full w-full flex-col gap-6 overflow-hidden">
+            <Info :gondola="initialGondola" />
             <div class="flex  flex-col overflow-auto relative">
                 <!-- <MovableContainer> -->
-                <Sections :gondola="gondola" :scale-factor="scaleFactor" />
+                <Sections :gondola="editorGondola" :scale-factor="scaleFactor" />
                 <!-- </MovableContainer> -->
             </div>
         </div>
@@ -54,34 +54,33 @@ const scaleFactor = computed(() => editorStore.currentScaleFactor); // <-- Ler d
 // Estado Reativo (apenas ID da rota)
 const gondolaId = ref<string>(route.params.gondolaId as string);
 
-// A computed `gondola` apenas retorna o valor do store
-const gondola = computed(() => gondolaStore.currentGondola);
+// Computed para a gôndola inicial e controle de carregamento (do gondolaStore)
+const initialGondola = computed(() => gondolaStore.currentGondola);
+
+// *** NOVA Computed para a gôndola reativa do editorStore ***
+const editorGondola = computed(() => {
+    // Busca a gôndola correspondente no estado atual do editor
+    return editorStore.currentState?.gondolas.find(g => g.id === gondolaId.value);
+});
 
 // Hook de Ciclo de Vida
 /** Ao montar o componente, chama a ação fetchGondola do store. */
 onMounted(async () => {
     await gondolaStore.fetchGondola(gondolaId.value);
-    // Opcional: Se você realmente precisa definir a escala inicial 
-    // baseada na gôndola carregada, faça APÓS o fetch e use o editorStore:
-    // if (gondolaStore.currentGondola?.scale_factor) {
-    //     editorStore.setScaleFactor(gondolaStore.currentGondola.scale_factor);
-    // }
+    // A inicialização do editorStore (com esta gôndola) deve ocorrer 
+    // no componente pai (Planogram.vue ou similar) que carrega o planograma completo.
 });
 
 // Watcher para o ID da rota (se gondolaId puder mudar)
 watch(
     () => route.params.gondolaId,
-    async (newId) => { // Adicionado async
-        if (newId && typeof newId === 'string') {
+    async (newId) => { 
+        if (newId && typeof newId === 'string' && newId !== gondolaId.value) { // Evita re-fetch desnecessário
             gondolaId.value = newId;
+            // Busca a nova gôndola
             await gondolaStore.fetchGondola(newId);
-            // Opcional: Resetar escala ao mudar de gôndola?
-            // if (gondolaStore.currentGondola?.scale_factor) {
-            //     editorStore.setScaleFactor(gondolaStore.currentGondola.scale_factor);
-            // } else {
-            //     // Definir um padrão se a nova gôndola não tiver escala
-            //     editorStore.setScaleFactor(3); 
-            // }
+            // Idealmente, a mudança de ID deveria talvez recarregar/resetar o editorStore
+            // ou o componente pai deveria gerenciar a troca de contexto do editor.
         }
     },
     { immediate: false },
