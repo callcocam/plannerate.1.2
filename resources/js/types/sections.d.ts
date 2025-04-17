@@ -1,4 +1,6 @@
-import { Shelf as ShelfType } from "./shelves";
+import type { Shelf as ShelfType } from "./shelves";
+import type { Gondola } from './gondola';
+
 interface Status {
     value: string;
     label: string;
@@ -24,8 +26,8 @@ interface Status {
     shelf_width: number;
     shelf_depth: number;
     section_id: string;
-    shelf_x_position: number;
-    alignment: string;
+    shelf_x_position?: number;
+    alignment?: 'left' | 'right' | 'center' | 'justify' | string;
     // ... outras propriedades conforme necessário
   }
   
@@ -43,7 +45,7 @@ interface Status {
     name: string;                // Nome da seção, ex: "0# Main Section"
     num_shelves: number;         // Número de prateleiras, ex: 4
     ordering: number;            // Ordenação, ex: 0
-    alignment: string;          // Alinhamento, ex: "left"
+    alignment?: 'left' | 'right' | 'center' | 'justify' | string;
     settings: Settings;          // Configurações, ex: { holes: Array(32) }
     shelf_height: number | null; // Altura da prateleira, ex: null
     shelves: Shelf[];            // Lista de prateleiras, ex: [Proxy(Object), ...]
@@ -52,7 +54,7 @@ interface Status {
     tenant_id: string;           // ID do tenant, ex: "01jrarbd7tccz0mks7trekbbrh"
     user_id: string;             // ID do usuário, ex: "01jrarbjws41jye4zs2ppr2vwe"
     width: number;               // Largura da seção, ex: 130
-    gondola: any;               // Gôndola associada, ex: { id: "01jry465k5769kzy98andhxqe9", ... }
+    gondola: Gondola;            // Gôndola associada (tipado)
   }
   
   // Exemplo de uso:

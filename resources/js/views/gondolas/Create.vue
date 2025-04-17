@@ -114,13 +114,16 @@
 <script setup lang="ts">
 // External Libraries Imports
 import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, Loader2Icon, SaveIcon, X } from 'lucide-vue-next';
-import { defineAsyncComponent, reactive, ref, watch } from 'vue';
+import { defineAsyncComponent, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-// Internal Services & Stores Imports
-import { apiService } from '../../services';
-import { useEditorStore } from './../../store/editor';
-import { useGondolaStore } from './../../store/gondola';
+// Internal Services & Stores Imports 
+
+// Composables
+import { useWizard } from '../../composables/useWizard';
+import { useGondolaCreateForm } from '../../composables/useGondolaCreateForm';
+
+// Type Imports 
 
 // UI Components Imports
 import DialogPersonaCloseContent from './../../components/ui/dialog/DialogPersonaCloseContent.vue';
@@ -158,10 +161,7 @@ const emit = defineEmits(['close', 'gondola-added', 'update:open']);
 // Vue Router Hooks
 const route = useRoute();
 const router = useRouter();
-
-// Pinia Store
-const editorStore = useEditorStore();
-const gondolaStore = useGondolaStore();
+ 
 
 // Services
 const { toast } = useToast();
@@ -169,12 +169,6 @@ const { toast } = useToast();
 // Component Reactive State
 /** Controls the internal visibility of the dialog. */
 const isOpen = ref(props.open);
-/** Indicates if the form is currently being submitted. */
-const isSending = ref(false);
-/** Index of the current step in the creation workflow (0-indexed). */
-const currentStep = ref(0);
-/** Stores validation errors returned from the API. */
-const errors = ref<Record<string, any>>({}); // Typed error object
 /** Current planogram ID from the route. */
 const planogramId = ref(route.params.id as string); // Assume id is always a string
 
@@ -193,44 +187,33 @@ const stepDescriptions = [
 /** Mapping of components for each step (used with <component :is=...>) */
 const stepComponents = [StepGondola, StepModule, StepBase, StepCremalheira, StepShelves, StepReview];
 
-// Form State
-/**
- * Reactive object holding all data collected across the steps.
- * Includes gondola data and the initial section/default settings.
- */
-const formData = reactive({
-    // Gondola Basic Info (Step 1)
-    planogram_id: planogramId.value,
-    gondolaName: '', // Gondola Name (can be generated or filled)
-    location: 'Center', // Default location
-    side: 'A', // Default side
-    flow: 'left_to_right', // Default flow
-    scaleFactor: 3, // Default scale factor
-    status: 'published', // Initial status
+// --- Wizard State --- 
+const { 
+    currentStep,
+    nextStep: wizardNextStep,
+    previousStep: wizardPreviousStep,
+    goToStep,
+    // isFirstStep, // Não está sendo usado no script
+    // isLastStep   // Não está sendo usado no script
+} = useWizard(stepTitles.length);
+// ---------------------
 
-    // Section/Module Settings (Step 2)
-    numModules: 4, // Initial number of modules (can be adjusted later)
-    width: 130, // Initial total width of the section (cm)
-    height: 180, // Initial total height of the section (cm)
-
-    // Base Settings (Step 3)
-    baseHeight: 17, // Base height (cm)
-    baseWidth: 130, // Base width (cm) - usually matches section width
-    baseDepth: 40, // Base depth (cm)
-
-    // Rack Settings (Step 4)
-    rackWidth: 4, // Rack width (cm)
-    holeHeight: 3, // Hole height (cm)
-    holeWidth: 2, // Hole width (cm)
-    holeSpacing: 2, // Spacing between holes (cm)
-
-    // Default Shelf Settings (Step 5)
-    shelfWidth: 125, // Default shelf width (cm) - adjusted for rack?
-    shelfHeight: 4, // Default shelf height/thickness (cm)
-    shelfDepth: 40, // Default shelf depth (cm) - usually matches base depth
-    numShelves: 4, // Initial number of shelves to create
-    productType: 'normal', // Default product type (normal, hook)
+// --- Form State & Logic ---
+const { 
+    formData, 
+    updateForm, // Necessário para o @update:form do componente filho
+    resetForm, 
+    submitForm, 
+    validateStep, // Importar a função de validação por etapa
+    // validateFullForm, // Não precisamos chamar diretamente aqui
+    isSending, 
+    errors     
+} = useGondolaCreateForm({ 
+    initialPlanogramId: planogramId, 
+    onSuccess: (newGondola) => { /* ... */ },
+    onError: (error) => { /* ... */ }
 });
+// --------------------------
 
 // Watchers
 /**
@@ -243,176 +226,42 @@ watch(
         isOpen.value = newVal;
         if (newVal) {
             // Reset on open
-            currentStep.value = 0;
-            errors.value = {};
-            // Reset formData to default values (optional but recommended)
-            Object.assign(formData, {
-                planogram_id: planogramId.value, // Re-assign in case planogram changed
-                gondolaName: '',
-                location: 'Center',
-                side: 'A',
-                flow: 'left_to_right',
-                scaleFactor: 3,
-                status: 'published',
-                numModules: 4,
-                width: 130,
-                height: 180,
-                baseHeight: 17,
-                baseWidth: 130,
-                baseDepth: 40,
-                rackWidth: 4,
-                holeHeight: 3,
-                holeWidth: 2,
-                holeSpacing: 2,
-                shelfWidth: 125,
-                shelfHeight: 4,
-                shelfDepth: 40,
-                numShelves: 4,
-                productType: 'normal',
-            });
+            goToStep(0); // Reseta a etapa do wizard
+            resetForm(); // Reseta o formulário usando a função do composable
         }
     },
 );
 
 // Functions
-/**
- * Updates the formData object with data received from step components.
- * @param {object} newData - Object containing the updated fields.
- */
-const updateForm = (newData: Record<string, any>) => {
-    // Only update fields that exist in the newData object
-    for (const key in newData) {
-        if (Object.prototype.hasOwnProperty.call(formData, key)) {
-            (formData as any)[key] = newData[key];
-        }
-    }
-    // This simpler version works if step components only send valid keys:
-    // Object.assign(formData, newData);
-};
 
 /**
- * Closes the dialog and navigates back to the planogram view.
- * Emits 'update:open' and 'close' events.
+ * Closes the dialog.
  */
 const closeModal = () => {
-    // Always return to the planogram overview on cancel/close
     router.back();
 };
 
 /**
- * Advances to the next step in the form.
- * TODO: Add step-specific validation here if desired.
+ * Validates the current step and advances to the next if valid.
  */
 const nextStep = () => {
-    // Simple validation example:
-    // if (currentStep.value === 0 && !formData.gondolaName) {
-    //     errors.value = { gondolaName: ['Gondola name is required'] };
-    //     toast({ title: 'Error', description: 'Fill required fields.', variant: 'destructive' });
-    //     return; // Prevent advancing
-    // }
-    errors.value = {}; // Clear old errors when advancing
-    if (currentStep.value < stepTitles.length - 1) {
-        currentStep.value++;
+    // Validar a etapa atual ANTES de avançar
+    if (validateStep(currentStep.value)) {
+        wizardNextStep(); // Avança somente se a etapa atual for válida
     }
 };
 
 /**
- * Navigates back to the previous step in the form.
+ * Navigates back to the previous step.
  */
 const previousStep = () => {
-    if (currentStep.value > 0) {
-        currentStep.value--;
-    }
+    // Poderia opcionalmente limpar erros da etapa atual ao voltar
+    // clearStepErrors(currentStep.value); // Precisaria implementar no composable
+    wizardPreviousStep();
 };
 
-/**
- * Assembles the final data structure and sends it to the API to create the gondola.
- * Handles the API response (success or error) and updates the UI.
- */
-const submitForm = async () => {
-    isSending.value = true;
-    errors.value = {};
+// submitForm é chamado diretamente pelo botão no template
 
-    // Structure the formData into the format expected by the API (snake_case)
-    const payload = {
-        planogram_id: formData.planogram_id,
-        // Gondola Data
-        name: formData.gondolaName || `Gondola ${Date.now().toString().slice(-4)}`, // Default name if empty
-        location: formData.location,
-        side: formData.side,
-        flow: formData.flow,
-        scale_factor: formData.scaleFactor,
-        status: formData.status,
-
-        // Data for the first Section created with the gondola
-        section: {
-            name: `Main Section`, // Initial section name
-            width: formData.width,
-            height: formData.height,
-            base_height: formData.baseHeight,
-            base_width: formData.baseWidth,
-            base_depth: formData.baseDepth,
-            cremalheira_width: formData.rackWidth, // Map from rackWidth
-            hole_height: formData.holeHeight,
-            hole_width: formData.holeWidth,
-            hole_spacing: formData.holeSpacing,
-            num_modulos: formData.numModules, // Map from numModules
-
-            // Data to generate initial shelves for this section
-            shelf_config: {
-                // Group shelf configurations
-                num_shelves: formData.numShelves,
-                shelf_width: formData.shelfWidth,
-                shelf_height: formData.shelfHeight,
-                shelf_depth: formData.shelfDepth,
-                product_type: formData.productType,
-            },
-            settings: {
-                // Include other section settings if needed by the API
-            },
-        },
-    };
-
-    try {
-        // Call API to create the gondola (POST /gondolas)
-        const response = await apiService.post('gondolas', payload);
-
-        toast({
-            title: 'Success',
-            description: 'Gondola created successfully!',
-            variant: 'default',
-        });
-
-        // Update store with the new gondola
-        editorStore.addGondola(response.data);
-
-        // Navigate to the newly created gondola view
-        router.push({ name: 'gondola.view', params: { gondolaId: response.data.id } });
-    } catch (error: any) {
-        console.error('Error saving gondola:', error);
-        if (error.response && error.response.status === 422) {
-            // API Validation Errors
-            errors.value = error.response.data.errors || {};
-            toast({
-                title: 'Validation Error',
-                description: 'Please correct the highlighted fields. Go back to previous steps if necessary.',
-                variant: 'destructive',
-            });
-            // Optional: Navigate back to the first step with an error?
-            // const firstErrorStep = findStepWithErrors(errors.value);
-            // if (firstErrorStep !== -1) currentStep.value = firstErrorStep;
-        } else {
-            // Other Server/Network Errors
-            toast({
-                title: 'Unexpected Error',
-                description: error.response?.data?.message || 'An error occurred while saving the gondola. Please try again.',
-                variant: 'destructive',
-            });
-        }
-    } finally {
-        isSending.value = false; // Ensure sending state is reset
-    }
-};
 </script>
 
 <style scoped>

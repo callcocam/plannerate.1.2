@@ -29,6 +29,7 @@ interface Layer {
     quantity: number;
     spacing?: number;
     height?: number;
+    alignment?: 'left' | 'right' | 'center' | 'justify' | string | null;
     status?: 'published' | 'draft' | string;
     product: Product;
     segment?: Segment;
@@ -50,7 +51,7 @@ interface Segment {
     quantity: number;         // Quantidade, ex: 1
     spacing: number;          // Espaçamento, ex: 0
     ordering: number;         // Ordem do segmento, ex: 1
-    alignment: string;         // Alinhamento, ex: "left"
+    alignment?: 'left' | 'right' | 'center' | 'justify' | string | null;
     width: number;            // Largura do segmento em cm, ex: 130
     settings: SegmentSetting[] | null; // Configurações do segmento
     status: 'published' | 'draft' | string; // Status do segmento, ex: "published"

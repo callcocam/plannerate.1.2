@@ -49,8 +49,8 @@ const routes: Array<RouteRecordRaw> = [
                     },
                     {
                         path: 'editar',
-                        name: 'plannerate.gondola.edit',
-                        component: () => import('./../views/gondolas/Edit.vue'),
+                        name: 'plannerate.gondola.add_section',
+                        component: () => import('./../views/gondolas/AddSectionModal.vue'),
                         props: true,
 
                     },

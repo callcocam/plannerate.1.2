@@ -20,7 +20,7 @@ interface Shelf {
     code: string;                     // Código da prateleira, ex: "SLF0-250416463"
     id: string;                       // ID único da prateleira, ex: "01jry465kds6haf0gfpcfj8mfq"
     ordering: number;                 // Ordenação da prateleira, ex: 0
-    alignment: string;               // Alinhamento, ex: "left"
+    alignment?: 'left' | 'right' | 'center' | 'justify' | string | null; // ADICIONADO (opcional/nullable)
     product_type: 'normal' | string;  // Tipo de produto, ex: "normal"
     quantity: number | null;          // Quantidade, ex: null
     reload: string;                   // Data de recarga, ex: "2025-04-16 02:17:07"
@@ -38,7 +38,7 @@ interface Shelf {
 
     // Propriedades adicionais que podem ser úteis em alguns cenários
     shelf_x_position?: number;        // Posição horizontal da prateleira (opcional)
-    section: Section;               // Seção associada à prateleira
+    section?: Section;               // Seção associada à prateleira
 }
 
 // Exemplo de uso:

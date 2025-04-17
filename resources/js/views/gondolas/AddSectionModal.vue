@@ -242,8 +242,8 @@
                 >
                     Cancelar
                 </Button>
-                <Button @click="enviarFormulario" :disabled="enviando" class="dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90">
-                    <SaveIcon v-if="!enviando" class="mr-2 h-4 w-4" />
+                <Button @click="enviarFormulario" :disabled="isSending" class="dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90">
+                    <SaveIcon v-if="!isSending" class="mr-2 h-4 w-4" />
                     <Loader2Icon v-else class="mr-2 h-4 w-4 animate-spin" />
                     Adicionar Seção
                 </Button>
@@ -254,11 +254,18 @@
 
 <script setup lang="ts">
 import { Loader2Icon, SaveIcon, X } from 'lucide-vue-next';
-import { onMounted, reactive, ref, watch } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { apiService } from '../../services';
-import { useToast } from './../../components/ui/toast';
-import { useEditorStore } from './../../store/editor';
+// import { apiService } from '../../services'; // REMOVED - Usado no composable
+// import { useToast } from './../../components/ui/toast'; // REMOVED - Usado no composable
+// import { useEditorStore } from './../../store/editor'; // REMOVED - Usado no composable
+
+// Composables
+import { useSectionCreateForm } from '../../composables/useSectionCreateForm';
+
+// Types (Ainda necessários para props, emits, etc.)
+import type { Section } from '../../types/sections';
+
 // Componente específico de Dialog para fechar ao clicar fora ou ESC
 import DialogPersonaCloseContent from '../../components/ui/dialog/DialogPersonaCloseContent.vue';
 
@@ -267,172 +274,74 @@ const props = defineProps({
         type: Boolean,
         default: true,
     },
-    // Adicionar gondolaId como prop pode ser uma alternativa à rota
-    // gondolaId: {
-    //     type: [String, Number],
-    //     required: true
-    // }
 });
 
 const route = useRoute();
 const router = useRouter();
-const planogramId = ref(route.params.id);
-const gondolaId = ref(route.params.gondolaId); // Obter o gondolaId da rota
+
+// Obter IDs da rota uma vez
+const initialPlanogramId = ref(route.params.id as string);
+const initialGondolaId = ref(route.params.gondolaId as string);
 
 const emit = defineEmits(['close', 'section-added', 'update:open']);
-const { toast } = useToast();
-const editorStore = useEditorStore();
+
+// --- Form State & Logic --- (Usando o novo composable)
+const { 
+    formData, 
+    // updateForm, // Não precisamos expor updateForm diretamente se o template usa v-model em formData
+    resetForm, 
+    submitForm, // Renomear aqui ou no template para não conflitar com a função antiga
+    validateForm, // Pode ser usado se quisermos validação manual
+    isSending, 
+    errors 
+} = useSectionCreateForm({ 
+    initialGondolaId: initialGondolaId,
+    initialPlanogramId: initialPlanogramId,
+    onSuccess: (newSection) => {
+        emit('section-added', newSection);
+        // A navegação padrão do composable já acontece, talvez não precise de fecharModal aqui
+        // fecharModal(); // Opcional: pode ser removido se a navegação do composable for suficiente
+    },
+    // onError: (error) => { /* Tratamento adicional opcional */ }
+});
+// --------------------------
 
 const isOpen = ref(props.open);
-const enviando = ref(false);
-const errors = ref<Record<string, any>>({}); // Tipagem mais específica para erros
 
-// Função para gerar um código aleatório formatado para o nome da gôndola
-const gerarCodigoGondola = () => {
-    const prefixo = 'GND';
-    const data = new Date();
-    const ano = data.getFullYear().toString().slice(2); // Últimos 2 dígitos do ano
-    const mes = (data.getMonth() + 1).toString().padStart(2, '0');
-    const random = Math.floor(Math.random() * 10000)
-        .toString()
-        .padStart(4, '0');
-
-    return `${prefixo}-${ano}${mes}-${random}`;
-};
-
-// Formulário com campos para a seção
-const formData = reactive({
-    name: '', // Nome da seção
-    code: '', // Novo campo para nome da seção
-    gondola_id: gondolaId.value, // ID da gôndola
-    num_modulos: 1,
-    width: 130,
-    height: 180,
-    base_height: 17,
-    base_width: 130, // Pode fazer sentido linkar com width? Ou ser independente?
-    base_depth: 40,
-    cremalheira_width: 4,
-    hole_height: 3,
-    hole_width: 2,
-    hole_spacing: 2,
-    shelf_width: 4, // Largura padrão da prateleira
-    shelf_height: 4, // Espessura padrão da prateleira
-    shelf_depth: 40, // Profundidade padrão da prateleira
-    num_shelves: 4, // Número inicial de prateleiras a criar
-    product_type: 'normal', // Tipo de produto padrão para as prateleiras
-    // Remover campos da gondola que estavam antes: planogram_id, gondola_name, location, side, flow, scale_factor, status, section_code
-});
+// REMOVED: enviando, errors, formData - Gerenciados pelo composable
+// REMOVED: gerarCodigoGondola - Lógica movida para dentro do composable
 
 watch(
     () => props.open,
     (newVal) => {
         isOpen.value = newVal;
         if (newVal) {
-            // Resetar form e erros ao abrir
-            Object.assign(formData, {
-                name: gerarCodigoGondola(), // Nome da seção
-                code: gerarCodigoGondola(), // Nome padrão
-                gondola_id: gondolaId.value,
-                num_modulos: 1,
-                width: 130,
-                height: 180,
-                base_height: 17,
-                base_width: 130,
-                base_depth: 40,
-                cremalheira_width: 4,
-                hole_height: 3,
-                hole_width: 2,
-                hole_spacing: 2,
-                shelf_width: 125, // Ajustado para ser um pouco menor que a largura da seção
-                shelf_height: 4,
-                shelf_depth: 40,
-                num_shelves: 4,
-                product_type: 'normal',
-            });
-            errors.value = {};
-            // Atualizar gondolaId caso a rota mude enquanto o modal está fechado
-            gondolaId.value = route.params.gondolaId;
-            planogramId.value = route.params.id;
+            // Atualizar IDs caso a rota tenha mudado enquanto fechado
+            initialGondolaId.value = route.params.gondolaId as string;
+            initialPlanogramId.value = route.params.id as string;
+            // Resetar o formulário usando a função do composable
+            resetForm(); 
         }
     },
 );
 
-onMounted(() => {
-    isOpen.value = props.open;
-    // Definir nome padrão inicial se aberto diretamente
-    if (props.open) {
-        gondolaId.value = route.params.gondolaId;
-        planogramId.value = route.params.id;
-        formData.code = gerarCodigoGondola();
-        formData.name = gerarCodigoGondola().concat(' - Seção');
-        formData.shelf_width = formData.width - formData.cremalheira_width * 2; // Exemplo de cálculo
-    }
-});
+// REMOVED: onMounted - Lógica de inicialização movida para getInitialFormData no composable
 
-// Função para fechar o modal
+// Função para fechar o modal (pode ser simplificada ou removida)
 const fecharModal = () => {
-    // Garante que volte para a visualização da gôndola correta
-    router.push({
-        name: 'gondola.view',
-        params: { id: planogramId.value, gondolaId: gondolaId.value },
-    });
+    // Comportamento padrão do composable é navegar de volta. 
+    // Se quisermos apenas fechar o modal sem navegar, emitimos o evento.
+    emit('update:open', false);
+    emit('close');
+    // router.push({ ... }); // Removido - Deixar composable/onSuccess decidir a navegação
 };
 
-// Função para enviar o formulário de adição de seção
-const enviarFormulario = async () => {
-    enviando.value = true;
-    errors.value = {};
-
-    if (!gondolaId.value) {
-        toast({
-            title: 'Erro',
-            description: 'ID da Gôndola não encontrado na rota.',
-            variant: 'destructive',
-        });
-        enviando.value = false;
-        return;
-    }
-
-    // Preparar os dados para envio
-    const dadosEnvio = { ...formData };
-    console.log(dadosEnvio);
-
-    try {
-        // Endpoint: POST /api/gondolas/{gondolaId}/sections (Ajustar conforme sua API)
-        const response = await apiService.post('sections', dadosEnvio);
-
-        toast({
-            title: 'Sucesso',
-            description: 'Nova seção adicionada com sucesso!',
-            variant: 'default',
-        });
-
-        // TODO: Atualizar o editorStore de forma adequada para a nova seção
-        // Exemplo: editorStore.addSectionToGondola(gondolaId.value, response.data);
-
-        emit('section-added', response.data); // Emitir evento com os dados da nova seção
-        fecharModal(); // Fechar modal após sucesso
-    } catch (error: any) {
-        console.error('Erro ao adicionar seção:', error);
-
-        if (error.response && error.response.status === 422) {
-            errors.value = error.response.data.errors || {};
-            toast({
-                title: 'Erro de validação',
-                description: 'Por favor, corrija os campos destacados.',
-                variant: 'destructive',
-            });
-        } else {
-            toast({
-                title: 'Erro',
-                description: error.response?.data?.message || 'Ocorreu um erro ao adicionar a seção.',
-                variant: 'destructive',
-            });
-        }
-    } finally {
-        enviando.value = false;
-    }
+// Wrapper para submitForm (se necessário, ou usar diretamente no template)
+const enviarFormulario = () => {
+    submitForm(); // Chama a função do composable
 };
+
+// ... restante do script (se houver) ...
 </script>
 
 <style scoped>
