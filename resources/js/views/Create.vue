@@ -32,7 +32,7 @@ import { PlusIcon, ShoppingBagIcon } from 'lucide-vue-next';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { apiService } from '../services';
-import Header from './parials/Header.vue';
+import Header from './partials/Header.vue';
 
 const props = defineProps({
     record: {
@@ -43,42 +43,51 @@ const props = defineProps({
 const record = ref<any>(props.record); // Substitua 'any' pelo tipo correto, se possível
 
 const route = useRoute();
-
 const router = useRouter();
 
 const gondolaId = computed(() => props.record.id);
 
 // Função para abrir o modal de adicionar gôndola
 const openAddGondolaModal = () => {
-    const query = {
-        ...route.query,
-    };
     router.push({
         name: 'plannerate.create',
         params: {
             id: gondolaId.value,
         },
-        query,
     });
 };
+
 onMounted(() => {
-    // Verifica se o ID da gôndola está presente na URL
-    apiService
-        .get(route.fullPath.replace('/criar', ''))
-        .then((response) => {
-            const { gondolas } = response.data;
-            if (gondolas.length) {
-                const gondola = gondolas[0]; 
-                router.push({
-                    name: 'gondola.view',
-                    params: {
-                        gondolaId: gondola.id,
-                    },
-                });
-            }
-        })
-        .catch((error) => {
-            console.error('Error fetching gondola data:', error);
-        });
+    // Verificar se já existem gondolas no registro atual
+    if (record.value?.gondolas?.length) {
+        // Se já temos os dados no record, usamos eles diretamente
+        const gondola = record.value.gondolas[0];
+        redirectToGondola(gondola.id);
+    } else {
+        // Caso contrário, buscamos da API
+        apiService
+            .get(`/api/plannerate/planograms/${gondolaId.value}`)
+            .then((response) => {
+                const { gondolas } = response.data;
+                if (gondolas && gondolas.length) {
+                    const gondola = gondolas[0]; 
+                    redirectToGondola(gondola.id);
+                }
+            })
+            .catch((error) => {
+                console.error('Erro ao buscar dados da gôndola:', error);
+            });
+    }
 });
+
+// Função para redirecionar para a visualização da gôndola
+const redirectToGondola = (id: string) => {
+    router.push({
+        name: 'gondola.view',
+        params: {
+            id: gondolaId.value,
+            gondolaId: id,
+        },
+    });
+};
 </script>

@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import Gondolas from './../views/gondolas/Gondolas.vue';
-import Header from './../views/parials/Header.vue';
-import Products from './../views/parials/sidebar/Products.vue';
-import Properties from './../views/parials/sidebar/Properties.vue';
+import Gondolas from './gondolas/Gondolas.vue'; 
+import Products from './partials/sidebar/Products.vue';
+import Properties from './partials/sidebar/Properties.vue'; 
+import PlannerateHeader from './partials/Header.vue';
 
 const props = defineProps({
     record: {
@@ -36,7 +36,7 @@ onMounted(() => {
 
 <template>
     <div class="px-10" v-if="record">
-        <Header :planogram="record" />
+        <PlannerateHeader :planogram="record" />
         <div>
             <div class="flex h-full w-full gap-6 overflow-hidden">
                 <!-- Barra lateral esquerda com componente Products separado -->

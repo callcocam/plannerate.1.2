@@ -1,51 +1,87 @@
+/// <reference types="vite/client" />
+
 import './../css/app.css';
-import type { App } from 'vue'
+import type { App, Component } from 'vue'
 import Plannerate from './App.vue';
 import ConfirmModal from './components/Confirm.vue';
 import router from './routes';
-// Vamos comfigurar o pinia para o plannerate
-// @ts-ignore
 import { createPinia } from 'pinia';
 
-const pinia = createPinia();
-// @ts-ignore 
-interface PluginOptions {
-    [key: string]: any
-}
-interface ComponentDefinition {
-    default: any;
+// Definição de interfaces para tipagem adequada
+export interface PluginOptions {
+    baseUrl?: string;
+    tenant?: string | null;
+    apiPath?: string;
+    csrfToken?: string;
     [key: string]: any;
 }
- 
 
-const install = (app: App, options: PluginOptions = {}) => {
-    const componentRegistry: string[] = [];
-    app.component('Plannerate', Plannerate);
-    app.component('v-plannerate', Plannerate);
-
-    app.component('ConfirmModal', ConfirmModal)
-    app.component('v-confirm-modal', ConfirmModal)
-
-    Object.entries<ComponentDefinition>(
-        // @ts-ignore
-        import.meta.glob<ComponentDefinition>('./components/ui/**/*.vue', { eager: true })
-    ).forEach(([path, definition]) => {
-        const originalName = path.split('/').pop()?.replace(/\.\w+$/, '') || '';
-        // OriginalName => SidebarItem
-        if (componentRegistry.indexOf(originalName) === -1) {
-            app.component(originalName, definition.default);
-        }
-        componentRegistry.push(originalName);
-        // console.log('Component registered:', originalName);
-    });
-
-    app.use(router);
-
-    app.use(pinia);
-
-    app.config.globalProperties.$plannerate = options
+export interface ComponentMap {
+    [key: string]: Component;
 }
 
+// Re-exportando componentes principais para uso direto
+export { default as PlannerateApp } from './App.vue';
+export { default as ConfirmModal } from './components/Confirm.vue';
+export { default as PlannerateRouter } from './routes';
+
+// Criação do pinia para gerenciamento de estado
+const pinia = createPinia();
+
+/**
+ * Função de instalação do plugin Plannerate
+ * @param app Instância do aplicativo Vue
+ * @param options Opções de configuração do plugin
+ */
+const install = (app: App, options: PluginOptions = {}): void => {
+    // Registro de componentes globais
+    registerMainComponents(app);
+    
+    // Registro automático de componentes UI
+    registerUIComponents(app);
+    
+    // Configuração de plugins
+    app.use(router);
+    app.use(pinia);
+    
+    // Configuração global
+    app.config.globalProperties.$plannerate = options;
+    
+    // Configuração de injeção para acesso em componentes
+    app.provide('plannerateOptions', options);
+}
+
+/**
+ * Registra os componentes principais do Plannerate
+ */
+const registerMainComponents = (app: App): void => {
+    app.component('Plannerate', Plannerate);
+    app.component('v-plannerate', Plannerate);
+    app.component('ConfirmModal', ConfirmModal);
+    app.component('v-confirm-modal', ConfirmModal);
+}
+
+/**
+ * Registra automaticamente todos os componentes UI
+ */
+const registerUIComponents = (app: App): void => {
+    const componentRegistry: string[] = [];
+    
+    // Importação de componentes UI usando glob do Vite
+    Object.entries<{ default: Component }>(
+        import.meta.glob<{ default: Component }>('./components/ui/**/*.vue', { eager: true })
+    ).forEach(([path, definition]) => {
+        const componentFileName = path.split('/').pop() || '';
+        const originalName = componentFileName.replace(/\.\w+$/, '');
+        
+        if (componentRegistry.indexOf(originalName) === -1) {
+            app.component(originalName, definition.default);
+            componentRegistry.push(originalName);
+        }
+    });
+}
+
+// Exportando o plugin com método install
 export default {
     install
 }
