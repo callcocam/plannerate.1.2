@@ -409,7 +409,7 @@ export const useEditorStore = defineStore('editor', () => {
      * @param shelfId O ID da prateleira a ser atualizada.
      * @param newPosition O novo valor para shelf_position.
      */
-    function setShelfPosition(gondolaId: string, sectionId: string, shelfId: string, newPosition: number) {
+    function setShelfPosition(gondolaId: string, sectionId: string, shelfId: string, newPosition: { shelf_position: number, shelf_x_position: number }) {
         if (!currentState.value) return;
 
         const gondola = currentState.value.gondolas.find(g => g.id === gondolaId);
@@ -429,20 +429,21 @@ export const useEditorStore = defineStore('editor', () => {
             console.warn(`setShelfPosition: Prateleira ${shelfId} não encontrada.`);
             return;
         }
-
+        const { shelf_position, shelf_x_position } = newPosition;
         // Verifica se a posição realmente mudou
         // Comparar números pode ter problemas de precisão, talvez arredondar ou usar tolerância?
         // Por simplicidade, faremos comparação direta por enquanto.
-        if (shelf.shelf_position !== newPosition) {
-            shelf.shelf_position = newPosition;
-            console.log(`Posição da prateleira ${shelfId} definida para ${newPosition}`);
+        if (shelf.shelf_position !== shelf_position || shelf.shelf_x_position !== shelf_x_position) {
+            shelf.shelf_position = shelf_position;
+            shelf.shelf_x_position = shelf_x_position;
+            console.log(`Posição da prateleira ${shelfId} definida para ${shelf_position}`);
             
             // Opcional: Reordenar o array shelves visualmente se a ordem importar no template?
             // section.shelves.sort((a, b) => a.shelf_position - b.shelf_position);
 
             recordChange(); // Registra a mudança
         } else {
-            console.log(`Posição da prateleira ${shelfId} já era ${newPosition}.`);
+            console.log(`Posição da prateleira ${shelfId} já era ${shelf_position}.`);
         }
     }
 
@@ -771,6 +772,65 @@ export const useEditorStore = defineStore('editor', () => {
         }
     }
 
+    /**
+     * Transfere uma prateleira inteira de uma seção para outra dentro da mesma gôndola.
+     * @param gondolaId ID da gôndola.
+     * @param oldSectionId ID da seção de origem.
+     * @param newSectionId ID da seção de destino.
+     * @param shelfId ID da prateleira a ser transferida.
+     */
+    function transferShelfBetweenSections(gondolaId: string, oldSectionId: string, newSectionId: string, shelfId: string) {
+        if (!currentState.value) return;
+
+        const gondola = currentState.value.gondolas.find(g => g.id === gondolaId);
+        if (!gondola) {
+            console.warn(`transferShelfBetweenSections: Gôndola ${gondolaId} não encontrada.`);
+            return;
+        }
+
+        // Encontrar seção de origem e índice da prateleira
+        const oldSection = gondola.sections.find(s => s.id === oldSectionId);
+        if (!oldSection || !Array.isArray(oldSection.shelves)) {
+            console.warn(`transferShelfBetweenSections: Seção de origem ${oldSectionId} não encontrada ou sem prateleiras.`);
+            return;
+        }
+        const shelfIndex = oldSection.shelves.findIndex(sh => sh.id === shelfId);
+        if (shelfIndex === -1) {
+            console.warn(`transferShelfBetweenSections: Prateleira ${shelfId} não encontrada na seção ${oldSectionId}.`);
+            return;
+        }
+
+        // Encontrar seção de destino
+        const newSection = gondola.sections.find(s => s.id === newSectionId);
+        if (!newSection) {
+            console.warn(`transferShelfBetweenSections: Seção de destino ${newSectionId} não encontrada.`);
+            return;
+        }
+        if (!Array.isArray(newSection.shelves)) {
+            newSection.shelves = []; // Inicializa se não existir
+        }
+
+        // Remover a prateleira da seção antiga e obter o objeto
+        const shelfToMove = oldSection.shelves.splice(shelfIndex, 1)[0];
+        if (!shelfToMove) { return; } // Segurança
+
+        // Atualizar dados da prateleira movida
+        shelfToMove.section_id = newSectionId;
+        shelfToMove.shelf_x_position = -4; // Resetar posição X relativa à nova seção
+        // Resetar outras propriedades se necessário (ex: ordering?)
+        // shelfToMove.ordering = newSection.shelves.length + 1; // Ou recalcular depois
+
+        // Adicionar a prateleira à nova seção
+        newSection.shelves.push(shelfToMove);
+
+        // Opcional: Recalcular ordenação se necessário
+        // oldSection.shelves.forEach((sh, index) => sh.ordering = index + 1);
+        // newSection.shelves.forEach((sh, index) => sh.ordering = index + 1);
+
+        console.log(`Prateleira ${shelfId} transferida de ${oldSectionId} para ${newSectionId}`);
+        recordChange(); // Registra a mudança
+    }
+
     // Adicione aqui mais ações para manipular gondolas, seções, prateleiras, etc.
     // Ex: addGondola, updateSection, removeShelf, addProductToLayer...
     // Cada uma dessas ações deve modificar `currentState.value` e chamar `recordChange()`
@@ -819,6 +879,7 @@ export const useEditorStore = defineStore('editor', () => {
         removeShelfFromSection, // <-- Expor a nova action
         updateSectionData, // <-- Expor a nova action
         updateShelfData, // <-- EXPOR A NOVA ACTION
+        transferShelfBetweenSections, // <-- EXPOR A NOVA ACTION
         currentGondolaId, // <-- EXPOR O COMPUTED
     };
 });

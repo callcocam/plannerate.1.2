@@ -264,18 +264,36 @@ const cancelEditing = () => {
 const saveChanges = async () => {
     if (!selectedSection.value) return;
 
-    // Obter o ID da gôndola ativa do editorStore
-    const gondolaId = editorStore.currentGondolaId;
+    // ---> Lógica para encontrar o GondolaId correto <---
+    const sectionId = selectedSection.value.id;
+    let correctGondolaId: string | null = null;
 
-    if (!gondolaId) {
-        console.error('ID da gôndola não encontrado no editorStore. Não é possível salvar as alterações da seção.');
+    if (!editorStore.currentState || !editorStore.currentState.gondolas) {
+        console.error('Erro ao salvar: Estado do editor ou gôndolas não encontrados.');
+        // Adicionar feedback para o usuário
+        return;
+    }
+
+    for (const gondola of editorStore.currentState.gondolas) {
+        if (gondola.sections.some(section => section.id === sectionId)) {
+            correctGondolaId = gondola.id;
+            break; // Encontrou a gôndola correta
+        }
+    }
+    // ---> Fim da lógica <---
+
+    // Obter o ID da gôndola ativa do editorStore
+    // const gondolaId = editorStore.currentGondolaId; // <-- Remover uso do getter genérico
+
+    if (!correctGondolaId) { // Usa a variável encontrada
+        console.error(`Erro ao salvar: Gôndola contendo a seção ${sectionId} não encontrada no estado do editor.`);
         // Poderia mostrar um toast/notificação aqui
         return;
     }
 
     try {
-        // Chama a action no editorStore para atualizar os dados da seção
-        editorStore.updateSectionData(gondolaId, selectedSection.value.id, formData.value);
+        // Chama a action no editorStore para atualizar os dados da seção com o ID correto da gôndola
+        editorStore.updateSectionData(correctGondolaId, sectionId, formData.value);
         console.log('Alterações da seção enviadas para o editorStore.');
         // sectionStore.updateSection(selectedSection.value.id, formData.value); // <-- Remover ou comentar a chamada antiga
         sectionStore.finishEditing(); // Finaliza o modo de edição no sectionStore local
