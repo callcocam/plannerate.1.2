@@ -202,7 +202,7 @@ const createSegmentFromProduct = (product: Product, shelf: ShelfType, layerQuant
         position: 0,
         alignment: '',
         settings: null,
-        status: 'published',
+        status: 'published', 
         layer: {
             id: layerId,
             product_id: product.id,
@@ -210,7 +210,8 @@ const createSegmentFromProduct = (product: Product, shelf: ShelfType, layerQuant
             quantity: layerQuantity || 1,
             status: 'published',
             height: product.height,
-            segment_id: segmentId,
+            segment_id: segmentId, 
+            tabindex: 0, 
         }
     };
 };
@@ -312,7 +313,7 @@ const handleSectionDrop = async (event: DragEvent) => {
  * @param shelf Prateleira alvo
  * @param dropPosition Posição do drop (pode ser usado para calcular a posição X inicial)
  */
-const handleProductDropOnShelf = async (product: Product, shelf: ShelfType, dropPosition: any) => {
+const handleProductDropOnShelf = async (product: Product, shelf: ShelfType) => {
     if (!gondola.id) {
         toast({
             title: 'Erro Interno',
@@ -332,7 +333,8 @@ const handleProductDropOnShelf = async (product: Product, shelf: ShelfType, drop
         status: 'temp', 
         height: product.height, 
         segment_id: 'temp', 
-        spacing: 0 // <-- Definir spacing padrão 0 aqui
+        spacing: 0, // <-- Definir spacing padrão 0 aqui
+        tabindex: 0,
     }; 
     
     // *** Validação ***

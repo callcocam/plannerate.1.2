@@ -1,8 +1,13 @@
 <template>
-    <div class="product" :style="productStyle">
+    <div class="product relative" :style="productStyle">
         <!-- Aqui você pode adicionar a representação visual do produto -->
         <!-- Pode ser uma imagem, um retângulo colorido, ou qualquer outro elemento visual -->
-        <div class="product-content" :style="contentStyle"></div>
+        <span class="product-content-depth absolute -top-2 -left-2 text-xs text-gray-100 bg-gray-700  flex items-center justify-center h-3 w-3 rounded-full  z-10 dark:text-gray-800 dark:bg-gray-300">
+                {{ depthCount }}
+            </span>
+        <div class="product-content relative overflow-auto" :style="contentStyle">
+          
+        </div>
     </div>
 </template>
 
@@ -11,14 +16,16 @@ import { computed } from 'vue';
 
 const props = defineProps<{
     product: any;
-    scaleFactor: number; 
+    scaleFactor: number;
+    index: number;
+    shelfDepth: number;
 }>();
 
 // Estilo do produto
 const productStyle = computed(() => {
     return {
         width: `${props.product.width * props.scaleFactor}px`,
-        height: `${props.product.height * props.scaleFactor}px`, 
+        height: `${props.product.height * props.scaleFactor}px`,
         position: 'relative' as const,
         boxSizing: 'border-box' as const,
         backgroundImage: props.product.image_url ? `url(${props.product.image_url})` : 'none',
@@ -43,6 +50,11 @@ const contentStyle = computed(() => {
         justifyContent: 'center',
     };
 });
+
+const depthCount = computed(() => {
+    return Math.round(props.shelfDepth / props.product.depth);
+});
+
 </script>
 
 <style scoped>

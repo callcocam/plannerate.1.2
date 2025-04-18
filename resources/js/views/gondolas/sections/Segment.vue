@@ -1,15 +1,13 @@
 <template>
-    <div class="segment drag-segment-handle group relative flex items-center border-2" :style="segmentStyle"
-        :class="{ 
-            'justify': alignment === 'justify',
-            'left': alignment === 'left',
-            'center': alignment === 'center',
-            'right': alignment === 'right'
-        }"
-    >
+    <div class="segment drag-segment-handle group relative flex items-center border-2" :style="segmentStyle" :class="{
+        'justify': alignment === 'justify',
+        'left': alignment === 'left',
+        'center': alignment === 'center',
+        'right': alignment === 'right'
+    }">
         <LayerComponent v-for="(_, index) in segmentQuantity" :key="index" :shelf="shelf" :segment="segment"
             :layer="segment.layer" :scale-factor="scaleFactor" :section-width="sectionWidth"
-            @increase="onIncreaseQuantity" @decrease="onDecreaseQuantity" />
+            :shelf-depth="shelf.shelf_depth" @increase="onIncreaseQuantity" @decrease="onDecreaseQuantity" />
     </div>
 </template>
 <script setup lang="ts">
@@ -17,7 +15,7 @@ import {
     computed,
     defineProps,
     type CSSProperties,
-} from 'vue'; 
+} from 'vue';
 import { useEditorStore } from '@plannerate/store/editor'; // <-- ADICIONAR
 import type { Segment } from '@plannerate/types/segment';
 import type { Shelf } from '@plannerate/types/shelves';
@@ -35,7 +33,7 @@ const props = defineProps<{
     scaleFactor: number;
     sectionWidth: number;
 }>();
- 
+
 const editorStore = useEditorStore(); // <-- INSTANCIAR EDITOR STORE
 const { toast } = useToast(); // <-- Instanciar toast
 
@@ -55,7 +53,6 @@ const segmentQuantity = computed(() => {
  */
 const layerWidth = () => {
     let sectionWidth = props.sectionWidth;
-    console.log('props.gondola', props.gondola);    
     props.gondola.sections.map((section: Section) => {
         section.shelves.map((shelf: Shelf) => {
             if (shelf?.segments?.length > 0) {
@@ -89,7 +86,7 @@ const alignment = computed(() => {
                 }
             });
         }
-    }); 
+    });
     return alignment;
 });
 
@@ -99,7 +96,7 @@ const segmentStyle = computed(() => {
     const productQuantity = props.segment.layer.quantity;
     let layerWidthFinal = 0;
 
-    let currentAlignment = alignment.value; 
+    let currentAlignment = alignment.value;
 
     console.log('alignment', currentAlignment);
 

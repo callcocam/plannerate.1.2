@@ -1,4 +1,5 @@
 // types/segment.ts
+import { Layer as LayerType } from '@/types/layer';
 interface Product {
     id: string;
     name: string;
@@ -17,13 +18,13 @@ interface Product {
 }
 
 // Interface para o objeto Layer dentro do Segment
-interface Layer {
+interface Layer extends LayerType {
     id: string;
+    tabindex: number;
     tenant_id?: string;
     user_id?: string | null;
     segment_id: string;
     product_id: string;
-    // Adicione outras propriedades conforme necessário
     ordering?: number;
     position?: number;
     quantity: number;
@@ -55,7 +56,7 @@ interface Segment {
     width: number;            // Largura do segmento em cm, ex: 130
     settings: SegmentSetting[] | null; // Configurações do segmento
     status: 'published' | 'draft' | string; // Status do segmento, ex: "published"
-    layer: Layer;             // Informações sobre a camada associada
+    layer: Layer;             // Informações sobre a camada associada 
 }
 
 // Exemplo de uso:

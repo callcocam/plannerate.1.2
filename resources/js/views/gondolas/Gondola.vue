@@ -3,7 +3,15 @@
         <!-- Estado de Carregamento (do Store) -->
         <div v-if="editorStore.isLoading"
             class="flex h-screen items-center justify-center p-4 text-center text-gray-400 dark:text-gray-500 absolute top-0 left-0 right-0 bottom-0 z-[100] bg-white/50 backdrop-blur-sm">
-            <p>Carregando Gôndola...</p>
+            <div class="flex items-center justify-center absolute inset-0 bg-gray-100/25 dark:bg-gray-900/25 z-50">
+                <svg class="animate-spin h-8 w-8 text-gray-600 dark:text-gray-300" xmlns="http://www.w3.org/2000/svg"
+                    fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                    </circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z">
+                    </path>
+                </svg>
+            </div>
         </div>
         <!-- Estado de Erro (do Store) -->
         <div v-if="editorStore.error" @click="editorStore.setError(null)"
@@ -59,7 +67,7 @@ const gondolaId = ref<string>(route.params.gondolaId as string);
 
 
 // *** NOVA Computed para a gôndola reativa do editorStore ***
-const editorGondola = computed(() => { 
+const editorGondola = computed(() => {
     editorStore.setCurrentGondola(editorStore.currentState?.gondolas.find(g => g.id === gondolaId.value) as Gondola);
     // Busca a gôndola correspondente no estado atual do editor
     return editorStore.getCurrentGondola;

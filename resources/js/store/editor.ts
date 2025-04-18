@@ -75,6 +75,21 @@ export const useEditorStore = defineStore('editor', () => {
     });
 
     // --- ACTIONS --- 
+
+    // Vamos criar uma função para calcular o tabindex de cada seção
+    function calculateTabindex(gondola: Gondola) {
+        if (!gondola) return 0;
+        let tabindex = 0;
+        return gondola.sections.map((section) => {
+            return section.shelves.map((shelf) => {
+                return shelf.segments.map((segment) => {
+                    tabindex = tabindex + 1; 
+                    return segment.layer.tabindex = tabindex;
+                });
+            });
+        }); 
+    }
+
     /**
      * setIsLoading - Define o estado de carregamento do editor.
      */
@@ -109,6 +124,7 @@ export const useEditorStore = defineStore('editor', () => {
     }
 
     function setCurrentGondola(gondola: Gondola) {
+        calculateTabindex(gondola);
         currentGondola.value = gondola;
     }
 
@@ -117,6 +133,7 @@ export const useEditorStore = defineStore('editor', () => {
      * Esta função deve ser chamada APÓS cada mutação significativa no currentState.
      */
     function recordChange() {
+        setIsLoading(true);
         if (isTimeTraveling.value || !currentState.value) return;
         const newState = JSON.parse(JSON.stringify(currentState.value));
         if (historyIndex.value >= 0 && isEqual(newState, history.value[historyIndex.value].state)) return;
@@ -125,6 +142,7 @@ export const useEditorStore = defineStore('editor', () => {
         }
         history.value.push({ timestamp: Date.now(), state: newState });
         historyIndex.value = history.value.length - 1;
+        setIsLoading(false);
     }
 
     /**
@@ -980,5 +998,6 @@ export const useEditorStore = defineStore('editor', () => {
         error, // <-- EXPOR O COMPUTED
         setIsLoading, // <-- EXPOR A ACTION
         setError, // <-- EXPOR A ACTION
+        calculateTabindex, // <-- EXPOR A ACTION
     };
 });

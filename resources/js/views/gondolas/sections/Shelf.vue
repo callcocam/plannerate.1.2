@@ -107,8 +107,7 @@ const emit = defineEmits(['drop-product', 'drop-layer-copy', 'drop-layer']);
 const shelvesStore = useShelvesStore();
 const editorStore = useEditorStore();
 const alignment = computed(() => {
-    let alignment = props.gondola?.alignment;
-    console.log('alignment', alignment);
+    let alignment = props.gondola?.alignment;  
     props.gondola?.sections.map((section: Section) => {
         if (section.id === props.shelf.section_id) {
             if (section.alignment) {
