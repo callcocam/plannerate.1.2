@@ -5,9 +5,11 @@
                 @dragover.prevent="handleSectionDragOver" @drop.prevent="handleSectionDrop"
                 @dragleave="handleSectionDragLeave" ref="sectionRef">
                 <!-- Conteúdo da Seção (Prateleiras) -->
+                <slot />
                 <ShelfComponent v-for="shelf in section.shelves" :key="shelf.id" :shelf="shelf" :gondola="gondola"
                     :scale-factor="scaleFactor" :section-width="section.width" :section-height="section.height"
                     :base-height="baseHeight" :sections-container="sectionsContainer" :section-index="sectionIndex"
+                    :holes="holes"
                     @drop-product="handleProductDropOnShelf" @drop-layer-copy="handleLayerCopy"
                     @drag-shelf="handleShelfDragStart" @drop-layer="updateLayer" />
             </div>
@@ -88,7 +90,7 @@ const emit = defineEmits(['update:segments']);
 
 // ------- DESTRUCTURED PROPS FOR BETTER PERFORMANCE -------
 // Previne acesso repetido às props nos computed
-const { gondola, section, scaleFactor } = props;
+const { gondola, section } = props;
 
 // ------- STORES & SERVICES -------
 const productStore = useProductStore();
@@ -96,6 +98,11 @@ const shelvesStore = useShelvesStore();
 const sectionStore = useSectionStore();
 const editorStore = useEditorStore();
 const { toast } = useToast();
+
+const holes = computed(() => {
+    if (!section.settings) return [];
+    return section.settings.holes;
+});
 
 // ------- REFS -------
 const dropTargetActive = ref(false);
@@ -105,15 +112,16 @@ const sectionRef = ref<HTMLElement | null>(null);
 // ------- COMPUTED -------
 const baseHeight = computed(() => {
     const baseHeightCm = section.base_height || 0;
-    return baseHeightCm <= 0 ? 0 : baseHeightCm * scaleFactor;
+    return baseHeightCm <= 0 ? 0 : baseHeightCm * props.scaleFactor;
 });
 
 // Estilo da seção com CSS transformado via computed para melhorar performance
 const sectionStyle = computed(() => {
     const isActive = dropTargetActive.value;
+    console.log('sectionStyle', section.width, section.height, props.scaleFactor);
     return {
-        width: `${section.width * scaleFactor}px`,
-        height: `${section.height * scaleFactor}px`,
+        width: `${section.width * props.scaleFactor}px`,
+        height: `${section.height * props.scaleFactor}px`,
         position: 'relative' as const,
         borderWidth: '2px',
         borderStyle: isActive ? 'dashed' : 'solid',
@@ -140,7 +148,7 @@ const editSection = () => {
  */
 const addShelf = (event: MouseEvent) => {
     shelvesStore.handleDoubleClick({
-        shelf_position: event.offsetY / scaleFactor,
+        shelf_position: event.offsetY / props.scaleFactor,
         section_id: section.id,
     });
     event.stopPropagation();
@@ -265,7 +273,7 @@ const handleSectionDrop = async (event: DragEvent) => {
     try {
         const shelf = JSON.parse(shelfData) as ShelfType;
         const mouseY = event.offsetY;
-        const newPosition = mouseY / scaleFactor;
+        const newPosition = mouseY / props.scaleFactor;
         const shelfHeight = draggingShelf.value?.shelf_height || 0;
 
         // Verifica se a posição é válida
@@ -556,7 +564,7 @@ const handleClickOutside = (event: MouseEvent) => {
 const handleDoubleClick = (event: MouseEvent) => {
     event.stopPropagation();
     shelvesStore.handleDoubleClick({
-        shelf_position: event.offsetY / scaleFactor,
+        shelf_position: event.offsetY / props.scaleFactor,
         section_id: section.id,
     });
 };

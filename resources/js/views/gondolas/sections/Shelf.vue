@@ -20,10 +20,7 @@
                     :section-height="sectionHeight" :shelf-element="shelfElement" :base-height="baseHeight"
                     :sections-container="sectionsContainer" :section-index="sectionIndex" />
                 <!-- <div class="absolute inset-0 bottom-0 z-0 flex h-full w-full items-center justify-center"> -->
-                <ShelfContent :shelf="shelf"
-                    @drop-product="(product: Product, shelf: Shelf, dropPosition: any) => $emit('drop-product', product, shelf, dropPosition)"
-                    @drop-layer-copy="(product: Product, shelf: Shelf, dropPosition: any) => $emit('drop-layer-copy', product, shelf, dropPosition)"
-                    @drop-layer="(moveLayer: Layer, oldSshelf: Shelf) => $emit('drop-layer', moveLayer, oldSshelf)" />
+                 
                 <!-- </div> -->
             </div>
         </ContextMenuTrigger>
@@ -76,7 +73,7 @@
 import { computed, defineEmits, defineProps, onMounted, onUnmounted, ref, type CSSProperties } from 'vue';
 import draggable from 'vuedraggable';
 import { useShelvesStore } from '@plannerate/store/shelves';
-import { useEditorStore } from '@plannerate/store/editor'; 
+import { useEditorStore } from '@plannerate/store/editor';
 import { type Layer, type Product, type Segment as SegmentType } from '@plannerate/types/segment';
 import { type Shelf } from '@plannerate/types/shelves';
 import Segment from './Segment.vue';
@@ -95,19 +92,18 @@ const props = defineProps<{
     baseHeight: number;
     sectionsContainer: HTMLElement | null;
     sectionIndex: number;
+    holes: { position: number;[key: string]: any }[];
 }>();
 
 const shelfElement = ref<HTMLElement | null>(null);
 
 const gondolaId = computed(() => props.gondola.id);
- 
-
 // Definir Emits
 const emit = defineEmits(['drop-product', 'drop-layer-copy', 'drop-layer']);
 const shelvesStore = useShelvesStore();
 const editorStore = useEditorStore();
 const alignment = computed(() => {
-    let alignment = props.gondola?.alignment;  
+    let alignment = props.gondola?.alignment;
     props.gondola?.sections.map((section: Section) => {
         if (section.id === props.shelf.section_id) {
             if (section.alignment) {
@@ -124,19 +120,47 @@ const alignment = computed(() => {
 });
 // --- Computeds para Estilos ---
 const shelfStyle = computed(() => {
-    const topPosition = props.shelf.shelf_position * props.scaleFactor;
+    // Posição "ideal" ou "arrastada" da prateleira (antes do snap)
+    const targetShelfPosition = props.shelf.shelf_position;
+
+    // Encontrar a posição do furo mais próximo
+    let closestHolePosition = targetShelfPosition; // Default para a posição original
+    if (props.holes && props.holes.length > 0) {
+        let minDifference = Infinity;
+
+        for (const hole of props.holes) {
+            // Certificar que hole.position é um número antes de calcular
+            if (typeof hole.position === 'number') {
+                const currentDifference = Math.abs(targetShelfPosition - hole.position);
+                if (currentDifference < minDifference) {
+                    minDifference = currentDifference;
+                    closestHolePosition = hole.position - props.shelf.shelf_height / 4;
+                }
+            } else {
+                console.warn('Invalid hole position detected:', hole);
+            }
+        }
+        // Opcional: Adicionar um console.log para ver o snap
+        // console.log(`Shelf ${props.shelf.id} - Target: ${targetShelfPosition.toFixed(1)}, Snapped to Hole: ${closestHolePosition.toFixed(1)}`);
+    }
+
+    // Calcular a posição TOP final usando a posição do furo mais próximo
+    const topPosition = closestHolePosition * props.scaleFactor;
+
+    // Calcular estilo de movimento horizontal (se existir)
     const moveStyle: Record<string, string> = {};
     if (props.shelf?.shelf_x_position !== undefined) {
         const leftPosition = props.shelf.shelf_x_position;
         moveStyle['left'] = `${leftPosition}px`;
     }
 
+    // Retornar o objeto de estilo completo
     return {
         position: 'absolute' as const,
         left: '-4px',
         width: `${props.sectionWidth * props.scaleFactor + 4}px`,
         height: `${props.shelf.shelf_height * props.scaleFactor}px`,
-        top: `${topPosition}px`,
+        top: `${topPosition}px`, // <-- Usar a posição calculada com snap
         zIndex: '1',
         ...moveStyle,
     } as CSSProperties;

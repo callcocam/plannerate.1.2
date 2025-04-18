@@ -4,7 +4,7 @@
             <draggable v-model="draggableSectionsModel" item-key="id" handle=".drag-handle" class="flex md:flex-row">
                 <template #item="{ element: section, index }">
                     <div :key="section.id">
-                        <div class="flex items-center">
+                        <div class="flex items-center relative">
                             <Cremalheira :section="section" :scale-factor="scaleFactor" @delete-section="deleteSection" @edit-section="editSection">
                                 <template #actions>
                                     <Button
@@ -12,7 +12,7 @@
                                         class="drag-handle h-6 w-6 cursor-move p-0 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
                                         variant="secondary"
                                     >
-                                        <MoveIcon class="h-3 w-3" />
+                                        <MoveIcon class="h-3 w-3" /> 
                                     </Button>
                                 </template>
                             </Cremalheira>
@@ -25,7 +25,12 @@
                                 :sections-container="sectionsContainer" 
                                 @segment-select="$emit('segment-select', $event)"   
                                 @delete-section="deleteSection"
-                            />
+                            >
+                            <div class=" w-full h-full" >
+                                 <SectionDrop :section="section" :scale-factor="scaleFactor" />
+                            </div>
+                            </SectionComponent>
+                            
                         </div>
                     </div>
                 </template>
@@ -45,7 +50,7 @@
 
 <script setup lang="ts">
 import { MoveIcon } from 'lucide-vue-next';
-import { computed, ref, toRefs } from 'vue';
+import { computed, ref } from 'vue';
 import draggable from 'vuedraggable';
 
 import type { Gondola } from '@plannerate/types/gondola';
@@ -55,12 +60,14 @@ import Cremalheira from '@plannerate/views/gondolas/sections/Cremalheira.vue';
 import SectionComponent from '@plannerate/views/gondolas/sections/Section.vue'; 
 import { useSectionStore } from '@plannerate/store/section'; 
 import { useEditorStore } from '@plannerate/store/editor';
+import SectionDrop from './drop/SectionDrop.vue';
  
 
 const props = defineProps<{
     gondola: Gondola; 
     scaleFactor: number;
 }>(); 
+
 
 const sectionsContainer = ref<HTMLElement | null>(null);
 

@@ -1,31 +1,28 @@
 <template>
-    <div
-        class="flex h-full w-full items-center justify-center text-center text-xs text-gray-100 dark:text-gray-700"
-        :class="{ 
+    <div class=" w-full items-center justify-center text-center text-xs text-gray-100 dark:text-gray-700"
+        :style="shelfContentStyle" :class="{
             'border border-dashed border-blue-500 dark:border-blue-400': isSelected,
-        }"
-        @dragover.prevent="handleDragOver"
-        @drop.prevent="handleDrop"
-        @dragleave="handleDragLeave"  
-    >
+        }" @dragover.prevent="handleDragOver" @drop.prevent="handleDrop" @dragleave="handleDragLeave">
+        <!-- Quero alinhar o texto no centro da prateleira  -->
         {{ shelftext }}
     </div>
 </template>
 
 <script setup lang="ts">
-import { defineEmits, defineProps, ref, watch, computed } from 'vue'; 
-import { useShelvesStore } from '../../../store/shelves';
-import { Shelf } from '../../../types/shelves';
+import { defineEmits, defineProps, ref, watch, computed } from 'vue';
+import { useShelvesStore } from '@plannerate/store/shelves';
+import { type Shelf } from '@plannerate/types/shelves';
 
 // Definir Props
 const props = defineProps<{
     shelf: Shelf;
+    scaleFactor: number;
 }>();
 const dragShelfActive = ref(false); // Estado para rastrear se a prateleira está sendo arrastada
 const shelftext = ref(`Shelf (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`); // Texto da prateleira
 // Definir Emits
 const emit = defineEmits(['drop-product', 'drop-layer', 'drop-layer-copy']); // Para quando um produto é solto na prateleira
- 
+
 const shelvesStore = useShelvesStore(); // Instanciar o shelves store
 
 watch(dragShelfActive, (newValue) => {
@@ -41,6 +38,19 @@ watch(dragShelfActive, (newValue) => {
 const isSelected = computed(() => {
     // Verifica se a prateleira está selecionada
     return shelvesStore.isShelfSelected(props.shelf.id);
+});
+
+const shelfContentStyle = computed(() => {
+    if (props.shelf.segments.length > 0) {
+        return {
+            minHeight: `${props.shelf.shelf_height * props.scaleFactor}px`,
+            transform: `translateY(-${props.shelf.shelf_height * props.scaleFactor}px)`
+        }
+    } else {
+        return {
+            minHeight: `${props.shelf.shelf_height * props.scaleFactor}px`,
+        };
+    }
 });
 // --- Lógica de Drag and Drop (para produtos) ---
 const handleDragOver = (event: DragEvent) => {
@@ -69,7 +79,7 @@ const handleDrop = (event: DragEvent) => {
     if (event.dataTransfer) {
         const layerData = event.dataTransfer.getData('text/layer');
         const layerDataCopy = event.dataTransfer.getData('text/layer/copy');
-        const productData = event.dataTransfer.getData('text/product'); 
+        const productData = event.dataTransfer.getData('text/product');
         if (productData) {
             const product = JSON.parse(productData);
             // Emitir evento para o componente pai (Section) lidar com a adição
@@ -107,7 +117,7 @@ const handleDrop = (event: DragEvent) => {
         border-color 0.2s ease-in-out,
         background-color 0.2s ease-in-out;
     /* Aumentar a area de drop */
-    padding: 0 0 30px 0;
+    height: 30px;
     /* Adicionar um efeito de escala */
     cursor: grab;
     z-index: 9999;

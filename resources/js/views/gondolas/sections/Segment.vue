@@ -112,7 +112,7 @@ const segmentStyle = computed(() => {
     return {
         height: `${layerHeight}px`,
         width: `${totalWidth}px`,
-        marginBottom: `${props.shelf.shelf_height * props.scaleFactor}px`,
+        transform: `translateY(-${props.shelf.shelf_height * props.scaleFactor}px)`,
         ...selectedStyle,
     } as CSSProperties;
 });

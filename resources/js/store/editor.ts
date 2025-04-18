@@ -83,11 +83,11 @@ export const useEditorStore = defineStore('editor', () => {
         return gondola.sections.map((section) => {
             return section.shelves.map((shelf) => {
                 return shelf.segments.map((segment) => {
-                    tabindex = tabindex + 1; 
+                    tabindex = tabindex + 1;
                     return segment.layer.tabindex = tabindex;
                 });
             });
-        }); 
+        });
     }
 
     /**
@@ -898,7 +898,7 @@ export const useEditorStore = defineStore('editor', () => {
 
         const segment = shelf.segments.find(seg => seg.id === segmentId);
         if (!segment || !segment.layer) { console.warn(`updateLayerQuantity: Segmento ${segmentId} ou sua camada não encontrados.`); return; }
-
+        setIsLoading(true);
         // Assumindo que layerId corresponde ao product.id dentro da layer do segmento
         // Se a estrutura for diferente (ex: layer tem seu próprio ID), ajuste aqui.
         if (segment.layer.product.id === layerId) {
