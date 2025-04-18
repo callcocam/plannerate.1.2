@@ -13,7 +13,8 @@
         <!-- Conteúdo Principal -->
         <!-- Passa a gôndola do store para os filhos -->
         <div v-else-if="initialGondola && editorGondola" class="flex h-full w-full flex-col gap-6 overflow-hidden">
-            <Info :gondola="initialGondola" />
+            <!-- Passar a gôndola reativa do editorStore -->
+            <Info :gondola="editorGondola" /> 
             <div class="flex  flex-col overflow-auto relative">
                 <!-- <MovableContainer> -->
                 <Sections :gondola="editorGondola" :scale-factor="scaleFactor" />
@@ -41,6 +42,7 @@ import { useGondolaStore } from '@plannerate/store/gondola'; // Importar o novo 
 import { useEditorStore } from '@plannerate/store/editor'; // <-- Importar editorStore
 import Info from '@plannerate/views/gondolas/partials/Info.vue';
 import Sections from '@plannerate/views/gondolas/sections/Sections.vue';
+import { Gondola } from '@/types/gondola';
 
 // Hooks e Stores
 const route = useRoute(); 
@@ -60,7 +62,7 @@ const initialGondola = computed(() => gondolaStore.currentGondola);
 // *** NOVA Computed para a gôndola reativa do editorStore ***
 const editorGondola = computed(() => {
     // Busca a gôndola correspondente no estado atual do editor
-    return editorStore.currentState?.gondolas.find(g => g.id === gondolaId.value);
+    return editorStore.currentState?.gondolas.find(g => g.id === gondolaId.value) as Gondola;
 });
 
 // Hook de Ciclo de Vida

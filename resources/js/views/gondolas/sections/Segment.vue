@@ -1,48 +1,48 @@
 <template>
-    <div
-        class="segment drag-segment-handle group relative flex items-center" 
-        :style="segmentStyle"
+    <div class="segment drag-segment-handle group relative flex items-center border-2" :style="segmentStyle"
+        :class="{ 
+            'justify': alignment === 'justify',
+            'left': alignment === 'left',
+            'center': alignment === 'center',
+            'right': alignment === 'right'
+        }"
     >
-        <Layer
-            v-for="(_, index) in segmentQuantity"
-            :key="index"
-            :shelf="shelf"
-            :segment="segment"
-            :layer="segment.layer"
-            :scale-factor="scaleFactor"
-            :section-width="sectionWidth"
-            @increase="onIncreaseQuantity"
-            @decrease="onDecreaseQuantity"
-        />
+        <LayerComponent v-for="(_, index) in segmentQuantity" :key="index" :shelf="shelf" :segment="segment"
+            :layer="segment.layer" :scale-factor="scaleFactor" :section-width="sectionWidth"
+            @increase="onIncreaseQuantity" @decrease="onDecreaseQuantity" />
     </div>
 </template>
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import { useGondolaStore } from '@plannerate/store/gondola'; // Corrected relative path
-import { useProductStore } from '@plannerate/store/product'; // Corrected relative path 
-import Layer from './Layer.vue';
-import { Layer as LayerType, Segment } from '@plannerate/types/segment';
-import { Section } from '@plannerate/types/sections';
-import { Shelf } from '@/types/shelves';
+import {
+    computed,
+    defineProps,
+    type CSSProperties,
+} from 'vue';
+import { useGondolaStore } from '@plannerate/store/gondola'; // <-- CORRIGIR PATH
+import { useEditorStore } from '@plannerate/store/editor'; // <-- ADICIONAR
+import type { Segment } from '@plannerate/types/segment';
+import type { Shelf } from '@plannerate/types/shelves';
+import type { Section } from '@plannerate/types/sections'; // <-- ADICIONAR IMPORT
+import LayerComponent from './Layer.vue';
 
+// Definir Props
 const props = defineProps<{
-    segment: Segment & {
-        layer: LayerType;
-    };
+    gondolaId: string | undefined;
+    segment: Segment;
     shelf: Shelf;
     scaleFactor: number;
     sectionWidth: number;
 }>();
 
-const segmentSelected = ref(false); // State to track if the segment is selected
+const gondolaStore = useGondolaStore(); // Manter para sectionId
+const editorStore = useEditorStore(); // <-- INSTANCIAR EDITOR STORE
+
+const currentSectionId = computed(() => props.shelf.section_id);
+
 /** Segment quantity (number of layers) */
 const segmentQuantity = computed(() => {
     return props.segment.quantity;
 });
-
-const productStore = useProductStore(); // Instance of the product store
-const gondolaStore = useGondolaStore(); // Instance of the gondola store 
- 
 
 // Computed para o estilo do segmento
 // ----------------------------------------------------
@@ -51,10 +51,9 @@ const gondolaStore = useGondolaStore(); // Instance of the gondola store
 /**
  * Calculate segment style based on properties and selection state
  */
-
 const layerWidth = () => {
     let sectionWidth = props.sectionWidth;
-    currentGondola.value?.sections.map((section: Section) => {
+    gondolaStore.currentGondola.value?.sections.map((section: Section) => {
         section.shelves.map((shelf: Shelf) => {
             if (shelf?.segments?.length > 0) {
                 shelf.segments.map((segment: Segment) => {
@@ -73,58 +72,90 @@ const layerWidth = () => {
     });
     return sectionWidth;
 };
-const currentGondola = computed(() => {
-    return gondolaStore.currentGondola;
-});
-const segmentStyle = computed(() => {
-    // Calculate segment dimensions
-    const layerHeight = props.segment.layer.product.height * props.scaleFactor;
 
-    // Cálculo atualizado da largura total, considerando produtos e espaçamento
+const alignment = computed(() => {
+    let alignment = gondolaStore.currentGondola?.alignment;
+    gondolaStore.currentGondola?.sections.map((section: Section) => {
+        if (section.id === currentSectionId.value) {
+            if (section.alignment) {
+                alignment = section.alignment;
+            }
+            section.shelves.map((shelf: Shelf) => {
+                if (shelf.alignment) {
+                    alignment = shelf.alignment;
+                }
+            });
+        }
+    });
+    return alignment;
+});
+
+const segmentStyle = computed(() => {
+    const layerHeight = props.segment.layer.product.height * props.scaleFactor;
     const productWidth = props.segment.layer.product.width;
     const productQuantity = props.segment.layer.quantity;
     let layerWidthFinal = 0;
-    if (gondolaStore.getAligmentCenter()) {
-        layerWidthFinal = productWidth * props.scaleFactor;
-    } else if (gondolaStore.getAligmentJustify()) {
-        layerWidthFinal = layerWidth();
+
+    let currentAlignment = alignment.value; 
+
+    console.log('alignment', currentAlignment);
+
+    if (currentAlignment === 'justify') {
+        layerWidthFinal = productWidth * productQuantity * props.scaleFactor + layerWidth();
     } else {
-        layerWidthFinal = 0;
+        layerWidthFinal = productWidth * productQuantity * props.scaleFactor;
     }
 
-    // Largura total: largura dos produtos + espaçamento entre eles
-    const totalWidth = productWidth * productQuantity * props.scaleFactor + layerWidthFinal;
+    const totalWidth = layerWidthFinal;
+    const selectedStyle = {};
 
-    // Conditional style when segment is selected
-    const selectedStyle = segmentSelected.value
-        ? {
-              border: '2px solid blue',
-              boxShadow: '0 0 5px rgba(0, 0, 255, 0.5)',
-              outline: 'none',
-          }
-        : {};
-    // Return complete style object
     return {
         height: `${layerHeight}px`,
         width: `${totalWidth}px`,
         marginBottom: `${props.shelf.shelf_height * props.scaleFactor}px`,
         ...selectedStyle,
-    };
+    } as CSSProperties;
 });
 
-// Function to increase quantity
-const onIncreaseQuantity = (layer: LayerType) => {
-    productStore.updateLayerQuantity(layer, layer.quantity, {
-        ...props.segment,
-        layer,
-    });
+// Funções para ajustar a quantidade
+const onIncreaseQuantity = (/* REMOVER: layer: Layer */) => {
+    if (!props.gondolaId || !currentSectionId.value || !props.shelf.id || !props.segment.id || !props.segment.layer?.product?.id) {
+        console.error("onIncreaseQuantity: IDs faltando para atualizar quantidade.");
+        return;
+    }
+    const currentQuantity = props.segment.layer?.quantity ?? 0;
+    const newQuantity = currentQuantity + 1;
+
+    editorStore.updateLayerQuantity(
+        props.gondolaId,
+        currentSectionId.value,
+        props.shelf.id,
+        props.segment.id,
+        props.segment.layer.product.id, // layerId
+        newQuantity
+    );
+
+    // REMOVER: productStore.updateLayerQuantity(layer, newQuantity);
 };
-// Function to decrease quantity
-const onDecreaseQuantity = (layer: LayerType) => {
-    productStore.updateLayerQuantity(layer, layer.quantity, {
-        ...props.segment,
-        layer,
-    });
+
+const onDecreaseQuantity = (/* REMOVER: layer: Layer */) => {
+    if (!props.gondolaId || !currentSectionId.value || !props.shelf.id || !props.segment.id || !props.segment.layer?.product?.id) {
+        console.error("onDecreaseQuantity: IDs faltando para atualizar quantidade.");
+        return;
+    }
+    const currentQuantity = props.segment.layer?.quantity ?? 0;
+    if (currentQuantity > 0) {
+        const newQuantity = currentQuantity - 1;
+        editorStore.updateLayerQuantity(
+            props.gondolaId,
+            currentSectionId.value,
+            props.shelf.id,
+            props.segment.id,
+            props.segment.layer.product.id, // layerId
+            newQuantity
+        );
+        // REMOVER: productStore.updateLayerQuantity(layer, newQuantity);
+    }
 };
 </script>
 

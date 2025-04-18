@@ -831,6 +831,75 @@ export const useEditorStore = defineStore('editor', () => {
         recordChange(); // Registra a mudança
     }
 
+    /**
+     * Atualiza a quantidade de uma camada (layer) específica dentro de um segmento.
+     * @param gondolaId ID da Gôndola.
+     * @param sectionId ID da Seção.
+     * @param shelfId ID da Prateleira.
+     * @param segmentId ID do Segmento.
+     * @param layerId ID da Camada (geralmente igual ao ID do produto).
+     * @param newQuantity Nova quantidade para a camada.
+     */
+    function updateLayerQuantity(gondolaId: string, sectionId: string, shelfId: string, segmentId: string, layerId: string, newQuantity: number) {
+        if (!currentState.value) return;
+        if (newQuantity < 0) {
+            console.warn(`updateLayerQuantity: Tentativa de definir quantidade negativa (${newQuantity}). Abortando.`);
+            return; // Não permitir quantidade negativa
+        }
+
+        const gondola = currentState.value.gondolas.find(g => g.id === gondolaId);
+        if (!gondola) { console.warn(`updateLayerQuantity: Gôndola ${gondolaId} não encontrada.`); return; }
+
+        const section = gondola.sections.find(s => s.id === sectionId);
+        if (!section || !Array.isArray(section.shelves)) { console.warn(`updateLayerQuantity: Seção ${sectionId} não encontrada.`); return; }
+
+        const shelf = section.shelves.find(sh => sh.id === shelfId);
+        if (!shelf || !Array.isArray(shelf.segments)) { console.warn(`updateLayerQuantity: Prateleira ${shelfId} não encontrada.`); return; }
+
+        const segment = shelf.segments.find(seg => seg.id === segmentId);
+        if (!segment || !segment.layer) { console.warn(`updateLayerQuantity: Segmento ${segmentId} ou sua camada não encontrados.`); return; }
+
+        // Assumindo que layerId corresponde ao product.id dentro da layer do segmento
+        // Se a estrutura for diferente (ex: layer tem seu próprio ID), ajuste aqui.
+        if (segment.layer.product.id === layerId) {
+            if (segment.layer.quantity !== newQuantity) {
+                segment.layer.quantity = newQuantity;
+                console.log(`Layer ${layerId} quantity updated to ${newQuantity} in segment ${segmentId}.`);
+                recordChange(); // Registra a mudança
+            } else {
+                console.log(`Layer ${layerId} quantity already ${newQuantity}.`);
+            }
+        } else {
+            console.warn(`updateLayerQuantity: Layer com ID ${layerId} não encontrada no segmento ${segmentId}.`);
+        }
+    }
+
+    /**
+     * Define o alinhamento padrão para uma gôndola específica no estado.
+     * @param gondolaId O ID da gôndola a ser atualizada.
+     * @param alignment O novo valor de alinhamento ('left', 'right', 'center', 'justify', ou null).
+     */
+    function setGondolaAlignment(gondolaId: string, alignment: string | null) {
+        if (!currentState.value) return;
+
+        const gondola = currentState.value.gondolas.find(g => g.id === gondolaId);
+        if (!gondola) {
+            console.warn(`setGondolaAlignment: Gôndola ${gondolaId} não encontrada.`);
+            return;
+        }
+
+        // Verifica se o alinhamento realmente mudou
+        // Converte null para undefined para consistência, se necessário
+        const newAlignment = alignment === null ? undefined : alignment;
+        if (gondola.alignment !== newAlignment) {
+            gondola.alignment = newAlignment;
+            console.log(`Alinhamento da gôndola ${gondolaId} definido para ${newAlignment}`);
+            recordChange(); // Registra a mudança
+        } else {
+            console.log(`Alinhamento da gôndola ${gondolaId} já era ${newAlignment}.`);
+        }
+    }
+
     // Adicione aqui mais ações para manipular gondolas, seções, prateleiras, etc.
     // Ex: addGondola, updateSection, removeShelf, addProductToLayer...
     // Cada uma dessas ações deve modificar `currentState.value` e chamar `recordChange()`
@@ -880,6 +949,8 @@ export const useEditorStore = defineStore('editor', () => {
         updateSectionData, // <-- Expor a nova action
         updateShelfData, // <-- EXPOR A NOVA ACTION
         transferShelfBetweenSections, // <-- EXPOR A NOVA ACTION
+        updateLayerQuantity, // <-- EXPOR A NOVA ACTION
+        setGondolaAlignment, // <-- EXPOR A NOVA ACTION
         currentGondolaId, // <-- EXPOR O COMPUTED
     };
 });

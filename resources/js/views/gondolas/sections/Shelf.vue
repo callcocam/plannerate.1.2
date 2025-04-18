@@ -13,7 +13,7 @@
                     }" :style="segmentsContainerStyle">
                     <template #item="{ element: segment }">
                         <Segment :key="segment.id" :shelf="shelf" :segment="segment" :scale-factor="scaleFactor"
-                            :section-width="sectionWidth" />
+                            :section-width="sectionWidth" :gondola-id="gondolaId" />
                     </template>
                 </draggable>
                 <ShelfControls :shelf="shelf" :scale-factor="scaleFactor" :section-width="sectionWidth"
@@ -77,15 +77,18 @@ import { computed, defineEmits, defineProps, onMounted, onUnmounted, ref, type C
 import draggable from 'vuedraggable';
 import { useShelvesStore } from '@plannerate/store/shelves';
 import { useEditorStore } from '@plannerate/store/editor';
+import { useGondolaStore } from '@plannerate/store/gondola';
 import { type Layer, type Product, type Segment as SegmentType } from '@plannerate/types/segment';
 import { type Shelf } from '@plannerate/types/shelves';
 import Segment from './Segment.vue';
 import ShelfContent from './ShelfContent.vue';
 import ShelfControls from './ShelfControls.vue';
+import { Section } from '@/types/sections';
+import { Gondola } from '@plannerate/types/gondola';
 
 // Definir Props
 const props = defineProps<{
-    gondolaId: string | undefined;
+    gondola: Gondola;
     shelf: Shelf;
     scaleFactor: number;
     sectionWidth: number;
@@ -97,23 +100,29 @@ const props = defineProps<{
 
 const shelfElement = ref<HTMLElement | null>(null);
 
+const gondolaId = computed(() => props.gondola.id);
+
+const gondola = computed(() => props.gondola);
+
 // Definir Emits
 const emit = defineEmits(['drop-product', 'drop-layer-copy', 'drop-layer']);
 const shelvesStore = useShelvesStore();
 const editorStore = useEditorStore();
-
 const alignment = computed(() => {
-    if (props.shelf?.alignment) {
-        return props.shelf?.alignment;
-    }
-    if (props.shelf?.section?.alignment) {
-        return props.shelf?.section?.alignment;
-    }
-    if (props.shelf?.section?.gondola?.alignment) {
-        return props.shelf?.section?.gondola?.alignment;
-    }
-    // Verifica se a prateleira está alinhada à esquerda ou direita
-    return 'justify';
+    let alignment = gondola.value?.alignment;
+    gondola.value?.sections.map((section: Section) => {
+        if (section.id === props.shelf.section_id) {
+            if (section.alignment) {
+                alignment = section.alignment;
+            }
+            section.shelves.map((shelf: Shelf) => {
+                if (shelf.alignment) {
+                    alignment = shelf.alignment;
+                }
+            });
+        }
+    });
+    return alignment;
 });
 // --- Computeds para Estilos ---
 const shelfStyle = computed(() => {
@@ -145,7 +154,7 @@ const sortableSegments = computed<SegmentType[]>({
         return props.shelf.segments || [];
     },
     set(newSegments: SegmentType[]) {
-        if (!props.gondolaId || !props.shelf.section_id || !props.shelf.id) {
+        if (!gondolaId.value || !props.shelf.section_id || !props.shelf.id) {
             console.error('sortableSegments.set: IDs faltando (gondola, section, ou shelf).');
             return;
         }
@@ -156,7 +165,7 @@ const sortableSegments = computed<SegmentType[]>({
         }));
 
         editorStore.setShelfSegmentsOrder(
-            props.gondolaId,
+            gondolaId.value,
             props.shelf.section_id,
             props.shelf.id,
             reorderedSegments
@@ -208,12 +217,12 @@ const globalKeyHandler = (event: KeyboardEvent) => {
 
 // Função auxiliar para chamar a action do editorStore
 const updateAlignment = (alignment: string | null) => {
-    if (!props.gondolaId || !props.shelf.section_id || !props.shelf.id) {
+    if (!gondolaId.value || !props.shelf.section_id || !props.shelf.id) {
         console.error('updateAlignment: IDs faltando (gondola, section, ou shelf).');
         // Adicionar toast de erro?
         return;
     }
-    editorStore.setShelfAlignment(props.gondolaId, props.shelf.section_id, props.shelf.id, alignment);
+    editorStore.setShelfAlignment(gondolaId.value, props.shelf.section_id, props.shelf.id, alignment);
 }
 
 const setAlignmentLeft = () => {

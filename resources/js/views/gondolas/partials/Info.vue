@@ -18,24 +18,23 @@ import {
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
-// Imports Internos
-import { apiService } from '@plannerate/services';
+// Imports Internos 
 import { useEditorStore } from '@plannerate/store/editor';
-import { useGondolaStore } from '@plannerate/store/gondola'; // Importar o store da gôndola
 import { useShelvesStore } from '@plannerate/store/shelves';
-import Category from './Category.vue'; // Assumindo que Category e Popover estão corretos
-import Popover from './Popover.vue';
+import Category from './Category.vue'; 
 import { Button } from '@/components/ui/button';
+import type { Gondola } from '@plannerate/types/gondola'; 
 
-// Definição das Props
-/**
- * Props do componente Info.
- * @property {Array} categories - Lista de categorias disponíveis para filtro.
- */
-defineProps({
+// Definição das Props usando sintaxe padrão
+const props = defineProps({
+    gondola: {
+        type: Object as () => Gondola | undefined, // Usar Object como tipo base
+        required: false, // Ou true, dependendo da lógica pai
+        // Não precisa de default se for undefined
+    },
     categories: {
-        type: Array as () => any[], // Tipar categoria se possível
-        default: () => [],
+        type: Array as () => any[], // Usar any[] como tipo base genérico
+        default: () => [], // Default padrão para array
     },
 });
 
@@ -49,7 +48,6 @@ const emit = defineEmits(['update:invertOrder', 'update:category']);
 
 // Hooks e Stores
 const router = useRouter();
-const gondolaStore = useGondolaStore();
 const shelvesStore = useShelvesStore();
 const editorStore = useEditorStore(); // Instanciar editorStore
 
@@ -64,10 +62,8 @@ const filters = ref({
 const scaleFactor = computed(() => editorStore.currentScaleFactor);
 /** Visibilidade da grade no editor. */
 const showGrid = computed(() => editorStore.isGridVisible);
-/** Gôndola atual do store. */
-const currentGondola = computed(() => gondolaStore.currentGondola);
-/** Seções da gôndola atual (do store). */
-const sections = computed(() => currentGondola.value?.sections || []);
+/** Seções da gôndola atual (agora lendo da prop). */
+const sections = computed(() => (props.gondola as Gondola | undefined)?.sections || []); // Cast para usar
 
 const shelfSelected = computed(() => {
     // Verifica se há prateleiras selecionadas
@@ -79,6 +75,13 @@ const hasChanges = computed(() => editorStore.hasChanges);
 const canUndo = computed(() => editorStore.canUndo);
 const canRedo = computed(() => editorStore.canRedo);
 
+// *** NOVA Computed para a gôndola reativa do editorStore ***
+const alignment = computed(() => {
+    // Busca a gôndola correspondente no estado atual do editor
+    const gondolaStore = props.gondola;
+    let alignment = gondolaStore?.alignment;
+    return alignment;
+});
 // Métodos
 /**
  * Atualiza o fator de escala no store.
@@ -97,15 +100,9 @@ const toggleGrid = () => {
 
 /** Emite evento para inverter a ordem das seções da gôndola pai. */
 const invertSectionOrder = () => {
-    // Adiciona verificação se a gôndola existe
-    if (currentGondola.value?.id) { // Verifica se currentGondola e seu ID existem
-        // Chama a action do editorStore para inverter a ordem no estado
-        editorStore.invertGondolaSectionOrder(currentGondola.value.id);
-        // REMOVIDO: Chamada API direta
-        // apiService.post(`sections/${currentGondola.value.id}/shelves/reorder`).then((response) => {
-        //     // REMOVIDO: Chamada ao gondolaStore
-        //     // gondolaStore.invertSectionOrder(response.data);
-        // });
+    const currentGondola = props.gondola as Gondola | undefined;
+    if (currentGondola?.id) {
+        editorStore.invertGondolaSectionOrder(currentGondola.id);
     } else {
         console.warn('Não é possível inverter a ordem: Gôndola atual não definida.');
     }
@@ -128,13 +125,13 @@ const clearCategoryFilter = () => {
 
 /** Navega para a tela de edição/adição de seção para a gôndola atual. */
 const navigateToAddSection = () => {
-    // Adiciona verificação se a gôndola existe
-    if (currentGondola.value) {
+    const currentGondola = props.gondola as Gondola | undefined;
+    if (currentGondola) {
         router.push({
-            name: 'plannerate.gondola.edit', // Rota para adicionar/editar seção (ajustar se necessário)
+            name: 'plannerate.gondola.edit',
             params: {
-                id: currentGondola.value.planogram_id, // Usar planogram_id do store
-                gondolaId: currentGondola.value.id, // Usar id do store
+                id: currentGondola.planogram_id,
+                gondolaId: currentGondola.id,
             },
         });
     }
@@ -145,30 +142,16 @@ const navigateToAddSection = () => {
  * Atualiza o store, chama a API e redireciona.
  */
 const confirmDeleteGondola = async () => {
-    // Adiciona verificação se a gôndola existe
-    if (!currentGondola.value) return;
-
-    try {
-        const gondolaToRemove = currentGondola.value; // Guarda a referência antes de limpar
-        const gondolaId = gondolaToRemove.id;
-        const planogramId = gondolaToRemove.planogram_id;
-
-        // Limpa o store localmente *antes* da chamada API (Otimista)
-        gondolaStore.clearGondola(); // Limpa a gondola do store
-
-        // Chama a API para deletar
-        await apiService.delete(`gondolas/${gondolaId}`);
-
-        // Redireciona após sucesso
+    const currentGondola = props.gondola as Gondola | undefined;
+    if (!currentGondola) return;
+    try { 
+        const planogramId = currentGondola.planogram_id; 
         router.push({
-            name: 'plannerate.home', // Rota para criar gôndola
-            params: { id: planogramId }, // Usar planogram_id do store
+            name: 'plannerate.home',
+            params: { id: planogramId },
         });
     } catch (error) {
         console.error('Erro ao remover gôndola:', error);
-        // TODO: Adicionar feedback de erro para o usuário (ex: toast)
-        // Em caso de erro, talvez buscar a gôndola novamente ou forçar um reload
-        // gondolaStore.fetchGondola(gondolaId); // Tentativa de reverter (complexo)
     }
 };
 
@@ -218,18 +201,19 @@ const cancelDelete = () => {
 };
 
 /**
- * Justifica os produtos na prateleira selecionada.
- * Atualiza o store, chama a API e redireciona.
+ * Define o alinhamento padrão da gôndola atual, atualizando o estado via editorStore.
  */
-const justifyProducts = async (alignment: string | null = null) => {
-    // Adiciona verificação se a gôndola existe
-    if (!currentGondola.value) return;
-    // Adiciona verificação se a prateleira existe
+const setGondolaAlignmentHandler = (alignment: string | null = null) => {
+    const gondolaId = (props.gondola as Gondola | undefined)?.id;
+    if (!gondolaId) {
+        console.error("setGondolaAlignmentHandler: ID da gôndola atual não encontrado.");
+        return;
+    }
     try {
-        // Chamar o método de justificação de produtos no gondolaStore
-        await gondolaStore.justifyProducts(alignment);
+        console.log(`Setting default alignment to ${alignment} for gondola ${gondolaId}`);
+        editorStore.setGondolaAlignment(gondolaId, alignment);
     } catch (error) {
-        console.error('Erro ao justificar produtos:', error);
+        console.error('Erro ao definir alinhamento da gôndola:', error);
     }
 };
 
@@ -252,7 +236,7 @@ const saveChanges = () => editorStore.saveChanges();
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
                         </svg>
-                        {{ currentGondola?.name || 'Gôndola' }}
+                        {{ (props.gondola as Gondola | undefined)?.name || 'Gôndola' }}
                     </h3>
                     <!-- Controle de Escala -->
                     <div class="flex items-center space-x-2">
@@ -278,47 +262,47 @@ const saveChanges = () => editorStore.saveChanges();
                     </Button>
                     <!-- Botões de Justificação -->
                     <div class="flex items-center space-x-1">
-                        <Button type="button" variant="outline" size="sm" @click="justifyProducts('justify')"
-                            title="Justificar">
+                        <Button type="button" :variant="alignment === 'justify' ? 'default' : 'outline'" size="sm"
+                            @click="setGondolaAlignmentHandler('justify')">
                             <AlignJustify class="h-4 w-4" />
                         </Button>
-                        <Button type="button" variant="outline" size="sm" @click="justifyProducts('left')"
-                            title="Alinhar à Esquerda">
+                        <Button type="button" :variant="alignment === 'left' ? 'default' : 'outline'" size="sm"
+                            @click="setGondolaAlignmentHandler('left')" title="Alinhar à Esquerda">
                             <AlignLeft class="h-4 w-4" />
                         </Button>
-                        <Button type="button" variant="outline" size="sm" @click="justifyProducts('center')"
-                            title="Centralizar">
+                        <Button type="button" :variant="alignment === 'center' ? 'default' : 'outline'" size="sm"
+                            @click="setGondolaAlignmentHandler('center')" title="Centralizar">
                             <AlignCenter class="h-4 w-4" />
                         </Button>
-                        <Button type="button" variant="outline"  size="sm" @click="justifyProducts('right')"
-                            title="Alinhar à Direita">
+                        <Button type="button" :variant="alignment === 'right' ? 'default' : 'outline'" size="sm"
+                            @click="setGondolaAlignmentHandler('right')" title="Alinhar à Direita">
                             <AlignRight class="h-4 w-4" />
                         </Button>
                     </div>
                     <!-- Filtro de Categoria -->
-                    <div class="flex items-center space-x-2" v-if="categories.length > 0">
+                    <div class="flex items-center space-x-2" v-if="props.categories && props.categories.length > 0">
                         <label class="text-sm text-gray-600 dark:text-gray-400">Filtros:</label>
                         <Popover @clear-filters="clearCategoryFilter" :has-active-filters="!!filters.category">
-                            <!-- Componente Category para seleção -->
-                            <Category class="w-full" :categories="categories" v-model="filters.category"
+                            <Category class="w-full" :categories="props.categories" v-model="filters.category"
                                 @update:model-value="selectCategory" :clearable="true" />
                         </Popover>
                     </div>
                 </div>
 
                 <!-- Grupo Direita: Botões de Ação -->
-                <div class="flex items-center gap-x-3 gap-y-2" v-if="currentGondola">
+                <div class="flex items-center gap-x-3 gap-y-2" v-if="props.gondola">
                     <!-- Grupo Ações Gôndola/Seção -->
                     <div class="flex items-center gap-2">
                         <Button v-if="shelfSelected" type="button" variant="outline" size="icon"
                             @click="confirmRemoveShelf" title="Remover Prateleira">
                             <Trash2 class="h-4 w-4" />
                         </Button>
-                        <Button type="button" variant="secondary"  size="sm" v-if="sections.length > 1" @click="invertSectionOrder"
-                            title="Inverter Ordem Seções">
+                        <Button type="button" variant="secondary" size="sm" v-if="sections.length > 1"
+                            @click="invertSectionOrder" title="Inverter Ordem Seções">
                             <ArrowLeftRight class="mr-1 h-4 w-4" /> <span class="hidden md:inline">Inverter</span>
                         </Button>
-                        <Button type="button" variant="secondary" size="sm" @click="navigateToAddSection" title="Adicionar Seção">
+                        <Button type="button" variant="secondary" size="sm" @click="navigateToAddSection"
+                            title="Adicionar Seção">
                             <Plus class="mr-1 h-4 w-4" /> <span class="hidden md:inline">Seção</span>
                         </Button>
                         <Button type="button" variant="destructive" size="sm" @click="confirmRemoveGondola"
@@ -343,7 +327,7 @@ const saveChanges = () => editorStore.saveChanges();
                             Refazer
                         </Button>
                         <div class="flex items-center gap-1">
-                           
+
                             <Button size="sm" @click="saveChanges" :disabled="!hasChanges"
                                 class="dark:hover:bg-primary-800 disabled:opacity-50"
                                 :variant="hasChanges ? 'default' : 'outline'">

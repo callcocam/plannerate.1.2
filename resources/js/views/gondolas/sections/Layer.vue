@@ -1,6 +1,6 @@
 <template>
     <div
-        class="layer group flex cursor-pointer items-center justify-around"
+        class="layer group flex cursor-pointer border border-blue-500"
         :style="layerStyle"
         @click="handleLayerClick"
         @dragstart="onDragStart"
@@ -12,23 +12,21 @@
 </template>
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
-import { useGondolaStore } from '../../../store/gondola';
-import { useProductStore } from '../../../store/product'; // Corrected relative path
-import Product from './Product.vue'; // Importando o novo componente
-import { LayerSegment, Segment } from './types';
+import { useGondolaStore } from '@plannerate/store/gondola';
+import { useProductStore } from '@plannerate/store/product'; // Corrected relative path
+import Product from '@plannerate/views/gondolas/sections/Product.vue'; // Importando o novo componente 
+import { Layer as LayerType, Segment as SegmentType } from '@/types/segment';
 
 const props = defineProps<{
-    layer: LayerSegment;
-    segment: Segment;
+    layer: LayerType;
+    segment: SegmentType;
     scaleFactor: number;
     sectionWidth: number;
 }>();
 
 const emit = defineEmits<{
-    (e: 'increase', layer: LayerSegment): void;
-    (e: 'decrease', layer: LayerSegment): void;
-    (e: 'spacingIncrease', layer: LayerSegment): void;
-    (e: 'spacingDecrease', layer: LayerSegment): void;
+    (e: 'increase', layer: LayerType): void;
+    (e: 'decrease', layer: LayerType): void; 
 }>();
 
 const productStore = useProductStore();
@@ -41,19 +39,19 @@ const segmentSelected = ref(false);
 
 const layerStyle = computed(() => {
     const layerHeight = props.layer.product.height;
-    const productWidth = props.layer.product.width;
+    const productWidth = props.layer.product.width * props.scaleFactor;
     const quantity = props.layer.quantity || 1;
     let layerWidthFinal = `100%`;
     if (gondolaStore.getAligmentLeft()) {
-        layerWidthFinal = `${productWidth * quantity * props.scaleFactor}px`;
+        layerWidthFinal = `${productWidth * quantity }px`;
     } else if (gondolaStore.getAligmentRight()) {
-        layerWidthFinal = `${productWidth * quantity * props.scaleFactor}px`;
+        layerWidthFinal = `${productWidth * quantity}px`;
     } else if (gondolaStore.getAligmentCenter()) {
         layerWidthFinal = `100%`;
     } else if (gondolaStore.getAligmentJustify()) {
         layerWidthFinal = `100%`;
     } else {
-        layerWidthFinal = `${productWidth * quantity * props.scaleFactor}px`;
+        layerWidthFinal = `${productWidth * quantity}px`;
     }
 
     return {

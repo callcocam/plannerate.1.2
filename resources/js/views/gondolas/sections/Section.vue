@@ -5,7 +5,7 @@
                 @dragover.prevent="handleSectionDragOver" @drop.prevent="handleSectionDrop"
                 @dragleave="handleSectionDragLeave" ref="sectionRef">
                 <!-- Conteúdo da Seção (Prateleiras) -->
-                <ShelfComponent v-for="shelf in section.shelves" :key="shelf.id" :shelf="shelf" :gondola-id="gondolaId"
+                <ShelfComponent v-for="shelf in section.shelves" :key="shelf.id" :shelf="shelf" :gondola="gondola"
                     :scale-factor="scaleFactor" :section-width="section.width" :section-height="section.height"
                     :base-height="baseHeight" :sections-container="sectionsContainer" :section-index="sectionIndex"
                     @drop-product="handleProductDropOnShelf" @drop-layer-copy="handleLayerCopy"
@@ -72,13 +72,13 @@ import { Section } from '@plannerate/types/sections';
 import { Layer, Product, Segment } from '@plannerate/types/segment';
 import ShelfComponent from './Shelf.vue';
 import { useToast } from '@plannerate/components/ui/toast';
+import { Gondola } from '@plannerate/types/gondola';
 
 // ------- PROPS & EMITS -------
 const props = defineProps<{
-    gondolaId: string | undefined;
+    gondola: Gondola;
     section: Section;
-    scaleFactor: number;
-    selectedCategory: any;
+    scaleFactor: number; 
     sectionsContainer: HTMLElement | null;
     sectionIndex: number;
 }>();
@@ -87,7 +87,7 @@ const emit = defineEmits(['update:segments']);
 
 // ------- DESTRUCTURED PROPS FOR BETTER PERFORMANCE -------
 // Previne acesso repetido às props nos computed
-const { gondolaId, section, scaleFactor } = props;
+const { gondola, section, scaleFactor } = props;
 
 // ------- STORES & SERVICES -------
 const productStore = useProductStore();
@@ -150,7 +150,7 @@ const addShelf = (event: MouseEvent) => {
  * @param alignment Tipo de alinhamento ('justify', 'left', 'center', 'right') ou null para não alinhar
  */
 const justifyModule = (alignment: string | null = null) => {
-    if (!gondolaId) {
+    if (!gondola.id) {
         toast({
             title: 'Aviso',
             description: 'Não é possível justificar módulo: gondolaId não fornecido.',
@@ -158,14 +158,14 @@ const justifyModule = (alignment: string | null = null) => {
         });
         return;
     }
-        editorStore.setSectionAlignment(gondolaId, section.id, alignment);
+    editorStore.setSectionAlignment(gondola.id, section.id, alignment);
 };
 
 /**
  * Inverte a ordem das prateleiras no módulo
  */
 const inverterModule = () => {
-    if (!gondolaId) {
+    if (!gondola.id) {
         toast({
             title: 'Aviso',
             description: 'Não é possível inverter prateleiras: gondolaId não fornecido.',
@@ -173,7 +173,7 @@ const inverterModule = () => {
         });
         return;
     }
-    editorStore.invertShelvesInSection(gondolaId, section.id);
+    editorStore.invertShelvesInSection(gondola.id, section.id);
 };
 
 // ------- MÉTODOS - HELPERS -------
@@ -268,7 +268,7 @@ const handleSectionDrop = async (event: DragEvent) => {
 
         // Verifica se a posição é válida
         if (newPosition >= 0 && newPosition <= section.height - shelfHeight) {
-            if (!gondolaId) {
+            if (!gondola.id) {
                 toast({
                     title: 'Erro Interno',
                     description: 'Contexto da gôndola não encontrado.',
@@ -280,7 +280,7 @@ const handleSectionDrop = async (event: DragEvent) => {
             }
 
             // Atualiza a posição da prateleira
-            editorStore.setShelfPosition(gondolaId, section.id, shelf.id, {
+            editorStore.setShelfPosition(gondola.id, section.id, shelf.id, {
                 shelf_position: newPosition,
                 shelf_x_position: -4
             });
@@ -312,7 +312,7 @@ const handleSectionDrop = async (event: DragEvent) => {
  */
 const handleProductDropOnShelf = async (product: Product, shelf: ShelfType) => {
     // Verifica se o gondolaId está disponível
-    if (!gondolaId) {
+    if (!gondola.id) {
         toast({
             title: 'Erro Interno',
             description: 'Contexto da gôndola não encontrado.',
@@ -326,7 +326,7 @@ const handleProductDropOnShelf = async (product: Product, shelf: ShelfType) => {
 
     try {
         // Adiciona o segmento à prateleira
-        editorStore.addSegmentToShelf(gondolaId, section.id, shelf.id, newSegment);
+        editorStore.addSegmentToShelf(gondola.id, section.id, shelf.id, newSegment);
     } catch (error) {
         console.error('Erro ao adicionar produto/segmento ao editorStore:', error);
         const errorDesc = (error instanceof Error) ? error.message : 'Falha ao atualizar o estado do editor.';
@@ -345,7 +345,7 @@ const handleProductDropOnShelf = async (product: Product, shelf: ShelfType) => {
  */
 const handleLayerCopy = async (layer: Layer, shelf: ShelfType) => {
     // Verifica se o gondolaId está disponível
-    if (!gondolaId) {
+    if (!gondola.id) {
         toast({
             title: 'Erro Interno',
             description: 'Contexto da gôndola não encontrado.',
@@ -359,7 +359,7 @@ const handleLayerCopy = async (layer: Layer, shelf: ShelfType) => {
 
     try {
         // Adiciona o segmento copiado à prateleira
-        editorStore.addSegmentToShelf(gondolaId, section.id, shelf.id, newSegment);
+        editorStore.addSegmentToShelf(gondola.id, section.id, shelf.id, newSegment);
     } catch (error) {
         console.error('Erro ao copiar camada/segmento para o editorStore:', error);
         const errorDesc = (error instanceof Error) ? error.message : 'Falha ao atualizar o estado do editor.';
@@ -409,9 +409,9 @@ const updateLayer = (layer: Layer, targetShelf: ShelfType) => {
     const newSectionId = targetShelf.section_id; // ID da seção de destino
 
     // Verifica se todos os IDs essenciais foram obtidos
-    if (!gondolaId || !oldSectionId || !oldShelfId || !newSectionId || !newShelfId || !segmentId) {
+    if (!gondola.id || !oldSectionId || !oldShelfId || !newSectionId || !newShelfId || !segmentId) {
         console.error('updateLayer: IDs faltando para realizar a transferência.',
-            { gondolaId, oldSectionId, oldShelfId, newSectionId, newShelfId, segmentId }
+            { gondolaId: gondola.id, oldSectionId, oldShelfId, newSectionId, newShelfId, segmentId }
         );
         toast({
             title: 'Erro Interno',
@@ -428,7 +428,7 @@ const updateLayer = (layer: Layer, targetShelf: ShelfType) => {
 
     // Transfere o segmento
     editorStore.transferSegmentBetweenShelves(
-        gondolaId,
+        gondola.id,
         oldSectionId,
         oldShelfId,
         newSectionId,
