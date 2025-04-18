@@ -86,33 +86,34 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineEmits, defineProps, onMounted, onUnmounted, ref } from 'vue';
-import draggable from 'vuedraggable';
-import { useSegmentStore } from '../../../store/segment';
-import { useShelvesStore } from '../../../store/shelves';
-import { Layer, Product, Segment as SegmentType } from '../../../types/segment';
-import { Shelf } from '../../../types/shelves';
+import { computed, defineEmits, defineProps, onMounted, onUnmounted, ref, type CSSProperties } from 'vue';
+import draggable from 'vuedraggable'; 
+import { useShelvesStore } from '@plannerate/store/shelves';
+import { useEditorStore } from '@plannerate/store/editor';
+import { type Layer, type Product, type Segment as SegmentType } from '@plannerate/types/segment';
+import { type Shelf } from '@plannerate/types/shelves';
 import Segment from './Segment.vue';
 import ShelfContent from './ShelfContent.vue';
-import ShelfControls from './ShelfControls.vue'; // Importar o componente ShelfControls
+import ShelfControls from './ShelfControls.vue';
 
 // Definir Props
 const props = defineProps<{
+    gondolaId: string | undefined;
     shelf: Shelf;
     scaleFactor: number;
     sectionWidth: number;
     sectionHeight: number;
     baseHeight: number;
-    sectionsContainer: HTMLElement | null; // Referência ao container das seções
-    sectionIndex: number; // Índice da seção atual
+    sectionsContainer: HTMLElement | null;
+    sectionIndex: number;
 }>();
 
 const shelfElement = ref<HTMLElement | null>(null);
 
 // Definir Emits
-const emit = defineEmits(['drop-product', 'drop-layer-copy']); // Para quando um produto é solto na prateleira
-const shelvesStore = useShelvesStore();
-const segmentStore = useSegmentStore(); // Instanciar o segment store
+const emit = defineEmits(['drop-product', 'drop-layer-copy']);
+const shelvesStore = useShelvesStore(); 
+const editorStore = useEditorStore();
 
 const alignment = computed(() => {
     if (props.shelf?.alignment) {
@@ -129,25 +130,22 @@ const alignment = computed(() => {
 });
 // --- Computeds para Estilos ---
 const shelfStyle = computed(() => {
-    // Convertemos a posição da prateleira para pixels usando o fator de escala
     const topPosition = props.shelf.shelf_position * props.scaleFactor;
-    const moveStyle = {};
+    const moveStyle: Record<string, string> = {};
     if (props.shelf?.shelf_x_position !== undefined) {
         const leftPosition = props.shelf.shelf_x_position;
-        // Aplicamos a posição sem o sinal negativo para corrigir a direção do movimento
         moveStyle['left'] = `${leftPosition}px`;
     }
 
-    // Retornamos o estilo final com tipagem correta (as CSSProperties)
     return {
-        position: 'absolute' as const, // Use 'as const' para tipar corretamente
+        position: 'absolute' as const,
         left: '-4px',
         width: `${props.sectionWidth * props.scaleFactor + 4}px`,
         height: `${props.shelf.shelf_height * props.scaleFactor}px`,
         top: `${topPosition}px`,
         zIndex: '1',
         ...moveStyle,
-    };
+    } as CSSProperties;
 });
 
 // --- Lógica de Drag and Drop (para produtos) ---
@@ -157,29 +155,73 @@ const shelfStyle = computed(() => {
  */
 const sortableSegments = computed<SegmentType[]>({
     get() {
-        // Garantir que todos os segmentos tenham IDs
-        return props.shelf.segments;
+        return props.shelf.segments || [];
     },
     set(newSegments: SegmentType[]) {
-        // Garantir que a ordenação está atualizada antes de emitir o evento
+        if (!props.gondolaId || !props.shelf.section_id || !props.shelf.id) {
+            console.error('sortableSegments.set: IDs faltando (gondola, section, ou shelf).');
+            return;
+        }
+
         const reorderedSegments = newSegments.map((segment, index) => ({
             ...segment,
             ordering: index + 1,
         }));
-        // Emitir evento para o componente pai (Section) lidar com a atualização
-        shelvesStore.updateShelf(props.shelf.id, {
-            segments: reorderedSegments,
-        });
+        
+        editorStore.setShelfSegmentsOrder(
+            props.gondolaId,
+            props.shelf.section_id,
+            props.shelf.id,
+            reorderedSegments
+        );
     },
 });
 
-const updateLayer = (layer: Layer, shelf: Shelf) => {
-    // Emitir evento para o componente pai (Section) lidar com a atualização
-    if (!layer.segment) {
-        // Se o segmento não existir, não faz nada
+const updateLayer = (layer: Layer, targetShelf: Shelf) => {
+    // 1. Obter IDs e dados necessários
+    const segmentToMove = layer.segment;
+    if (!segmentToMove) {
+        console.error('updateLayer: Objeto segment não encontrado na layer.');
         return;
     }
-    segmentStore.transferLayer(layer.segment_id, layer.segment.shelf_id, shelf.id, 0);
+    const segmentId = segmentToMove.id;
+    const oldShelfId = segmentToMove.shelf_id; // ID da prateleira de origem
+    const oldSectionId = props.shelf.section_id; // ID da seção de origem (da prateleira atual)
+    
+    const newShelfId = targetShelf.id; // ID da prateleira de destino
+    const newSectionId = targetShelf.section_id; // ID da seção de destino
+    
+    const gondolaId = props.gondolaId; // ID da gôndola
+
+    // 2. Verificar se todos os IDs essenciais foram obtidos
+    if (!gondolaId || !oldSectionId || !oldShelfId || !newSectionId || !newShelfId || !segmentId) {
+        console.error('updateLayer: IDs faltando para realizar a transferência.', 
+            { gondolaId, oldSectionId, oldShelfId, newSectionId, newShelfId, segmentId }
+        );
+        // Adicionar um toast para o usuário seria bom aqui
+        return;
+    }
+
+    // 3. Evitar auto-transferência (opcional)
+    if (oldShelfId === newShelfId) {
+        console.log('updateLayer: Tentativa de transferir layer para a mesma prateleira. Ignorando.');
+        return;
+    }
+
+    // 4. Chamar a action do editorStore
+    console.log(`Chamando transferSegment: ${segmentId} de ${oldShelfId} para ${newShelfId}`);
+    editorStore.transferSegmentBetweenShelves(
+        gondolaId,
+        oldSectionId,
+        oldShelfId,
+        newSectionId,
+        newShelfId,
+        segmentId
+        // Passar newPositionX ou newOrdering se forem calculados aqui
+    );
+
+    // 5. Remover chamada antiga
+    // segmentStore.transferLayer(layer.segment_id, layer.segment.shelf_id, shelf.id, 0);
 };
 /**
  * Computed property para estilo do container de segmentos
@@ -192,98 +234,96 @@ const segmentsContainerStyle = computed(() => {
 });
 
 const selectShelfClick = (event: MouseEvent) => {
-    // Emitir evento para o componente pai (Section) lidar com o clique
     shelvesStore.setSelectedShelf(props.shelf);
     shelvesStore.startEditing();
-    // Emitir evento para o componente pai (Section) lidar com o clique
-    event.stopPropagation(); // Impede que o evento de clique se propague para outros elementos
-    // Verifica se a tecla Ctrl ou Meta está pressionada
+    event.stopPropagation();
     const isCtrlOrMetaPressed = event.ctrlKey || event.metaKey;
     if (isCtrlOrMetaPressed) {
-        // Se a tecla Ctrl ou Meta estiver pressionada, alterna a seleção
         shelvesStore.setSelectedShelfIds(props.shelf.id);
     } else {
-        // Caso contrário, seleciona apenas a prateleira atual
         const isCurrentlySelected = shelvesStore.isShelfSelected(props.shelf.id);
         const selectionSize = shelvesStore.selectedShelfIds.size;
         if (isCurrentlySelected && selectionSize === 1) {
-            // Se a prateleira já estiver selecionada e for a única selecionada, desmarque-a
             shelvesStore.clearSelection();
             shelvesStore.clearSelectedShelfIds();
         } else {
-            // Caso contrário, selecione apenas a prateleira atual
             shelvesStore.clearSelectedShelfIds();
             shelvesStore.setSelectedShelfIds(props.shelf.id);
         }
     }
 };
 const controlDeleteShelf = (event: KeyboardEvent) => {
-    // Verificar se Ctrl+Delete foi pressionado
     if ((event.key === 'Delete' || event.key === 'Backspace') && event.ctrlKey) {
         event.preventDefault();
         shelvesStore.deleteSelectedShelf();
     }
 };
 
-// Handler global para capturar Ctrl+Delete em qualquer parte da aplicação
 const globalKeyHandler = (event: KeyboardEvent) => {
     if (shelvesStore.selectedShelf && shelvesStore.selectedShelf.id === props.shelf.id) {
         controlDeleteShelf(event);
     }
 };
 
+// Função auxiliar para chamar a action do editorStore
+const updateAlignment = (alignment: string) => {
+    if (!props.gondolaId || !props.shelf.section_id || !props.shelf.id) {
+        console.error('updateAlignment: IDs faltando (gondola, section, ou shelf).');
+        // Adicionar toast de erro?
+        return;
+    }
+    editorStore.setShelfAlignment(props.gondolaId, props.shelf.section_id, props.shelf.id, alignment);
+}
+
 const setAlignmentLeft = () => {
-    shelvesStore.setSectionAlignment(props.shelf.id, 'left');
+    // REMOVIDO: shelvesStore.setSectionAlignment(props.shelf.id, 'left');
+    updateAlignment('left');
 };
 
 const setAlignmentCenter = () => {
-    shelvesStore.setSectionAlignment(props.shelf.id, 'center');
+    // REMOVIDO: shelvesStore.setSectionAlignment(props.shelf.id, 'center');
+    updateAlignment('center');
 };
 
 const setAlignmentRight = () => {
-    shelvesStore.setSectionAlignment(props.shelf.id, 'right');
+    // REMOVIDO: shelvesStore.setSectionAlignment(props.shelf.id, 'right');
+    updateAlignment('right');
 };
 const setAlignmentJustify = () => {
-    shelvesStore.setSectionAlignment(props.shelf.id, 'justify');
+    // REMOVIDO: shelvesStore.setSectionAlignment(props.shelf.id, 'justify');
+    updateAlignment('justify');
 };
 
 const invertSegments = () => {
-    // Inverter a ordem dos segmentos
     const invertedSegments = [...sortableSegments.value].reverse();
     sortableSegments.value = invertedSegments;
+    console.warn("InvertSegments agora usa setShelfSegmentsOrder via computed.");
 };
 
 onMounted(() => {
-    // Adicionar lógica para quando a prateleira é montada
     if (shelfElement.value) {
         shelfElement.value.addEventListener('click', selectShelfClick);
     }
 
-    // Adicionar listener global para capturar Ctrl+Delete
     document.addEventListener('keydown', globalKeyHandler);
 });
 
 onUnmounted(() => {
-    // Remover os listeners quando o componente for desmontado
     if (shelfElement.value) {
         shelfElement.value.removeEventListener('click', selectShelfClick);
     }
 
-    // Remover listener global
     document.removeEventListener('keydown', globalKeyHandler);
 });
 </script>
 
 <style scoped>
 .shelf-container {
-    /* Adicionar transições se houver feedback visual no dragover */
     transition: border-color 0.2s ease-in-out;
 }
 
-/* Estilo para feedback visual ao arrastar sobre */
 .shelf-container.drag-over {
     border-color: theme('colors.blue.500');
-    /* background-color: theme('colors.blue.50 / 50%'); */
 }
 
 .drag-over {
@@ -292,14 +332,10 @@ onUnmounted(() => {
     border-width: 2px;
     border-style: dashed;
     border-radius: 4px;
-    /* Adicionar sombra se necessário */
     box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
-    /* Adicionar transição suave */
     transition:
         border-color 0.2s ease-in-out,
         background-color 0.2s ease-in-out;
-    /* Aumentar a area de drop */
     padding: 0 0 30px 0;
-    /* Adicionar um efeito de escala */
 }
 </style>

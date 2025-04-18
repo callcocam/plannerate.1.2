@@ -52,6 +52,21 @@ export const useEditorStore = defineStore('editor', () => {
     const canUndo = computed(() => historyIndex.value > 0);
     const canRedo = computed(() => historyIndex.value < history.value.length - 1);
 
+    // ---> NOVO GETTER COMPUTADO <---
+    const currentGondolaId = computed((): string | null => {
+        // Assume que o editor tem um conceito de gôndola "ativa" ou que podemos derivar
+        // Aqui, vamos simplificar e pegar o ID da primeira gôndola se houver alguma.
+        // Se a lógica for mais complexa (ex: gôndola selecionada), ajuste aqui.
+        if (currentState.value && currentState.value.gondolas && currentState.value.gondolas.length > 0) {
+            // Idealmente, teríamos um state.activeGondolaId ou similar.
+            // Por enquanto, vamos usar a primeira gôndola como exemplo.
+            // TODO: Implementar lógica para determinar a gôndola ativa corretamente.
+            console.warn('Logic for currentGondolaId needs refinement. Using the first gondola ID for now.');
+            return currentState.value.gondolas[0].id; // Acessa o currentState diretamente
+        }
+        return null;
+    });
+
     // --- ACTIONS --- 
 
     /**
@@ -474,6 +489,288 @@ export const useEditorStore = defineStore('editor', () => {
         }
     }
 
+    /**
+     * Define a ordem dos segmentos para uma prateleira específica no estado.
+     * Usado após operações como drag-and-drop de segmentos.
+     * @param gondolaId O ID da gôndola.
+     * @param sectionId O ID da seção.
+     * @param shelfId O ID da prateleira a ser atualizada.
+     * @param newSegments O array de segmentos na nova ordem.
+     */
+    function setShelfSegmentsOrder(gondolaId: string, sectionId: string, shelfId: string, newSegments: Segment[]) {
+        if (!currentState.value) return;
+
+        const gondola = currentState.value.gondolas.find(g => g.id === gondolaId);
+        if (!gondola) {
+            console.warn(`setShelfSegmentsOrder: Gôndola ${gondolaId} não encontrada.`);
+            return;
+        }
+        const section = gondola.sections.find(s => s.id === sectionId);
+        if (!section || !Array.isArray(section.shelves)) {
+            console.warn(`setShelfSegmentsOrder: Seção ${sectionId} não encontrada ou sem prateleiras.`);
+            return;
+        }
+        const shelf = section.shelves.find(sh => sh.id === shelfId);
+        if (!shelf || !Array.isArray(shelf.segments)) {
+            console.warn(`setShelfSegmentsOrder: Prateleira ${shelfId} não encontrada ou sem segmentos.`);
+            return;
+        }
+
+        // Compara se a nova ordem de IDs é diferente da atual
+        const currentSegmentIds = shelf.segments.map(seg => seg.id);
+        const newSegmentIds = newSegments.map(seg => seg.id);
+        if (JSON.stringify(currentSegmentIds) === JSON.stringify(newSegmentIds)) {
+            console.log(`Ordem dos segmentos na prateleira ${shelfId} não mudou.`);
+            return; 
+        }
+
+        // Verificar se todos os segmentos recebidos têm ID (precaução)
+        if (!newSegments.every(seg => typeof seg.id === 'string')) {
+            console.error('setShelfSegmentsOrder: Tentativa de definir ordem com segmento sem ID.', newSegments);
+            return;
+        }
+
+        // Atualiza o array de segmentos
+        // Usar 'as any' para contornar a complexidade da checagem de tipo profunda do linter
+        shelf.segments = [...newSegments] as any; 
+        console.log(`Nova ordem dos segmentos definida para a prateleira ${shelfId}`);
+        recordChange(); 
+    }
+
+    /**
+     * Define o alinhamento para uma prateleira específica no estado.
+     * @param gondolaId O ID da gôndola.
+     * @param sectionId O ID da seção.
+     * @param shelfId O ID da prateleira a ser atualizada.
+     * @param alignment O novo valor de alinhamento.
+     */
+    function setShelfAlignment(gondolaId: string, sectionId: string, shelfId: string, alignment: string) {
+        if (!currentState.value) return;
+
+        const gondola = currentState.value.gondolas.find(g => g.id === gondolaId);
+        if (!gondola) {
+            console.warn(`setShelfAlignment: Gôndola ${gondolaId} não encontrada.`);
+            return;
+        }
+        const section = gondola.sections.find(s => s.id === sectionId);
+        if (!section || !Array.isArray(section.shelves)) {
+            console.warn(`setShelfAlignment: Seção ${sectionId} não encontrada ou sem prateleiras.`);
+            return;
+        }
+        const shelf = section.shelves.find(sh => sh.id === shelfId);
+        if (!shelf) {
+            console.warn(`setShelfAlignment: Prateleira ${shelfId} não encontrada.`);
+            return;
+        }
+
+        // Verifica se o alinhamento realmente mudou
+        if (shelf.alignment !== alignment) {
+            shelf.alignment = alignment;
+            console.log(`Alinhamento da prateleira ${shelfId} definido para ${alignment}`);
+            recordChange(); // Registra a mudança
+        } else {
+            console.log(`Alinhamento da prateleira ${shelfId} já era ${alignment}.`);
+        }
+    }
+
+    /**
+     * Transfere um segmento de uma prateleira para outra dentro do estado do editor.
+     * @param gondolaId ID da gôndola.
+     * @param oldSectionId ID da seção de origem.
+     * @param oldShelfId ID da prateleira de origem.
+     * @param newSectionId ID da seção de destino.
+     * @param newShelfId ID da prateleira de destino.
+     * @param segmentId ID do segmento a ser transferido.
+     * @param newPositionX Opcional: Nova posição X relativa na prateleira de destino.
+     * @param newOrdering Opcional: Nova ordem na prateleira de destino.
+     */
+    function transferSegmentBetweenShelves(
+        gondolaId: string,
+        oldSectionId: string,
+        oldShelfId: string,
+        newSectionId: string,
+        newShelfId: string,
+        segmentId: string,
+        newPositionX?: number, // Supondo que a posição X seja relevante
+        newOrdering?: number  // Supondo que a ordem precise ser definida
+    ) {
+        if (!currentState.value) return;
+
+        const gondola = currentState.value.gondolas.find(g => g.id === gondolaId);
+        if (!gondola) {
+            console.warn(`transferSegment: Gôndola ${gondolaId} não encontrada.`);
+            return;
+        }
+
+        // Encontrar seção/prateleira de ORIGEM
+        const oldSection = gondola.sections.find(s => s.id === oldSectionId);
+        if (!oldSection || !Array.isArray(oldSection.shelves)) { /* erro */ return; }
+        const oldShelf = oldSection.shelves.find(sh => sh.id === oldShelfId);
+        if (!oldShelf || !Array.isArray(oldShelf.segments)) { /* erro */ return; }
+
+        // Encontrar seção/prateleira de DESTINO
+        const newSection = gondola.sections.find(s => s.id === newSectionId);
+        if (!newSection || !Array.isArray(newSection.shelves)) { /* erro */ return; }
+        const newShelf = newSection.shelves.find(sh => sh.id === newShelfId);
+        if (!newShelf) { /* erro */ return; }
+        if (!Array.isArray(newShelf.segments)) {
+            newShelf.segments = []; // Inicializa se não existir
+        }
+
+        // Encontrar e remover segmento da prateleira de origem
+        const segmentIndex = oldShelf.segments.findIndex(seg => seg.id === segmentId);
+        if (segmentIndex === -1) {
+            console.warn(`transferSegment: Segmento ${segmentId} não encontrado na prateleira ${oldShelfId}.`);
+            return;
+        }
+        const segmentToMove = oldShelf.segments.splice(segmentIndex, 1)[0];
+        if (!segmentToMove) { /* erro */ return; }
+
+        // Atualizar dados do segmento movido
+        segmentToMove.shelf_id = newShelfId;
+        if (newPositionX !== undefined) {
+             // Usar 'position' ou o campo correto para posição X
+            (segmentToMove as any).position = newPositionX; 
+        }
+        // Atualizar ordem (anexar ao final se não especificado)
+        segmentToMove.ordering = newOrdering ?? newShelf.segments.length + 1;
+
+        // Adicionar segmento à prateleira de destino
+        newShelf.segments.push(segmentToMove);
+
+        // Opcional: Recalcular/Reordenar 'ordering' para ambas as prateleiras
+        // oldShelf.segments.forEach((seg, index) => seg.ordering = index + 1);
+        // newShelf.segments.sort((a, b) => a.ordering - b.ordering); // Garante ordem se newOrdering foi usado
+
+        console.log(`Segmento ${segmentId} transferido de ${oldShelfId} para ${newShelfId}`);
+        recordChange(); // Registra a mudança
+    }
+
+    /**
+     * Remove uma prateleira específica de uma seção no estado.
+     * @param gondolaId O ID da gôndola.
+     * @param sectionId O ID da seção.
+     * @param shelfId O ID da prateleira a ser removida.
+     */
+    function removeShelfFromSection(gondolaId: string, sectionId: string, shelfId: string) {
+        if (!currentState.value) return;
+
+        const gondola = currentState.value.gondolas.find(g => g.id === gondolaId);
+        if (!gondola) {
+            console.warn(`removeShelfFromSection: Gôndola ${gondolaId} não encontrada.`);
+            return;
+        }
+
+        const section = gondola.sections.find(s => s.id === sectionId);
+        if (!section || !Array.isArray(section.shelves)) {
+            console.warn(`removeShelfFromSection: Seção ${sectionId} não encontrada ou sem prateleiras.`);
+            return;
+        }
+
+        const initialLength = section.shelves.length;
+        // Filtra o array de prateleiras, mantendo apenas as que NÃO têm o ID correspondente
+        section.shelves = section.shelves.filter(sh => sh.id !== shelfId);
+        
+        // Verifica se alguma prateleira foi realmente removida antes de registrar
+        if (section.shelves.length < initialLength) {
+            console.log(`Prateleira ${shelfId} removida da seção ${sectionId}`);
+            recordChange(); // Registra a mudança
+        } else {
+            console.warn(`Prateleira ${shelfId} não encontrada na seção ${sectionId} para remoção.`);
+        }
+    }
+
+    /**
+     * Atualiza os dados de uma seção específica no estado.
+     * @param gondolaId O ID da gôndola.
+     * @param sectionId O ID da seção a ser atualizada.
+     * @param sectionData Objeto contendo as propriedades da seção a serem atualizadas.
+     */
+    function updateSectionData(gondolaId: string, sectionId: string, sectionData: Partial<Section>) {
+        if (!currentState.value) return;
+
+        const gondola = currentState.value.gondolas.find(g => g.id === gondolaId);
+        if (!gondola) {
+            console.warn(`updateSectionData: Gôndola ${gondolaId} não encontrada.`);
+            return;
+        }
+
+        const sectionIndex = gondola.sections.findIndex(s => s.id === sectionId);
+        if (sectionIndex === -1) {
+            console.warn(`updateSectionData: Seção ${sectionId} não encontrada.`);
+            return;
+        }
+
+        // Mescla os dados antigos com os novos dados
+        // Usar Object.assign para garantir que apenas as propriedades fornecidas sejam atualizadas
+        const originalSection = gondola.sections[sectionIndex];
+        const updatedSection = Object.assign({}, originalSection, sectionData);
+
+        // Verifica se houve realmente alguma mudança (comparação superficial)
+        // Para uma comparação profunda, usar isEqual do lodash seria mais robusto
+        if (JSON.stringify(originalSection) !== JSON.stringify(updatedSection)) {
+            // Atualiza a seção no array do estado
+            gondola.sections[sectionIndex] = updatedSection;
+            console.log(`Dados da seção ${sectionId} atualizados.`);
+            recordChange(); // Registra a mudança
+        } else {
+            console.log(`Dados da seção ${sectionId} não foram alterados.`);
+        }
+    }
+
+    /**
+     * Atualiza os dados de uma prateleira específica no estado.
+     * @param gondolaId O ID da gôndola.
+     * @param sectionId O ID da seção que contém a prateleira.
+     * @param shelfId O ID da prateleira a ser atualizada.
+     * @param shelfData Objeto contendo as propriedades da prateleira a serem atualizadas.
+     */
+    function updateShelfData(gondolaId: string, sectionId: string, shelfId: string, shelfData: Partial<Shelf>) {
+        if (!currentState.value) return;
+
+        const gondola = currentState.value.gondolas.find(g => g.id === gondolaId);
+        if (!gondola) {
+            console.warn(`updateShelfData: Gôndola ${gondolaId} não encontrada.`);
+            return;
+        }
+
+        const section = gondola.sections.find(s => s.id === sectionId);
+        if (!section || !Array.isArray(section.shelves)) {
+            console.warn(`updateShelfData: Seção ${sectionId} não encontrada ou sem prateleiras.`);
+            return;
+        }
+
+        const shelfIndex = section.shelves.findIndex(sh => sh.id === shelfId);
+        if (shelfIndex === -1) {
+            console.warn(`updateShelfData: Prateleira ${shelfId} não encontrada.`);
+            return;
+        }
+
+        // Mescla os dados antigos com os novos dados
+        const originalShelf = section.shelves[shelfIndex];
+        // Garante que propriedades nulas ou indefinidas em shelfData não sobrescrevam valores existentes inesperadamente,
+        // a menos que sejam explicitamente parte de Partial<Shelf>
+        const updatedShelf = { 
+            ...originalShelf, 
+            ...shelfData, 
+            alignment: shelfData.alignment === null ? undefined : shelfData.alignment ?? originalShelf.alignment // Converte null para undefined
+        };
+
+        // Remove 'segments' dos dados recebidos se não for para ser atualizado aqui
+        // Assumindo que 'segments' são gerenciados por outras ações (addSegment, setSegmentsOrder, etc)
+        // delete updatedShelf.segments; // Descomentar se necessário
+
+        // Compara usando isEqual para uma verificação profunda
+        if (!isEqual(originalShelf, updatedShelf)) {
+            // Atualiza a prateleira no array do estado
+            section.shelves[shelfIndex] = updatedShelf;
+            console.log(`Dados da prateleira ${shelfId} atualizados.`);
+            recordChange(); // Registra a mudança
+        } else {
+            console.log(`Dados da prateleira ${shelfId} não foram alterados.`);
+        }
+    }
+
     // Adicione aqui mais ações para manipular gondolas, seções, prateleiras, etc.
     // Ex: addGondola, updateSection, removeShelf, addProductToLayer...
     // Cada uma dessas ações deve modificar `currentState.value` e chamar `recordChange()`
@@ -516,5 +813,12 @@ export const useEditorStore = defineStore('editor', () => {
         setSectionAlignment, // <-- Expor a nova action
         setShelfPosition, // <-- Expor a nova action
         addSegmentToShelf, // <-- Expor a nova action
+        setShelfSegmentsOrder, // <-- Expor a nova action
+        setShelfAlignment, // <-- Expor a nova action
+        transferSegmentBetweenShelves, // <-- Expor a nova action
+        removeShelfFromSection, // <-- Expor a nova action
+        updateSectionData, // <-- Expor a nova action
+        updateShelfData, // <-- EXPOR A NOVA ACTION
+        currentGondolaId, // <-- EXPOR O COMPUTED
     };
 });

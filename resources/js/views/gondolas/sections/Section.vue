@@ -15,6 +15,7 @@
                     v-for="shelf in section.shelves"
                     :key="shelf.id"
                     :shelf="shelf"
+                    :gondola-id="props.gondolaId"
                     :scale-factor="scaleFactor"
                     :section-width="props.section.width"
                     :section-height="props.section.height"
@@ -72,18 +73,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineEmits, defineProps, onMounted, onUnmounted, ref } from 'vue';
-import { useSegmentService } from '../../../services/segmentService';
-import { useShelfService } from '../../../services/shelfService'; 
-import { useProductStore } from '../../../store/product';
-import { useSectionStore } from '../../../store/section';
-import { useShelvesStore } from '../../../store/shelves';
-import { useEditorStore } from '../../../store/editor';
-import { type Shelf as ShelfType } from '../../../types/shelves';
-import { Section } from '../../../types/sections';
-import { Layer, Product, Segment } from '../../../types/segment';
+import { computed, defineEmits, defineProps, onMounted, onUnmounted, ref } from 'vue'; 
+import { useProductStore } from '@plannerate/store/product';
+import { useSectionStore } from '@plannerate/store/section';
+import { useShelvesStore } from '@plannerate/store/shelves';
+import { useEditorStore } from '@plannerate/store/editor';
+import { type Shelf as ShelfType } from '@plannerate/types/shelves';
+import { Section } from '@plannerate/types/sections';
+import { Layer, Product, Segment } from '@plannerate/types/segment';
 import ShelfComponent from './Shelf.vue';
-import { useToast } from './../../../components/ui/toast';
+import { useToast } from '@plannerate/components/ui/toast';
 
 // Definir Props
 const props = defineProps<{
@@ -105,8 +104,7 @@ const sectionStore = useSectionStore();
 const editorStore = useEditorStore();
 
 // Services
-const { toast } = useToast();
-const segmentService = useSegmentService(); 
+const { toast } = useToast(); 
 
 // --- Estado para controle de drag and drop ---
 const dropTargetActive = ref(false);
@@ -267,20 +265,7 @@ const handleProductDropOnShelf = async (product: Product, shelf: ShelfType, drop
 
     try {
         // Chama a action do editorStore para adicionar o segmento ao estado
-        editorStore.addSegmentToShelf(props.gondolaId, props.section.id, shelf.id, newSegment);
-
-        // REMOVIDA chamada API direta
-        // const response = await segmentService.addSegment(shelf.id, newSegment);
-        
-        // REMOVIDO console.warn sobre TODO
-        // console.warn(`TODO: Implementar editorStore.addSegmentToShelf para drop de produto em ${shelf.id}`);
-
-        // Manter toast local?
-        // toast({ 
-        //     title: 'Sucesso (Local)',
-        //     description: 'Produto adicionado à prateleira no estado.', 
-        //     variant: 'default',
-        // });
+        editorStore.addSegmentToShelf(props.gondolaId, props.section.id, shelf.id, newSegment); 
 
     } catch (error) { // Captura erros da action do editorStore?
         console.error('Erro ao adicionar produto/segmento ao editorStore:', error);
@@ -290,42 +275,24 @@ const handleProductDropOnShelf = async (product: Product, shelf: ShelfType, drop
 };
 
 const handleLayerCopy = async (layer: Layer, shelf: ShelfType, dropPosition: any) => {
+    // Cria o novo segmento baseado na layer copiada
     const newSegment = createSegmentFromProduct(layer.product, shelf, layer.quantity);
+
+    // Verificar se gondolaId está disponível
+    if (!props.gondolaId) {
+        console.warn('handleLayerCopy: gondolaId não fornecido.');
+        toast({ title: 'Erro Interno', description: 'Contexto da gôndola não encontrado.', variant: 'destructive' });
+        return;
+    }
+
     try {
-        // Chamada API direta (manter por enquanto ou mover para saveChanges)
-        const response = await segmentService.copySegment(shelf.id, newSegment);
-        
-        // REMOVER chamada ao shelvesStore.updateShelf
-        // shelvesStore.updateShelf(response.data.id, response.data, false);
+        // Chama a action do editorStore para adicionar o segmento copiado ao estado
+        editorStore.addSegmentToShelf(props.gondolaId, props.section.id, shelf.id, newSegment); 
 
-        // TODO: Chamar action do editorStore para adicionar o segmento copiado à prateleira
-        // editorStore.addSegmentToShelf(gondolaId, sectionId, shelf.id, response.data) // response.data é o novo segmento
-        console.warn(`TODO: Implementar editorStore.addSegmentToShelf para cópia em ${shelf.id}`);
-
-        toast({
-            title: 'Sucesso',
-            description: response.message || 'Camada copiada com sucesso',
-            variant: 'default',
-        });
-    } catch (error) {
-        console.error('Erro ao copiar camada para a prateleira:', error);
-        let errorMessage = 'Falha ao copiar camada';
-
-        // Tentar extrair mensagem do erro da API
-        if (typeof error === 'object' && error !== null && 
-            (error as any).response && (error as any).response.data && 
-            typeof (error as any).response.data.message === 'string') {
-            errorMessage = (error as any).response.data.message;
-        } else if (error instanceof Error) {
-            // Se não for erro de API, pegar mensagem do Error padrão
-            errorMessage = error.message;
-        }
-
-        toast({
-            title: 'Erro',
-            description: errorMessage,
-            variant: 'destructive',
-        });
+    } catch (error) { // Captura erros da action do editorStore?
+        console.error('Erro ao copiar camada/segmento para o editorStore:', error);
+        const errorDesc = (error instanceof Error) ? error.message : 'Falha ao atualizar o estado do editor.';
+        toast({ title: 'Erro Interno', description: errorDesc, variant: 'destructive' });
     }
 };
 

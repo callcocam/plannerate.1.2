@@ -138,7 +138,6 @@ export const useShelvesStore = defineStore('shelves', {
         async deleteSelectedShelf() {
             const { toast } = useToast();
             const editorStore = useEditorStore();
-            const shelfService = useShelfService();
 
             if (this.selectedShelfIds.size === 0 && !this.selectedShelf) {
                 toast({ title: 'Aviso', description: 'Nenhuma prateleira selecionada.', variant: 'default' });
@@ -148,20 +147,30 @@ export const useShelvesStore = defineStore('shelves', {
             if(this.selectedShelf) {
                 const shelfToDelete = this.selectedShelf;
                 const sectionId = shelfToDelete.section_id;
+                const shelfId = shelfToDelete.id;
                 
-                const gondolaId = editorStore.currentState?.gondolas.find(g => g.sections.some(s => s.id === sectionId))?.id;
+                const gondolaId = editorStore.currentState?.gondolas.find(g => 
+                    g.sections.some(s => s.id === sectionId)
+                )?.id;
 
                 if (!gondolaId) {
-                    console.error(`Não foi possível encontrar gondolaId para a seção ${sectionId}`);
+                    console.error(`deleteSelectedShelf: Não foi possível encontrar gondolaId para a seção ${sectionId}`);
                     toast({ title: 'Erro', description: 'Contexto da gôndola não encontrado.', variant: 'destructive' });
                     return;
                 }
 
-                console.warn("Chamada para editorStore.removeShelfFromSection ainda não implementada em deleteSelectedShelf.");
+                try {
+                    editorStore.removeShelfFromSection(gondolaId, sectionId, shelfId);
+                    
+                    this.selectedShelf = null;
+                    this.selectedShelfId = null;
+                    this.selectedShelfIds.delete(shelfToDelete.id);
 
-                this.selectedShelf = null;
-                this.selectedShelfId = null;
-                this.selectedShelfIds.delete(shelfToDelete.id);
+                } catch(error) {
+                    console.error('Erro ao chamar editorStore.removeShelfFromSection:', error);
+                    const errorDesc = (error instanceof Error) ? error.message : 'Falha ao atualizar o estado do editor.';
+                    toast({ title: 'Erro Interno', description: errorDesc, variant: 'destructive' });
+                }
 
             } else {
                 console.warn("Exclusão em lote via editorStore ainda não implementada.");
