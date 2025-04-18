@@ -71,8 +71,9 @@ import { type Shelf as ShelfType } from '@plannerate/types/shelves';
 import { Section } from '@plannerate/types/sections';
 import { Layer, Product, Segment } from '@plannerate/types/segment';
 import ShelfComponent from './Shelf.vue';
-import { useToast } from '@plannerate/components/ui/toast';
+import { useToast } from '@/components/ui/toast';
 import { Gondola } from '@plannerate/types/gondola';
+import { validateShelfWidth } from '@plannerate/utils/validation';
 
 // ------- PROPS & EMITS -------
 const props = defineProps<{
@@ -304,14 +305,14 @@ const handleSectionDrop = async (event: DragEvent) => {
     }
 };
 
-// ------- MÉTODOS - EVENTOS DE PRODUTOS -------
+// ------- MÉTODOS - DRAG & DROP PRODUTOS/CAMADAS -------
 /**
  * Gerencia o drop de um produto em uma prateleira
- * @param product Produto que foi solto
+ * @param product Produto sendo dropado
  * @param shelf Prateleira alvo
+ * @param dropPosition Posição do drop (pode ser usado para calcular a posição X inicial)
  */
-const handleProductDropOnShelf = async (product: Product, shelf: ShelfType) => {
-    // Verifica se o gondolaId está disponível
+const handleProductDropOnShelf = async (product: Product, shelf: ShelfType, dropPosition: any) => {
     if (!gondola.id) {
         toast({
             title: 'Erro Interno',
@@ -321,11 +322,45 @@ const handleProductDropOnShelf = async (product: Product, shelf: ShelfType) => {
         return;
     }
 
-    // Cria o novo segmento com ID temporário
+    // Criar camada temporária para validação
+    // Usar spacing padrão 0, pois spacing vem da Layer, não do Product.
+    const tempLayer: Layer = { 
+        id: `temp-layer-${Date.now()}`, 
+        product_id: product.id, 
+        product: product, 
+        quantity: 1, // Validando para quantidade 1
+        status: 'temp', 
+        height: product.height, 
+        segment_id: 'temp', 
+        spacing: 0 // <-- Definir spacing padrão 0 aqui
+    }; 
+    
+    // *** Validação ***
+    const validation = validateShelfWidth(
+        shelf,
+        section.width,
+        null, 
+        0,    
+        tempLayer 
+    );
+
+    if (!validation.isValid) {
+        toast({
+            title: "Limite de Largura Excedido",
+            description: `Adicionar este produto excederia a largura da seção (${section.width}cm). Largura resultante: ${validation.totalWidth.toFixed(1)}cm`,
+            variant: "destructive",
+        });
+        return;
+    }
+     // *** Fim Validação ***
+
+    // Prossegue se válido
     const newSegment = createSegmentFromProduct(product, shelf, 1);
+    // TODO: Calcular newSegment.position baseado em dropPosition se necessário
+    // TODO: Permitir definir o SPACING da nova layer/segmento aqui? 
+    //      (newSegment atualmente não define spacing na layer criada)
 
     try {
-        // Adiciona o segmento à prateleira
         editorStore.addSegmentToShelf(gondola.id, section.id, shelf.id, newSegment);
     } catch (error) {
         console.error('Erro ao adicionar produto/segmento ao editorStore:', error);
@@ -344,7 +379,6 @@ const handleProductDropOnShelf = async (product: Product, shelf: ShelfType) => {
  * @param shelf Prateleira alvo
  */
 const handleLayerCopy = async (layer: Layer, shelf: ShelfType) => {
-    // Verifica se o gondolaId está disponível
     if (!gondola.id) {
         toast({
             title: 'Erro Interno',
@@ -354,11 +388,28 @@ const handleLayerCopy = async (layer: Layer, shelf: ShelfType) => {
         return;
     }
 
-    // Cria o novo segmento baseado na layer copiada
-    const newSegment = createSegmentFromProduct(layer.product, shelf, layer.quantity);
+    // *** Validação ***
+    const validation = validateShelfWidth(
+        shelf,
+        section.width,
+        null, 
+        0,    
+        layer
+    );
 
+    if (!validation.isValid) {
+         toast({
+            title: "Limite de Largura Excedido",
+            description: `Copiar este produto/segmento excederia a largura da seção (${section.width}cm). Largura resultante: ${validation.totalWidth.toFixed(1)}cm`,
+            variant: "destructive",
+        });
+        return; 
+    }
+    // *** Fim Validação ***
+
+    // Prossegue se válido
+    const newSegment = createSegmentFromProduct(layer.product, shelf, layer.quantity);
     try {
-        // Adiciona o segmento copiado à prateleira
         editorStore.addSegmentToShelf(gondola.id, section.id, shelf.id, newSegment);
     } catch (error) {
         console.error('Erro ao copiar camada/segmento para o editorStore:', error);
@@ -377,38 +428,64 @@ const handleLayerCopy = async (layer: Layer, shelf: ShelfType) => {
  * @param targetShelf Prateleira alvo
  */
 const updateLayer = (layer: Layer, targetShelf: ShelfType) => {
-    // Verifica se o segmento existe na layer
     const segmentToMove = layer.segment;
     if (!segmentToMove) {
         console.error('updateLayer: Objeto segment não encontrado na layer.');
         return;
     }
 
-    // Obtém IDs e dados necessários
     const segmentId = segmentToMove.id;
-    const oldShelfId = segmentToMove.shelf_id; // ID da prateleira de origem
-    let oldSectionId = targetShelf.section_id; // ID da seção (será atualizado abaixo)
+    const oldShelfId = segmentToMove.shelf_id;
+    const newShelfId = targetShelf.id;
+    const newSectionId = targetShelf.section_id;
 
-    // Encontra a seção original do segmento
+    // Encontrar oldSectionId ... (lógica existente)
+    let oldSectionId = targetShelf.section_id;
     if (editorStore.currentState?.gondolas) {
-        for (const gondola of editorStore.currentState.gondolas) {
-            for (const section of gondola.sections) {
-                if (section.shelves) {
-                    for (const shelf of section.shelves) {
-                        if (shelf.id === oldShelfId) {
-                            oldSectionId = section.id;
-                            break;
-                        }
+        for (const g of editorStore.currentState.gondolas) {
+            if (g.id === gondola.id) {
+                for (const s of g.sections) {
+                    if (s.shelves?.some(sh => sh.id === oldShelfId)) {
+                        oldSectionId = s.id;
+                        break;
                     }
                 }
+                break;
             }
         }
     }
+    // Encontrar seção de destino para obter largura
+    const destinationSection = editorStore.currentState?.gondolas
+        .find(g => g.id === gondola.id)?.sections
+        .find(s => s.id === newSectionId);
 
-    const newShelfId = targetShelf.id; // ID da prateleira de destino
-    const newSectionId = targetShelf.section_id; // ID da seção de destino
+    if (!destinationSection) {
+        console.error('updateLayer: Seção de destino não encontrada no editorStore.');
+         toast({ title: 'Erro Interno', description: 'Seção de destino não encontrada.', variant: 'destructive' });
+        return;
+    }
 
-    // Verifica se todos os IDs essenciais foram obtidos
+    if (oldShelfId === newShelfId) return; // Evita auto-transferência
+
+    // *** Validação (na prateleira DESTINO) ***
+    const validation = validateShelfWidth(
+        targetShelf,
+        destinationSection.width,
+        null, 
+        0,    
+        segmentToMove.layer
+    );
+
+    if (!validation.isValid) {
+         toast({
+            title: "Limite de Largura Excedido",
+            description: `Mover este segmento excederia a largura da seção destino (${destinationSection.width}cm). Largura resultante: ${validation.totalWidth.toFixed(1)}cm`,
+            variant: "destructive",
+        });
+        return;
+    }
+    // *** Fim Validação ***
+
     if (!gondola.id || !oldSectionId || !oldShelfId || !newSectionId || !newShelfId || !segmentId) {
         console.error('updateLayer: IDs faltando para realizar a transferência.',
             { gondolaId: gondola.id, oldSectionId, oldShelfId, newSectionId, newShelfId, segmentId }
@@ -421,12 +498,6 @@ const updateLayer = (layer: Layer, targetShelf: ShelfType) => {
         return;
     }
 
-    // Evita auto-transferência
-    if (oldShelfId === newShelfId) {
-        return;
-    }
-
-    // Transfere o segmento
     editorStore.transferSegmentBetweenShelves(
         gondola.id,
         oldSectionId,

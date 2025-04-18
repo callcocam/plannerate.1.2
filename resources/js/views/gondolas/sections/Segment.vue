@@ -23,7 +23,9 @@ import type { Segment } from '@plannerate/types/segment';
 import type { Shelf } from '@plannerate/types/shelves';
 import type { Section } from '@plannerate/types/sections'; // <-- ADICIONAR IMPORT
 import LayerComponent from './Layer.vue';
-import { Gondola } from '@/types/gondola';
+import { Gondola } from '@plannerate/types/gondola';
+import { useToast } from '@plannerate/components/ui/toast'; // <-- Importar useToast
+import { validateShelfWidth } from '@plannerate/utils/validation'; // <-- Importar validação
 
 // Definir Props
 const props = defineProps<{
@@ -35,12 +37,13 @@ const props = defineProps<{
 }>();
  
 const editorStore = useEditorStore(); // <-- INSTANCIAR EDITOR STORE
+const { toast } = useToast(); // <-- Instanciar toast
 
 const currentSectionId = computed(() => props.shelf.section_id);
 
 /** Segment quantity (number of layers) */
 const segmentQuantity = computed(() => {
-    return props.segment.quantity;
+    return props.segment?.quantity ?? 0;
 });
 
 // Computed para o estilo do segmento
@@ -118,43 +121,89 @@ const segmentStyle = computed(() => {
 });
 
 // Funções para ajustar a quantidade
-const onIncreaseQuantity = (/* REMOVER: layer: Layer */) => {
-    if (!props.gondola.id || !currentSectionId.value || !props.shelf.id || !props.segment.id || !props.segment.layer?.product?.id) {
-        console.error("onIncreaseQuantity: IDs faltando para atualizar quantidade.");
+const onIncreaseQuantity = () => {
+    if (!props.gondola?.id || !currentSectionId.value || !props.shelf?.id || !props.segment?.id || !props.segment?.layer?.product?.id) {
+        console.error("onIncreaseQuantity: IDs faltando para validação/atualização.");
+        toast({ title: "Erro Interno", description: "Dados incompletos para aumentar quantidade.", variant: "destructive" });
         return;
     }
+    if (props.sectionWidth === undefined || props.sectionWidth <= 0) {
+        console.error("onIncreaseQuantity: Largura da seção (sectionWidth) inválida ou não fornecida.");
+        toast({ title: "Erro Interno", description: "Largura da seção inválida.", variant: "destructive" });
+        return;
+    }
+
     const currentQuantity = props.segment.layer?.quantity ?? 0;
     const newQuantity = currentQuantity + 1;
+
+    const validation = validateShelfWidth(
+        props.shelf,
+        props.sectionWidth,
+        props.segment.layer.product.id,
+        newQuantity,
+        null
+    );
+
+    if (!validation.isValid) {
+        toast({
+            title: "Limite de Largura Excedido",
+            description: `A largura total (${validation.totalWidth.toFixed(1)}cm) excederia a largura da seção (${validation.sectionWidth}cm).`,
+            variant: "destructive",
+        });
+        return;
+    }
 
     editorStore.updateLayerQuantity(
         props.gondola.id,
         currentSectionId.value,
         props.shelf.id,
         props.segment.id,
-        props.segment.layer.product.id, // layerId
+        props.segment.layer.product.id,
         newQuantity
     );
-
-    // REMOVER: productStore.updateLayerQuantity(layer, newQuantity);
 };
 
-const onDecreaseQuantity = (/* REMOVER: layer: Layer */) => {
-    if (!props.gondola.id || !currentSectionId.value || !props.shelf.id || !props.segment.id || !props.segment.layer?.product?.id) {
-        console.error("onDecreaseQuantity: IDs faltando para atualizar quantidade.");
+const onDecreaseQuantity = () => {
+    if (!props.gondola?.id || !currentSectionId.value || !props.shelf?.id || !props.segment?.id || !props.segment?.layer?.product?.id) {
+        console.error("onDecreaseQuantity: IDs faltando para validação/atualização.");
+        toast({ title: "Erro Interno", description: "Dados incompletos para diminuir quantidade.", variant: "destructive" });
         return;
     }
+    if (props.sectionWidth === undefined || props.sectionWidth <= 0) {
+        console.error("onDecreaseQuantity: Largura da seção (sectionWidth) inválida ou não fornecida.");
+        toast({ title: "Erro Interno", description: "Largura da seção inválida.", variant: "destructive" });
+        return;
+    }
+
     const currentQuantity = props.segment.layer?.quantity ?? 0;
     if (currentQuantity > 0) {
         const newQuantity = currentQuantity - 1;
+
+        const validation = validateShelfWidth(
+            props.shelf,
+            props.sectionWidth,
+            props.segment.layer.product.id,
+            newQuantity,
+            null
+        );
+
+        if (!validation.isValid) {
+            toast({
+                title: "Erro de Cálculo",
+                description: `Ocorreu um erro ao validar a largura após diminuir. (${validation.totalWidth.toFixed(1)}cm > ${validation.sectionWidth}cm)`,
+                variant: "destructive",
+            });
+            return;
+        }
+
         editorStore.updateLayerQuantity(
             props.gondola.id,
             currentSectionId.value,
             props.shelf.id,
             props.segment.id,
-            props.segment.layer.product.id, // layerId
+            props.segment.layer.product.id,
             newQuantity
         );
-        // REMOVER: productStore.updateLayerQuantity(layer, newQuantity);
     }
 };
 </script>
