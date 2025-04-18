@@ -36,7 +36,7 @@ export const useShelvesStore = defineStore('shelves', {
         },
         setSelectedShelfId(id: string | null) {
             this.selectedShelfId = id;
-            this.selectedShelf = null;
+                this.selectedShelf = null;
         },
         addSelectedShelfId(id: string) {
             this.selectedShelfIds.add(id);
@@ -118,15 +118,15 @@ export const useShelvesStore = defineStore('shelves', {
                 shelf_width: 100,
                 shelf_depth: 30,
                 shelf_position: data.shelf_position,
-                section_id: data.section_id,
+                    section_id: data.section_id,
                 shelf_x_position: 0,
                 status: 'published',
                 alignment: undefined,
                 code: '',
                 ordering: 0,
                 product_type: 'default',
-                quantity: 0,
-                spacing: 0,
+                    quantity: 0,
+                    spacing: 0,
                 tenant_id: '',
                 user_id: '',
                 section: undefined,
@@ -162,7 +162,7 @@ export const useShelvesStore = defineStore('shelves', {
                 try {
                     editorStore.removeShelfFromSection(gondolaId, sectionId, shelfId);
                     
-                    this.selectedShelf = null;
+                this.selectedShelf = null;
                     this.selectedShelfId = null;
                     this.selectedShelfIds.delete(shelfToDelete.id);
 

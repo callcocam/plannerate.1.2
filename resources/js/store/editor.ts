@@ -11,9 +11,12 @@ interface PlanogramEditorState {
     id: string | null;
     name: string | null;
     gondolas: Gondola[]; // Gondola já deve conter `sections: Section[]` a partir da sua definição
+    currentGondola: Gondola | null;
     // Adicionar estado de visualização do editor
     scaleFactor: number;
     showGrid: boolean;
+    isLoading: boolean;
+    error: string | null;
     // Adicionar outras propriedades se necessário (ex: item selecionado)
     // selectedItemId: string | null;
     // selectedItemType: 'gondola' | 'section' | 'shelf' | 'layer' | null;
@@ -37,12 +40,16 @@ export const useEditorStore = defineStore('editor', () => {
     const historyIndex = ref<number>(-1);
     // Flag para evitar que watchers do histórico adicionem ao histórico
     const isTimeTraveling = ref(false);
+    const isLoading = ref(false);
+    const error = ref<string | null>(null);
+    const currentGondola = ref<Gondola | null>(null);
 
     // --- GETTERS --- 
 
     const initialPlanogram = computed(() => history.value[0]?.state || null);
     const currentScaleFactor = computed(() => currentState.value?.scaleFactor ?? 3); // Default 3
     const isGridVisible = computed(() => currentState.value?.showGrid ?? false); // Default false
+    const getCurrentGondola = computed(() => currentGondola.value);
 
     const hasChanges = computed(() => {
         if (historyIndex.value < 0 || !currentState.value) return false;
@@ -68,7 +75,18 @@ export const useEditorStore = defineStore('editor', () => {
     });
 
     // --- ACTIONS --- 
-
+    /**
+     * setIsLoading - Define o estado de carregamento do editor.
+     */
+    function setIsLoading(newIsLoading: boolean) {
+        isLoading.value = newIsLoading;
+    }
+    /**
+     * setError - Define o estado de erro do editor.    
+     */
+    function setError(newError: string | null) {
+        error.value = newError;
+    }
     /**
      * Inicializa o store com os dados do planograma e estado inicial do editor.
      * @param initialData Dados iniciais do planograma (sem estado do editor).
@@ -88,6 +106,10 @@ export const useEditorStore = defineStore('editor', () => {
         }];
         historyIndex.value = 0;
         isTimeTraveling.value = false;
+    }
+
+    function setCurrentGondola(gondola: Gondola) {
+        currentGondola.value = gondola;
     }
 
     /**
@@ -952,5 +974,11 @@ export const useEditorStore = defineStore('editor', () => {
         updateLayerQuantity, // <-- EXPOR A NOVA ACTION
         setGondolaAlignment, // <-- EXPOR A NOVA ACTION
         currentGondolaId, // <-- EXPOR O COMPUTED
+        getCurrentGondola, // <-- EXPOR O COMPUTED
+        setCurrentGondola, // <-- EXPOR A ACTION
+        isLoading, // <-- EXPOR O COMPUTED
+        error, // <-- EXPOR O COMPUTED
+        setIsLoading, // <-- EXPOR A ACTION
+        setError, // <-- EXPOR A ACTION
     };
 });

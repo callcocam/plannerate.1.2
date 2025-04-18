@@ -13,7 +13,7 @@
                     }" :style="segmentsContainerStyle">
                     <template #item="{ element: segment }">
                         <Segment :key="segment.id" :shelf="shelf" :segment="segment" :scale-factor="scaleFactor"
-                            :section-width="sectionWidth" :gondola-id="gondolaId" />
+                            :section-width="sectionWidth" :gondola="gondola" />
                     </template>
                 </draggable>
                 <ShelfControls :shelf="shelf" :scale-factor="scaleFactor" :section-width="sectionWidth"
@@ -76,8 +76,7 @@
 import { computed, defineEmits, defineProps, onMounted, onUnmounted, ref, type CSSProperties } from 'vue';
 import draggable from 'vuedraggable';
 import { useShelvesStore } from '@plannerate/store/shelves';
-import { useEditorStore } from '@plannerate/store/editor';
-import { useGondolaStore } from '@plannerate/store/gondola';
+import { useEditorStore } from '@plannerate/store/editor'; 
 import { type Layer, type Product, type Segment as SegmentType } from '@plannerate/types/segment';
 import { type Shelf } from '@plannerate/types/shelves';
 import Segment from './Segment.vue';
@@ -87,8 +86,7 @@ import { Section } from '@/types/sections';
 import { Gondola } from '@plannerate/types/gondola';
 
 // Definir Props
-const props = defineProps<{
-    gondola: Gondola;
+const props = defineProps<{ 
     shelf: Shelf;
     scaleFactor: number;
     sectionWidth: number;
@@ -100,9 +98,10 @@ const props = defineProps<{
 
 const shelfElement = ref<HTMLElement | null>(null);
 
-const gondolaId = computed(() => props.gondola.id);
+const gondola = computed(() => editorStore.getCurrentGondola as Gondola);
 
-const gondola = computed(() => props.gondola);
+const gondolaId = computed(() => gondola.value?.id);
+ 
 
 // Definir Emits
 const emit = defineEmits(['drop-product', 'drop-layer-copy', 'drop-layer']);
@@ -110,6 +109,7 @@ const shelvesStore = useShelvesStore();
 const editorStore = useEditorStore();
 const alignment = computed(() => {
     let alignment = gondola.value?.alignment;
+    console.log('alignment', alignment);
     gondola.value?.sections.map((section: Section) => {
         if (section.id === props.shelf.section_id) {
             if (section.alignment) {

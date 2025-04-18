@@ -24,17 +24,17 @@ import type { Segment } from '@plannerate/types/segment';
 import type { Shelf } from '@plannerate/types/shelves';
 import type { Section } from '@plannerate/types/sections'; // <-- ADICIONAR IMPORT
 import LayerComponent from './Layer.vue';
+import { Gondola } from '@/types/gondola';
 
 // Definir Props
 const props = defineProps<{
-    gondolaId: string | undefined;
+    gondola: Gondola;
     segment: Segment;
     shelf: Shelf;
     scaleFactor: number;
     sectionWidth: number;
 }>();
-
-const gondolaStore = useGondolaStore(); // Manter para sectionId
+ 
 const editorStore = useEditorStore(); // <-- INSTANCIAR EDITOR STORE
 
 const currentSectionId = computed(() => props.shelf.section_id);
@@ -53,7 +53,8 @@ const segmentQuantity = computed(() => {
  */
 const layerWidth = () => {
     let sectionWidth = props.sectionWidth;
-    gondolaStore.currentGondola.value?.sections.map((section: Section) => {
+    console.log('props.gondola', props.gondola);    
+    props.gondola.sections.map((section: Section) => {
         section.shelves.map((shelf: Shelf) => {
             if (shelf?.segments?.length > 0) {
                 shelf.segments.map((segment: Segment) => {
@@ -74,8 +75,8 @@ const layerWidth = () => {
 };
 
 const alignment = computed(() => {
-    let alignment = gondolaStore.currentGondola?.alignment;
-    gondolaStore.currentGondola?.sections.map((section: Section) => {
+    let alignment = props.gondola.alignment;
+    props.gondola.sections.map((section: Section) => {
         if (section.id === currentSectionId.value) {
             if (section.alignment) {
                 alignment = section.alignment;
@@ -86,7 +87,7 @@ const alignment = computed(() => {
                 }
             });
         }
-    });
+    }); 
     return alignment;
 });
 
@@ -119,7 +120,7 @@ const segmentStyle = computed(() => {
 
 // Funções para ajustar a quantidade
 const onIncreaseQuantity = (/* REMOVER: layer: Layer */) => {
-    if (!props.gondolaId || !currentSectionId.value || !props.shelf.id || !props.segment.id || !props.segment.layer?.product?.id) {
+    if (!props.gondola.id || !currentSectionId.value || !props.shelf.id || !props.segment.id || !props.segment.layer?.product?.id) {
         console.error("onIncreaseQuantity: IDs faltando para atualizar quantidade.");
         return;
     }
@@ -127,7 +128,7 @@ const onIncreaseQuantity = (/* REMOVER: layer: Layer */) => {
     const newQuantity = currentQuantity + 1;
 
     editorStore.updateLayerQuantity(
-        props.gondolaId,
+        props.gondola.id,
         currentSectionId.value,
         props.shelf.id,
         props.segment.id,
@@ -139,7 +140,7 @@ const onIncreaseQuantity = (/* REMOVER: layer: Layer */) => {
 };
 
 const onDecreaseQuantity = (/* REMOVER: layer: Layer */) => {
-    if (!props.gondolaId || !currentSectionId.value || !props.shelf.id || !props.segment.id || !props.segment.layer?.product?.id) {
+    if (!props.gondola.id || !currentSectionId.value || !props.shelf.id || !props.segment.id || !props.segment.layer?.product?.id) {
         console.error("onDecreaseQuantity: IDs faltando para atualizar quantidade.");
         return;
     }
@@ -147,7 +148,7 @@ const onDecreaseQuantity = (/* REMOVER: layer: Layer */) => {
     if (currentQuantity > 0) {
         const newQuantity = currentQuantity - 1;
         editorStore.updateLayerQuantity(
-            props.gondolaId,
+            props.gondola.id,
             currentSectionId.value,
             props.shelf.id,
             props.segment.id,
