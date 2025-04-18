@@ -18,16 +18,13 @@
                             </Cremalheira>
                             <SectionComponent
                                 :key="section.id"
+                                :gondola-id="gondola?.id"
                                 :section-index="index"
                                 :section="section"
                                 :scale-factor="scaleFactor"
                                 :selected-category="selectedCategory"
-                                :sections-container="sectionsContainer"
-                                @move-shelf-to-section="handleMoveShelfToSection"
-                                @segment-select="$emit('segment-select', $event)"
-                                @update-shelves="handleMoveSegmentToSection"
-                                @update:quantity="updateSegmentQuantity"
-                                @update:segments="handleMoveSegmentToSection"
+                                :sections-container="sectionsContainer" 
+                                @segment-select="$emit('segment-select', $event)"   
                                 @delete-section="deleteSection"
                             />
                         </div>
@@ -59,6 +56,7 @@ import Cremalheira from '@plannerate/views/gondolas/sections/Cremalheira.vue';
 import SectionComponent from '@plannerate/views/gondolas/sections/Section.vue';
 import { apiService } from '@plannerate/services'; 
 import { useSectionStore } from '@plannerate/store/section'; 
+import { useEditorStore } from '@plannerate/store/editor';
 
 interface Category {
     id: string | number;
@@ -87,6 +85,7 @@ const sectionsContainer = ref<HTMLElement | null>(null);
 const emit = defineEmits(['sections-reordered', 'shelves-updated', 'move-shelf-to-section', 'segment-select']);
  
 const sectionStore = useSectionStore(); 
+const editorStore = useEditorStore();
 
 const sortableSections = ref<SectionType[]>([...(gondola.value?.sections || [])]);
 
@@ -111,31 +110,19 @@ const onDragEnd = () => {
         console.warn('Tentativa de reordenar seções sem uma gôndola definida na prop.');
         return;
     }
-    const orderedIds = sortableSections.value.map((s: SectionType) => s.id);
-    emit('sections-reordered', sortableSections.value, gondola.value.id);
-    console.log(`Chamando API para reordenar seções da gôndola ${gondola.value.id}`, orderedIds);
-    apiService.post(`gondolas/${gondola.value.id}/sections/reorder`, { sectionIds: orderedIds });
+    editorStore.setGondolaSectionOrder(gondola.value.id, sortableSections.value);
+
+    // emit('sections-reordered', sortableSections.value, gondola.value.id);
 };
 
 const deleteSection = (sectionToDelete: SectionType) => {
-    sortableSections.value = sortableSections.value.filter((s) => s.id !== sectionToDelete.id);
-    console.warn(`Seção ${sectionToDelete.id} removida visualmente da cópia local. Implementar atualização no editorStore.`);
-    apiService
-        .delete(`sections/${sectionToDelete.id}`)
-        .then(() => {
-            emit('shelves-updated', sortableSections.value);
-            console.log(`Seção ${sectionToDelete.id} removida com sucesso.`);
-        })
-        .catch((error) => {
-            console.error(`Erro ao remover seção ${sectionToDelete.id}:`, error);
-        });
+    if (!gondola.value) {
+        console.warn('Não é possível deletar seção: Gôndola não definida.');
+        return;
+    }
+    editorStore.removeSectionFromGondola(gondola.value.id, sectionToDelete.id);
 };
-
-const handleMoveShelfToSection = (shelf: any, sectionId: number) => {};
-
-const handleMoveSegmentToSection = (segment: any, sectionId: number) => {};
-
-const updateSegmentQuantity = (segment: any) => {};
+ 
 
 const editSection = (section: SectionType) => {
     sectionStore.setSelectedSection(section);

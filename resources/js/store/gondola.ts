@@ -119,9 +119,8 @@ export const useGondolaStore = defineStore('gondola', {
                 });
             });
 
-            const finalIds = Array.from(productIds);
-            console.log('finalIds', finalIds);
-            // this.productIdsInGondola = finalIds;
+            const finalIds = Array.from(productIds); 
+            this.productIdsInGondola = finalIds;
 
             return finalIds;
         },

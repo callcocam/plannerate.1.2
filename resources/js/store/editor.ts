@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue';
 import { isEqual } from 'lodash-es'; // Usaremos lodash para comparações profundas
 import type { Gondola } from '@plannerate/types/gondola'; // Certifique-se de que Section está tipado
 import type { Section } from '@plannerate/types/sections'; // Ajustar path se necessário
+import type { Shelf } from '@plannerate/types/shelves'; // <-- Importar tipo Shelf
 
 // Interface para representar o estado do planograma no editor
 interface PlanogramEditorState {
@@ -198,6 +199,122 @@ export const useEditorStore = defineStore('editor', () => {
         }
     }
 
+    /**
+     * Define a ordem das seções para uma gôndola específica no estado.
+     * Usado após operações como drag-and-drop.
+     * @param gondolaId O ID da gôndola a ser atualizada.
+     * @param newSections O array de seções na nova ordem.
+     */
+    function setGondolaSectionOrder(gondolaId: string, newSections: Section[]) {
+        if (!currentState.value) return;
+
+        const gondola = currentState.value.gondolas.find(g => g.id === gondolaId);
+        if (gondola) {
+            // Compara se a nova ordem é realmente diferente da atual para evitar registros desnecessários
+            // (Opcional, mas bom para performance do histórico)
+            const currentSectionIds = gondola.sections.map(s => s.id);
+            const newSectionIds = newSections.map(s => s.id);
+            if (JSON.stringify(currentSectionIds) === JSON.stringify(newSectionIds)) {
+                console.log('Ordem das seções não mudou, nenhum registro no histórico.');
+                return; // Ordem não mudou
+            }
+
+            // Atualiza o array de seções com a nova ordem
+            // É importante passar uma cópia para garantir a reatividade, 
+            // embora newSections já deva ser um novo array vindo do draggable.
+            gondola.sections = [...newSections]; 
+            console.log(`Nova ordem das seções definida para a gôndola ${gondolaId}`);
+            recordChange(); // Registra a mudança
+        } else {
+            console.warn(`Não foi possível definir ordem das seções: Gôndola ${gondolaId} não encontrada.`);
+        }
+    }
+
+    /**
+     * Remove uma seção específica de uma gôndola no estado.
+     * @param gondolaId O ID da gôndola da qual remover a seção.
+     * @param sectionId O ID da seção a ser removida.
+     */
+    function removeSectionFromGondola(gondolaId: string, sectionId: string) {
+        if (!currentState.value) return;
+
+        const gondola = currentState.value.gondolas.find(g => g.id === gondolaId);
+        if (gondola && Array.isArray(gondola.sections)) {
+            const initialLength = gondola.sections.length;
+            // Filtra o array de seções, mantendo apenas as que NÃO têm o ID correspondente
+            gondola.sections = gondola.sections.filter(s => s.id !== sectionId);
+            
+            // Verifica se alguma seção foi realmente removida antes de registrar
+            if (gondola.sections.length < initialLength) {
+                console.log(`Seção ${sectionId} removida da gôndola ${gondolaId}`);
+                recordChange(); // Registra a mudança
+            } else {
+                console.warn(`Seção ${sectionId} não encontrada na gôndola ${gondolaId} para remoção.`);
+            }
+        } else {
+            console.warn(`Não foi possível remover seção: Gôndola ${gondolaId} não encontrada ou não possui seções.`);
+        }
+    }
+
+    /**
+     * Inverte a ordem das prateleiras de uma seção específica no estado.
+     * @param gondolaId O ID da gôndola que contém a seção.
+     * @param sectionId O ID da seção cujas prateleiras serão invertidas.
+     */
+    function invertShelvesInSection(gondolaId: string, sectionId: string) {
+        if (!currentState.value) return;
+
+        const gondola = currentState.value.gondolas.find(g => g.id === gondolaId);
+        if (!gondola) {
+            console.warn(`Não foi possível inverter prateleiras: Gôndola ${gondolaId} não encontrada.`);
+            return;
+        }
+
+        const section = gondola.sections.find(s => s.id === sectionId);
+        if (!section || !Array.isArray(section.shelves) || section.shelves.length <= 1) {
+            console.warn(`Não foi possível inverter prateleiras: Seção ${sectionId} não encontrada ou tem menos de 2 prateleiras.`);
+            return;
+        }
+
+        // Implementar lógica de inversão de posição similar à do sectionStore
+        try {
+            // 1. Criar cópia e ordenar pela posição atual
+            const sortedShelvesCopy = [...section.shelves].sort((a, b) => a.shelf_position - b.shelf_position);
+            
+            // 2. Armazenar posições originais ordenadas
+            const originalPositions = sortedShelvesCopy.map(shelf => shelf.shelf_position);
+
+            // 3. Criar mapa de ID para nova posição invertida
+            const newPositionsMap = new Map<string, number>();
+            sortedShelvesCopy.forEach((shelf, index) => {
+                const newPosition = originalPositions[originalPositions.length - 1 - index];
+                newPositionsMap.set(shelf.id, newPosition);
+            });
+
+            let changed = false;
+            // 4. Atualizar as posições das prateleiras DENTRO do currentState
+            section.shelves.forEach(shelfInState => {
+                const newPosition = newPositionsMap.get(shelfInState.id);
+                if (newPosition !== undefined && shelfInState.shelf_position !== newPosition) {
+                    shelfInState.shelf_position = newPosition;
+                    changed = true;
+                }
+            });
+
+            if (changed) {
+                 // Opcional: Reordenar o array no estado para talvez ajudar a reatividade visual?
+                 // section.shelves.sort((a, b) => a.shelf_position - b.shelf_position);
+                console.log(`Posições das prateleiras invertidas para a seção ${sectionId} na gôndola ${gondolaId}`);
+                recordChange(); // Registra a mudança
+            } else {
+                console.log(`Posições das prateleiras já estavam invertidas ou erro no cálculo para seção ${sectionId}.`);
+            }
+
+        } catch (error) {
+            console.error(`Erro ao calcular inversão de posição para seção ${sectionId}:`, error);
+        }
+    }
+
     // Adicione aqui mais ações para manipular gondolas, seções, prateleiras, etc.
     // Ex: addGondola, updateSection, removeShelf, addProductToLayer...
     // Cada uma dessas ações deve modificar `currentState.value` e chamar `recordChange()`
@@ -233,5 +350,8 @@ export const useEditorStore = defineStore('editor', () => {
         setScaleFactor,
         toggleGrid,
         invertGondolaSectionOrder, // <-- Expor a nova action
+        setGondolaSectionOrder, // <-- Expor a nova action
+        removeSectionFromGondola, // <-- Expor a nova action
+        invertShelvesInSection, // <-- Expor a nova action
     };
 });

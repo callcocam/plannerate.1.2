@@ -35,7 +35,7 @@
                     Editar
                     <ContextMenuShortcut>⌘E</ContextMenuShortcut>
                 </ContextMenuItem>
-                <ContextMenuItem inset @click="(e) => addShelf(e)">
+                <ContextMenuItem inset @click="(e: MouseEvent) => addShelf(e)">
                     Adicionar prateleira
                     <ContextMenuShortcut>⌘A</ContextMenuShortcut>
                 </ContextMenuItem>
@@ -78,6 +78,7 @@ import { useShelfService } from '../../../services/shelfService';
 import { useProductStore } from '../../../store/product';
 import { useSectionStore } from '../../../store/section';
 import { useShelvesStore } from '../../../store/shelves';
+import { useEditorStore } from '../../../store/editor';
 import { Section } from '../../../types/sections';
 import { Layer, Product, Segment } from '../../../types/segment';
 import { Shelf as ShelfType } from '../../../types/shelves';
@@ -86,6 +87,7 @@ import Shelf from './Shelf.vue';
 
 // Definir Props
 const props = defineProps<{
+    gondolaId: string | undefined;
     section: Section;
     scaleFactor: number;
     selectedCategory: any;
@@ -100,6 +102,7 @@ const emit = defineEmits(['update:segments']);
 const productStore = useProductStore();
 const shelvesStore = useShelvesStore();
 const sectionStore = useSectionStore();
+const editorStore = useEditorStore();
 
 // Services
 const { toast } = useToast();
@@ -138,9 +141,9 @@ const editSection = () => {
     sectionStore.startEditing();
 };
 
-const addShelf = async (event) => {
+const addShelf = async (event: MouseEvent) => {
     shelvesStore.handleDoubleClick({
-        shelf_position: event.offsetY * props.scaleFactor,
+        shelf_position: event.offsetY / props.scaleFactor,
         section_id: props.section.id,
     });
     event.stopPropagation();
@@ -149,11 +152,13 @@ const addShelf = async (event) => {
 const justifyModule = (alignment: string) => {
     sectionStore.justifyProducts(props.section, alignment);
 };
+
 const inverterModule = () => {
-    // const shelves = [...props.section.shelves];
-    // const invertedShelves = shelves.reverse();
-    // console.log('Inverted Shelves:', invertedShelves);
-    sectionStore.inverterShelves(props.section);
+    if (!props.gondolaId) {
+        console.warn('Não é possível inverter prateleiras: gondolaId não fornecido.');
+        return;
+    }
+    editorStore.invertShelvesInSection(props.gondolaId, props.section.id);
 };
 
 // --- Helpers ---
@@ -271,9 +276,21 @@ const handleProductDropOnShelf = async (product: Product, shelf: ShelfType, drop
         });
     } catch (error) {
         console.error('Erro ao adicionar produto à prateleira:', error);
+        let errorMessage = 'Falha ao adicionar produto à prateleira';
+        
+        // Tentar extrair mensagem do erro da API
+        if (typeof error === 'object' && error !== null && 
+            (error as any).response && (error as any).response.data && 
+            typeof (error as any).response.data.message === 'string') {
+            errorMessage = (error as any).response.data.message;
+        } else if (error instanceof Error) {
+            // Se não for erro de API, pegar mensagem do Error padrão
+            errorMessage = error.message;
+        }
+
         toast({
             title: 'Erro',
-            description: error.response?.data?.message || 'Falha ao adicionar produto à prateleira',
+            description: errorMessage,
             variant: 'destructive',
         });
     }
@@ -292,9 +309,21 @@ const handleLayerCopy = async (layer: Layer, shelf: ShelfType, dropPosition: any
         });
     } catch (error) {
         console.error('Erro ao copiar camada para a prateleira:', error);
+        let errorMessage = 'Falha ao copiar camada';
+
+        // Tentar extrair mensagem do erro da API
+        if (typeof error === 'object' && error !== null && 
+            (error as any).response && (error as any).response.data && 
+            typeof (error as any).response.data.message === 'string') {
+            errorMessage = (error as any).response.data.message;
+        } else if (error instanceof Error) {
+            // Se não for erro de API, pegar mensagem do Error padrão
+            errorMessage = error.message;
+        }
+
         toast({
             title: 'Erro',
-            description: error.response?.data?.message || 'Falha ao copiar camada',
+            description: errorMessage,
             variant: 'destructive',
         });
     }
