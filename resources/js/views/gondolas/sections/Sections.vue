@@ -46,15 +46,14 @@
 
 <script setup lang="ts">
 import { MoveIcon } from 'lucide-vue-next';
-import { computed, ref, watch, toRef, toRefs } from 'vue';
+import { computed, ref, watch, toRefs } from 'vue';
 import draggable from 'vuedraggable';
 
 import type { Gondola } from '@plannerate/types/gondola';
 import type { Section as SectionType } from '@plannerate/types/sections';
 
 import Cremalheira from '@plannerate/views/gondolas/sections/Cremalheira.vue';
-import SectionComponent from '@plannerate/views/gondolas/sections/Section.vue';
-import { apiService } from '@plannerate/services'; 
+import SectionComponent from '@plannerate/views/gondolas/sections/Section.vue'; 
 import { useSectionStore } from '@plannerate/store/section'; 
 import { useEditorStore } from '@plannerate/store/editor';
 

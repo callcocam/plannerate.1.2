@@ -39,7 +39,7 @@
                     :shelf="shelf"
                     @drop-product="(product: Product, shelf: Shelf, dropPosition: any) => $emit('drop-product', product, shelf, dropPosition)"
                     @drop-layer-copy="(product: Product, shelf: Shelf, dropPosition: any) => $emit('drop-layer-copy', product, shelf, dropPosition)"
-                    @drop-layer="(layer: Layer, shelf: Shelf) => updateLayer(layer, shelf)"
+                    @drop-layer="(moveLayer: Layer, oldSshelf: Shelf) => $emit('drop-layer', moveLayer, oldSshelf)"
                 />
                 <!-- </div> -->
             </div>
@@ -111,7 +111,7 @@ const props = defineProps<{
 const shelfElement = ref<HTMLElement | null>(null);
 
 // Definir Emits
-const emit = defineEmits(['drop-product', 'drop-layer-copy']);
+const emit = defineEmits(['drop-product', 'drop-layer-copy', 'drop-layer']);
 const shelvesStore = useShelvesStore(); 
 const editorStore = useEditorStore();
 
@@ -177,52 +177,6 @@ const sortableSegments = computed<SegmentType[]>({
     },
 });
 
-const updateLayer = (layer: Layer, targetShelf: Shelf) => {
-    // 1. Obter IDs e dados necessários
-    const segmentToMove = layer.segment;
-    if (!segmentToMove) {
-        console.error('updateLayer: Objeto segment não encontrado na layer.');
-        return;
-    }
-    const segmentId = segmentToMove.id;
-    const oldShelfId = segmentToMove.shelf_id; // ID da prateleira de origem
-    const oldSectionId = props.shelf.section_id; // ID da seção de origem (da prateleira atual)
-    
-    const newShelfId = targetShelf.id; // ID da prateleira de destino
-    const newSectionId = targetShelf.section_id; // ID da seção de destino
-    
-    const gondolaId = props.gondolaId; // ID da gôndola
-
-    // 2. Verificar se todos os IDs essenciais foram obtidos
-    if (!gondolaId || !oldSectionId || !oldShelfId || !newSectionId || !newShelfId || !segmentId) {
-        console.error('updateLayer: IDs faltando para realizar a transferência.', 
-            { gondolaId, oldSectionId, oldShelfId, newSectionId, newShelfId, segmentId }
-        );
-        // Adicionar um toast para o usuário seria bom aqui
-        return;
-    }
-
-    // 3. Evitar auto-transferência (opcional)
-    if (oldShelfId === newShelfId) {
-        console.log('updateLayer: Tentativa de transferir layer para a mesma prateleira. Ignorando.');
-        return;
-    }
-
-    // 4. Chamar a action do editorStore
-    console.log(`Chamando transferSegment: ${segmentId} de ${oldShelfId} para ${newShelfId}`);
-    editorStore.transferSegmentBetweenShelves(
-        gondolaId,
-        oldSectionId,
-        oldShelfId,
-        newSectionId,
-        newShelfId,
-        segmentId
-        // Passar newPositionX ou newOrdering se forem calculados aqui
-    );
-
-    // 5. Remover chamada antiga
-    // segmentStore.transferLayer(layer.segment_id, layer.segment.shelf_id, shelf.id, 0);
-};
 /**
  * Computed property para estilo do container de segmentos
  * Define a altura baseada na altura da prateleira

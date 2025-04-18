@@ -17,7 +17,7 @@ class AppController extends Controller
             'title' => 'Visualizar Planograma',
             'description' => 'Detalhes do planograma',
             'breadcrumbs' => [
-                ['title' => 'Planogramas', 'url' => route(Plannerate::getRoute())], 
+                ['title' => 'Planogramas', 'url' => route(sprintf('%s.editor', Plannerate::getRoute()))], 
             ],
         ]);
     }

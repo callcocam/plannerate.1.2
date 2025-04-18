@@ -25,9 +25,9 @@
 
 <script setup lang="ts">
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-vue-next';
-import { nextTick, onMounted, ref, computed } from 'vue';
-import { useEditorStore } from '../../../store/editor';
-import { Shelf } from '../../../types/shelves';
+import {  onMounted, ref, computed } from 'vue';
+import { useEditorStore } from '@plannerate/store/editor';
+import { Shelf } from '@plannerate/types/shelves';
 
 /**
  * Props do componente
