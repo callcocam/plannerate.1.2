@@ -129,12 +129,24 @@ const cancelEditing = () => {
 const saveChanges = () => {
     if (!selectedShelf.value || !formData.value) return;
 
-    const gondolaId = editorStore.currentGondolaId;
     const sectionId = selectedShelf.value.section_id;
     const shelfId = selectedShelf.value.id;
+    let correctGondolaId: string | null = null;
 
-    if (!gondolaId) {
-        console.error('Erro ao salvar: ID da Gôndola ativa não encontrado no editorStore.');
+    if (!editorStore.currentState || !editorStore.currentState.gondolas) {
+        console.error('Erro ao salvar: Estado do editor ou gôndolas não encontrados.');
+        return;
+    }
+
+    for (const gondola of editorStore.currentState.gondolas) {
+        if (gondola.sections.some(section => section.id === sectionId)) {
+            correctGondolaId = gondola.id;
+            break;
+        }
+    }
+
+    if (!correctGondolaId) {
+        console.error(`Erro ao salvar: Gôndola contendo a seção ${sectionId} não encontrada no estado do editor.`);
         return;
     }
     if (!sectionId) {
@@ -143,7 +155,7 @@ const saveChanges = () => {
     }
 
     try {
-        editorStore.updateShelfData(gondolaId, sectionId, shelfId, formData.value);
+        editorStore.updateShelfData(correctGondolaId, sectionId, shelfId, formData.value);
         console.log('Alterações da prateleira enviadas para o editorStore.');
         shelvesStore.finishEditing();
     } catch (error) {
