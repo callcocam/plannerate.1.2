@@ -315,6 +315,46 @@ export const useEditorStore = defineStore('editor', () => {
         }
     }
 
+    /**
+     * Adiciona uma nova prateleira a uma seção específica no estado.
+     * @param gondolaId O ID da gôndola que contém a seção.
+     * @param sectionId O ID da seção onde adicionar a prateleira.
+     * @param newShelf O objeto completo da nova prateleira a ser adicionada.
+     */
+    function addShelfToSection(gondolaId: string, sectionId: string, newShelfData: Shelf) {
+        if (!currentState.value) return;
+
+        const gondola = currentState.value.gondolas.find(g => g.id === gondolaId);
+        if (!gondola) {
+            console.warn(`Não foi possível adicionar prateleira: Gôndola ${gondolaId} não encontrada.`);
+            return;
+        }
+
+        const section = gondola.sections.find(s => s.id === sectionId);
+        if (!section) {
+            console.warn(`Não foi possível adicionar prateleira: Seção ${sectionId} não encontrada.`);
+            return;
+        }
+
+        if (!Array.isArray(section.shelves)) {
+            section.shelves = [];
+        }
+
+        // Criar uma cópia e ajustar tipos antes de adicionar ao estado
+        const shelfToAdd = { 
+            ...newShelfData,
+            // Garante que alignment seja string ou undefined, tratando null
+            alignment: newShelfData.alignment === null ? undefined : newShelfData.alignment,
+            // Fazer ajustes similares para outras propriedades se necessário
+        };
+
+        // Verificar se o tipo ajustado é compatível (TypeScript fará isso)
+        section.shelves.push(shelfToAdd); 
+
+        console.log(`Prateleira ${shelfToAdd.id} adicionada à seção ${sectionId} na gôndola ${gondolaId}`);
+        recordChange();
+    }
+
     // Adicione aqui mais ações para manipular gondolas, seções, prateleiras, etc.
     // Ex: addGondola, updateSection, removeShelf, addProductToLayer...
     // Cada uma dessas ações deve modificar `currentState.value` e chamar `recordChange()`
@@ -353,5 +393,6 @@ export const useEditorStore = defineStore('editor', () => {
         setGondolaSectionOrder, // <-- Expor a nova action
         removeSectionFromGondola, // <-- Expor a nova action
         invertShelvesInSection, // <-- Expor a nova action
+        addShelfToSection, // <-- Expor a nova action
     };
 });
