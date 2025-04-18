@@ -12,15 +12,7 @@ const editorService = useEditorService();
 const editorStore = useEditorStore(); 
 
 // Observa a prop 'record' para inicializar/atualizar o store
-watch(() => route.params, async (newRecord) => {
-    if (newRecord && newRecord.id) {
-        if (!editorStore.currentState || editorStore.currentState.id !== newRecord.id) {
-            const response = await editorService.fetchPlanogram(newRecord.id);
-            editorStore.initialize(response.data);
-            console.log('Editor store initialized with ID:', newRecord.id);
-        }
-    }
-}, { immediate: true, deep: true });
+ 
 
 // Usa o estado do store diretamente
 const planogramData = computed(() => editorStore.currentState); 

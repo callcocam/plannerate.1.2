@@ -3,8 +3,7 @@ import { defineStore } from 'pinia';
 import { Shelf } from '../types/shelves';
 import { useToast } from '../components/ui/toast';
 import { useGondolaStore } from './gondola';
-import { useEditorStore } from './editor';
-import { useShelfService } from '../services/shelfService';
+import { useEditorStore } from './editor'; 
 
 interface ShelfState {
     selectedShelf: Shelf | null;

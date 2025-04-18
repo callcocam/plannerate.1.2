@@ -86,7 +86,8 @@ import { Section } from '@/types/sections';
 import { Gondola } from '@plannerate/types/gondola';
 
 // Definir Props
-const props = defineProps<{ 
+const props = defineProps<{
+    gondola: Gondola;
     shelf: Shelf;
     scaleFactor: number;
     sectionWidth: number;
@@ -98,9 +99,7 @@ const props = defineProps<{
 
 const shelfElement = ref<HTMLElement | null>(null);
 
-const gondola = computed(() => editorStore.getCurrentGondola as Gondola);
-
-const gondolaId = computed(() => gondola.value?.id);
+const gondolaId = computed(() => props.gondola.id);
  
 
 // Definir Emits
@@ -108,9 +107,9 @@ const emit = defineEmits(['drop-product', 'drop-layer-copy', 'drop-layer']);
 const shelvesStore = useShelvesStore();
 const editorStore = useEditorStore();
 const alignment = computed(() => {
-    let alignment = gondola.value?.alignment;
+    let alignment = props.gondola?.alignment;
     console.log('alignment', alignment);
-    gondola.value?.sections.map((section: Section) => {
+    props.gondola?.sections.map((section: Section) => {
         if (section.id === props.shelf.section_id) {
             if (section.alignment) {
                 alignment = section.alignment;

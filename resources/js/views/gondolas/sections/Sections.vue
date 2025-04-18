@@ -60,9 +60,7 @@ import { useEditorStore } from '@plannerate/store/editor';
 const props = defineProps<{
     gondola: Gondola; 
     scaleFactor: number;
-}>();
-
-const { gondola, scaleFactor } = toRefs(props);
+}>(); 
 
 const sectionsContainer = ref<HTMLElement | null>(null);
 
@@ -90,11 +88,11 @@ const lastSectionData = computed(() => {
 });
 
 const deleteSection = (sectionToDelete: SectionType) => {
-    if (!gondola.value?.id) {
+    if (!props.gondola?.id) {
         console.warn('Não é possível deletar seção: Gôndola não definida.');
         return;
     }
-    editorStore.removeSectionFromGondola(gondola.value.id, sectionToDelete.id);
+    editorStore.removeSectionFromGondola(props.gondola.id, sectionToDelete.id);
 };
  
 

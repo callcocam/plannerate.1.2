@@ -46,9 +46,9 @@ import Info from '@plannerate/views/gondolas/partials/Info.vue';
 import Sections from '@plannerate/views/gondolas/sections/Sections.vue';
 import { Gondola } from '@/types/gondola';
 
-// Hooks e Stores
-const route = useRoute();
+// Hookcomputed(() => gondolaStore.scaleFac
 const editorStore = useEditorStore(); // <-- Instanciar editorStore
+const route = useRoute();
 
 
 // Computeds
@@ -59,8 +59,7 @@ const gondolaId = ref<string>(route.params.gondolaId as string);
 
 
 // *** NOVA Computed para a gôndola reativa do editorStore ***
-const editorGondola = computed(() => {
-    console.log('editorGondola', editorStore.currentState?.gondolas);
+const editorGondola = computed(() => { 
     editorStore.setCurrentGondola(editorStore.currentState?.gondolas.find(g => g.id === gondolaId.value) as Gondola);
     // Busca a gôndola correspondente no estado atual do editor
     return editorStore.getCurrentGondola;

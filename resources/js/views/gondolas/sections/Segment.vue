@@ -17,8 +17,7 @@ import {
     computed,
     defineProps,
     type CSSProperties,
-} from 'vue';
-import { useGondolaStore } from '@plannerate/store/gondola'; // <-- CORRIGIR PATH
+} from 'vue'; 
 import { useEditorStore } from '@plannerate/store/editor'; // <-- ADICIONAR
 import type { Segment } from '@plannerate/types/segment';
 import type { Shelf } from '@plannerate/types/shelves';
