@@ -152,7 +152,7 @@ export const useGondolaStore = defineStore('gondola', {
                 this.productsInCurrentGondolaIds();
             }
         },
-        async justifyProducts(alignment: string) {
+        async justifyProducts(alignment: string | null = null) {
             if (!this.currentGondola) return;
 
             const gondolaService = useGondolaService();

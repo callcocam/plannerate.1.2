@@ -2,14 +2,18 @@
 <script setup lang="ts">
 // Imports de Bibliotecas Externas
 import {
-    AlignCenterVertical,
-    AlignEndVertical,
-    AlignStartVertical,
+    AlignCenter,
+    AlignJustify,
+    AlignLeft,
+    AlignRight,
     ArrowLeftRight,
     Grid,
     Minus,
     Plus,
     Trash2,
+    SaveIcon,
+    Undo2Icon,
+    Redo2Icon,
 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
@@ -21,6 +25,7 @@ import { useGondolaStore } from '@plannerate/store/gondola'; // Importar o store
 import { useShelvesStore } from '@plannerate/store/shelves';
 import Category from './Category.vue'; // Assumindo que Category e Popover estão corretos
 import Popover from './Popover.vue';
+import { Button } from '@/components/ui/button';
 
 // Definição das Props
 /**
@@ -68,6 +73,11 @@ const shelfSelected = computed(() => {
     // Verifica se há prateleiras selecionadas
     return shelvesStore.selectedShelf;
 });
+
+// Adicionar Computed Props do Editor
+const hasChanges = computed(() => editorStore.hasChanges);
+const canUndo = computed(() => editorStore.canUndo);
+const canRedo = computed(() => editorStore.canRedo);
 
 // Métodos
 /**
@@ -211,7 +221,7 @@ const cancelDelete = () => {
  * Justifica os produtos na prateleira selecionada.
  * Atualiza o store, chama a API e redireciona.
  */
-const justifyProducts = async (alignment: string) => {
+const justifyProducts = async (alignment: string | null = null) => {
     // Adiciona verificação se a gôndola existe
     if (!currentGondola.value) return;
     // Adiciona verificação se a prateleira existe
@@ -222,6 +232,11 @@ const justifyProducts = async (alignment: string) => {
         console.error('Erro ao justificar produtos:', error);
     }
 };
+
+// Adicionar Métodos do Editor
+const undo = () => editorStore.undo();
+const redo = () => editorStore.redo();
+const saveChanges = () => editorStore.saveChanges();
 </script>
 
 <template>
@@ -229,67 +244,58 @@ const justifyProducts = async (alignment: string) => {
     <div class="sticky top-0 z-50 border-b bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
         <div class="p-4">
             <div class="flex items-center justify-between">
-                <!-- Controles de Visualização e Filtros -->
-                <div class="flex flex-col items-center space-x-2 md:flex-row">
-                    <!-- Label Dimensões (Poderia vir do store agora) -->
+                <!-- Grupo Esquerda: Controles de Visualização e Filtros -->
+                <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+                    <!-- Label Gôndola -->
                     <h3 class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300">
                         <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
                         </svg>
                         {{ currentGondola?.name || 'Gôndola' }}
-                        <!-- Exibe nome da gôndola do store -->
                     </h3>
-
                     <!-- Controle de Escala -->
                     <div class="flex items-center space-x-2">
                         <label class="text-sm text-gray-600 dark:text-gray-400">Escala:</label>
                         <div class="flex items-center space-x-2">
-                            <Button type="button" variant="outline" size="icon" :disabled="scaleFactor <= 2"
+                            <Button type="button" variant="outline" size="sm" :disabled="scaleFactor <= 2"
                                 @click="updateScale(scaleFactor - 1)">
                                 <Minus class="h-4 w-4" />
                             </Button>
                             <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
                                 {{ scaleFactor }}x
                             </span>
-                            <Button type="button" variant="outline" size="icon" :disabled="scaleFactor >= 10"
+                            <Button type="button" variant="outline" size="sm" :disabled="scaleFactor >= 10"
                                 @click="updateScale(scaleFactor + 1)">
                                 <Plus class="h-4 w-4" />
                             </Button>
                         </div>
                     </div>
-
                     <!-- Botão de Grade -->
-                    <Button type="button" variant="outline" size="icon" @click="toggleGrid"
+                    <Button type="button" variant="outline" size="sm" @click="toggleGrid"
                         :class="{ 'bg-accent text-accent-foreground': showGrid }">
                         <Grid class="h-4 w-4" />
                     </Button>
-
-                    <!-- Botão de Justificação de produtos align-vertical-justify-left-->
-                    <Button type="button" variant="outline" size="icon" @click="justifyProducts('left')"
-                        class="h-8 w-8 !p-1 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-                        :class="{ 'bg-gray-100 dark:bg-gray-700': gondolaStore.getAligmentLeft() }"
-                        aria-label="Justificar Produtos Verticalmente à Esquerda"
-                        title="Justificar Produtos Verticalmente à Esquerda">
-                        <AlignStartVertical class="h-4 w-4" />
-                    </Button>
-                    <!-- Botão de Justificação de produtos align-horizontal-justify-center-->
-                    <Button type="button" variant="outline" size="icon" @click="justifyProducts('center')"
-                        class="h-8 w-8 !p-1 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-                        :class="{ 'bg-gray-100 dark:bg-gray-700': gondolaStore.getAligmentCenter() }"
-                        aria-label="Justificar Produtos" title="Justificar Produtos Verticalmente">
-                        <AlignCenterVertical class="h-4 w-4" />
-                    </Button>
-                    <!-- Botão de Justificação de produtos align-vertical-justify-right-->
-                    <Button type="button" variant="outline" size="icon" @click="justifyProducts('right')"
-                        class="h-8 w-8 !p-1 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-                        :class="{ 'bg-gray-100 dark:bg-gray-700': gondolaStore.getAligmentRight() }"
-                        aria-label="Justificar Produtos Verticalmente à Direita"
-                        title="Justificar Produtos Verticalmente à Direita">
-                        <AlignEndVertical class="h-4 w-4" />
-                    </Button>
-
-                    <!-- Filtro de Categoria (condicional) -->
+                    <!-- Botões de Justificação -->
+                    <div class="flex items-center space-x-1">
+                        <Button type="button" variant="outline" size="sm" @click="justifyProducts('justify')"
+                            title="Justificar">
+                            <AlignJustify class="h-4 w-4" />
+                        </Button>
+                        <Button type="button" variant="outline" size="sm" @click="justifyProducts('left')"
+                            title="Alinhar à Esquerda">
+                            <AlignLeft class="h-4 w-4" />
+                        </Button>
+                        <Button type="button" variant="outline" size="sm" @click="justifyProducts('center')"
+                            title="Centralizar">
+                            <AlignCenter class="h-4 w-4" />
+                        </Button>
+                        <Button type="button" variant="outline"  size="sm" @click="justifyProducts('right')"
+                            title="Alinhar à Direita">
+                            <AlignRight class="h-4 w-4" />
+                        </Button>
+                    </div>
+                    <!-- Filtro de Categoria -->
                     <div class="flex items-center space-x-2" v-if="categories.length > 0">
                         <label class="text-sm text-gray-600 dark:text-gray-400">Filtros:</label>
                         <Popover @clear-filters="clearCategoryFilter" :has-active-filters="!!filters.category">
@@ -300,37 +306,52 @@ const justifyProducts = async (alignment: string) => {
                     </div>
                 </div>
 
-                <!-- Botões de Ação (verificar se currentGondola existe para habilitar/mostrar) -->
-                <div class="flex items-center space-x-3" v-if="currentGondola">
-                    <!-- Botão de Ação (para prateleiras) -->
-                    <Button v-if="shelfSelected" type="button" variant="outline" size="icon" @click="confirmRemoveShelf"
-                        class="h-8 w-8 !p-1 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-                        :class="{ 'bg-gray-100 dark:bg-gray-700': shelfSelected }" aria-label="Selecionar Prateleiras">
-                        <Trash2 class="h-4 w-4" />
-                        <span class="sr-only">Remover Prateleira</span>
-                    </Button>
-                    <!-- Botão para inverter ordem das seções -->
-                    <Button type="button" variant="secondary" v-if="sections.length > 1" @click="invertSectionOrder"
-                        class="flex items-center dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-                        aria-label="Inverter Ordem das Seções">
-                        <ArrowLeftRight class="mr-1 h-4 w-4" />
-                        <span class="hidden md:block">Inverter Ordem</span>
-                    </Button>
+                <!-- Grupo Direita: Botões de Ação -->
+                <div class="flex items-center gap-x-3 gap-y-2" v-if="currentGondola">
+                    <!-- Grupo Ações Gôndola/Seção -->
+                    <div class="flex items-center gap-2">
+                        <Button v-if="shelfSelected" type="button" variant="outline" size="icon"
+                            @click="confirmRemoveShelf" title="Remover Prateleira">
+                            <Trash2 class="h-4 w-4" />
+                        </Button>
+                        <Button type="button" variant="secondary"  size="sm" v-if="sections.length > 1" @click="invertSectionOrder"
+                            title="Inverter Ordem Seções">
+                            <ArrowLeftRight class="mr-1 h-4 w-4" /> <span class="hidden md:inline">Inverter</span>
+                        </Button>
+                        <Button type="button" variant="secondary" size="sm" @click="navigateToAddSection" title="Adicionar Seção">
+                            <Plus class="mr-1 h-4 w-4" /> <span class="hidden md:inline">Seção</span>
+                        </Button>
+                        <Button type="button" variant="destructive" size="sm" @click="confirmRemoveGondola"
+                            title="Remover Gôndola">
+                            <Trash2 class="mr-1 h-4 w-4" /> <span class="hidden md:inline">Gôndola</span>
+                        </Button>
+                    </div>
 
-                    <!-- Botão para adicionar seção/módulo -->
-                    <Button type="button" variant="secondary"
-                        class="flex items-center dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-                        @click="navigateToAddSection" aria-label="Adicionar Seção">
-                        <Plus class="mr-1 h-4 w-4" />
-                        <span class="hidden md:block">Adicionar Seção</span>
-                    </Button>
+                    <!-- Divisor Vertical -->
+                    <div class="h-6 w-px bg-gray-300 dark:bg-gray-600 mx-1"></div>
 
-                    <!-- Botão para remover gôndola -->
-                    <Button type="button" variant="destructive" class="flex items-center" @click="confirmRemoveGondola"
-                        aria-label="Remover Gôndola">
-                        <Trash2 class="mr-1 h-4 w-4" />
-                        <span class="hidden md:block">Remover Gôndola</span>
-                    </Button>
+                    <!-- Grupo Histórico/Salvar --->
+                    <div class="flex items-center gap-2">
+                        <Button variant="outline" size="sm" @click="undo" :disabled="!canUndo"
+                            class="dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 disabled:opacity-50">
+                            <Undo2Icon class="mr-2 h-4 w-4" />
+                            Desfazer
+                        </Button>
+                        <Button variant="outline" size="sm" @click="redo" :disabled="!canRedo"
+                            class="dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 disabled:opacity-50">
+                            <Redo2Icon class="mr-2 h-4 w-4" />
+                            Refazer
+                        </Button>
+                        <div class="flex items-center gap-1">
+                           
+                            <Button size="sm" @click="saveChanges" :disabled="!hasChanges"
+                                class="dark:hover:bg-primary-800 disabled:opacity-50"
+                                :variant="hasChanges ? 'default' : 'outline'">
+                                <SaveIcon class="mr-2 h-4 w-4" />
+                                Salvar
+                            </Button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

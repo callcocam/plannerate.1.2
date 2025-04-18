@@ -12,7 +12,7 @@ interface PlanogramEditorState {
     name: string | null;
     gondolas: Gondola[]; // Gondola já deve conter `sections: Section[]` a partir da sua definição
     // Adicionar estado de visualização do editor
-    scaleFactor: number; 
+    scaleFactor: number;
     showGrid: boolean;
     // Adicionar outras propriedades se necessário (ex: item selecionado)
     // selectedItemId: string | null;
@@ -43,7 +43,7 @@ export const useEditorStore = defineStore('editor', () => {
     const initialPlanogram = computed(() => history.value[0]?.state || null);
     const currentScaleFactor = computed(() => currentState.value?.scaleFactor ?? 3); // Default 3
     const isGridVisible = computed(() => currentState.value?.showGrid ?? false); // Default false
-    
+
     const hasChanges = computed(() => {
         if (historyIndex.value < 0 || !currentState.value) return false;
         // Compara o estado atual com o estado inicial salvo no histórico
@@ -130,7 +130,7 @@ export const useEditorStore = defineStore('editor', () => {
             console.log('Redo performed. Index:', historyIndex.value);
         }
     }
-    
+
     /**
      * TODO: Ação para salvar o estado atual no backend.
      */
@@ -143,7 +143,7 @@ export const useEditorStore = defineStore('editor', () => {
         // Ex: history.value = [history.value[historyIndex.value]]; historyIndex.value = 0;
         alert('Funcionalidade de salvar ainda não implementada!');
     }
-    
+
     /**
      * Atualiza uma propriedade específica do planograma.
      * Exemplo: updatePlanogramProperty('name', newName)
@@ -154,7 +154,7 @@ export const useEditorStore = defineStore('editor', () => {
             recordChange(); // Registra a mudança após a atualização
         }
     }
-    
+
     function getGondola(gondolaId: string): Gondola | undefined {
         return currentState.value?.gondolas.find((gondola) => gondola.id === gondolaId);
     }
@@ -181,7 +181,7 @@ export const useEditorStore = defineStore('editor', () => {
      */
     function setScaleFactor(newScale: number) {
         if (currentState.value && currentState.value.scaleFactor !== newScale) {
-             // Aplicar limites aqui também para segurança
+            // Aplicar limites aqui também para segurança
             const clampedScale = Math.max(2, Math.min(10, newScale));
             currentState.value.scaleFactor = clampedScale;
             recordChange(); // Registrar a mudança de estado do editor
@@ -207,7 +207,7 @@ export const useEditorStore = defineStore('editor', () => {
         const gondola = currentState.value.gondolas.find(g => g.id === gondolaId);
         // Agora Section deve ser o tipo corretamente importado
         if (gondola && Array.isArray(gondola.sections) && gondola.sections.length > 1) {
-            gondola.sections.reverse(); 
+            gondola.sections.reverse();
             console.log(`Ordem das seções invertida para a gôndola ${gondolaId}`);
             recordChange();
         } else {
@@ -238,7 +238,7 @@ export const useEditorStore = defineStore('editor', () => {
             // Atualiza o array de seções com a nova ordem
             // É importante passar uma cópia para garantir a reatividade, 
             // embora newSections já deva ser um novo array vindo do draggable.
-            gondola.sections = [...newSections]; 
+            gondola.sections = [...newSections];
             console.log(`Nova ordem das seções definida para a gôndola ${gondolaId}`);
             recordChange(); // Registra a mudança
         } else {
@@ -259,7 +259,7 @@ export const useEditorStore = defineStore('editor', () => {
             const initialLength = gondola.sections.length;
             // Filtra o array de seções, mantendo apenas as que NÃO têm o ID correspondente
             gondola.sections = gondola.sections.filter(s => s.id !== sectionId);
-            
+
             // Verifica se alguma seção foi realmente removida antes de registrar
             if (gondola.sections.length < initialLength) {
                 console.log(`Seção ${sectionId} removida da gôndola ${gondolaId}`);
@@ -296,7 +296,7 @@ export const useEditorStore = defineStore('editor', () => {
         try {
             // 1. Criar cópia e ordenar pela posição atual
             const sortedShelvesCopy = [...section.shelves].sort((a, b) => a.shelf_position - b.shelf_position);
-            
+
             // 2. Armazenar posições originais ordenadas
             const originalPositions = sortedShelvesCopy.map(shelf => shelf.shelf_position);
 
@@ -318,8 +318,8 @@ export const useEditorStore = defineStore('editor', () => {
             });
 
             if (changed) {
-                 // Opcional: Reordenar o array no estado para talvez ajudar a reatividade visual?
-                 // section.shelves.sort((a, b) => a.shelf_position - b.shelf_position);
+                // Opcional: Reordenar o array no estado para talvez ajudar a reatividade visual?
+                // section.shelves.sort((a, b) => a.shelf_position - b.shelf_position);
                 console.log(`Posições das prateleiras invertidas para a seção ${sectionId} na gôndola ${gondolaId}`);
                 recordChange(); // Registra a mudança
             } else {
@@ -357,7 +357,7 @@ export const useEditorStore = defineStore('editor', () => {
         }
 
         // Criar uma cópia e ajustar tipos antes de adicionar ao estado
-        const shelfToAdd = { 
+        const shelfToAdd = {
             ...newShelfData,
             // Garante que alignment seja string ou undefined, tratando null
             alignment: newShelfData.alignment === null ? undefined : newShelfData.alignment,
@@ -365,7 +365,7 @@ export const useEditorStore = defineStore('editor', () => {
         };
 
         // Verificar se o tipo ajustado é compatível (TypeScript fará isso)
-        section.shelves.push(shelfToAdd); 
+        section.shelves.push(shelfToAdd);
 
         console.log(`Prateleira ${shelfToAdd.id} adicionada à seção ${sectionId} na gôndola ${gondolaId}`);
         recordChange();
@@ -377,7 +377,7 @@ export const useEditorStore = defineStore('editor', () => {
      * @param sectionId O ID da seção a ser atualizada.
      * @param alignment O novo valor de alinhamento ('left', 'right', 'center', 'justify').
      */
-    function setSectionAlignment(gondolaId: string, sectionId: string, alignment: string) {
+    function setSectionAlignment(gondolaId: string, sectionId: string, alignment: string | null) {
         if (!currentState.value) return;
 
         const gondola = currentState.value.gondolas.find(g => g.id === gondolaId);
@@ -437,7 +437,7 @@ export const useEditorStore = defineStore('editor', () => {
             shelf.shelf_position = shelf_position;
             shelf.shelf_x_position = shelf_x_position;
             console.log(`Posição da prateleira ${shelfId} definida para ${shelf_position}`);
-            
+
             // Opcional: Reordenar o array shelves visualmente se a ordem importar no template?
             // section.shelves.sort((a, b) => a.shelf_position - b.shelf_position);
 
@@ -482,11 +482,11 @@ export const useEditorStore = defineStore('editor', () => {
         // Verificar se o ID do segmento existe antes de adicionar
         if (typeof newSegment.id === 'string') {
             shelf.segments.push(newSegment as any); // Usar 'as any' se o linter ainda reclamar da assinatura complexa
-                                                // O ideal seria garantir que o tipo Segment interno corresponda perfeitamente
+            // O ideal seria garantir que o tipo Segment interno corresponda perfeitamente
             console.log(`Segmento ${newSegment.id} adicionado à prateleira ${shelfId}`);
-            recordChange(); 
+            recordChange();
         } else {
-             console.error('addSegmentToShelf: Tentativa de adicionar segmento sem ID.', newSegment);
+            console.error('addSegmentToShelf: Tentativa de adicionar segmento sem ID.', newSegment);
         }
     }
 
@@ -522,7 +522,7 @@ export const useEditorStore = defineStore('editor', () => {
         const newSegmentIds = newSegments.map(seg => seg.id);
         if (JSON.stringify(currentSegmentIds) === JSON.stringify(newSegmentIds)) {
             console.log(`Ordem dos segmentos na prateleira ${shelfId} não mudou.`);
-            return; 
+            return;
         }
 
         // Verificar se todos os segmentos recebidos têm ID (precaução)
@@ -533,9 +533,9 @@ export const useEditorStore = defineStore('editor', () => {
 
         // Atualiza o array de segmentos
         // Usar 'as any' para contornar a complexidade da checagem de tipo profunda do linter
-        shelf.segments = [...newSegments] as any; 
+        shelf.segments = [...newSegments] as any;
         console.log(`Nova ordem dos segmentos definida para a prateleira ${shelfId}`);
-        recordChange(); 
+        recordChange();
     }
 
     /**
@@ -545,7 +545,7 @@ export const useEditorStore = defineStore('editor', () => {
      * @param shelfId O ID da prateleira a ser atualizada.
      * @param alignment O novo valor de alinhamento.
      */
-    function setShelfAlignment(gondolaId: string, sectionId: string, shelfId: string, alignment: string) {
+    function setShelfAlignment(gondolaId: string, sectionId: string, shelfId: string, alignment: string | null) {
         if (!currentState.value) return;
 
         const gondola = currentState.value.gondolas.find(g => g.id === gondolaId);
@@ -630,8 +630,8 @@ export const useEditorStore = defineStore('editor', () => {
         // Atualizar dados do segmento movido
         segmentToMove.shelf_id = newShelfId;
         if (newPositionX !== undefined) {
-             // Usar 'position' ou o campo correto para posição X
-            (segmentToMove as any).position = newPositionX; 
+            // Usar 'position' ou o campo correto para posição X
+            (segmentToMove as any).position = newPositionX;
         }
         // Atualizar ordem (anexar ao final se não especificado)
         segmentToMove.ordering = newOrdering ?? newShelf.segments.length + 1;
@@ -671,7 +671,7 @@ export const useEditorStore = defineStore('editor', () => {
         const initialLength = section.shelves.length;
         // Filtra o array de prateleiras, mantendo apenas as que NÃO têm o ID correspondente
         section.shelves = section.shelves.filter(sh => sh.id !== shelfId);
-        
+
         // Verifica se alguma prateleira foi realmente removida antes de registrar
         if (section.shelves.length < initialLength) {
             console.log(`Prateleira ${shelfId} removida da seção ${sectionId}`);
@@ -751,9 +751,9 @@ export const useEditorStore = defineStore('editor', () => {
         const originalShelf = section.shelves[shelfIndex];
         // Garante que propriedades nulas ou indefinidas em shelfData não sobrescrevam valores existentes inesperadamente,
         // a menos que sejam explicitamente parte de Partial<Shelf>
-        const updatedShelf = { 
-            ...originalShelf, 
-            ...shelfData, 
+        const updatedShelf = {
+            ...originalShelf,
+            ...shelfData,
             alignment: shelfData.alignment === null ? undefined : shelfData.alignment ?? originalShelf.alignment // Converte null para undefined
         };
 

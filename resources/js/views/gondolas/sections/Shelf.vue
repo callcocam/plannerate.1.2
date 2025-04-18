@@ -1,46 +1,29 @@
 <template>
     <ContextMenu>
         <ContextMenuTrigger>
-            <div
-                class="shelf relative flex flex-col items-center justify-around border-y border-gray-400 bg-gray-700 text-gray-50 dark:bg-gray-800"
-                :style="shelfStyle"
-                ref="shelfElement"
-            >
+            <div class="shelf relative flex flex-col items-center justify-around border-y border-gray-400 bg-gray-700 text-gray-50 dark:bg-gray-800"
+                :style="shelfStyle" ref="shelfElement">
                 <!-- TODO: Renderizar Segmentos/Produtos aqui -->
-                <draggable
-                    v-model="sortableSegments"
-                    item-key="id"
-                    handle=".drag-segment-handle"
-                    class="relative flex w-full items-end"
-                    :class="{
+                <draggable v-model="sortableSegments" item-key="id" handle=".drag-segment-handle"
+                    class="relative flex w-full items-end" :class="{
                         'justify-center': alignment === 'center',
                         'justify-start': alignment === 'left',
                         'justify-end': alignment === 'right',
                         'justify-around': alignment === 'justify',
-                    }"
-                    :style="segmentsContainerStyle"
-                >
+                    }" :style="segmentsContainerStyle">
                     <template #item="{ element: segment }">
-                        <Segment :key="segment.id" :shelf="shelf" :segment="segment" :scale-factor="scaleFactor" :section-width="sectionWidth" />
+                        <Segment :key="segment.id" :shelf="shelf" :segment="segment" :scale-factor="scaleFactor"
+                            :section-width="sectionWidth" />
                     </template>
                 </draggable>
-                <ShelfControls
-                    :shelf="shelf"
-                    :scale-factor="scaleFactor"
-                    :section-width="sectionWidth"
-                    :section-height="sectionHeight"
-                    :shelf-element="shelfElement"
-                    :base-height="baseHeight"
-                    :sections-container="sectionsContainer"
-                    :section-index="sectionIndex"
-                />
+                <ShelfControls :shelf="shelf" :scale-factor="scaleFactor" :section-width="sectionWidth"
+                    :section-height="sectionHeight" :shelf-element="shelfElement" :base-height="baseHeight"
+                    :sections-container="sectionsContainer" :section-index="sectionIndex" />
                 <!-- <div class="absolute inset-0 bottom-0 z-0 flex h-full w-full items-center justify-center"> -->
-                <ShelfContent
-                    :shelf="shelf"
+                <ShelfContent :shelf="shelf"
                     @drop-product="(product: Product, shelf: Shelf, dropPosition: any) => $emit('drop-product', product, shelf, dropPosition)"
                     @drop-layer-copy="(product: Product, shelf: Shelf, dropPosition: any) => $emit('drop-layer-copy', product, shelf, dropPosition)"
-                    @drop-layer="(moveLayer: Layer, oldSshelf: Shelf) => $emit('drop-layer', moveLayer, oldSshelf)"
-                />
+                    @drop-layer="(moveLayer: Layer, oldSshelf: Shelf) => $emit('drop-layer', moveLayer, oldSshelf)" />
                 <!-- </div> -->
             </div>
         </ContextMenuTrigger>
@@ -63,17 +46,21 @@
                     Justificado
                     <ContextMenuShortcut>⌘⇧J</ContextMenuShortcut>
                 </ContextMenuItem>
-                <ContextMenuItem inset @click="setAlignmentLeft">
+                <ContextMenuItem inset @click="setAlignmentLeft" :disabled="alignment === 'left'">
                     Alinhado à esquerda
                     <ContextMenuShortcut>⌘⇧L</ContextMenuShortcut>
                 </ContextMenuItem>
-                <ContextMenuItem inset @click="setAlignmentCenter">
+                <ContextMenuItem inset @click="setAlignmentCenter" :disabled="alignment === 'center'">
                     Alinhado ao centro
                     <ContextMenuShortcut>⌘⇧C</ContextMenuShortcut>
                 </ContextMenuItem>
-                <ContextMenuItem inset @click="setAlignmentRight">
+                <ContextMenuItem inset @click="setAlignmentRight" :disabled="alignment === 'right'">
                     Alinhado à direita
                     <ContextMenuShortcut>⌘⇧R</ContextMenuShortcut>
+                </ContextMenuItem>
+                <ContextMenuItem inset @click="setAlignmentNone" :disabled="!alignment || alignment === 'justify'">
+                    Não alinhar
+                    <ContextMenuShortcut>⌘⇧N</ContextMenuShortcut>
                 </ContextMenuItem>
                 <ContextMenuSeparator />
                 <ContextMenuItem inset disabled>
@@ -87,7 +74,7 @@
 
 <script setup lang="ts">
 import { computed, defineEmits, defineProps, onMounted, onUnmounted, ref, type CSSProperties } from 'vue';
-import draggable from 'vuedraggable'; 
+import draggable from 'vuedraggable';
 import { useShelvesStore } from '@plannerate/store/shelves';
 import { useEditorStore } from '@plannerate/store/editor';
 import { type Layer, type Product, type Segment as SegmentType } from '@plannerate/types/segment';
@@ -112,7 +99,7 @@ const shelfElement = ref<HTMLElement | null>(null);
 
 // Definir Emits
 const emit = defineEmits(['drop-product', 'drop-layer-copy', 'drop-layer']);
-const shelvesStore = useShelvesStore(); 
+const shelvesStore = useShelvesStore();
 const editorStore = useEditorStore();
 
 const alignment = computed(() => {
@@ -167,7 +154,7 @@ const sortableSegments = computed<SegmentType[]>({
             ...segment,
             ordering: index + 1,
         }));
-        
+
         editorStore.setShelfSegmentsOrder(
             props.gondolaId,
             props.shelf.section_id,
@@ -220,7 +207,7 @@ const globalKeyHandler = (event: KeyboardEvent) => {
 };
 
 // Função auxiliar para chamar a action do editorStore
-const updateAlignment = (alignment: string) => {
+const updateAlignment = (alignment: string | null) => {
     if (!props.gondolaId || !props.shelf.section_id || !props.shelf.id) {
         console.error('updateAlignment: IDs faltando (gondola, section, ou shelf).');
         // Adicionar toast de erro?
@@ -246,6 +233,10 @@ const setAlignmentRight = () => {
 const setAlignmentJustify = () => {
     // REMOVIDO: shelvesStore.setSectionAlignment(props.shelf.id, 'justify');
     updateAlignment('justify');
+};
+const setAlignmentNone = () => {
+    // REMOVIDO: shelvesStore.setSectionAlignment(props.shelf.id, null);
+    updateAlignment(null);
 };
 
 const invertSegments = () => {

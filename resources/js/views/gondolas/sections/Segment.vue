@@ -4,7 +4,7 @@
         :style="segmentStyle"
     >
         <Layer
-            v-for="(quantity, index) in segmentQuantity"
+            v-for="(_, index) in segmentQuantity"
             :key="index"
             :shelf="shelf"
             :segment="segment"
@@ -18,11 +18,12 @@
 </template>
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { useGondolaStore } from '../../../store/gondola'; // Corrected relative path
-import { useProductStore } from '../../../store/product'; // Corrected relative path
-import { useSectionStore } from '../../../store/section';
+import { useGondolaStore } from '@plannerate/store/gondola'; // Corrected relative path
+import { useProductStore } from '@plannerate/store/product'; // Corrected relative path 
 import Layer from './Layer.vue';
-import { LayerSegment as LayerType, Segment, Shelf } from './types';
+import { Layer as LayerType, Segment } from '@plannerate/types/segment';
+import { Section } from '@plannerate/types/sections';
+import { Shelf } from '@/types/shelves';
 
 const props = defineProps<{
     segment: Segment & {
@@ -40,13 +41,8 @@ const segmentQuantity = computed(() => {
 });
 
 const productStore = useProductStore(); // Instance of the product store
-const gondolaStore = useGondolaStore(); // Instance of the gondola store
-const sectionStore = useSectionStore(); // Instance of the section store
-
-const alignment = computed(() => {
-    console.log('alignment', props.shelf.section?.alignment);
-    return props.shelf.section?.alignment || 'justify';
-});
+const gondolaStore = useGondolaStore(); // Instance of the gondola store 
+ 
 
 // Computed para o estilo do segmento
 // ----------------------------------------------------
@@ -58,10 +54,10 @@ const alignment = computed(() => {
 
 const layerWidth = () => {
     let sectionWidth = props.sectionWidth;
-    currentGondola.value?.sections.map((section) => {
+    currentGondola.value?.sections.map((section: Section) => {
         section.shelves.map((shelf: Shelf) => {
             if (shelf?.segments?.length > 0) {
-                shelf.segments.map((segment) => {
+                shelf.segments.map((segment: Segment) => {
                     if (segment.id === props.segment.id) {
                         sectionWidth = sectionWidth - segment.layer.product.width;
                         if (shelf.segments.length > 1) {

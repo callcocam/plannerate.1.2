@@ -29,23 +29,28 @@
                     <ContextMenuShortcut>⌘I</ContextMenuShortcut>
                 </ContextMenuItem>
                 <ContextMenuSeparator />
-                <ContextMenuSub>
-                    <ContextMenuSubTrigger inset> Alinhamento </ContextMenuSubTrigger>
-                    <ContextMenuSubContent class="w-48">
-                        <ContextMenuItem inset @click="() => justifyModule('left')">
-                            à esquerda
-                            <ContextMenuShortcut>⌘⇧L</ContextMenuShortcut>
-                        </ContextMenuItem>
-                        <ContextMenuItem inset @click="() => justifyModule('justify')">
-                            ao centro
-                            <ContextMenuShortcut>⌘⇧C</ContextMenuShortcut>
-                        </ContextMenuItem>
-                        <ContextMenuItem inset @click="() => justifyModule('right')">
-                            à direita
-                            <ContextMenuShortcut>⌘⇧R</ContextMenuShortcut>
-                        </ContextMenuItem>
-                    </ContextMenuSubContent>
-                </ContextMenuSub>
+                <ContextMenuLabel inset> Alinhamento </ContextMenuLabel>
+                <ContextMenuSeparator />
+                <ContextMenuItem inset @click="() => justifyModule('justify')" :disabled="section.alignment === 'justify'">
+                    Justificado
+                    <ContextMenuShortcut>⌘⇧J</ContextMenuShortcut>
+                </ContextMenuItem>
+                <ContextMenuItem inset @click="() => justifyModule('left')" :disabled="section.alignment === 'left'">
+                    à esquerda
+                    <ContextMenuShortcut>⌘⇧L</ContextMenuShortcut>
+                </ContextMenuItem>
+                <ContextMenuItem inset @click="() => justifyModule('center')" :disabled="section.alignment === 'center'">
+                    ao centro
+                    <ContextMenuShortcut>⌘⇧C</ContextMenuShortcut>
+                </ContextMenuItem>
+                <ContextMenuItem inset @click="() => justifyModule('right')" :disabled="section.alignment === 'right'">
+                    à direita
+                    <ContextMenuShortcut>⌘⇧R</ContextMenuShortcut>
+                </ContextMenuItem>
+                <ContextMenuItem inset @click="() => justifyModule()" :disabled="!section.alignment || section.alignment === 'justify'">
+                    Não alinhar
+                    <ContextMenuShortcut>⌘⇧N</ContextMenuShortcut>
+                </ContextMenuItem>
                 <ContextMenuSeparator />
                 <ContextMenuItem inset disabled>
                     Excluir
@@ -142,9 +147,9 @@ const addShelf = (event: MouseEvent) => {
 
 /**
  * Define o alinhamento do módulo
- * @param alignment Tipo de alinhamento ('left', 'justify', 'right')
+ * @param alignment Tipo de alinhamento ('justify', 'left', 'center', 'right') ou null para não alinhar
  */
-const justifyModule = (alignment: string) => {
+const justifyModule = (alignment: string | null = null) => {
     if (!gondolaId) {
         toast({
             title: 'Aviso',
@@ -153,7 +158,7 @@ const justifyModule = (alignment: string) => {
         });
         return;
     }
-    editorStore.setSectionAlignment(gondolaId, section.id, alignment);
+        editorStore.setSectionAlignment(gondolaId, section.id, alignment);
 };
 
 /**

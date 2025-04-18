@@ -1,70 +1,7 @@
 <template>
     <div class="mb-6 border-b pb-4 dark:border-gray-700" v-if="planogram">
         <!-- Modal para adicionar gôndola -->
-
-        <div class="flex items-center justify-between">
-            <div class="space-y-1">
-                <div class="flex items-center gap-2">
-                    <h2 class="text-2xl font-bold tracking-tight dark:text-gray-100">{{ editorStore.currentState?.name || planogram.name }}</h2>
-                    <Badge :variant="getStatusVariant(planogram.status)">
-                        {{ planogram.status }}
-                    </Badge>
-                    <span v-if="editorStore.hasChanges" class="ml-2 text-xs text-yellow-600 dark:text-yellow-400">(Não salvo)</span>
-                </div>
-                <p class="text-sm text-muted-foreground dark:text-gray-400">
-                    ID: {{ planogram.id }} | Criado em: {{ formatDate(planogram.created_at) }}
-                </p>
-            </div>
-
-            <div class="flex items-center gap-2">
-                <Button
-                    variant="outline"
-                    size="sm"
-                    @click="editorStore.undo"
-                    :disabled="!editorStore.canUndo"
-                    class="dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 disabled:opacity-50"
-                >
-                    <Undo2Icon class="mr-2 h-4 w-4" />
-                    Desfazer
-                </Button>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    @click="editorStore.redo"
-                    :disabled="!editorStore.canRedo"
-                    class="dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 disabled:opacity-50"
-                >
-                    <Redo2Icon class="mr-2 h-4 w-4" />
-                    Refazer
-                </Button>
-                <div class="h-6 w-px bg-gray-300 dark:bg-gray-600 mx-2"></div>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    @click="openAddGondolaModal"
-                    class="dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-                >
-                    <PlusCircleIcon class="mr-2 h-4 w-4" />
-                    Adicionar Gôndola
-                </Button>
-                <Button variant="outline" size="sm" class="dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
-                    <PencilIcon class="mr-2 h-4 w-4" />
-                    Editar
-                </Button>
-                <Button 
-                    size="sm" 
-                    @click="editorStore.saveChanges"
-                    :disabled="!editorStore.hasChanges" 
-                    class="dark:hover:bg-primary-800 disabled:opacity-50"
-                    :variant="editorStore.hasChanges ? 'default' : 'outline'"
-                >
-                    <SaveIcon class="mr-2 h-4 w-4" />
-                    Salvar
-                </Button>
-            </div>
-        </div>
-
-        <div class="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+        <!-- <div class="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
             <Card class="dark:border-gray-700 dark:bg-gray-800">
                 <CardHeader class="pb-2">
                     <CardTitle class="text-sm font-medium dark:text-gray-200">Tenant</CardTitle>
@@ -92,12 +29,44 @@
                     </div>
                 </CardContent>
             </Card>
+        </div> -->
+        <div class="flex items-center justify-between">
+            <div class="space-y-1">
+                <div class="flex items-center gap-2">
+                    <h2 class="text-2xl font-bold tracking-tight dark:text-gray-100">{{ planogram.name }}</h2>
+                    <Badge :variant="getStatusVariant(planogram.status)">
+                        {{ planogram.status }}
+                    </Badge>
+                    <span v-if="editorStore.hasChanges" class="ml-2 text-xs text-yellow-600 dark:text-yellow-400">(Não salvo)</span>
+                </div>
+                <p class="text-sm text-muted-foreground dark:text-gray-400">
+                    ID: {{ planogram.id }} | Criado em: {{ formatDate(planogram.created_at) }}
+                </p>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    @click="openAddGondolaModal"
+                    class="dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                >
+                    <PlusCircleIcon class="mr-2 h-4 w-4" />
+                    Adicionar Gôndola
+                </Button>
+                <Button variant="outline" size="sm" class="dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
+                    <PencilIcon class="mr-2 h-4 w-4" />
+                    Editar
+                </Button>
+            </div>
         </div>
+
+        
     </div>
 </template>
 
 <script setup lang="ts">
-import { PencilIcon, PlusCircleIcon, SaveIcon, Undo2Icon, Redo2Icon } from 'lucide-vue-next';
+import { PencilIcon, PlusCircleIcon } from 'lucide-vue-next';
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router'; 
 import { useEditorStore } from '@plannerate/store/editor';

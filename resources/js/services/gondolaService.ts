@@ -20,7 +20,7 @@ export const useGondolaService = () => {
     /**
      * Atualiza alinhamento de uma gôndola
      */
-    const updateGondolaAlignment = async (gondolaId: string, alignment: string) => {
+    const updateGondolaAlignment = async (gondolaId: string, alignment: string | null) => {
         return apiService.post(`gondolas/${gondolaId}/alignment`, {
             alignment
         });
