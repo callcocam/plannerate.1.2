@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, computed, watch } from 'vue';
+import { ref, computed } from 'vue';
 import { isEqual } from 'lodash-es'; // Usaremos lodash para comparações profundas
 import type { Gondola } from '@plannerate/types/gondola'; // Certifique-se de que Section está tipado
 import type { Section } from '@plannerate/types/sections'; // Ajustar path se necessário
