@@ -11,8 +11,7 @@ import { computed } from 'vue';
 
 const props = defineProps<{
     product: any;
-    scaleFactor: number;
-    productSpacing: number;
+    scaleFactor: number; 
 }>();
 
 // Estilo do produto

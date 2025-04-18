@@ -4,6 +4,7 @@ import { isEqual } from 'lodash-es'; // Usaremos lodash para comparações profu
 import type { Gondola } from '@plannerate/types/gondola'; // Certifique-se de que Section está tipado
 import type { Section } from '@plannerate/types/sections'; // Ajustar path se necessário
 import type { Shelf } from '@plannerate/types/shelves'; // <-- Importar tipo Shelf
+import type { Segment } from '@plannerate/types/segment'; // <-- Importar tipo Segment
 
 // Interface para representar o estado do planograma no editor
 interface PlanogramEditorState {
@@ -355,6 +356,124 @@ export const useEditorStore = defineStore('editor', () => {
         recordChange();
     }
 
+    /**
+     * Define o alinhamento para uma seção específica no estado.
+     * @param gondolaId O ID da gôndola que contém a seção.
+     * @param sectionId O ID da seção a ser atualizada.
+     * @param alignment O novo valor de alinhamento ('left', 'right', 'center', 'justify').
+     */
+    function setSectionAlignment(gondolaId: string, sectionId: string, alignment: string) {
+        if (!currentState.value) return;
+
+        const gondola = currentState.value.gondolas.find(g => g.id === gondolaId);
+        if (!gondola) {
+            console.warn(`Não foi possível definir alinhamento: Gôndola ${gondolaId} não encontrada.`);
+            return;
+        }
+
+        const section = gondola.sections.find(s => s.id === sectionId);
+        if (!section) {
+            console.warn(`Não foi possível definir alinhamento: Seção ${sectionId} não encontrada.`);
+            return;
+        }
+
+        // Verifica se o alinhamento realmente mudou
+        if (section.alignment !== alignment) {
+            section.alignment = alignment;
+            console.log(`Alinhamento da seção ${sectionId} definido para ${alignment}`);
+            recordChange(); // Registra a mudança
+        } else {
+            console.log(`Alinhamento da seção ${sectionId} já era ${alignment}.`);
+        }
+    }
+
+    /**
+     * Define a posição vertical (shelf_position) para uma prateleira específica no estado.
+     * @param gondolaId O ID da gôndola que contém a seção.
+     * @param sectionId O ID da seção que contém a prateleira.
+     * @param shelfId O ID da prateleira a ser atualizada.
+     * @param newPosition O novo valor para shelf_position.
+     */
+    function setShelfPosition(gondolaId: string, sectionId: string, shelfId: string, newPosition: number) {
+        if (!currentState.value) return;
+
+        const gondola = currentState.value.gondolas.find(g => g.id === gondolaId);
+        if (!gondola) {
+            console.warn(`setShelfPosition: Gôndola ${gondolaId} não encontrada.`);
+            return;
+        }
+
+        const section = gondola.sections.find(s => s.id === sectionId);
+        if (!section || !Array.isArray(section.shelves)) {
+            console.warn(`setShelfPosition: Seção ${sectionId} não encontrada ou sem prateleiras.`);
+            return;
+        }
+
+        const shelf = section.shelves.find(sh => sh.id === shelfId);
+        if (!shelf) {
+            console.warn(`setShelfPosition: Prateleira ${shelfId} não encontrada.`);
+            return;
+        }
+
+        // Verifica se a posição realmente mudou
+        // Comparar números pode ter problemas de precisão, talvez arredondar ou usar tolerância?
+        // Por simplicidade, faremos comparação direta por enquanto.
+        if (shelf.shelf_position !== newPosition) {
+            shelf.shelf_position = newPosition;
+            console.log(`Posição da prateleira ${shelfId} definida para ${newPosition}`);
+            
+            // Opcional: Reordenar o array shelves visualmente se a ordem importar no template?
+            // section.shelves.sort((a, b) => a.shelf_position - b.shelf_position);
+
+            recordChange(); // Registra a mudança
+        } else {
+            console.log(`Posição da prateleira ${shelfId} já era ${newPosition}.`);
+        }
+    }
+
+    /**
+     * Adiciona um novo segmento a uma prateleira específica no estado.
+     * @param gondolaId O ID da gôndola.
+     * @param sectionId O ID da seção.
+     * @param shelfId O ID da prateleira.
+     * @param newSegment O objeto Segment a ser adicionado.
+     */
+    function addSegmentToShelf(gondolaId: string, sectionId: string, shelfId: string, newSegment: Segment) {
+        if (!currentState.value) return;
+
+        const gondola = currentState.value.gondolas.find(g => g.id === gondolaId);
+        if (!gondola) {
+            console.warn(`addSegmentToShelf: Gôndola ${gondolaId} não encontrada.`);
+            return;
+        }
+
+        const section = gondola.sections.find(s => s.id === sectionId);
+        if (!section || !Array.isArray(section.shelves)) {
+            console.warn(`addSegmentToShelf: Seção ${sectionId} não encontrada ou sem prateleiras.`);
+            return;
+        }
+
+        const shelf = section.shelves.find(sh => sh.id === shelfId);
+        if (!shelf) {
+            console.warn(`addSegmentToShelf: Prateleira ${shelfId} não encontrada.`);
+            return;
+        }
+
+        if (!Array.isArray(shelf.segments)) {
+            shelf.segments = [];
+        }
+
+        // Verificar se o ID do segmento existe antes de adicionar
+        if (typeof newSegment.id === 'string') {
+            shelf.segments.push(newSegment as any); // Usar 'as any' se o linter ainda reclamar da assinatura complexa
+                                                // O ideal seria garantir que o tipo Segment interno corresponda perfeitamente
+            console.log(`Segmento ${newSegment.id} adicionado à prateleira ${shelfId}`);
+            recordChange(); 
+        } else {
+             console.error('addSegmentToShelf: Tentativa de adicionar segmento sem ID.', newSegment);
+        }
+    }
+
     // Adicione aqui mais ações para manipular gondolas, seções, prateleiras, etc.
     // Ex: addGondola, updateSection, removeShelf, addProductToLayer...
     // Cada uma dessas ações deve modificar `currentState.value` e chamar `recordChange()`
@@ -394,5 +513,8 @@ export const useEditorStore = defineStore('editor', () => {
         removeSectionFromGondola, // <-- Expor a nova action
         invertShelvesInSection, // <-- Expor a nova action
         addShelfToSection, // <-- Expor a nova action
+        setSectionAlignment, // <-- Expor a nova action
+        setShelfPosition, // <-- Expor a nova action
+        addSegmentToShelf, // <-- Expor a nova action
     };
 });

@@ -11,7 +11,7 @@
                 ref="sectionRef"
             >
                 <!-- Conteúdo da Seção (Prateleiras) -->
-                <Shelf
+                <ShelfComponent
                     v-for="shelf in section.shelves"
                     :key="shelf.id"
                     :shelf="shelf"
@@ -79,11 +79,11 @@ import { useProductStore } from '../../../store/product';
 import { useSectionStore } from '../../../store/section';
 import { useShelvesStore } from '../../../store/shelves';
 import { useEditorStore } from '../../../store/editor';
+import { type Shelf as ShelfType } from '../../../types/shelves';
 import { Section } from '../../../types/sections';
 import { Layer, Product, Segment } from '../../../types/segment';
-import { Shelf as ShelfType } from '../../../types/shelves';
+import ShelfComponent from './Shelf.vue';
 import { useToast } from './../../../components/ui/toast';
-import Shelf from './Shelf.vue';
 
 // Definir Props
 const props = defineProps<{
@@ -106,8 +106,7 @@ const editorStore = useEditorStore();
 
 // Services
 const { toast } = useToast();
-const segmentService = useSegmentService();
-const shelfService = useShelfService();
+const segmentService = useSegmentService(); 
 
 // --- Estado para controle de drag and drop ---
 const dropTargetActive = ref(false);
@@ -150,7 +149,11 @@ const addShelf = async (event: MouseEvent) => {
 };
 
 const justifyModule = (alignment: string) => {
-    sectionStore.justifyProducts(props.section, alignment);
+    if (!props.gondolaId) {
+        console.warn('Não é possível justificar módulo: gondolaId não fornecido.');
+        return;
+    }
+    editorStore.setSectionAlignment(props.gondolaId, props.section.id, alignment);
 };
 
 const inverterModule = () => {
@@ -164,7 +167,10 @@ const inverterModule = () => {
 // --- Helpers ---
 const createSegmentFromProduct = (product: Product, shelf: ShelfType, layerQuantity: number): Segment => {
     const segmentId = `segment-${Date.now()}-${shelf.segments?.length}`;
+    const layerId = `layer-${Date.now()}-${product.id}`;
+    
     return { 
+        id: segmentId, 
         user_id: null,
         tenant_id: '',
         width: parseInt(props.section.width.toString()),
@@ -177,14 +183,13 @@ const createSegmentFromProduct = (product: Product, shelf: ShelfType, layerQuant
         settings: null,
         status: 'published',
         layer: {
-            id: `layer-${Date.now()}`,
+            id: layerId,
             product_id: product.id,
             product: product,
-            quantity: layerQuantity,
+            quantity: layerQuantity || 1,
             status: 'published',
             height: product.height,
             segment_id: segmentId,
-            
         }
     };
 };
@@ -212,38 +217,26 @@ const handleSectionDragLeave = () => {
 
 const handleSectionDrop = async (event: DragEvent) => {
     if (!event.dataTransfer) return;
-
     const shelfData = event.dataTransfer.getData('text/shelf');
 
     if (shelfData) {
         try {
-            const shelf = JSON.parse(shelfData);
+            const shelf = JSON.parse(shelfData) as ShelfType;
             const mouseY = event.offsetY;
             const newPosition = mouseY / props.scaleFactor;
             const shelfHeight = draggingShelf.value?.shelf_height || 0;
 
             if (newPosition >= 0 && newPosition <= props.section.height - shelfHeight) {
-                try {
-                    const response = await shelfService.updateShelfPosition(shelf.id, newPosition);
-
-                    // Atualizar o estado local
-                    shelvesStore.updateShelf(shelf.id, {
-                        shelf_position: newPosition,
-                    });
-
-                    toast({
-                        title: 'Sucesso',
-                        description: 'Posição da prateleira atualizada',
-                        variant: 'default',
-                    });
-                } catch (error) {
-                    console.error('Erro ao atualizar posição da prateleira:', error);
-                    toast({
-                        title: 'Erro',
-                        description: 'Falha ao atualizar posição da prateleira',
-                        variant: 'destructive',
-                    });
+                if (!props.gondolaId) {
+                    console.warn('handleSectionDrop: gondolaId não fornecido.');
+                    toast({ title: 'Erro Interno', description: 'Contexto da gôndola não encontrado.', variant: 'destructive' });
+                    draggingShelf.value = null;
+                    dropTargetActive.value = false;
+                    return;
                 }
+                
+                editorStore.setShelfPosition(props.gondolaId, props.section.id, shelf.id, newPosition);
+
             } else {
                 toast({
                     title: 'Aviso',
@@ -252,10 +245,9 @@ const handleSectionDrop = async (event: DragEvent) => {
                 });
             }
         } catch (e) {
-            console.error('Erro ao processar dados da prateleira:', e);
+            console.error('Erro ao processar dados da prateleira no drop:', e);
+             toast({ title: 'Erro', description: 'Falha ao mover prateleira.', variant: 'destructive' });
         }
-
-        // Resetar estado
         draggingShelf.value = null;
         dropTargetActive.value = false;
     }
@@ -263,44 +255,52 @@ const handleSectionDrop = async (event: DragEvent) => {
 
 // --- Lógica de Eventos para Produtos ---
 const handleProductDropOnShelf = async (product: Product, shelf: ShelfType, dropPosition: any) => {
+    // Cria o novo segmento com ID temporário
     const newSegment = createSegmentFromProduct(product, shelf, 1);
 
+    // Verificar se gondolaId está disponível
+    if (!props.gondolaId) {
+        console.warn('handleProductDropOnShelf: gondolaId não fornecido.');
+        toast({ title: 'Erro Interno', description: 'Contexto da gôndola não encontrado.', variant: 'destructive' });
+        return;
+    }
+
     try {
-        const response = await segmentService.addSegment(shelf.id, newSegment);
-        shelvesStore.updateShelf(response.data.id, response.data);
+        // Chama a action do editorStore para adicionar o segmento ao estado
+        editorStore.addSegmentToShelf(props.gondolaId, props.section.id, shelf.id, newSegment);
 
-        toast({
-            title: 'Sucesso',
-            description: response.message || 'Produto adicionado com sucesso',
-            variant: 'default',
-        });
-    } catch (error) {
-        console.error('Erro ao adicionar produto à prateleira:', error);
-        let errorMessage = 'Falha ao adicionar produto à prateleira';
+        // REMOVIDA chamada API direta
+        // const response = await segmentService.addSegment(shelf.id, newSegment);
         
-        // Tentar extrair mensagem do erro da API
-        if (typeof error === 'object' && error !== null && 
-            (error as any).response && (error as any).response.data && 
-            typeof (error as any).response.data.message === 'string') {
-            errorMessage = (error as any).response.data.message;
-        } else if (error instanceof Error) {
-            // Se não for erro de API, pegar mensagem do Error padrão
-            errorMessage = error.message;
-        }
+        // REMOVIDO console.warn sobre TODO
+        // console.warn(`TODO: Implementar editorStore.addSegmentToShelf para drop de produto em ${shelf.id}`);
 
-        toast({
-            title: 'Erro',
-            description: errorMessage,
-            variant: 'destructive',
-        });
+        // Manter toast local?
+        // toast({ 
+        //     title: 'Sucesso (Local)',
+        //     description: 'Produto adicionado à prateleira no estado.', 
+        //     variant: 'default',
+        // });
+
+    } catch (error) { // Captura erros da action do editorStore?
+        console.error('Erro ao adicionar produto/segmento ao editorStore:', error);
+        const errorDesc = (error instanceof Error) ? error.message : 'Falha ao atualizar o estado do editor.';
+        toast({ title: 'Erro Interno', description: errorDesc, variant: 'destructive' });
     }
 };
 
 const handleLayerCopy = async (layer: Layer, shelf: ShelfType, dropPosition: any) => {
     const newSegment = createSegmentFromProduct(layer.product, shelf, layer.quantity);
     try {
+        // Chamada API direta (manter por enquanto ou mover para saveChanges)
         const response = await segmentService.copySegment(shelf.id, newSegment);
-        shelvesStore.updateShelf(response.data.id, response.data, false);
+        
+        // REMOVER chamada ao shelvesStore.updateShelf
+        // shelvesStore.updateShelf(response.data.id, response.data, false);
+
+        // TODO: Chamar action do editorStore para adicionar o segmento copiado à prateleira
+        // editorStore.addSegmentToShelf(gondolaId, sectionId, shelf.id, response.data) // response.data é o novo segmento
+        console.warn(`TODO: Implementar editorStore.addSegmentToShelf para cópia em ${shelf.id}`);
 
         toast({
             title: 'Sucesso',
