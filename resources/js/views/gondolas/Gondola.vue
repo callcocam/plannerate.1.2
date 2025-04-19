@@ -68,6 +68,10 @@ const gondolaId = ref<string>(route.params.gondolaId as string);
 
 // *** NOVA Computed para a gôndola reativa do editorStore ***
 const editorGondola = computed(() => {
+    if (!gondolaId.value) return null;
+    if (!editorStore.currentState?.gondolas) return null;
+    if (editorStore.getCurrentGondola) return editorStore.getCurrentGondola;
+
     editorStore.setCurrentGondola(editorStore.currentState?.gondolas.find(g => g.id === gondolaId.value) as Gondola);
     // Busca a gôndola correspondente no estado atual do editor
     return editorStore.getCurrentGondola;

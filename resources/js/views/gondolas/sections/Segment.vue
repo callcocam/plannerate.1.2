@@ -4,7 +4,7 @@
         'justify-start': alignment === 'left',
         'justify-center': alignment === 'center',
         'justify-end': alignment === 'right'
-    }" @dragstart="onDragStart" draggable="true" :tabindex="segment.tabindex" @keydown="handleKeyDown">
+    }" @dragstart="onDragStart" draggable="true" :tabindex="segment.tabindex" >
         <LayerComponent v-for="(_, index) in segmentQuantity" :key="index" :shelf="shelf" :segment="segment"
             :layer="segment.layer" :scale-factor="scaleFactor" :section-width="sectionWidth"
             :shelf-depth="shelf.shelf_depth" @increase="onIncreaseQuantity" @decrease="onDecreaseQuantity" />
@@ -158,7 +158,7 @@ const onIncreaseQuantity = () => {
     );
 };
 
-const onDecreaseQuantity = () => {
+const onDecreaseQuantity = () => { 
     if (!props.gondola?.id || !currentSectionId.value || !props.shelf?.id || !props.segment?.id || !props.segment?.layer?.product?.id) {
         console.error("onDecreaseQuantity: IDs faltando para validação/atualização.");
         toast({ title: "Erro Interno", description: "Dados incompletos para diminuir quantidade.", variant: "destructive" });
@@ -206,28 +206,29 @@ const onDecreaseQuantity = () => {
 /**
  * Gerencia a navegação por teclado e teclas de ação
  */
-const handleKeyDown = (event: KeyboardEvent) => {
-    // Gerencia a navegação por Tab
-    if (event.key === 'Tab') {
-        // const direction = event.shiftKey ? 'prev' : 'next';
-        // const currentTabIndex = Number(props.segment.tabindex || 0);
+// const handleKeyDown = (event: KeyboardEvent) => {
+//     console.log('handleKeyDown', event.key);
+//     // Gerencia a navegação por Tab
+//     if (event.key === 'Tab') {
+//         // const direction = event.shiftKey ? 'prev' : 'next';
+//         // const currentTabIndex = Number(props.segment.tabindex || 0);
 
-        // Verifica se é o último elemento na navegação por tab
-        // Um elemento é considerado o último se seu tabindex for o maior valor
-        // Você precisará de uma forma de determinar qual é o maior tabIndex
-        // no contexto do seu aplicativo
+//         // Verifica se é o último elemento na navegação por tab
+//         // Um elemento é considerado o último se seu tabindex for o maior valor
+//         // Você precisará de uma forma de determinar qual é o maior tabIndex
+//         // no contexto do seu aplicativo
 
-        // Emite evento para permitir que o componente pai gerencie a navegação
-        // emit('tab-navigation', {
-        //     isLast: false, // Isso será determinado pelo componente pai
-        //     direction,
-        //     currentTabIndex
-        // });
+//         // Emite evento para permitir que o componente pai gerencie a navegação
+//         // emit('tab-navigation', {
+//         //     isLast: false, // Isso será determinado pelo componente pai
+//         //     direction,
+//         //     currentTabIndex
+//         // });
 
-        // Não impedimos o comportamento padrão do Tab para manter a navegação nativa
-    }
+//         // Não impedimos o comportamento padrão do Tab para manter a navegação nativa
+//     }
 
-};
+// };
 
 /**
  * Configura dados para arrastar o segmento

@@ -25,6 +25,7 @@ const emit = defineEmits<{
     (e: 'increase', layer: LayerType): void;
     (e: 'decrease', layer: LayerType): void;
     (e: 'tab-navigation', data: { isLast: boolean, direction: 'next' | 'prev', currentTabIndex: number }): void;
+    (e: 'layer-click', layer: LayerType): void;
 }>();
 
 // Stores
@@ -86,6 +87,7 @@ const handleLayerClick = (event: MouseEvent) => {
     }
     const isCtrlOrMetaPressed = event.ctrlKey || event.metaKey;
     handleSelectedLayer(isCtrlOrMetaPressed, productId, layerId);
+    // emit('layer-click', props.layer);
 };
 
 /**
@@ -128,7 +130,6 @@ const handleSelectedLayer = (isCtrlOrMetaPressed: boolean, productId: string, la
 const onIncreaseQuantity = async () => {
     if (productStore.selectedProductIds.size > 1) return;
 
-    layerSpacing.value = props.layer.spacing;
     emit('increase', {
         ...props.layer,
         quantity: (layerQuantity.value += 1),
@@ -140,14 +141,15 @@ const onIncreaseQuantity = async () => {
  */
 const onDecreaseQuantity = async () => {
     if (productStore.selectedProductIds.size > 1) return;
+    console.log('layerQuantity.value', layerQuantity.value);
     if (layerQuantity.value <= 1) return;
-
-    layerSpacing.value = props.layer.spacing;
+    const layerQuantityValue = (layerQuantity.value -= 1);
+    if (layerQuantityValue === 0) return;
     emit('decrease', {
         ...props.layer,
-        quantity: (layerQuantity.value -= 1),
+        quantity: layerQuantityValue,
     });
-};
+}
 
 
 /**
@@ -168,10 +170,12 @@ const handleKeyDown = (event: KeyboardEvent) => {
 // Lifecycle hooks
 onMounted(() => {
     // Não precisamos mais do listener global, pois movemos a lógica para handleKeyDown
+    document.addEventListener('keydown', handleKeyDown);
 });
 
 onUnmounted(() => {
     if (debounceTimer.value) clearTimeout(debounceTimer.value);
+    document.removeEventListener('keydown', handleKeyDown);
 });
 </script>
 

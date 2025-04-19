@@ -9,7 +9,7 @@
                         <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">{{ product.name }}</h4>
                         <p class="text-xs text-gray-500 dark:text-gray-400">SKU: {{ product.sku }}</p>
                         <p class="text-xs text-gray-500 dark:text-gray-400">Largura: {{ product.width }}</p>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">Quantidade: {{ product.layer.quantity }}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Quantidade: {{ product?.layer?.quantity || 0 }}</p>
                     </div>
                     <div class="absolute bottom-0 right-0 flex items-center justify-end rounded-md p-2">
                         <TrashIcon class="h-4 w-4 cursor-pointer" @click.stop="handleProductRemove(product)" />
@@ -35,7 +35,8 @@ import { TrashIcon } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
 import { ref, watch } from 'vue';
 import { apiService } from '../../../services';
-import { Product, useProductStore } from '../../../store/product';
+import { useProductStore } from '../../../store/product';
+import { Product } from '@/types/segment';
 
 const productStore = useProductStore();
 
