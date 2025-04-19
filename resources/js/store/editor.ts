@@ -264,8 +264,11 @@ export const useEditorStore = defineStore('editor', () => {
     /**
      * Define a gôndola atual e calcula os tabindex para acessibilidade
      */
-    function setCurrentGondola(gondola: Gondola) {
-        calculateTabindex(gondola);
+    function setCurrentGondola(gondola: Gondola | null) {
+        // Só calcula tabindex se a gondola não for null
+        if (gondola) {
+            calculateTabindex(gondola);
+        }
         currentGondola.value = gondola;
     }
 
@@ -278,7 +281,7 @@ export const useEditorStore = defineStore('editor', () => {
 
         // Não registra se estamos navegando pelo histórico ou se não há estado atual
         if (isTimeTraveling.value || !currentState.value) {
-            setIsLoading(false); // Certifique-se de desligar o loading aqui também
+            setIsLoading(false);
             return;
         }
 
@@ -286,8 +289,9 @@ export const useEditorStore = defineStore('editor', () => {
         const newState = JSON.parse(JSON.stringify(currentState.value));
 
         // Verifica se o estado realmente mudou comparado ao último estado no histórico
-        if (historyIndex.value >= 0 && isEqual(newState, history.value[historyIndex.value].state)) {
-            setIsLoading(false); // Certifique-se de desligar o loading aqui também
+        const lastHistoryState = historyIndex.value >= 0 ? history.value[historyIndex.value].state : null;
+        if (lastHistoryState && isEqual(newState, lastHistoryState)) {
+            setIsLoading(false);
             return;
         }
 
@@ -296,15 +300,20 @@ export const useEditorStore = defineStore('editor', () => {
             history.value.splice(historyIndex.value + 1);
         }
 
-        // Adiciona o novo estado ao histórico e atualiza o índice
-        history.value.push({ timestamp: Date.now(), state: newState });
-        historyIndex.value = history.value.length - 1;
+        // Verifica se o histórico está cheio ANTES de adicionar
+        const historyWasFull = history.value.length >= MAX_HISTORY_SIZE;
 
-        // Limita o tamanho do histórico
-        if (history.value.length > MAX_HISTORY_SIZE) {
+        // Adiciona o novo estado ao histórico
+        history.value.push({ timestamp: Date.now(), state: newState });
+
+        // Remove o estado mais antigo SE o histórico estava cheio
+        if (historyWasFull) {
             history.value.shift(); // Remove o estado mais antigo
-            historyIndex.value--; // Ajusta o índice após a remoção
         }
+
+        // Atualiza o índice para apontar para o último elemento (o recém adicionado)
+        // Como o array pode ter sido modificado (push e possivelmente shift), recalculamos baseado no tamanho atual
+        historyIndex.value = history.value.length - 1;
 
         setIsLoading(false);
     }
@@ -315,8 +324,19 @@ export const useEditorStore = defineStore('editor', () => {
     function undo() {
         if (canUndo.value) {
             isTimeTraveling.value = true;
+            const currentGondolaIdBeforeUndo = currentGondola.value?.id;
+
             historyIndex.value--;
             currentState.value = JSON.parse(JSON.stringify(history.value[historyIndex.value].state));
+
+            // Re-sincronizar currentGondola após restaurar o estado
+            if (currentGondolaIdBeforeUndo && currentState.value) {
+                const newCurrentGondola = currentState.value.gondolas.find(g => g.id === currentGondolaIdBeforeUndo) ?? null;
+                setCurrentGondola(newCurrentGondola); // Atualiza a referência e recalcula tabindex
+            } else {
+                setCurrentGondola(null); // Se não havia gondola atual antes, ou estado é null
+            }
+
             isTimeTraveling.value = false;
             console.log('Undo realizado. Índice atual:', historyIndex.value);
         }
@@ -328,8 +348,19 @@ export const useEditorStore = defineStore('editor', () => {
     function redo() {
         if (canRedo.value) {
             isTimeTraveling.value = true;
+            const currentGondolaIdBeforeRedo = currentGondola.value?.id;
+
             historyIndex.value++;
             currentState.value = JSON.parse(JSON.stringify(history.value[historyIndex.value].state));
+
+            // Re-sincronizar currentGondola após restaurar o estado
+            if (currentGondolaIdBeforeRedo && currentState.value) {
+                const newCurrentGondola = currentState.value.gondolas.find(g => g.id === currentGondolaIdBeforeRedo) ?? null;
+                setCurrentGondola(newCurrentGondola); // Atualiza a referência e recalcula tabindex
+            } else {
+                setCurrentGondola(null); // Se não havia gondola atual antes, ou estado é null
+            }
+
             isTimeTraveling.value = false;
             console.log('Redo realizado. Índice atual:', historyIndex.value);
         }
