@@ -14,8 +14,7 @@ Route::middleware(['api', 'auth:sanctum'])
     ->group(function () {
 
         Route::get('plannerate/{id}', [PlannerateController::class, 'show'])->name('plannerate.show');
-        Route::post('plannerate', [PlannerateController::class, 'save'])->name('plannerate.save');
-        Route::post('plannerate/{id}/content', [PlannerateController::class, 'save'])->name('plannerate.saveContent');
+        Route::post('plannerate', [PlannerateController::class, 'save'])->name('plannerate.save'); 
 
         Route::resource('gondolas', GondolaController::class);
         Route::post('gondolas/{gondola}/sections/reorder', [GondolaController::class, 'reorder'])

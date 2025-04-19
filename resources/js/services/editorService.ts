@@ -4,7 +4,7 @@ import apiService from "./api";
 export const useEditorService = () => {
 
   const savePlanogram = (planogramId: string, content: string) => {
-    return apiService.post(`/plannerate/${planogramId}/content`, { content });
+    return apiService.post(`/planogram/${planogramId}/content`, { content });
   };
 
   /**

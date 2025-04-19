@@ -77,7 +77,7 @@ class PlannerateController extends Controller
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
-    public function save(Request $request, string $id = null)
+    public function save(Request $request)
     {
         Log::info('Salvando planograma', $request->all());
         return response()->json($request->all());
