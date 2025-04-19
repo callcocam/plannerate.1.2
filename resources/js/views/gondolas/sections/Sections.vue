@@ -26,9 +26,9 @@
                                 @segment-select="$emit('segment-select', $event)"   
                                 @delete-section="deleteSection"
                             >
-                            <div class=" w-full h-full" >
+                            <!-- <div class=" w-full h-full" >
                                  <SectionDrop :section="section" :scale-factor="scaleFactor" />
-                            </div>
+                            </div> -->
                             </SectionComponent>
                             
                         </div>

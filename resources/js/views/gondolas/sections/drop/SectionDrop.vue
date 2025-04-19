@@ -1,15 +1,19 @@
 <template>
-    <div class="relative w-full h-full bg-slate-400" :style="sectionStyle">
+    <div class="relative w-full h-full" :style="sectionStyle">
         <!-- Renderiza cada prateleira com altura baseada na diferença de posição -->
-        <div v-for="(shelf, index) in sortedShelves" :key="shelf.id"
+        <div
+            v-for="(shelf, index) in sortedShelves"
+            :key="shelf.id"
             :class="['shelf-item absolute w-full', { 'active-shelf': activeShelf === shelf.id }]"
-            :style="shelfStyle(shelf, index)">
+            :style="shelfStyle(shelf, index)"
+        >
             <!-- Componente de drop para a prateleira -->
-            <ShelfDropArea v-for="(shelf, index) in sortedShelves" :key="shelf.id"
+            <ShelfDropArea
                 :accept-types="['text/product', 'text/layer', 'text/layer-copy']"
                 :default-message="'Soltar produto aqui'"
                 @drop="(dropData, position) => handleDrop(dropData, position, shelf)"
-                @drag-state-change="(isDragging, type) => handleDragStateChange(shelf.id, isDragging, type)">
+                @drag-state-change="(isDragging, type) => handleDragStateChange(shelf.id, isDragging, type)"
+            >
                 <template #default="{ isDraggingOver }">
                     <!-- Conteúdo normal da prateleira -->
                     <div class="shelf-content w-full h-full" :class="{ 'faded': isDraggingOver }">
@@ -19,6 +23,7 @@
                                 {{ getShelfHeight(shelf, index).toFixed(1) }}cm
                             </p>
                         </div>
+                        
                         <!-- Área para produtos/segmentos da prateleira (slot) -->
                         <slot name="shelf-content" :shelf="shelf"></slot>
                     </div>
@@ -90,14 +95,15 @@ const shelfStyle = (shelf: Shelf, index: number) => {
 
     // Calcula a altura até a próxima prateleira
     const heightInCm = getShelfHeight(shelf, index);
-    const height = heightInCm * props.scaleFactor - shelf.shelf_height * props.scaleFactor;
+    const height = heightInCm * props.scaleFactor;
 
     return {
         width: '100%',
         height: `${height}px`,
-        top: `${topPosition + shelf.shelf_height * props.scaleFactor}px`,
+        top: `${topPosition}px`,
         left: '0',
-        // Fundo gradiente apenas para visualização 
+        // Fundo gradiente apenas para visualização
+        background: 'linear-gradient(to bottom, rgba(59, 130, 246, 0.9) 0%, rgba(59, 130, 246, 0.5) 70%, rgba(59, 130, 246, 0.2) 100%)',
         transition: 'all 0.2s ease',
         zIndex: activeShelf.value === shelf.id ? '10' : '1'
     };
@@ -115,7 +121,6 @@ const handleDragStateChange = (shelfId: string, isDragging: boolean, type: strin
  * Processa o drop de um item em uma prateleira
  */
 const handleDrop = (dropData: any, position: { x: number, y: number, relativeX: number, relativeY: number }, shelf: Shelf) => {
-    console.log('handleDrop', dropData, position, shelf);
     // Com base no tipo, emite o evento apropriado
     if (dropData.type === 'product') {
         emit('drop-product', dropData.data, shelf, position);

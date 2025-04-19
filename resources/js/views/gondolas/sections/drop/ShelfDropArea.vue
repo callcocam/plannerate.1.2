@@ -12,7 +12,7 @@
 
             <!-- Mensagem de drop -->
             <div class="absolute inset-0 flex items-center justify-center">
-                <div class="drop-message   text-gray-800 dark:text-gray-200 text-sm font-bold px-3 py-2 rounded-md ">
+                <div class="drop-message bg-blue-600 text-white text-sm font-bold px-3 py-2 rounded-md shadow-lg">
                     {{ dropMessage }}
                 </div>
             </div>
@@ -68,7 +68,6 @@ const dropMessage = computed(() => {
 // Verifica se o item arrastado é aceitável
 const checkAcceptableType = (dataTransfer: DataTransfer): string | null => {
     // Se não há tipos aceitáveis definidos, aceita qualquer um
-    console.log('checkAcceptableType', dataTransfer.types);
     if (!props.acceptTypes || props.acceptTypes.length === 0) {
         // Checa tipos específicos suportados
         if (dataTransfer.types.includes('text/product')) return 'product';

@@ -1,6 +1,11 @@
 <template>
     <ContextMenu>
         <ContextMenuTrigger>
+            <ShelfContent :shelf="shelf" :sorted-shelves="sortedShelves" :index="index" :scale-factor="scaleFactor"
+                :section="section"
+                @drop-product="(product: Product, shelf: Shelf, dropPosition: any) => $emit('drop-product', product, shelf, dropPosition)"
+                @drop-layer-copy="(product: Product, shelf: Shelf, dropPosition: any) => $emit('drop-layer-copy', product, shelf, dropPosition)"
+                @drop-layer="(moveLayer: Layer, oldSshelf: Shelf) => $emit('drop-layer', moveLayer, oldSshelf)" />
             <div class="shelf relative flex flex-col items-center justify-around border-y border-gray-400 bg-gray-700 text-gray-50 dark:bg-gray-800"
                 :style="shelfStyle" ref="shelfElement">
                 <!-- TODO: Renderizar Segmentos/Produtos aqui -->
@@ -20,7 +25,7 @@
                     :section-height="sectionHeight" :shelf-element="shelfElement" :base-height="baseHeight"
                     :sections-container="sectionsContainer" :section-index="sectionIndex" />
                 <!-- <div class="absolute inset-0 bottom-0 z-0 flex h-full w-full items-center justify-center"> -->
-                 
+
                 <!-- </div> -->
             </div>
         </ContextMenuTrigger>
@@ -86,6 +91,9 @@ import { Gondola } from '@plannerate/types/gondola';
 const props = defineProps<{
     gondola: Gondola;
     shelf: Shelf;
+    sortedShelves: Shelf[];
+    index: number;
+    section: Section;
     scaleFactor: number;
     sectionWidth: number;
     sectionHeight: number;

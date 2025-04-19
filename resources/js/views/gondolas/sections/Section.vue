@@ -6,12 +6,12 @@
                 @dragleave="handleSectionDragLeave" ref="sectionRef">
                 <!-- Conteúdo da Seção (Prateleiras) -->
                 <slot />
-                <ShelfComponent v-for="shelf in section.shelves" :key="shelf.id" :shelf="shelf" :gondola="gondola"
+                <ShelfComponent v-for="(shelf, index) in sortedShelves" :key="shelf.id" :shelf="shelf"
+                    :gondola="gondola" :sorted-shelves="sortedShelves" :index="index" :section="section"
                     :scale-factor="scaleFactor" :section-width="section.width" :section-height="section.height"
                     :base-height="baseHeight" :sections-container="sectionsContainer" :section-index="sectionIndex"
-                    :holes="holes"
-                    @drop-product="handleProductDropOnShelf" @drop-layer-copy="handleLayerCopy"
-                    @drag-shelf="handleShelfDragStart" @drop-layer="updateLayer" />
+                    :holes="holes" @drop-product="handleProductDropOnShelf" @drop-layer-copy="handleLayerCopy"
+                    @drop-layer="updateLayer" @drag-shelf="handleShelfDragStart" />
             </div>
         </ContextMenuTrigger>
         <ContextMenuContent class="w-64">
@@ -33,7 +33,8 @@
                 <ContextMenuSeparator />
                 <ContextMenuLabel inset> Alinhamento </ContextMenuLabel>
                 <ContextMenuSeparator />
-                <ContextMenuItem inset @click="() => justifyModule('justify')" :disabled="section.alignment === 'justify'">
+                <ContextMenuItem inset @click="() => justifyModule('justify')"
+                    :disabled="section.alignment === 'justify'">
                     Justificado
                     <ContextMenuShortcut>⌘⇧J</ContextMenuShortcut>
                 </ContextMenuItem>
@@ -41,7 +42,8 @@
                     à esquerda
                     <ContextMenuShortcut>⌘⇧L</ContextMenuShortcut>
                 </ContextMenuItem>
-                <ContextMenuItem inset @click="() => justifyModule('center')" :disabled="section.alignment === 'center'">
+                <ContextMenuItem inset @click="() => justifyModule('center')"
+                    :disabled="section.alignment === 'center'">
                     ao centro
                     <ContextMenuShortcut>⌘⇧C</ContextMenuShortcut>
                 </ContextMenuItem>
@@ -49,7 +51,8 @@
                     à direita
                     <ContextMenuShortcut>⌘⇧R</ContextMenuShortcut>
                 </ContextMenuItem>
-                <ContextMenuItem inset @click="() => justifyModule()" :disabled="!section.alignment || section.alignment === 'justify'">
+                <ContextMenuItem inset @click="() => justifyModule()"
+                    :disabled="!section.alignment || section.alignment === 'justify'">
                     Não alinhar
                     <ContextMenuShortcut>⌘⇧N</ContextMenuShortcut>
                 </ContextMenuItem>
@@ -81,7 +84,7 @@ import { validateShelfWidth } from '@plannerate/utils/validation';
 const props = defineProps<{
     gondola: Gondola;
     section: Section;
-    scaleFactor: number; 
+    scaleFactor: number;
     sectionsContainer: HTMLElement | null;
     sectionIndex: number;
 }>();
@@ -104,6 +107,13 @@ const holes = computed(() => {
     return section.settings.holes;
 });
 
+// Ordena as prateleiras por posição para garantir o cálculo correto
+const sortedShelves = computed(() => {
+    if (!props.section.shelves || props.section.shelves.length === 0) {
+        return [];
+    }
+    return [...props.section.shelves].sort((a, b) => a.shelf_position - b.shelf_position);
+});
 // ------- REFS -------
 const dropTargetActive = ref(false);
 const draggingShelf = ref<ShelfType | null>(null);
@@ -210,7 +220,7 @@ const createSegmentFromProduct = (product: Product, shelf: ShelfType, layerQuant
         position: 0,
         alignment: '',
         settings: null,
-        status: 'published', 
+        status: 'published',
         layer: {
             id: layerId,
             product_id: product.id,
@@ -218,8 +228,8 @@ const createSegmentFromProduct = (product: Product, shelf: ShelfType, layerQuant
             quantity: layerQuantity || 1,
             status: 'published',
             height: product.height,
-            segment_id: segmentId, 
-            tabindex: 0, 
+            segment_id: segmentId,
+            tabindex: 0,
         }
     };
 };
@@ -333,25 +343,25 @@ const handleProductDropOnShelf = async (product: Product, shelf: ShelfType) => {
 
     // Criar camada temporária para validação
     // Usar spacing padrão 0, pois spacing vem da Layer, não do Product.
-    const tempLayer: Layer = { 
-        id: `temp-layer-${Date.now()}`, 
-        product_id: product.id, 
-        product: product, 
+    const tempLayer: Layer = {
+        id: `temp-layer-${Date.now()}`,
+        product_id: product.id,
+        product: product,
         quantity: 1, // Validando para quantidade 1
-        status: 'temp', 
-        height: product.height, 
-        segment_id: 'temp', 
+        status: 'temp',
+        height: product.height,
+        segment_id: 'temp',
         spacing: 0, // <-- Definir spacing padrão 0 aqui
         tabindex: 0,
-    }; 
-    
+    };
+
     // *** Validação ***
     const validation = validateShelfWidth(
         shelf,
         section.width,
-        null, 
-        0,    
-        tempLayer 
+        null,
+        0,
+        tempLayer
     );
 
     if (!validation.isValid) {
@@ -362,7 +372,7 @@ const handleProductDropOnShelf = async (product: Product, shelf: ShelfType) => {
         });
         return;
     }
-     // *** Fim Validação ***
+    // *** Fim Validação ***
 
     // Prossegue se válido
     const newSegment = createSegmentFromProduct(product, shelf, 1);
@@ -402,18 +412,18 @@ const handleLayerCopy = async (layer: Layer, shelf: ShelfType) => {
     const validation = validateShelfWidth(
         shelf,
         section.width,
-        null, 
-        0,    
+        null,
+        0,
         layer
     );
 
     if (!validation.isValid) {
-         toast({
+        toast({
             title: "Limite de Largura Excedido",
             description: `Copiar este produto/segmento excederia a largura da seção (${section.width}cm). Largura resultante: ${validation.totalWidth.toFixed(1)}cm`,
             variant: "destructive",
         });
-        return; 
+        return;
     }
     // *** Fim Validação ***
 
@@ -471,7 +481,7 @@ const updateLayer = (layer: Layer, targetShelf: ShelfType) => {
 
     if (!destinationSection) {
         console.error('updateLayer: Seção de destino não encontrada no editorStore.');
-         toast({ title: 'Erro Interno', description: 'Seção de destino não encontrada.', variant: 'destructive' });
+        toast({ title: 'Erro Interno', description: 'Seção de destino não encontrada.', variant: 'destructive' });
         return;
     }
 
@@ -481,13 +491,13 @@ const updateLayer = (layer: Layer, targetShelf: ShelfType) => {
     const validation = validateShelfWidth(
         targetShelf,
         destinationSection.width,
-        null, 
-        0,    
+        null,
+        0,
         segmentToMove.layer
     );
 
     if (!validation.isValid) {
-         toast({
+        toast({
             title: "Limite de Largura Excedido",
             description: `Mover este segmento excederia a largura da seção destino (${destinationSection.width}cm). Largura resultante: ${validation.totalWidth.toFixed(1)}cm`,
             variant: "destructive",

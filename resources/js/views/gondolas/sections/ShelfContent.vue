@@ -1,22 +1,25 @@
 <template>
-    <div class=" w-full items-center justify-center text-center text-xs text-gray-100 dark:text-gray-700"
-        :style="shelfContentStyle" :class="{
-            'border border-dashed border-blue-500 dark:border-blue-400': isSelected,
-        }" @dragover.prevent="handleDragOver" @drop.prevent="handleDrop" @dragleave="handleDragLeave">
+    <div class=" w-full flex items-center justify-center text-center text-xs text-gray-100 bg-transparent p-5 rounded-md "
+        :style="shelfContentStyle" @dragover.prevent="handleDragOver" @drop.prevent="handleDrop"
+        @dragleave="handleDragLeave">
         <!-- Quero alinhar o texto no centro da prateleira  -->
-        {{ shelftext }}
+        <span class="text-center text-gray-800 dark:text-gray-200 translate-y-1/2" v-if="dragShelfActive"> {{ shelftext }}</span>
     </div>
 </template>
 
 <script setup lang="ts">
-import { defineEmits, defineProps, ref, watch, computed } from 'vue';
+import { defineEmits, defineProps, ref, watch, computed, CSSProperties } from 'vue';
 import { useShelvesStore } from '@plannerate/store/shelves';
 import { type Shelf } from '@plannerate/types/shelves';
+import { Section } from '@/types/sections';
 
 // Definir Props
 const props = defineProps<{
     shelf: Shelf;
     scaleFactor: number;
+    sortedShelves: Shelf[];
+    index: number;
+    section: Section;
 }>();
 const dragShelfActive = ref(false); // Estado para rastrear se a prateleira está sendo arrastada
 const shelftext = ref(`Shelf (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`); // Texto da prateleira
@@ -34,23 +37,75 @@ watch(dragShelfActive, (newValue) => {
         shelftext.value = `Shelf (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`;
     }
 });
+ 
 
-const isSelected = computed(() => {
-    // Verifica se a prateleira está selecionada
-    return shelvesStore.isShelfSelected(props.shelf.id);
-});
+const shelfContentStyle = computed((): CSSProperties => {
+    const currentShelf = props.shelf;
+    const currentIndex = props.index;
+    const sortedShelves = props.sortedShelves;
+    const scaleFactor = props.scaleFactor;
+    const sectionHeight = props.section.height;
 
-const shelfContentStyle = computed(() => {
-    if (props.shelf.segments.length > 0) {
-        return {
-            minHeight: `${props.shelf.shelf_height * props.scaleFactor}px`,
-            transform: `translateY(-${props.shelf.shelf_height * props.scaleFactor}px)`
+    // --- Definir Padding Visual (em pixels) ---
+    const verticalPaddingPx = 8; // Ex: 4px total (2px topo, 2px baixo)
+    const topPaddingPx = verticalPaddingPx / 2;
+    const bottomPaddingPx = verticalPaddingPx / 2;
+    const minTopHeightPx = 120; // Altura mínima para a primeira prateleira
+
+    // --- Calcular Posição e Altura em CM ---
+    let topPositionCm: number;
+    let rawHeightCm: number; // Altura bruta do espaço
+
+    if (currentIndex === 0) {
+        topPositionCm = 0;
+        rawHeightCm = Math.max(0, currentShelf.shelf_position);
+    } else {
+        const previousShelf = sortedShelves[currentIndex - 1];
+        topPositionCm = Math.max(0, previousShelf.shelf_position);
+        rawHeightCm = Math.max(0, currentShelf.shelf_position - previousShelf.shelf_position);
+    }
+
+    // Garante que não ultrapasse a altura da seção
+    if (topPositionCm + rawHeightCm > sectionHeight) {
+        rawHeightCm = Math.max(0, sectionHeight - topPositionCm);
+    }
+
+    // --- Converter para Pixels ---
+    let topPx = topPositionCm * scaleFactor + props.shelf.shelf_height * scaleFactor;
+    let heightPx = rawHeightCm * scaleFactor - props.shelf.shelf_height * scaleFactor;
+
+    // --- Aplicar Ajustes de Padding e Altura Mínima ---
+    let otherStyles = {}
+    // 1. Altura mínima para a primeira prateleira
+    if (currentIndex === 0) {
+        heightPx = Math.max(minTopHeightPx, heightPx);
+        // Para a primeira, o padding inferior é aplicado, mas o topo começa em 0
+        heightPx = Math.max(0, heightPx - bottomPaddingPx);
+        otherStyles = {
+            transform: `translateY(-${heightPx}px)`
         }
     } else {
-        return {
-            minHeight: `${props.shelf.shelf_height * props.scaleFactor}px`,
-        };
+        // Para as demais, aplica padding no topo e embaixo
+        topPx += topPaddingPx; // Desce o topo um pouco
+        heightPx = Math.max(0, heightPx - topPaddingPx - bottomPaddingPx); // Reduz altura pelos dois paddings
     }
+
+
+    // Debug logs
+    console.log(`Shelf ${currentIndex} (Pos ${currentShelf.shelf_position.toFixed(1)}): TopPx=${topPx.toFixed(1)}, HeightPx=${heightPx.toFixed(1)}`);
+
+    return {
+        width: '100%',
+        height: `${heightPx}px`,
+        top: `${topPx}px`,
+        left: '0',
+        position: 'absolute',
+        transition: 'all 0.2s ease',
+        zIndex: dragShelfActive.value ? '9999' : '1',
+        ...otherStyles,
+        // Adicione outros estilos se necessário (background, borda para debug, etc.)
+        // Ex: backgroundColor: 'rgba(255, 0, 0, 0.3)',
+    };
 });
 // --- Lógica de Drag and Drop (para produtos) ---
 const handleDragOver = (event: DragEvent) => {
@@ -117,10 +172,8 @@ const handleDrop = (event: DragEvent) => {
         border-color 0.2s ease-in-out,
         background-color 0.2s ease-in-out;
     /* Aumentar a area de drop */
-    height: 30px;
     /* Adicionar um efeito de escala */
     cursor: grab;
     z-index: 9999;
-    transform: translateY(-50%);
 }
 </style>
