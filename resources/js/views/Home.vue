@@ -1,9 +1,7 @@
 <template>
-        <RouterView v-slot="{ Component }" :key="route.fullPath">
-        <component :is="Component"  />
-    </RouterView>
+    <router-view :key="route.fullPath.concat('-home')" />
 </template>
-<script setup lang="ts"> 
+<script setup lang="ts">
 import { useRoute } from 'vue-router';
 const route = useRoute();
 </script>

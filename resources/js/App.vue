@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import AppLayout from './layouts/AppLayout.vue'; 
+import { useRoute } from 'vue-router';
+import AppLayout from './layouts/AppLayout.vue';
+const route = useRoute();
+const appLayoutKey = route.fullPath.concat('-app-layout');
+console.log('appLayoutKey', appLayoutKey);
 </script>
 
 <template>
-    <AppLayout  >
+    <AppLayout>
         <div class="px-10">
-            <RouterView v-slot="{ Component }" :key="'-app-layout'">
-                <component :is="Component"  />
-            </RouterView>
+            <router-view :key="appLayoutKey" />
         </div>
     </AppLayout>
 </template>
