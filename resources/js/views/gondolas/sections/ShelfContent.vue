@@ -3,13 +3,12 @@
         :style="shelfContentStyle" @dragover.prevent="handleDragOver" @drop.prevent="handleDrop"
         @dragleave="handleDragLeave">
         <!-- Quero alinhar o texto no centro da prateleira  -->
-        <span class="text-center text-gray-800 dark:text-gray-200 translate-y-1/2" v-if="dragShelfActive"> {{ shelftext }}</span>
+        <span class="text-center text-gray-800 dark:text-gray-200 translate-y-1/2 pointer-events-none font-bold" v-if="dragShelfActive"> {{ shelftext }}</span>
     </div>
 </template>
 
 <script setup lang="ts">
-import { defineEmits, defineProps, ref, watch, computed, CSSProperties } from 'vue';
-import { useShelvesStore } from '@plannerate/store/shelves';
+import { defineEmits, defineProps, ref, watch, computed, CSSProperties } from 'vue'; 
 import { type Shelf } from '@plannerate/types/shelves';
 import { Section } from '@/types/sections';
 
@@ -25,8 +24,7 @@ const dragShelfActive = ref(false); // Estado para rastrear se a prateleira estÃ
 const shelftext = ref(`Shelf (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`); // Texto da prateleira
 // Definir Emits
 const emit = defineEmits(['drop-product', 'drop-layer', 'drop-layer-copy']); // Para quando um produto Ã© solto na prateleira
-
-const shelvesStore = useShelvesStore(); // Instanciar o shelves store
+ 
 
 watch(dragShelfActive, (newValue) => {
     if (newValue) {
@@ -91,8 +89,8 @@ const shelfContentStyle = computed((): CSSProperties => {
     }
 
 
-    // Debug logs
-    console.log(`Shelf ${currentIndex} (Pos ${currentShelf.shelf_position.toFixed(1)}): TopPx=${topPx.toFixed(1)}, HeightPx=${heightPx.toFixed(1)}`);
+    // // Debug logs
+    // console.log(`Shelf ${currentIndex} (Pos ${currentShelf.shelf_position.toFixed(1)}): TopPx=${topPx.toFixed(1)}, HeightPx=${heightPx.toFixed(1)}`);
 
     return {
         width: '100%',
@@ -160,8 +158,8 @@ const handleDrop = (event: DragEvent) => {
 
 <style scoped>
 .drag-over {
-    background-color: rgba(59, 130, 246, 0.1);
-    border-color: rgba(59, 130, 246, 0.5);
+    background-color: rgba(2, 16, 39, 0.1);
+    border-color: rgba(13, 65, 150, 0.5);
     border-width: 2px;
     border-style: dashed;
     border-radius: 4px;

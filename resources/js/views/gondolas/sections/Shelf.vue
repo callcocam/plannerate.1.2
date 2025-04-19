@@ -3,8 +3,8 @@
         <ContextMenuTrigger>
             <ShelfContent :shelf="shelf" :sorted-shelves="sortedShelves" :index="index" :scale-factor="scaleFactor"
                 :section="section"
-                @drop-product="(product: Product, shelf: Shelf, dropPosition: any) => $emit('drop-product', product, shelf, dropPosition)"
-                @drop-layer-copy="(product: Product, shelf: Shelf, dropPosition: any) => $emit('drop-layer-copy', product, shelf, dropPosition)"
+                @drop-product="(product: Product, shelf: Shelf) => $emit('drop-product', product, shelf)"
+                @drop-layer-copy="(product: Product, shelf: Shelf) => $emit('drop-layer-copy', product, shelf)"
                 @drop-layer="(moveLayer: Layer, oldSshelf: Shelf) => $emit('drop-layer', moveLayer, oldSshelf)" />
             <div class="shelf relative flex flex-col items-center justify-around border-y border-gray-400 bg-gray-700 text-gray-50 dark:bg-gray-800"
                 :style="shelfStyle" ref="shelfElement">
