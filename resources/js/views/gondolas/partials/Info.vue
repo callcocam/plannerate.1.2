@@ -209,6 +209,9 @@ const setGondolaAlignmentHandler = (alignment: string | null = null) => {
         console.error("setGondolaAlignmentHandler: ID da gôndola atual não encontrado.");
         return;
     }
+
+
+    
     try {
         console.log(`Setting default alignment to ${alignment} for gondola ${gondolaId}`);
         editorStore.setGondolaAlignment(gondolaId, alignment);
