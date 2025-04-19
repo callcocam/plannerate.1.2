@@ -10,8 +10,8 @@
                     :gondola="gondola" :sorted-shelves="sortedShelves" :index="index" :section="section"
                     :scale-factor="scaleFactor" :section-width="section.width" :section-height="section.height"
                     :base-height="baseHeight" :sections-container="sectionsContainer" :section-index="sectionIndex"
-                    :holes="holes" @drop-product="handleProductDropOnShelf" @drop-layer-copy="handleLayerCopy"
-                    @drop-layer="updateLayer" @drag-shelf="handleShelfDragStart" />
+                    :holes="holes" @drop-product="handleProductDropOnShelf" @drop-segment-copy="handleSegmentCopy"
+                    @drop-segment="updateSegment" @drag-shelf="handleShelfDragStart" />
             </div>
         </ContextMenuTrigger>
         <ContextMenuContent class="w-64">
@@ -127,7 +127,7 @@ const baseHeight = computed(() => {
 
 // Estilo da seção com CSS transformado via computed para melhorar performance
 const sectionStyle = computed(() => {
-    const isActive = dropTargetActive.value; 
+    const isActive = dropTargetActive.value;
     return {
         width: `${section.width * props.scaleFactor}px`,
         height: `${section.height * props.scaleFactor}px`,
@@ -220,6 +220,7 @@ const createSegmentFromProduct = (product: Product, shelf: ShelfType, layerQuant
         alignment: '',
         settings: null,
         status: 'published',
+        tabindex: (shelf.segments?.length || 0) + 1,
         layer: {
             id: layerId,
             product_id: product.id,
@@ -394,10 +395,10 @@ const handleProductDropOnShelf = async (product: Product, shelf: ShelfType) => {
 
 /**
  * Gerencia a cópia de uma camada para uma prateleira
- * @param layer Camada sendo copiada
+ * @param segment Segmento sendo copiado
  * @param shelf Prateleira alvo
  */
-const handleLayerCopy = async (layer: Layer, shelf: ShelfType) => {
+const handleSegmentCopy = async (segment: Segment, shelf: ShelfType) => {
     if (!gondola.id) {
         toast({
             title: 'Erro Interno',
@@ -413,7 +414,7 @@ const handleLayerCopy = async (layer: Layer, shelf: ShelfType) => {
         section.width,
         null,
         0,
-        layer
+        segment.layer
     );
 
     if (!validation.isValid) {
@@ -427,7 +428,7 @@ const handleLayerCopy = async (layer: Layer, shelf: ShelfType) => {
     // *** Fim Validação ***
 
     // Prossegue se válido
-    const newSegment = createSegmentFromProduct(layer.product, shelf, layer.quantity);
+    const newSegment = createSegmentFromProduct(segment.layer.product, shelf, segment.layer.quantity);
     try {
         editorStore.addSegmentToShelf(gondola.id, section.id, shelf.id, newSegment);
     } catch (error) {
@@ -443,11 +444,11 @@ const handleLayerCopy = async (layer: Layer, shelf: ShelfType) => {
 
 /**
  * Atualiza uma camada movendo-a para outra prateleira
- * @param layer Camada sendo movida
+ * @param Segment Camada sendo movida
  * @param targetShelf Prateleira alvo
  */
-const updateLayer = (layer: Layer, targetShelf: ShelfType) => {
-    const segmentToMove = layer.segment;
+const updateSegment = (segment: Segment, targetShelf: ShelfType) => {
+    const segmentToMove = segment;
     if (!segmentToMove) {
         console.error('updateLayer: Objeto segment não encontrado na layer.');
         return;

@@ -1,14 +1,8 @@
 <template>
     <div class="layer group flex cursor-pointer justify-around " :style="layerStyle" @click="handleLayerClick"
-        @dragstart="onDragStart" draggable="true" :class="{ 'layer--selected': isSelected, 'layer--focused': !isSelected }" :tabindex="layer.tabindex"
-        @keydown="handleKeyDown">
-        <Product v-for="index in layer.quantity" 
-            :key="index" 
-            :product="layer.product" 
-            :scale-factor="scaleFactor"
-            :index="index" 
-            :shelf-depth="props.shelfDepth"
-        />
+        @keydown="handleKeyDown" :class="{ 'layer--selected': isSelected, 'layer--focused': !isSelected }">
+        <Product v-for="index in layer.quantity" :key="index" :product="layer.product" :scale-factor="scaleFactor"
+            :index="index" :shelf-depth="props.shelfDepth" />
     </div>
 </template>
 
@@ -31,6 +25,7 @@ const emit = defineEmits<{
     (e: 'increase', layer: LayerType): void;
     (e: 'decrease', layer: LayerType): void;
     (e: 'tab-navigation', data: { isLast: boolean, direction: 'next' | 'prev', currentTabIndex: number }): void;
+    (e: 'layer-click', layer: LayerType): void;
 }>();
 
 // Stores
@@ -92,49 +87,7 @@ const handleLayerClick = (event: MouseEvent) => {
     }
     const isCtrlOrMetaPressed = event.ctrlKey || event.metaKey;
     handleSelectedLayer(isCtrlOrMetaPressed, productId, layerId);
-};
-
-/**
- * Gerencia a navegação por teclado e teclas de ação
- */
-const handleKeyDown = (event: KeyboardEvent) => {
-    // Gerencia a navegação por Tab
-    if (event.key === 'Tab') {
-        const direction = event.shiftKey ? 'prev' : 'next';
-        const currentTabIndex = Number(props.layer.tabindex || 0);
-
-        // Verifica se é o último elemento na navegação por tab
-        // Um elemento é considerado o último se seu tabindex for o maior valor
-        // Você precisará de uma forma de determinar qual é o maior tabIndex
-        // no contexto do seu aplicativo
-
-        // Emite evento para permitir que o componente pai gerencie a navegação
-        emit('tab-navigation', {
-            isLast: false, // Isso será determinado pelo componente pai
-            direction,
-            currentTabIndex
-        });
-
-        // Não impedimos o comportamento padrão do Tab para manter a navegação nativa
-    }
-
-    // Gerencia a seleção com Enter
-    else if (event.key === 'Enter') {
-        const isCtrlOrMetaPressed = event.ctrlKey || event.metaKey;
-        handleSelectedLayer(isCtrlOrMetaPressed, props.layer.product?.id, props.layer.id);
-        event.preventDefault();
-    }
-
-    // Gerencia aumento/diminuição com setas quando selecionado
-    else if (isSelected.value) {
-        if (event.key === 'ArrowRight') {
-            event.preventDefault();
-            onIncreaseQuantity();
-        } else if (event.key === 'ArrowLeft') {
-            event.preventDefault();
-            onDecreaseQuantity();
-        }
-    }
+    // emit('layer-click', props.layer);
 };
 
 /**
@@ -170,28 +123,6 @@ const handleSelectedLayer = (isCtrlOrMetaPressed: boolean, productId: string, la
     }
 };
 
-/**
- * Configura dados para arrastar o layer
- */
-const onDragStart = (event: DragEvent) => {
-    if (!event.dataTransfer) return;
-
-    const isCtrlOrMetaPressed = event.ctrlKey || event.metaKey;
-    const layerData = {
-        ...props.layer,
-        segment: props.segment,
-    };
-
-    if (isCtrlOrMetaPressed) {
-        // Copiar (quando Ctrl/Meta está pressionado)
-        event.dataTransfer.effectAllowed = 'copy';
-        event.dataTransfer.setData('text/layer/copy', JSON.stringify(layerData));
-    } else {
-        // Mover (comportamento padrão)
-        event.dataTransfer.effectAllowed = 'move';
-        event.dataTransfer.setData('text/layer', JSON.stringify(layerData));
-    }
-};
 
 /**
  * Aumenta a quantidade de produtos no layer
@@ -199,7 +130,6 @@ const onDragStart = (event: DragEvent) => {
 const onIncreaseQuantity = async () => {
     if (productStore.selectedProductIds.size > 1) return;
 
-    layerSpacing.value = props.layer.spacing;
     emit('increase', {
         ...props.layer,
         quantity: (layerQuantity.value += 1),
@@ -211,22 +141,41 @@ const onIncreaseQuantity = async () => {
  */
 const onDecreaseQuantity = async () => {
     if (productStore.selectedProductIds.size > 1) return;
+    console.log('layerQuantity.value', layerQuantity.value);
     if (layerQuantity.value <= 1) return;
-
-    layerSpacing.value = props.layer.spacing;
+    const layerQuantityValue = (layerQuantity.value -= 1);
+    if (layerQuantityValue === 0) return;
     emit('decrease', {
         ...props.layer,
-        quantity: (layerQuantity.value -= 1),
+        quantity: layerQuantityValue,
     });
-};
+}
 
+
+/**
+ * Gerencia a navegação por teclado e teclas de ação
+ */
+const handleKeyDown = (event: KeyboardEvent) => {
+    // Gerencia aumento/diminuição com setas quando selecionado
+    if (isSelected.value) {
+        if (event.key === 'ArrowRight') {
+            event.preventDefault();
+            onIncreaseQuantity();
+        } else if (event.key === 'ArrowLeft') {
+            event.preventDefault();
+            onDecreaseQuantity();
+        }
+    }
+};
 // Lifecycle hooks
 onMounted(() => {
     // Não precisamos mais do listener global, pois movemos a lógica para handleKeyDown
+    document.addEventListener('keydown', handleKeyDown);
 });
 
 onUnmounted(() => {
     if (debounceTimer.value) clearTimeout(debounceTimer.value);
+    document.removeEventListener('keydown', handleKeyDown);
 });
 </script>
 
@@ -236,10 +185,12 @@ onUnmounted(() => {
     box-shadow: 0 0 5px rgba(0, 0, 255, 0.5);
     box-sizing: border-box;
 }
-.layer--focused { 
+
+.layer--focused {
     outline: 1px solid transparent;
     outline-offset: 2px;
 }
+
 .layer--focused:focus {
     outline: 1px solid blue;
     outline-offset: 2px;

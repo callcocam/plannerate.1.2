@@ -57,6 +57,7 @@ interface Segment {
     settings: SegmentSetting[] | null; // Configurações do segmento
     status: 'published' | 'draft' | string; // Status do segmento, ex: "published"
     layer: Layer;             // Informações sobre a camada associada 
+    tabindex: number;
 }
 
 // Exemplo de uso:

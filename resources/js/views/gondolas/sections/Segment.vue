@@ -4,7 +4,7 @@
         'justify-start': alignment === 'left',
         'justify-center': alignment === 'center',
         'justify-end': alignment === 'right'
-    }">
+    }" @dragstart="onDragStart" draggable="true" :tabindex="segment.tabindex" >
         <LayerComponent v-for="(_, index) in segmentQuantity" :key="index" :shelf="shelf" :segment="segment"
             :layer="segment.layer" :scale-factor="scaleFactor" :section-width="sectionWidth"
             :shelf-depth="shelf.shelf_depth" @increase="onIncreaseQuantity" @decrease="onDecreaseQuantity" />
@@ -97,7 +97,7 @@ const segmentStyle = computed(() => {
     let layerWidthFinal = 0;
 
     let currentAlignment = alignment.value;
- 
+
 
     if (currentAlignment === 'justify') {
         layerWidthFinal = productWidth * productQuantity * props.scaleFactor + layerWidth();
@@ -106,11 +106,11 @@ const segmentStyle = computed(() => {
     }
 
     const totalWidth = layerWidthFinal;
-    const selectedStyle = {}; 
+    const selectedStyle = {};
     return {
         height: `${layerHeight}px`,
         width: `${totalWidth}px`,
-        transform: `translateY(-${props.shelf.shelf_height * props.scaleFactor}px)`,
+        marginBottom: `${props.shelf.shelf_height * props.scaleFactor}px`,
         ...selectedStyle,
     } as CSSProperties;
 });
@@ -158,7 +158,7 @@ const onIncreaseQuantity = () => {
     );
 };
 
-const onDecreaseQuantity = () => {
+const onDecreaseQuantity = () => { 
     if (!props.gondola?.id || !currentSectionId.value || !props.shelf?.id || !props.segment?.id || !props.segment?.layer?.product?.id) {
         console.error("onDecreaseQuantity: IDs faltando para validação/atualização.");
         toast({ title: "Erro Interno", description: "Dados incompletos para diminuir quantidade.", variant: "destructive" });
@@ -199,6 +199,59 @@ const onDecreaseQuantity = () => {
             props.segment.layer.product.id,
             newQuantity
         );
+    }
+};
+
+
+/**
+ * Gerencia a navegação por teclado e teclas de ação
+ */
+// const handleKeyDown = (event: KeyboardEvent) => {
+//     console.log('handleKeyDown', event.key);
+//     // Gerencia a navegação por Tab
+//     if (event.key === 'Tab') {
+//         // const direction = event.shiftKey ? 'prev' : 'next';
+//         // const currentTabIndex = Number(props.segment.tabindex || 0);
+
+//         // Verifica se é o último elemento na navegação por tab
+//         // Um elemento é considerado o último se seu tabindex for o maior valor
+//         // Você precisará de uma forma de determinar qual é o maior tabIndex
+//         // no contexto do seu aplicativo
+
+//         // Emite evento para permitir que o componente pai gerencie a navegação
+//         // emit('tab-navigation', {
+//         //     isLast: false, // Isso será determinado pelo componente pai
+//         //     direction,
+//         //     currentTabIndex
+//         // });
+
+//         // Não impedimos o comportamento padrão do Tab para manter a navegação nativa
+//     }
+
+// };
+
+/**
+ * Configura dados para arrastar o segmento
+ */
+const onDragStart = (event: DragEvent) => {
+    if (!event.dataTransfer) return;
+
+    const isCtrlOrMetaPressed = event.ctrlKey || event.metaKey;
+
+    // Incluir explicitamente o shelf_id da origem
+    const segmentData = {
+        ...props.segment
+    };
+    console.log('segmentData', segmentData);
+    if (isCtrlOrMetaPressed) {
+        // Copiar (quando Ctrl/Meta está pressionado)
+        event.dataTransfer.effectAllowed = 'copy';
+        // Use o tipo MIME correto para cópia
+        event.dataTransfer.setData('text/segment/copy', JSON.stringify(segmentData));
+    } else {
+        // Mover (comportamento padrão)
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/segment', JSON.stringify(segmentData));
     }
 };
 </script>

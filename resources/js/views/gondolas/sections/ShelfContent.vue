@@ -1,16 +1,18 @@
 <template>
     <div class=" w-full flex items-center justify-center text-center text-xs text-gray-100 bg-transparent p-5 rounded-md "
-        :style="shelfContentStyle" @dragover.prevent="handleDragOver" @drop.prevent="handleDrop"
-        @dragleave="handleDragLeave">
+        :style="shelfContentStyle" @dragenter.prevent="handleDragEnter" @dragover.prevent="handleDragOver"
+        @dragleave="handleDragLeave" @drop.prevent="handleDrop">
         <!-- Quero alinhar o texto no centro da prateleira  -->
-        <span class="text-center text-gray-800 dark:text-gray-200 translate-y-1/2 pointer-events-none font-bold" v-if="dragShelfActive"> {{ shelftext }}</span>
+        <span class="text-center text-gray-800 dark:text-gray-200 translate-y-1/2 pointer-events-none font-bold"
+            v-if="dragShelfActive"> {{ shelftext }}</span>
     </div>
 </template>
 
 <script setup lang="ts">
-import { defineEmits, defineProps, ref, watch, computed, CSSProperties } from 'vue'; 
+import { defineEmits, defineProps, ref, watch, computed, CSSProperties } from 'vue';
 import { type Shelf } from '@plannerate/types/shelves';
 import { Section } from '@/types/sections';
+import type { Product, Layer } from '@plannerate/types/segment';
 
 // Definir Props
 const props = defineProps<{
@@ -21,10 +23,11 @@ const props = defineProps<{
     section: Section;
 }>();
 const dragShelfActive = ref(false); // Estado para rastrear se a prateleira está sendo arrastada
+const dragEnterCount = ref(0); // Garantir que está definido aqui
 const shelftext = ref(`Shelf (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`); // Texto da prateleira
 // Definir Emits
-const emit = defineEmits(['drop-product', 'drop-layer', 'drop-layer-copy']); // Para quando um produto é solto na prateleira
- 
+const emit = defineEmits(['drop-product', 'drop-segment', 'drop-segment-copy']); // Para quando um produto é solto na prateleira
+
 
 watch(dragShelfActive, (newValue) => {
     if (newValue) {
@@ -35,7 +38,7 @@ watch(dragShelfActive, (newValue) => {
         shelftext.value = `Shelf (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`;
     }
 });
- 
+
 
 const shelfContentStyle = computed((): CSSProperties => {
     const currentShelf = props.shelf;
@@ -78,10 +81,12 @@ const shelfContentStyle = computed((): CSSProperties => {
     if (currentIndex === 0) {
         heightPx = Math.max(minTopHeightPx, heightPx);
         // Para a primeira, o padding inferior é aplicado, mas o topo começa em 0
-        heightPx = Math.max(0, heightPx - bottomPaddingPx);
+        heightPx = Math.max(props.shelf.shelf_position, heightPx - bottomPaddingPx);
+        console.log('heightPx', heightPx, props.shelf.shelf_position * scaleFactor);
         otherStyles = {
             transform: `translateY(-${heightPx}px)`
         }
+        topPx = props.shelf.shelf_position * scaleFactor;
     } else {
         // Para as demais, aplica padding no topo e embaixo
         topPx += topPaddingPx; // Desce o topo um pouco
@@ -105,53 +110,164 @@ const shelfContentStyle = computed((): CSSProperties => {
         // Ex: backgroundColor: 'rgba(255, 0, 0, 0.3)',
     };
 });
-// --- Lógica de Drag and Drop (para produtos) ---
-const handleDragOver = (event: DragEvent) => {
-    // Permite que itens sejam soltos aqui
-    event.preventDefault();
-    dragShelfActive.value = true; // Ativa o estado de arrastar a prateleira
-    if (event.dataTransfer) {
-        event.dataTransfer.dropEffect = 'copy'; // Ou 'move' se for o caso
+
+// --- Lógica de Drag and Drop ---
+
+// Renomeada: Verifica apenas se o TIPO de dado arrastado é aceitável
+const isAcceptedDataType = (dataTransfer: DataTransfer | null): boolean => {
+    if (!dataTransfer) return false;
+    const types = dataTransfer.types;
+    // console.log('isAcceptedDataType: Detected types:', types);
+    return types.includes('text/product') || types.includes('text/segment') || types.includes('text/segment/copy');
+};
+
+const handleDragEnter = (event: DragEvent) => {
+    // console.log('--- handleDragEnter called ---');
+    // Verifica apenas o TIPO
+    if (!isAcceptedDataType(event.dataTransfer)) {
+        return;
     }
-    // TODO: Adicionar feedback visual (ex: mudar borda)
-    if (event.currentTarget) {
-        (event.currentTarget as HTMLElement).classList.add('drag-over');
+
+    event.preventDefault();
+    dragEnterCount.value++;
+    // console.log(`handleDragEnter: Incremented count to ${dragEnterCount.value}`);
+
+    // Ativa o visual se puder (baseado no tipo) e ainda não estiver ativo
+    if (!dragShelfActive.value) {
+        // console.log('handleDragEnter: Activating visual state...');
+        dragShelfActive.value = true;
+        shelftext.value = `Soltar aqui (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`;
+        if (event.currentTarget) {
+            (event.currentTarget as HTMLElement).classList.add('drag-over');
+        }
+    }
+};
+
+const handleDragOver = (event: DragEvent) => {
+    // Verifica apenas o TIPO
+    if (!isAcceptedDataType(event.dataTransfer)) {
+        if (event.dataTransfer) event.dataTransfer.dropEffect = 'none';
+        // Desativa visual se estava ativo por engano
+        if (dragShelfActive.value) {
+            // console.log('handleDragOver: Type not accepted, but was active. Deactivating visual state.');
+            dragShelfActive.value = false;
+            dragEnterCount.value = 0;
+            if (event.currentTarget) {
+                (event.currentTarget as HTMLElement).classList.remove('drag-over');
+            }
+        }
+        return;
+    }
+
+    // Se pode aceitar (baseado no tipo)
+    event.preventDefault();
+
+    // Garante visual ativo
+    if (!dragShelfActive.value) {
+        // console.log('handleDragOver: Activating visual state (was inactive)...');
+        dragShelfActive.value = true;
+        shelftext.value = `Soltar aqui (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`;
+        if (event.currentTarget) {
+            (event.currentTarget as HTMLElement).classList.add('drag-over');
+        }
+    }
+
+    // Define dropEffect
+    if (event.dataTransfer) {
+        let effect: DataTransfer["dropEffect"] = 'move';
+        if (event.dataTransfer.types.includes('text/segment/copy') || event.dataTransfer.types.includes('text/product')) {
+            effect = 'copy';
+        }
+        event.dataTransfer.dropEffect = effect;
     }
 };
 
 const handleDragLeave = (event: DragEvent) => {
-    // Remove o feedback visual quando o item não está mais sobre a prateleira
-    if (event.currentTarget) {
-        (event.currentTarget as HTMLElement).classList.remove('drag-over');
-    }
-    dragShelfActive.value = false; // Desativa o estado de arrastar a prateleira
+    // console.log('--- handleDragLeave called ---');
+    if (dragEnterCount.value > 0) {
+        dragEnterCount.value--;
+        // console.log(`handleDragLeave: Decremented count to ${dragEnterCount.value}`);
+        if (dragEnterCount.value === 0) {
+            // console.log('handleDragLeave: Count is 0, DEACTIVATING visual state...');
+            if (dragShelfActive.value) {
+                dragShelfActive.value = false;
+                if (event.currentTarget) {
+                    // console.log('handleDragLeave: Removing drag-over class');
+                    (event.currentTarget as HTMLElement).classList.remove('drag-over');
+                }
+            }
+        }
+    } /* else {
+        // console.log('handleDragLeave: Called but count is already 0.');
+    } */
 };
 
 const handleDrop = (event: DragEvent) => {
     event.preventDefault();
-    if (event.dataTransfer) {
-        const layerData = event.dataTransfer.getData('text/layer');
-        const layerDataCopy = event.dataTransfer.getData('text/layer/copy');
-        const productData = event.dataTransfer.getData('text/product');
-        if (productData) {
-            const product = JSON.parse(productData);
-            // Emitir evento para o componente pai (Section) lidar com a adição
-            emit('drop-product', product, props.shelf, { x: event.offsetX, y: event.offsetY });
-        } else if (layerData) {
-            const layer = JSON.parse(layerData);
-            // Emitir evento para o componente pai (Section) lidar com a adição
-            emit('drop-layer', layer, props.shelf, { x: event.offsetX, y: event.offsetY });
-        } else if (layerDataCopy) {
-            const layer = JSON.parse(layerDataCopy);
-            // Emitir evento para o componente pai (Section) lidar com a adição 
-            emit('drop-layer-copy', layer, props.shelf, { x: event.offsetX, y: event.offsetY });
+    const currentTargetElement = event.currentTarget as HTMLElement | null;
+
+    // Função de reset movida para o início para melhor clareza
+    const resetVisualState = () => {
+        dragEnterCount.value = 0;
+        if (dragShelfActive.value) {
+            dragShelfActive.value = false;
         }
-        // TODO: Remover feedback visual
-        if (event.currentTarget) {
-            (event.currentTarget as HTMLElement).classList.remove('drag-over');
+        if (currentTargetElement) {
+            currentTargetElement.classList.remove('drag-over');
         }
+    };
+
+    // Verifica tipo inicial, mas a lógica principal está no try
+    if (!isAcceptedDataType(event.dataTransfer) || !event.dataTransfer) {
+        resetVisualState();
+        return;
     }
-    dragShelfActive.value = false; // Desativa o estado de arrastar a prateleira
+
+    try {
+        const types = event.dataTransfer.types;
+        const position = { x: event.offsetX, y: event.offsetY };
+
+        if (types.includes('text/product')) {
+            const productData = event.dataTransfer.getData('text/product');
+            if (!productData) { console.error('handleDrop: productData is empty!'); return; }
+            const product = JSON.parse(productData) as Product;
+            emit('drop-product', product, props.shelf, position);
+
+        } else if (types.includes('text/segment')) {
+            const segmentDataString = event.dataTransfer.getData('text/segment');
+            if (!segmentDataString) { console.error('handleDrop: segmentData is empty!'); return; }
+            const segmentData = JSON.parse(segmentDataString) as Layer & { segment?: { shelf_id?: string } }; // Tipagem para segment.shelf_id
+            const originShelfId = segmentData?.segment?.shelf_id;
+
+            console.log(`handleDrop (segment): Origin=${originShelfId}, Current=${props.shelf.id}`); // LOG para confirmar IDs no drop
+
+            // *** VERIFICAÇÃO DE ORIGEM MOVIDA PARA CÁ ***
+            if (originShelfId && originShelfId !== props.shelf.id) {
+                console.log('handleDrop (segment): Origin is different, emitting drop-segment...');
+                emit('drop-segment', segmentData, props.shelf, position);
+            } else if (!originShelfId) {
+                console.warn('handleDrop (segment): Origin Shelf ID not found in data. Allowing drop.');
+                emit('drop-segment', segmentData, props.shelf, position); // Comportamento leniente: permite se não achar origem
+            } else {
+                console.log('handleDrop (segment): Origin is the same as current. Drop ignored.');
+                // Não faz nada se a origem for a mesma
+            }
+
+        } else if (types.includes('text/segment/copy')) {
+            const segmentDataCopy = event.dataTransfer.getData('text/segment/copy');
+            if (!segmentDataCopy) { console.error('handleDrop: segmentDataCopy is empty!'); return; }
+            const segment = JSON.parse(segmentDataCopy) as Layer;
+            emit('drop-segment-copy', segment, props.shelf, position);
+
+        } else {
+            // console.log('handleDrop: No relevant data type found on drop.');
+        }
+
+    } catch (e) {
+        console.error("handleDrop: Error processing dropped data:", e);
+    } finally {
+        resetVisualState(); // Garante reset no final
+    }
 };
 
 </script>
