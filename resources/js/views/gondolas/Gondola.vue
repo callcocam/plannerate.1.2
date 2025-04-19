@@ -44,14 +44,13 @@
 
 <script setup lang="ts">
 // Imports de Bibliotecas Externas
-import { computed, watchEffect, nextTick } from 'vue'; // Importa nextTick
+import { computed, watchEffect } from 'vue';
 import { useRoute } from 'vue-router';
 
 // Imports Internos
 import { useEditorStore } from '@plannerate/store/editor';
 import Info from '@plannerate/views/gondolas/partials/Info.vue';
 import Sections from '@plannerate/views/gondolas/sections/Sections.vue';
-// Removido import não utilizado de Gondola type
 
 // Hooks
 const editorStore = useEditorStore();
@@ -68,13 +67,20 @@ watchEffect(() => {
     const currentId = gondolaId.value; // ID da rota
     const storeGondolaId = editorStore.getCurrentGondola?.id; // ID da gôndola no store
 
-    // Chama setCurrentGondola se o ID da rota for diferente do ID no store
-    // A lógica de resetar o histórico e atualizar a gôndola está agora dentro de setCurrentGondola
     if (currentId !== storeGondolaId) {
+        // Se há um ID na rota, encontra a gôndola correspondente
         if (currentId) {
-            // Se há um ID na rota, encontra a gôndola correspondente
+            // Busca a gôndola no estado atual, usando o ID da rota
             const targetGondola = editorStore.currentState?.gondolas?.find(g => g.id === currentId) ?? null;
-            editorStore.setCurrentGondola(targetGondola);
+
+            // Define a gôndola atual no store (agora não reseta mais o histórico)
+            if (targetGondola) {
+                console.log(`Mudando para gôndola ${currentId}`);
+                editorStore.setCurrentGondola(targetGondola);
+            } else {
+                console.warn(`Gôndola ${currentId} não encontrada.`);
+                editorStore.setCurrentGondola(null);
+            }
         } else {
             // Se não há ID na rota, define a gôndola no store como null
             editorStore.setCurrentGondola(null);
@@ -84,7 +90,6 @@ watchEffect(() => {
 
 // Computed para obter a gôndola correspondente à rota atual para usar no template
 const editorGondola = computed(() => editorStore.getCurrentGondola);
-
 </script>
 
 <style scoped>
