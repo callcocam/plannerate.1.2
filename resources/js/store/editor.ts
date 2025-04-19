@@ -84,7 +84,7 @@ export const useEditorStore = defineStore('editor', () => {
             return section.shelves.map((shelf) => {
                 return shelf.segments.map((segment) => {
                     tabindex = tabindex + 1;
-                    return segment.layer.tabindex = tabindex;
+                    return segment.tabindex = tabindex;
                 });
             });
         });

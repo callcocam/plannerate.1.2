@@ -1,14 +1,8 @@
 <template>
     <div class="layer group flex cursor-pointer justify-around " :style="layerStyle" @click="handleLayerClick"
-        @dragstart="onDragStart" draggable="true" :class="{ 'layer--selected': isSelected, 'layer--focused': !isSelected }" :tabindex="layer.tabindex"
-        @keydown="handleKeyDown">
-        <Product v-for="index in layer.quantity" 
-            :key="index" 
-            :product="layer.product" 
-            :scale-factor="scaleFactor"
-            :index="index" 
-            :shelf-depth="props.shelfDepth"
-        />
+        @keydown="handleKeyDown" :class="{ 'layer--selected': isSelected, 'layer--focused': !isSelected }">
+        <Product v-for="index in layer.quantity" :key="index" :product="layer.product" :scale-factor="scaleFactor"
+            :index="index" :shelf-depth="props.shelfDepth" />
     </div>
 </template>
 
@@ -95,49 +89,6 @@ const handleLayerClick = (event: MouseEvent) => {
 };
 
 /**
- * Gerencia a navegação por teclado e teclas de ação
- */
-const handleKeyDown = (event: KeyboardEvent) => {
-    // Gerencia a navegação por Tab
-    if (event.key === 'Tab') {
-        const direction = event.shiftKey ? 'prev' : 'next';
-        const currentTabIndex = Number(props.layer.tabindex || 0);
-
-        // Verifica se é o último elemento na navegação por tab
-        // Um elemento é considerado o último se seu tabindex for o maior valor
-        // Você precisará de uma forma de determinar qual é o maior tabIndex
-        // no contexto do seu aplicativo
-
-        // Emite evento para permitir que o componente pai gerencie a navegação
-        emit('tab-navigation', {
-            isLast: false, // Isso será determinado pelo componente pai
-            direction,
-            currentTabIndex
-        });
-
-        // Não impedimos o comportamento padrão do Tab para manter a navegação nativa
-    }
-
-    // Gerencia a seleção com Enter
-    else if (event.key === 'Enter') {
-        const isCtrlOrMetaPressed = event.ctrlKey || event.metaKey;
-        handleSelectedLayer(isCtrlOrMetaPressed, props.layer.product?.id, props.layer.id);
-        event.preventDefault();
-    }
-
-    // Gerencia aumento/diminuição com setas quando selecionado
-    else if (isSelected.value) {
-        if (event.key === 'ArrowRight') {
-            event.preventDefault();
-            onIncreaseQuantity();
-        } else if (event.key === 'ArrowLeft') {
-            event.preventDefault();
-            onDecreaseQuantity();
-        }
-    }
-};
-
-/**
  * Gerencia a seleção do layer
  */
 const handleSelectedLayer = (isCtrlOrMetaPressed: boolean, productId: string, layerId: string) => {
@@ -170,36 +121,6 @@ const handleSelectedLayer = (isCtrlOrMetaPressed: boolean, productId: string, la
     }
 };
 
-/**
- * Configura dados para arrastar o layer
- */
-const onDragStart = (event: DragEvent) => {
-    if (!event.dataTransfer) return;
-
-    const isCtrlOrMetaPressed = event.ctrlKey || event.metaKey;
-
-    // Incluir explicitamente o shelf_id da origem
-    const layerData = {
-        ...props.layer,
-        segment: {
-            ...props.segment, // Mantém os outros dados do segmento
-            shelf_id: props.segment.shelf_id // Garante que o ID da prateleira de origem está aqui
-        },
-        // Podemos adicionar um campo de nível superior para facilitar, se preferir:
-        // originShelfId: props.segment.shelf_id 
-    };
-
-    if (isCtrlOrMetaPressed) {
-        // Copiar (quando Ctrl/Meta está pressionado)
-        event.dataTransfer.effectAllowed = 'copy';
-        // Use o tipo MIME correto para cópia
-        event.dataTransfer.setData('text/layer/copy', JSON.stringify(layerData)); 
-    } else {
-        // Mover (comportamento padrão)
-        event.dataTransfer.effectAllowed = 'move';
-        event.dataTransfer.setData('text/layer', JSON.stringify(layerData));
-    }
-};
 
 /**
  * Aumenta a quantidade de produtos no layer
@@ -228,6 +149,22 @@ const onDecreaseQuantity = async () => {
     });
 };
 
+
+/**
+ * Gerencia a navegação por teclado e teclas de ação
+ */
+const handleKeyDown = (event: KeyboardEvent) => {
+    // Gerencia aumento/diminuição com setas quando selecionado
+    if (isSelected.value) {
+        if (event.key === 'ArrowRight') {
+            event.preventDefault();
+            onIncreaseQuantity();
+        } else if (event.key === 'ArrowLeft') {
+            event.preventDefault();
+            onDecreaseQuantity();
+        }
+    }
+};
 // Lifecycle hooks
 onMounted(() => {
     // Não precisamos mais do listener global, pois movemos a lógica para handleKeyDown
@@ -244,10 +181,12 @@ onUnmounted(() => {
     box-shadow: 0 0 5px rgba(0, 0, 255, 0.5);
     box-sizing: border-box;
 }
-.layer--focused { 
+
+.layer--focused {
     outline: 1px solid transparent;
     outline-offset: 2px;
 }
+
 .layer--focused:focus {
     outline: 1px solid blue;
     outline-offset: 2px;

@@ -4,8 +4,8 @@
             <ShelfContent :shelf="shelf" :sorted-shelves="sortedShelves" :index="index" :scale-factor="scaleFactor"
                 :section="section"
                 @drop-product="(product: Product, shelf: Shelf) => $emit('drop-product', product, shelf)"
-                @drop-layer-copy="(product: Product, shelf: Shelf) => $emit('drop-layer-copy', product, shelf)"
-                @drop-layer="(moveLayer: Layer, oldSshelf: Shelf) => $emit('drop-layer', moveLayer, oldSshelf)" />
+                @drop-segment-copy="(segment: SegmentType, shelf: Shelf) => $emit('drop-segment-copy', segment, shelf)"
+                @drop-segment="(segment: SegmentType, oldShelf: Shelf) => $emit('drop-segment', segment, oldShelf)" />
             <div class="shelf relative flex flex-col items-center   border-y border-gray-400 bg-gray-700 text-gray-50 dark:bg-gray-800"
                 :style="shelfStyle" ref="shelfElement">
                 <!-- TODO: Renderizar Segmentos/Produtos aqui -->
@@ -76,7 +76,7 @@ import { computed, defineEmits, defineProps, onMounted, onUnmounted, ref, type C
 import draggable from 'vuedraggable';
 import { useShelvesStore } from '@plannerate/store/shelves';
 import { useEditorStore } from '@plannerate/store/editor';
-import { type Layer, type Product, type Segment as SegmentType } from '@plannerate/types/segment';
+import {  type Product, type Segment as SegmentType } from '@plannerate/types/segment';
 import { type Shelf } from '@plannerate/types/shelves';
 import Segment from './Segment.vue';
 import ShelfContent from './ShelfContent.vue';
@@ -104,7 +104,7 @@ const shelfElement = ref<HTMLElement | null>(null);
 
 const gondolaId = computed(() => props.gondola.id);
 // Definir Emits
-const emit = defineEmits(['drop-product', 'drop-layer-copy', 'drop-layer']);
+const emit = defineEmits(['drop-product', 'drop-segment-copy', 'drop-segment']);
 const shelvesStore = useShelvesStore();
 const editorStore = useEditorStore();
 const alignment = computed(() => {
