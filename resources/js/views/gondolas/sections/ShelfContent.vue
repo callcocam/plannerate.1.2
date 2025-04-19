@@ -110,221 +110,160 @@ const shelfContentStyle = computed((): CSSProperties => {
 
 // --- Lógica de Drag and Drop ---
 
-// Verifica se o tipo de dado arrastado é aceitável E se a origem é diferente (se aplicável)
-const isDropTargetActive = (dataTransfer: DataTransfer | null): boolean => {
-    console.log('--- Checking isDropTargetActive ---'); // Log inicial
-    if (!dataTransfer) {
-        console.log('No dataTransfer, returning false');
-        return false;
-    }
+// Renomeada: Verifica apenas se o TIPO de dado arrastado é aceitável
+const isAcceptedDataType = (dataTransfer: DataTransfer | null): boolean => {
+    if (!dataTransfer) return false;
     const types = dataTransfer.types;
-    console.log('Detected types:', types);
-
-    // Permite produtos novos sempre
-    if (types.includes('text/product')) {
-        console.log('Type is text/product, returning true');
-        return true;
-    }
-
-    // Permite cópias sempre
-    if (types.includes('text/layer/copy')) {
-        console.log('Type is text/layer/copy, returning true');
-        return true;
-    }
-
-    // Se for mover uma camada, verifica a origem
-    if (types.includes('text/layer')) {
-        console.log('Type is text/layer, checking origin...');
-        try {
-            const layerDataString = dataTransfer.getData('text/layer');
-            console.log('Layer data string:', layerDataString); // <<< LOG IMPORTANTE
-            if (!layerDataString) {
-                 console.log('Layer data string is empty, returning false');
-                 return false; // Não conseguiu ler os dados
-            }
-
-            const layerData = JSON.parse(layerDataString);
-            console.log('Parsed layer data:', layerData); // <<< LOG IMPORTANTE
-            const originShelfId = layerData?.segment?.shelf_id;
-            console.log('Origin Shelf ID:', originShelfId); // <<< LOG IMPORTANTE
-            console.log('Current Shelf ID:', props.shelf.id); // <<< LOG IMPORTANTE
-
-            // Se não encontrou ID de origem, permite por segurança (ou pode bloquear, dependendo da regra)
-            if (!originShelfId) {
-                console.warn('Origin Shelf ID not found, returning true (lenient)');
-                return true; // Ou false, se quiser ser mais estrito
-            }
-
-            // Só ativa se a origem for DIFERENTE da prateleira atual
-            const shouldActivate = originShelfId !== props.shelf.id;
-            console.log(`Origin (${originShelfId}) !== Current (${props.shelf.id}) ? ${shouldActivate}. Returning ${shouldActivate}`);
-            return shouldActivate;
-
-        } catch (e) {
-            console.error('Error parsing text/layer data:', e);
-            console.log('Returning false due to parsing error');
-            return false; // Erro ao processar, não ativa
-        }
-    }
-
-    console.log('No accepted types found, returning false');
-    return false; // Nenhum tipo aceitável
+    // console.log('isAcceptedDataType: Detected types:', types);
+    return types.includes('text/product') || types.includes('text/layer') || types.includes('text/layer/copy');
 };
 
 const handleDragEnter = (event: DragEvent) => {
-    console.log('--- handleDragEnter called ---'); // Log: Entrou?
-    const types = event.dataTransfer?.types;
-    console.log('handleDragEnter: Detected types:', types);
-
-    // Usa a nova função de verificação que inclui a checagem de origem
-    const canActivate = isDropTargetActive(event.dataTransfer);
-    console.log(`handleDragEnter: isDropTargetActive returned ${canActivate}`);
-    if (!canActivate) {
-        console.log('handleDragEnter: Cannot activate, returning.');
+    // console.log('--- handleDragEnter called ---');
+    // Verifica apenas o TIPO
+    if (!isAcceptedDataType(event.dataTransfer)) {
         return;
     }
 
     event.preventDefault();
     dragEnterCount.value++;
-    console.log(`handleDragEnter: Incremented count to ${dragEnterCount.value}`);
+    // console.log(`handleDragEnter: Incremented count to ${dragEnterCount.value}`);
 
-    if (dragEnterCount.value === 1) {
-        console.log('handleDragEnter: First entry, activating visual state...'); // Log: Vai ativar?
+    // Ativa o visual se puder (baseado no tipo) e ainda não estiver ativo
+    if (!dragShelfActive.value) {
+        // console.log('handleDragEnter: Activating visual state...');
         dragShelfActive.value = true;
         shelftext.value = `Soltar aqui (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`;
         if (event.currentTarget) {
-             console.log('handleDragEnter: Adding drag-over class');
-             (event.currentTarget as HTMLElement).classList.add('drag-over');
-        } else {
-             console.log('handleDragEnter: currentTarget is null?');
+            (event.currentTarget as HTMLElement).classList.add('drag-over');
         }
-        console.log(`handleDragEnter: dragShelfActive set to ${dragShelfActive.value}`);
-    } else {
-         console.log(`handleDragEnter: Not first entry (count: ${dragEnterCount.value}), not changing visual state.`);
     }
 };
 
 const handleDragOver = (event: DragEvent) => {
-    // console.log('--- handleDragOver called ---'); // Manter comentado por enquanto
-    // const types = event.dataTransfer?.types;
-    // console.log('handleDragOver: Detected types:', types);
-
-    const canAccept = isDropTargetActive(event.dataTransfer);
-    // console.log(`handleDragOver: isDropTargetActive returned ${canAccept}`);
-    if (!canAccept) {
-        // console.log('handleDragOver: Cannot accept, setting dropEffect to none and returning.');
+    // Verifica apenas o TIPO
+    if (!isAcceptedDataType(event.dataTransfer)) {
         if(event.dataTransfer) event.dataTransfer.dropEffect = 'none';
+        // Desativa visual se estava ativo por engano
+        if (dragShelfActive.value) {
+            // console.log('handleDragOver: Type not accepted, but was active. Deactivating visual state.');
+            dragShelfActive.value = false;
+            dragEnterCount.value = 0;
+            if (event.currentTarget) {
+                (event.currentTarget as HTMLElement).classList.remove('drag-over');
+            }
+        }
         return;
     }
 
-    // console.log('handleDragOver: Can accept, calling preventDefault().');
+    // Se pode aceitar (baseado no tipo)
     event.preventDefault();
 
-    if (event.dataTransfer) {
-        // Determinar o efeito correto
-        let effect: DataTransfer["dropEffect"] = 'move'; // Padrão é mover
-        if (event.dataTransfer.types.includes('text/layer/copy')) {
-            effect = 'copy';
-        } else if (event.dataTransfer.types.includes('text/product')) {
-            effect = 'copy'; // <<-- NOVO: Usar 'copy' para produtos novos
+    // Garante visual ativo
+    if (!dragShelfActive.value) {
+        // console.log('handleDragOver: Activating visual state (was inactive)...');
+        dragShelfActive.value = true;
+        shelftext.value = `Soltar aqui (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`;
+        if (event.currentTarget) {
+            (event.currentTarget as HTMLElement).classList.add('drag-over');
         }
-        // console.log(`handleDragOver: Setting dropEffect to ${effect}`);
+    }
+
+    // Define dropEffect
+    if (event.dataTransfer) {
+        let effect: DataTransfer["dropEffect"] = 'move';
+        if (event.dataTransfer.types.includes('text/layer/copy') || event.dataTransfer.types.includes('text/product')) {
+            effect = 'copy';
+        }
         event.dataTransfer.dropEffect = effect;
     }
 };
 
 const handleDragLeave = (event: DragEvent) => {
-    // A lógica do contador já garante que só desativa ao sair completamente
+    // console.log('--- handleDragLeave called ---');
     if (dragEnterCount.value > 0) {
          dragEnterCount.value--;
-
+        // console.log(`handleDragLeave: Decremented count to ${dragEnterCount.value}`);
          if (dragEnterCount.value === 0) {
-             dragShelfActive.value = false;
-             if (event.currentTarget) {
-                 (event.currentTarget as HTMLElement).classList.remove('drag-over');
+            // console.log('handleDragLeave: Count is 0, DEACTIVATING visual state...');
+             if (dragShelfActive.value) {
+                 dragShelfActive.value = false;
+                 if (event.currentTarget) {
+                    // console.log('handleDragLeave: Removing drag-over class');
+                    (event.currentTarget as HTMLElement).classList.remove('drag-over');
+                 }
              }
          }
-    }
+    } /* else {
+        // console.log('handleDragLeave: Called but count is already 0.');
+    } */
 };
 
 const handleDrop = (event: DragEvent) => {
-    console.log('--- handleDrop called ---'); // Log: Entrou no handleDrop
     event.preventDefault();
+    const currentTargetElement = event.currentTarget as HTMLElement | null;
 
-    // Verifica novamente no drop por segurança
-    const isActiveTarget = isDropTargetActive(event.dataTransfer);
-    console.log(`handleDrop: isDropTargetActive returned ${isActiveTarget}`);
-    if (!isActiveTarget || !event.dataTransfer) {
-         console.log('handleDrop: Not an active target or no dataTransfer, resetting and returning.');
-         dragEnterCount.value = 0;
-         dragShelfActive.value = false;
-         if (event.currentTarget) {
-            (event.currentTarget as HTMLElement).classList.remove('drag-over');
-         }
+    // Função de reset movida para o início para melhor clareza
+    const resetVisualState = () => {
+        dragEnterCount.value = 0;
+        if (dragShelfActive.value) {
+            dragShelfActive.value = false;
+        }
+        if (currentTargetElement) {
+            currentTargetElement.classList.remove('drag-over');
+        }
+    };
+
+    // Verifica tipo inicial, mas a lógica principal está no try
+    if (!isAcceptedDataType(event.dataTransfer) || !event.dataTransfer) {
+        resetVisualState();
         return;
     }
 
     try {
-        console.log('handleDrop: Inside try block');
         const types = event.dataTransfer.types;
-        console.log('handleDrop: Data types on drop:', types);
-
         const position = { x: event.offsetX, y: event.offsetY };
 
         if (types.includes('text/product')) {
             const productData = event.dataTransfer.getData('text/product');
-            console.log('handleDrop: Got productData:', productData);
-            if (!productData) {
-                 console.error('handleDrop: productData is empty!');
-                 return; // Sai se não houver dados
-            }
-            console.log('handleDrop: Attempting to parse productData...');
+            if (!productData) { console.error('handleDrop: productData is empty!'); return; }
             const product = JSON.parse(productData) as Product;
-            console.log('handleDrop: Parsed product:', product);
-            console.log('handleDrop: Emitting drop-product...');
             emit('drop-product', product, props.shelf, position);
-            console.log('handleDrop: drop-product emitted.');
 
         } else if (types.includes('text/layer')) {
-            const layerData = event.dataTransfer.getData('text/layer');
-            console.log('handleDrop: Got layerData:', layerData);
-            if (!layerData) {
-                 console.error('handleDrop: layerData is empty!');
-                 return;
+            const layerDataString = event.dataTransfer.getData('text/layer');
+            if (!layerDataString) { console.error('handleDrop: layerData is empty!'); return; }
+            const layerData = JSON.parse(layerDataString) as Layer & { segment?: { shelf_id?: string } }; // Tipagem para segment.shelf_id
+            const originShelfId = layerData?.segment?.shelf_id;
+
+            console.log(`handleDrop (layer): Origin=${originShelfId}, Current=${props.shelf.id}`); // LOG para confirmar IDs no drop
+
+            // *** VERIFICAÇÃO DE ORIGEM MOVIDA PARA CÁ ***
+            if (originShelfId && originShelfId !== props.shelf.id) {
+                console.log('handleDrop (layer): Origin is different, emitting drop-layer...');
+                emit('drop-layer', layerData, props.shelf, position);
+            } else if (!originShelfId) {
+                 console.warn('handleDrop (layer): Origin Shelf ID not found in data. Allowing drop.');
+                 emit('drop-layer', layerData, props.shelf, position); // Comportamento leniente: permite se não achar origem
+            } else {
+                 console.log('handleDrop (layer): Origin is the same as current. Drop ignored.');
+                 // Não faz nada se a origem for a mesma
             }
-            console.log('handleDrop: Attempting to parse layerData...');
-            const layer = JSON.parse(layerData) as Layer;
-            console.log('handleDrop: Parsed layer:', layer);
-            console.log('handleDrop: Emitting drop-layer...');
-            emit('drop-layer', layer, props.shelf, position);
-            console.log('handleDrop: drop-layer emitted.');
 
         } else if (types.includes('text/layer/copy')) {
             const layerDataCopy = event.dataTransfer.getData('text/layer/copy');
-            console.log('handleDrop: Got layerDataCopy:', layerDataCopy);
-             if (!layerDataCopy) {
-                 console.error('handleDrop: layerDataCopy is empty!');
-                 return;
-            }
-            console.log('handleDrop: Attempting to parse layerDataCopy...');
+            if (!layerDataCopy) { console.error('handleDrop: layerDataCopy is empty!'); return; }
             const layer = JSON.parse(layerDataCopy) as Layer;
-            console.log('handleDrop: Parsed layer copy:', layer);
-            console.log('handleDrop: Emitting drop-layer-copy...');
             emit('drop-layer-copy', layer, props.shelf, position);
-            console.log('handleDrop: drop-layer-copy emitted.');
+
         } else {
-            console.log('handleDrop: No relevant data type found on drop.');
+            // console.log('handleDrop: No relevant data type found on drop.');
         }
 
     } catch (e) {
         console.error("handleDrop: Error processing dropped data:", e);
     } finally {
-         console.log('handleDrop: Entering finally block, resetting state.');
-         dragEnterCount.value = 0;
-         dragShelfActive.value = false;
-         if (event.currentTarget) {
-             (event.currentTarget as HTMLElement).classList.remove('drag-over');
-         }
+        resetVisualState(); // Garante reset no final
     }
 };
 
