@@ -177,15 +177,23 @@ const onDragStart = (event: DragEvent) => {
     if (!event.dataTransfer) return;
 
     const isCtrlOrMetaPressed = event.ctrlKey || event.metaKey;
+
+    // Incluir explicitamente o shelf_id da origem
     const layerData = {
         ...props.layer,
-        segment: props.segment,
+        segment: {
+            ...props.segment, // Mantém os outros dados do segmento
+            shelf_id: props.segment.shelf_id // Garante que o ID da prateleira de origem está aqui
+        },
+        // Podemos adicionar um campo de nível superior para facilitar, se preferir:
+        // originShelfId: props.segment.shelf_id 
     };
 
     if (isCtrlOrMetaPressed) {
         // Copiar (quando Ctrl/Meta está pressionado)
         event.dataTransfer.effectAllowed = 'copy';
-        event.dataTransfer.setData('text/layer/copy', JSON.stringify(layerData));
+        // Use o tipo MIME correto para cópia
+        event.dataTransfer.setData('text/layer/copy', JSON.stringify(layerData)); 
     } else {
         // Mover (comportamento padrão)
         event.dataTransfer.effectAllowed = 'move';
