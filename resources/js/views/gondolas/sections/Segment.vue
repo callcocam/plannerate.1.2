@@ -1,9 +1,9 @@
 <template>
     <div class="segment drag-segment-handle group relative flex items-center border-2" :style="segmentStyle" :class="{
-        'justify': alignment === 'justify',
-        'left': alignment === 'left',
-        'center': alignment === 'center',
-        'right': alignment === 'right'
+        'justify-around': alignment === 'justify',
+        'justify-start': alignment === 'left',
+        'justify-center': alignment === 'center',
+        'justify-end': alignment === 'right'
     }">
         <LayerComponent v-for="(_, index) in segmentQuantity" :key="index" :shelf="shelf" :segment="segment"
             :layer="segment.layer" :scale-factor="scaleFactor" :section-width="sectionWidth"
@@ -97,8 +97,7 @@ const segmentStyle = computed(() => {
     let layerWidthFinal = 0;
 
     let currentAlignment = alignment.value;
-
-    console.log('alignment', currentAlignment);
+ 
 
     if (currentAlignment === 'justify') {
         layerWidthFinal = productWidth * productQuantity * props.scaleFactor + layerWidth();
@@ -107,8 +106,7 @@ const segmentStyle = computed(() => {
     }
 
     const totalWidth = layerWidthFinal;
-    const selectedStyle = {};
-
+    const selectedStyle = {}; 
     return {
         height: `${layerHeight}px`,
         width: `${totalWidth}px`,

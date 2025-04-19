@@ -1,5 +1,5 @@
 <template>
-    <div class="layer group flex cursor-pointer " :style="layerStyle" @click="handleLayerClick"
+    <div class="layer group flex cursor-pointer justify-around " :style="layerStyle" @click="handleLayerClick"
         @dragstart="onDragStart" draggable="true" :class="{ 'layer--selected': isSelected, 'layer--focused': !isSelected }" :tabindex="layer.tabindex"
         @keydown="handleKeyDown">
         <Product v-for="index in layer.quantity" 

@@ -127,8 +127,7 @@ const baseHeight = computed(() => {
 
 // Estilo da seção com CSS transformado via computed para melhorar performance
 const sectionStyle = computed(() => {
-    const isActive = dropTargetActive.value;
-    console.log('sectionStyle', section.width, section.height, props.scaleFactor);
+    const isActive = dropTargetActive.value; 
     return {
         width: `${section.width * props.scaleFactor}px`,
         height: `${section.height * props.scaleFactor}px`,

@@ -59,8 +59,7 @@ import type { Section as SectionType } from '@plannerate/types/sections';
 import Cremalheira from '@plannerate/views/gondolas/sections/Cremalheira.vue';
 import SectionComponent from '@plannerate/views/gondolas/sections/Section.vue'; 
 import { useSectionStore } from '@plannerate/store/section'; 
-import { useEditorStore } from '@plannerate/store/editor';
-import SectionDrop from './drop/SectionDrop.vue';
+import { useEditorStore } from '@plannerate/store/editor'; 
  
 
 const props = defineProps<{

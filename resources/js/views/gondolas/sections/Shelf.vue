@@ -6,7 +6,7 @@
                 @drop-product="(product: Product, shelf: Shelf) => $emit('drop-product', product, shelf)"
                 @drop-layer-copy="(product: Product, shelf: Shelf) => $emit('drop-layer-copy', product, shelf)"
                 @drop-layer="(moveLayer: Layer, oldSshelf: Shelf) => $emit('drop-layer', moveLayer, oldSshelf)" />
-            <div class="shelf relative flex flex-col items-center justify-around border-y border-gray-400 bg-gray-700 text-gray-50 dark:bg-gray-800"
+            <div class="shelf relative flex flex-col items-center   border-y border-gray-400 bg-gray-700 text-gray-50 dark:bg-gray-800"
                 :style="shelfStyle" ref="shelfElement">
                 <!-- TODO: Renderizar Segmentos/Produtos aqui -->
                 <draggable v-model="sortableSegments" item-key="id" handle=".drag-segment-handle"
@@ -23,10 +23,7 @@
                 </draggable>
                 <ShelfControls :shelf="shelf" :scale-factor="scaleFactor" :section-width="sectionWidth"
                     :section-height="sectionHeight" :shelf-element="shelfElement" :base-height="baseHeight"
-                    :sections-container="sectionsContainer" :section-index="sectionIndex" />
-                <!-- <div class="absolute inset-0 bottom-0 z-0 flex h-full w-full items-center justify-center"> -->
-
-                <!-- </div> -->
+                    :sections-container="sectionsContainer" :section-index="sectionIndex" /> 
             </div>
         </ContextMenuTrigger>
         <ContextMenuContent class="w-64">

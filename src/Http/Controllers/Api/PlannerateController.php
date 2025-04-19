@@ -9,7 +9,7 @@
 namespace Callcocam\Plannerate\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller; 
-use Callcocam\Plannerate\Http\Resources\PlanogramResource;
+use Callcocam\Plannerate\Http\Resources\PlannerateResource;
 use Callcocam\Plannerate\Models\Planogram;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse; 
@@ -23,7 +23,7 @@ class PlannerateController extends Controller
      * Exibe um planograma específico
      * 
      * @param Planogram $planogram
-     * @return PlanogramResource|JsonResponse
+     * @return PlannerateResource|JsonResponse
      */
     public function show(string $id)
     {
@@ -38,7 +38,7 @@ class PlannerateController extends Controller
             ])->findOrFail($id);
  
 
-            return new PlanogramResource($planogram);
+            return new PlannerateResource($planogram);
         } catch (ModelNotFoundException $e) {
             return response()->json([
                 'message' => 'Planograma não encontrado',

@@ -927,7 +927,7 @@ export const useEditorStore = defineStore('editor', () => {
             console.warn(`setGondolaAlignment: Gôndola ${gondolaId} não encontrada.`);
             return;
         }
-
+        setIsLoading(true);
         // Verifica se o alinhamento realmente mudou
         // Converte null para undefined para consistência, se necessário
         const newAlignment = alignment === null ? undefined : alignment;
@@ -938,6 +938,7 @@ export const useEditorStore = defineStore('editor', () => {
         } else {
             console.log(`Alinhamento da gôndola ${gondolaId} já era ${newAlignment}.`);
         }
+        setIsLoading(false);
     }
 
     // Adicione aqui mais ações para manipular gondolas, seções, prateleiras, etc.
