@@ -2,6 +2,11 @@ import apiService from "./api";
 
 // services/editorService.ts 
 export const useEditorService = () => {
+
+  const savePlanogram = (planogramId: string, content: string) => {
+    return apiService.post(`/plannerate/${planogramId}/content`, { content });
+  };
+
   /**
    * Atualiza o fator de escala de uma gôndola
    */
@@ -26,6 +31,7 @@ export const useEditorService = () => {
   return {
     updateScaleFactor,
     saveContent,
-    fetchPlanogram
+    fetchPlanogram,
+    savePlanogram
   };
 };

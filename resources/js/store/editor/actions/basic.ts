@@ -10,6 +10,7 @@ import {
 } from '../state';
 import { calculateTabindex } from '../utils';
 import { initializeGondolaHistory, recordChange } from '../history';
+import { useEditorService } from '@plannerate/services/editorService';
 
 /**
  * Define o estado de carregamento do editor
@@ -80,33 +81,33 @@ export function setCurrentGondola(gondola: Gondola | null) {
 /**
  * Salva as alterações atuais (implementação futura)
  */
-export async function saveChanges() {
-    if (!currentState.value || !currentGondola.value) return;
+// export async function saveChanges() {
+//     if (!currentState.value || !currentGondola.value) return;
 
-    const gondolaId = currentGondola.value.id;
-    console.log(`Salvando alterações para gôndola ${gondolaId}...`, currentState.value);
+//     const gondolaId = currentGondola.value.id;
+//     console.log(`Salvando alterações para gôndola ${gondolaId}...`, currentState.value);
 
-    // TODO: Implementar chamada API para salvar
+//     // TODO: Implementar chamada API para salvar
 
-    // Após salvar com sucesso, podemos atualizar o histórico inicial
-    if (gondolaHistories.value[gondolaId]) {
-        // Faz do estado atual o novo estado "inicial" após salvar
-        const newInitialState = JSON.parse(JSON.stringify(currentState.value));
+//     // Após salvar com sucesso, podemos atualizar o histórico inicial
+//     if (gondolaHistories.value[gondolaId]) {
+//         // Faz do estado atual o novo estado "inicial" após salvar
+//         const newInitialState = JSON.parse(JSON.stringify(currentState.value));
 
-        gondolaHistories.value[gondolaId] = {
-            entries: [{
-                timestamp: Date.now(),
-                state: newInitialState,
-                gondolaId
-            }],
-            currentIndex: 0
-        };
+//         gondolaHistories.value[gondolaId] = {
+//             entries: [{
+//                 timestamp: Date.now(),
+//                 state: newInitialState,
+//                 gondolaId
+//             }],
+//             currentIndex: 0
+//         };
+//         console.log(JSON.stringify(gondolaHistories.value[gondolaId], null, 2));
+//         console.log(`Histórico resetado após salvar gôndola ${gondolaId}`);
+//     }
 
-        console.log(`Histórico resetado após salvar gôndola ${gondolaId}`);
-    }
-
-    alert('Funcionalidade de salvar ainda não implementada!');
-}
+//     alert('Funcionalidade de salvar ainda não implementada!');
+// }
 
 /**
  * Atualiza uma propriedade específica do planograma
@@ -149,4 +150,111 @@ export function toggleGrid() {
         currentState.value.showGrid = !currentState.value.showGrid;
         recordChange();
     }
+}
+
+
+// Função saveChanges atualizada no /store/editor/actions/basic.ts
+
+/**
+ * Salva as alterações atuais enviando os dados para a API
+ * @returns Promise com o resultado da operação
+ */
+export async function saveChanges(): Promise<any> {
+    if (!currentState.value) {
+        throw new Error("Não há estado atual para salvar");
+    }
+
+    console.log('Salvando alterações...', currentState.value);
+
+    setIsLoading(true);
+
+    try {
+        // Obtém os dados do planograma atual
+        const planogramData = {
+            ...currentState.value,
+            // Adicionamos campos extras ou necessários aqui
+            updated_at: new Date().toISOString()
+        };
+
+        // Remove campos temporários ou desnecessários antes de enviar
+        delete planogramData.error;
+        delete planogramData.isLoading;
+
+        const editorService = useEditorService();
+
+        // Chama a API para salvar os dados
+        const response = await editorService.savePlanogram(currentState.value.id, planogramData);
+
+        setIsLoading(false);
+
+        if (response.data && response.data.success) {
+            // Se salvou com sucesso, atualiza o estado com os dados retornados (se houver)
+            if (response.data.data) {
+                initialize(response.data.data);
+            }
+
+            // Reseta o histórico com o novo estado como base
+            const gondolaId = currentGondola.value?.id;
+            if (gondolaId && gondolaHistories.value[gondolaId]) {
+                // Faz do estado atual o novo estado "inicial" após salvar
+                gondolaHistories.value[gondolaId] = {
+                    entries: [{
+                        timestamp: Date.now(),
+                        state: JSON.parse(JSON.stringify(currentState.value)),
+                        gondolaId
+                    }],
+                    currentIndex: 0
+                };
+            }
+
+            // Notifica o usuário
+            showSuccessNotification('Alterações salvas com sucesso!');
+
+            return response.data;
+        } else {
+            // Se houver erro na resposta
+            const errorMessage = response.data?.message || 'Erro ao salvar alterações';
+            setError(errorMessage);
+            showErrorNotification(errorMessage);
+
+            return {
+                success: false,
+                message: errorMessage
+            };
+        }
+    } catch (error) {
+        setIsLoading(false);
+
+        // Tratar o erro
+        const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido ao salvar';
+        console.error('Erro ao salvar alterações:', error);
+
+        setError(errorMessage);
+        showErrorNotification('Erro ao salvar: ' + errorMessage);
+
+        return {
+            success: false,
+            message: errorMessage,
+            error
+        };
+    }
+}
+
+// Funções auxiliares para notificações (adapte conforme seu sistema de notificações)
+function showSuccessNotification(message: string) {
+    // Implementar conforme seu sistema de notificações
+    // Exemplo usando toast:
+    // toast.success(message);
+
+    // Implementação temporária:
+    console.log('✅ Sucesso:', message);
+}
+
+function showErrorNotification(message: string) {
+    // Implementar conforme seu sistema de notificações
+    // Exemplo usando toast:
+    // toast.error(message);
+
+    // Implementação temporária:
+    console.error('❌ Erro:', message);
 }
