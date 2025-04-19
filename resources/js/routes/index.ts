@@ -4,55 +4,52 @@ import NotFound from '../views/NotFound.vue';
 // Define your routes
 const routes: Array<RouteRecordRaw> = [
     {
-        path: '/plannerate/show/:id',
+        path: '/plannerate/editor/:id',
         name: 'plannerate.home',
-        component: () => import('../views/Home.vue'),
+        component: () => import('@plannerate/views/Home.vue'),
+        props: true,
         redirect: { name: 'plannerate.index' },
         children: [
             {
                 path: '',
                 name: 'plannerate.index',
-                component: () => import('./../views/Create.vue'),
-                props: true,
+                component: () => import('@plannerate/views/Create.vue'),
+                props: route => ({ 
+                    id: route.params.id,
+                    record: route.params.record 
+                }),
                 children: [
-
                     {
                         path: 'criar',
                         name: 'plannerate.create',
-                        component: () => import('./../views/gondolas/Create.vue'),
+                        component: () => import('@plannerate/views/gondolas/form/Create.vue'),
                         props: true,
-
                     }
                 ]
-
             },
             {
-                name: 'gondola.view',
                 path: 'gondola/:gondolaId',
-                component: () => import('./../views/View.vue'),
-                props: true,
-                redirect: { name: 'plannerate.gondola.view' },
+                name: 'gondola.view',
+                component: () => import('@plannerate/views/View.vue'), 
+                redirect: { name: 'plannerate.gondola.view' },  
                 children: [
                     { 
                         path: '',
                         name: 'plannerate.gondola.view',
-                        component: () => import('./../views/gondolas/Gondola.vue'),
+                        component: () => import('@plannerate/views/gondolas/Gondola.vue'),
                         props: true,
-
                     },
                     {
                         path: 'criar',
                         name: 'plannerate.gondola.create',
-                        component: () => import('./../views/gondolas/Create.vue'),
+                        component: () => import('@plannerate/views/gondolas/form/Create.vue'),
                         props: true,
-
                     },
                     {
                         path: 'editar',
                         name: 'plannerate.gondola.add_section',
-                        component: () => import('./../views/gondolas/AddSectionModal.vue'),
+                        component: () => import('@plannerate/views/gondolas/form/AddSectionModal.vue'),
                         props: true,
-
                     },
                 ]
             }
@@ -65,15 +62,12 @@ const routes: Array<RouteRecordRaw> = [
 
 // Create the router instance
 const router = createRouter({
-    // @ts-ignore
     history: createWebHistory(),
-    routes
+    routes,
+    // Usar algoritmo de correspondência de rotas mais preciso
+    strict: true,
+    
 });
-
-// Navigation guards (optional)
-// router.beforeEach((to, from, next) => {
-//     // Add your navigation guard logic here
-//     next();
-// });
+ 
 
 export default router;

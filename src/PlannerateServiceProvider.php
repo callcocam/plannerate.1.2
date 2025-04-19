@@ -11,6 +11,7 @@ namespace Callcocam\Plannerate;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 use Callcocam\Plannerate\Commands\PlannerateCommand;
+use Callcocam\Plannerate\Commands\InstallFrontendCommand;
 use Spatie\LaravelPackageTools\Commands\InstallCommand;
 
 class PlannerateServiceProvider extends PackageServiceProvider
@@ -36,7 +37,10 @@ class PlannerateServiceProvider extends PackageServiceProvider
                 'create_segments_table',
                 'create_layers_table'
             )
-            ->hasCommand(PlannerateCommand::class)
+            ->hasCommands([
+                PlannerateCommand::class,
+                InstallFrontendCommand::class,
+            ])
             ->hasInstallCommand(function (InstallCommand $command) {
                 $command
                     ->publishConfigFile()

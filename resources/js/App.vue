@@ -1,23 +1,12 @@
 <script setup lang="ts">
-import AppLayout from './layouts/AppLayout.vue';
-import { type BreadcrumbItem } from './types';
-defineProps({
-    record: {
-        type: Object,
-        default: () => ({}),
-    },
-    breadcrumbs: {
-        type: Array as () => BreadcrumbItem[],
-        default: () => [],
-    },
-});
+import AppLayout from './layouts/AppLayout.vue'; 
 </script>
 
 <template>
-    <AppLayout :breadcrumbs="breadcrumbs">
+    <AppLayout  >
         <div class="px-10">
-            <RouterView v-slot="{ Component }" :key="$route.fullPath.concat('-app-layout')">
-                <component :is="Component" :record="record" />
+            <RouterView v-slot="{ Component }" :key="'-app-layout'">
+                <component :is="Component"  />
             </RouterView>
         </div>
     </AppLayout>

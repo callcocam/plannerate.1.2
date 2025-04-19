@@ -7,11 +7,11 @@
  */
 
 namespace Callcocam\Plannerate\Models;
- 
+
 use Tall\Sluggable\HasSlug;
 use App\Models\User;
 use Callcocam\LaraGatekeeper\Core\Landlord\BelongsToTenants;
-use Callcocam\Plannerate\Enums\SectionStatus; 
+use Callcocam\Plannerate\Enums\SectionStatus;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -62,7 +62,7 @@ class Section extends Model
         'settings' => 'json',
         'status' => SectionStatus::class,
     ];
- 
+
 
     public function gondola(): BelongsTo
     {
@@ -73,7 +73,7 @@ class Section extends Model
     {
         return $this->belongsTo(User::class);
     }
- 
+
     public function shelves(): HasMany
     {
         return $this->hasMany(Shelf::class)->orderBy('ordering');

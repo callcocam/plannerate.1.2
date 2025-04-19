@@ -68,16 +68,16 @@
     </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { PencilIcon, PlusCircleIcon, SaveIcon } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router'; 
 
 const router = useRouter();
 const route = useRoute();
 
 // Props para receber os dados do planograma do Inertia
-const props = defineProps({
+ defineProps({
     planogram: {
         type: Object,
         required: true,
@@ -88,9 +88,7 @@ const gondolaId = computed(() => route.params.id);
 
 // Emitir eventos para o componente pai
 const emit = defineEmits(['close', 'gondola-added']);
-
-// Estado para controlar a visibilidade dos modais
-const showGondolaModal = ref(false);
+ 
 
 // Função para abrir o modal de adicionar gôndola
 const openAddGondolaModal = () => {
@@ -106,7 +104,7 @@ const openAddGondolaModal = () => {
 };
 
 // Função para formatar datas
-const formatDate = (dateString) => {
+const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A';
 
     const date = new Date(dateString);
@@ -120,7 +118,7 @@ const formatDate = (dateString) => {
 };
 
 // Determina a variante de cor do badge com base no status
-const getStatusVariant = (status) => {
+const getStatusVariant = (status: string) => {
     switch (status?.toLowerCase()) {
         case 'published':
             return 'success';

@@ -1,12 +1,11 @@
 // store/gondola.ts
 import { defineStore } from 'pinia';
 import { useGondolaService } from '../services/gondolaService';
+import { useEditorStore } from './editor';
 
 interface GondolaState {
     currentGondola: any | null;
     currentSection: any | null;
-    currentShelf: any | null;
-    currentProduct: any | null;
     notInGondola: any | null;
     productIdsInGondola: string[];
     isLoading: boolean;
@@ -17,12 +16,10 @@ export const useGondolaStore = defineStore('gondola', {
     state: (): GondolaState => ({
         currentGondola: null,
         currentSection: null,
-        currentShelf: null,
-        currentProduct: null,
         notInGondola: null,
         productIdsInGondola: [],
         isLoading: false,
-        error: null
+        error: null,
     }),
 
     getters: {
@@ -37,6 +34,9 @@ export const useGondolaStore = defineStore('gondola', {
             if (!gondolaId) return;
 
             const gondolaService = useGondolaService();
+            const editorStore = useEditorStore();
+            const gondola = editorStore.getGondola(gondolaId);
+            console.log('gondola', gondola);
             this.isLoading = true;
             this.error = null;
 
@@ -64,13 +64,6 @@ export const useGondolaStore = defineStore('gondola', {
          */
         setCurrentSection(section: any) {
             this.currentSection = section;
-        },
-
-        /**
-         * Seta a prateleira atual
-         */
-        setCurrentShelf(shelf: any) {
-            this.currentShelf = shelf;
         },
 
         /**
@@ -126,7 +119,7 @@ export const useGondolaStore = defineStore('gondola', {
                 });
             });
 
-            const finalIds = Array.from(productIds);
+            const finalIds = Array.from(productIds); 
             this.productIdsInGondola = finalIds;
 
             return finalIds;
@@ -149,7 +142,7 @@ export const useGondolaStore = defineStore('gondola', {
         * Atualiza os dados de uma gôndola
         */
         updateGondola(gondolaData: any, reload: boolean = false) {
-            if (!this.currentGondola || !gondolaData) return; 
+            if (!this.currentGondola || !gondolaData) return;
             this.currentGondola = {
                 ...this.currentGondola,
                 ...gondolaData
@@ -159,7 +152,7 @@ export const useGondolaStore = defineStore('gondola', {
                 this.productsInCurrentGondolaIds();
             }
         },
-        async justifyProducts(alignment: string) {
+        async justifyProducts(alignment: string | null = null) {
             if (!this.currentGondola) return;
 
             const gondolaService = useGondolaService();

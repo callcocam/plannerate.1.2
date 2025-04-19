@@ -1,47 +1,29 @@
 <template>
     <ContextMenu>
         <ContextMenuTrigger>
-            <div
-                class="shelf relative flex flex-col items-center justify-around border-y border-gray-400 bg-gray-700 text-gray-50 dark:bg-gray-800"
-                :style="shelfStyle"
-                ref="shelfElement"
-            >
+            <ShelfContent :shelf="shelf" :sorted-shelves="sortedShelves" :index="index" :scale-factor="scaleFactor"
+                :section="section"
+                @drop-product="(product: Product, shelf: Shelf) => $emit('drop-product', product, shelf)"
+                @drop-layer-copy="(product: Product, shelf: Shelf) => $emit('drop-layer-copy', product, shelf)"
+                @drop-layer="(moveLayer: Layer, oldSshelf: Shelf) => $emit('drop-layer', moveLayer, oldSshelf)" />
+            <div class="shelf relative flex flex-col items-center   border-y border-gray-400 bg-gray-700 text-gray-50 dark:bg-gray-800"
+                :style="shelfStyle" ref="shelfElement">
                 <!-- TODO: Renderizar Segmentos/Produtos aqui -->
-                <draggable
-                    v-model="sortableSegments"
-                    item-key="id"
-                    handle=".drag-segment-handle"
-                    class="relative flex w-full items-end"
-                    :class="{
+                <draggable v-model="sortableSegments" item-key="id" handle=".drag-segment-handle"
+                    class="relative flex w-full items-end" :class="{
                         'justify-center': alignment === 'center',
                         'justify-start': alignment === 'left',
                         'justify-end': alignment === 'right',
                         'justify-around': alignment === 'justify',
-                    }"
-                    :style="segmentsContainerStyle"
-                >
+                    }" :style="segmentsContainerStyle">
                     <template #item="{ element: segment }">
-                        <Segment :key="segment.id" :shelf="shelf" :segment="segment" :scale-factor="scaleFactor" :section-width="sectionWidth" />
+                        <Segment :key="segment.id" :shelf="shelf" :segment="segment" :scale-factor="scaleFactor"
+                            :section-width="sectionWidth" :gondola="gondola" />
                     </template>
                 </draggable>
-                <ShelfControls
-                    :shelf="shelf"
-                    :scale-factor="scaleFactor"
-                    :section-width="sectionWidth"
-                    :section-height="sectionHeight"
-                    :shelf-element="shelfElement"
-                    :base-height="baseHeight"
-                    :sections-container="sectionsContainer"
-                    :section-index="sectionIndex"
-                />
-                <!-- <div class="absolute inset-0 bottom-0 z-0 flex h-full w-full items-center justify-center"> -->
-                <ShelfContent
-                    :shelf="shelf"
-                    @drop-product="(product: Product, shelf: Shelf, dropPosition: any) => $emit('drop-product', product, shelf, dropPosition)"
-                    @drop-layer-copy="(product: Product, shelf: Shelf, dropPosition: any) => $emit('drop-layer-copy', product, shelf, dropPosition)"
-                    @drop-layer="(layer: Layer, shelf: Shelf) => updateLayer(layer, shelf)"
-                />
-                <!-- </div> -->
+                <ShelfControls :shelf="shelf" :scale-factor="scaleFactor" :section-width="sectionWidth"
+                    :section-height="sectionHeight" :shelf-element="shelfElement" :base-height="baseHeight"
+                    :sections-container="sectionsContainer" :section-index="sectionIndex" /> 
             </div>
         </ContextMenuTrigger>
         <ContextMenuContent class="w-64">
@@ -63,17 +45,21 @@
                     Justificado
                     <ContextMenuShortcut>⌘⇧J</ContextMenuShortcut>
                 </ContextMenuItem>
-                <ContextMenuItem inset @click="setAlignmentLeft">
+                <ContextMenuItem inset @click="setAlignmentLeft" :disabled="alignment === 'left'">
                     Alinhado à esquerda
                     <ContextMenuShortcut>⌘⇧L</ContextMenuShortcut>
                 </ContextMenuItem>
-                <ContextMenuItem inset @click="setAlignmentCenter">
+                <ContextMenuItem inset @click="setAlignmentCenter" :disabled="alignment === 'center'">
                     Alinhado ao centro
                     <ContextMenuShortcut>⌘⇧C</ContextMenuShortcut>
                 </ContextMenuItem>
-                <ContextMenuItem inset @click="setAlignmentRight">
+                <ContextMenuItem inset @click="setAlignmentRight" :disabled="alignment === 'right'">
                     Alinhado à direita
                     <ContextMenuShortcut>⌘⇧R</ContextMenuShortcut>
+                </ContextMenuItem>
+                <ContextMenuItem inset @click="setAlignmentNone" :disabled="!alignment || alignment === 'justify'">
+                    Não alinhar
+                    <ContextMenuShortcut>⌘⇧N</ContextMenuShortcut>
                 </ContextMenuItem>
                 <ContextMenuSeparator />
                 <ContextMenuItem inset disabled>
@@ -86,68 +72,103 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineEmits, defineProps, onMounted, onUnmounted, ref } from 'vue';
+import { computed, defineEmits, defineProps, onMounted, onUnmounted, ref, type CSSProperties } from 'vue';
 import draggable from 'vuedraggable';
-import { useSegmentStore } from '../../../store/segment';
-import { useShelvesStore } from '../../../store/shelves';
-import { Layer, Product, Segment as SegmentType } from '../../../types/segment';
-import { Shelf } from '../../../types/shelves';
+import { useShelvesStore } from '@plannerate/store/shelves';
+import { useEditorStore } from '@plannerate/store/editor';
+import { type Layer, type Product, type Segment as SegmentType } from '@plannerate/types/segment';
+import { type Shelf } from '@plannerate/types/shelves';
 import Segment from './Segment.vue';
 import ShelfContent from './ShelfContent.vue';
-import ShelfControls from './ShelfControls.vue'; // Importar o componente ShelfControls
+import ShelfControls from './ShelfControls.vue';
+import { Section } from '@/types/sections';
+import { Gondola } from '@plannerate/types/gondola';
 
 // Definir Props
 const props = defineProps<{
+    gondola: Gondola;
     shelf: Shelf;
+    sortedShelves: Shelf[];
+    index: number;
+    section: Section;
     scaleFactor: number;
     sectionWidth: number;
     sectionHeight: number;
     baseHeight: number;
-    sectionsContainer: HTMLElement | null; // Referência ao container das seções
-    sectionIndex: number; // Índice da seção atual
+    sectionsContainer: HTMLElement | null;
+    sectionIndex: number;
+    holes: { position: number;[key: string]: any }[];
 }>();
 
 const shelfElement = ref<HTMLElement | null>(null);
 
+const gondolaId = computed(() => props.gondola.id);
 // Definir Emits
-const emit = defineEmits(['drop-product', 'drop-layer-copy']); // Para quando um produto é solto na prateleira
+const emit = defineEmits(['drop-product', 'drop-layer-copy', 'drop-layer']);
 const shelvesStore = useShelvesStore();
-const segmentStore = useSegmentStore(); // Instanciar o segment store
-
+const editorStore = useEditorStore();
 const alignment = computed(() => {
-    if (props.shelf?.alignment) {
-        return props.shelf?.alignment;
-    }
-    if (props.shelf?.section?.alignment) {
-        return props.shelf?.section?.alignment;
-    }
-    if (props.shelf?.section?.gondola?.alignment) {
-        return props.shelf?.section?.gondola?.alignment;
-    }
-    // Verifica se a prateleira está alinhada à esquerda ou direita
-    return 'justify';
+    let alignment = props.gondola?.alignment;
+    props.gondola?.sections.map((section: Section) => {
+        if (section.id === props.shelf.section_id) {
+            if (section.alignment) {
+                alignment = section.alignment;
+            }
+            section.shelves.map((shelf: Shelf) => {
+                if (shelf.alignment) {
+                    alignment = shelf.alignment;
+                }
+            });
+        }
+    });
+    return alignment;
 });
 // --- Computeds para Estilos ---
 const shelfStyle = computed(() => {
-    // Convertemos a posição da prateleira para pixels usando o fator de escala
-    const topPosition = props.shelf.shelf_position * props.scaleFactor;
-    const moveStyle = {};
+    // Posição "ideal" ou "arrastada" da prateleira (antes do snap)
+    const targetShelfPosition = props.shelf.shelf_position;
+
+    // Encontrar a posição do furo mais próximo
+    let closestHolePosition = targetShelfPosition; // Default para a posição original
+    if (props.holes && props.holes.length > 0) {
+        let minDifference = Infinity;
+
+        for (const hole of props.holes) {
+            // Certificar que hole.position é um número antes de calcular
+            if (typeof hole.position === 'number') {
+                const currentDifference = Math.abs(targetShelfPosition - hole.position);
+                if (currentDifference < minDifference) {
+                    minDifference = currentDifference;
+                    closestHolePosition = hole.position - props.shelf.shelf_height / 4;
+                }
+            } else {
+                console.warn('Invalid hole position detected:', hole);
+            }
+        }
+        // Opcional: Adicionar um console.log para ver o snap
+        // console.log(`Shelf ${props.shelf.id} - Target: ${targetShelfPosition.toFixed(1)}, Snapped to Hole: ${closestHolePosition.toFixed(1)}`);
+    }
+
+    // Calcular a posição TOP final usando a posição do furo mais próximo
+    const topPosition = closestHolePosition * props.scaleFactor;
+
+    // Calcular estilo de movimento horizontal (se existir)
+    const moveStyle: Record<string, string> = {};
     if (props.shelf?.shelf_x_position !== undefined) {
         const leftPosition = props.shelf.shelf_x_position;
-        // Aplicamos a posição sem o sinal negativo para corrigir a direção do movimento
         moveStyle['left'] = `${leftPosition}px`;
     }
 
-    // Retornamos o estilo final com tipagem correta (as CSSProperties)
+    // Retornar o objeto de estilo completo
     return {
-        position: 'absolute' as const, // Use 'as const' para tipar corretamente
+        position: 'absolute' as const,
         left: '-4px',
         width: `${props.sectionWidth * props.scaleFactor + 4}px`,
         height: `${props.shelf.shelf_height * props.scaleFactor}px`,
-        top: `${topPosition}px`,
+        top: `${topPosition}px`, // <-- Usar a posição calculada com snap
         zIndex: '1',
         ...moveStyle,
-    };
+    } as CSSProperties;
 });
 
 // --- Lógica de Drag and Drop (para produtos) ---
@@ -157,30 +178,28 @@ const shelfStyle = computed(() => {
  */
 const sortableSegments = computed<SegmentType[]>({
     get() {
-        // Garantir que todos os segmentos tenham IDs
-        return props.shelf.segments;
+        return props.shelf.segments || [];
     },
     set(newSegments: SegmentType[]) {
-        // Garantir que a ordenação está atualizada antes de emitir o evento
+        if (!gondolaId.value || !props.shelf.section_id || !props.shelf.id) {
+            console.error('sortableSegments.set: IDs faltando (gondola, section, ou shelf).');
+            return;
+        }
+
         const reorderedSegments = newSegments.map((segment, index) => ({
             ...segment,
             ordering: index + 1,
         }));
-        // Emitir evento para o componente pai (Section) lidar com a atualização
-        shelvesStore.updateShelf(props.shelf.id, {
-            segments: reorderedSegments,
-        });
+
+        editorStore.setShelfSegmentsOrder(
+            gondolaId.value,
+            props.shelf.section_id,
+            props.shelf.id,
+            reorderedSegments
+        );
     },
 });
 
-const updateLayer = (layer: Layer, shelf: Shelf) => {
-    // Emitir evento para o componente pai (Section) lidar com a atualização
-    if (!layer.segment) {
-        // Se o segmento não existir, não faz nada
-        return;
-    }
-    segmentStore.transferLayer(layer.segment_id, layer.segment.shelf_id, shelf.id, 0);
-};
 /**
  * Computed property para estilo do container de segmentos
  * Define a altura baseada na altura da prateleira
@@ -192,98 +211,100 @@ const segmentsContainerStyle = computed(() => {
 });
 
 const selectShelfClick = (event: MouseEvent) => {
-    // Emitir evento para o componente pai (Section) lidar com o clique
     shelvesStore.setSelectedShelf(props.shelf);
     shelvesStore.startEditing();
-    // Emitir evento para o componente pai (Section) lidar com o clique
-    event.stopPropagation(); // Impede que o evento de clique se propague para outros elementos
-    // Verifica se a tecla Ctrl ou Meta está pressionada
+    event.stopPropagation();
     const isCtrlOrMetaPressed = event.ctrlKey || event.metaKey;
     if (isCtrlOrMetaPressed) {
-        // Se a tecla Ctrl ou Meta estiver pressionada, alterna a seleção
         shelvesStore.setSelectedShelfIds(props.shelf.id);
     } else {
-        // Caso contrário, seleciona apenas a prateleira atual
         const isCurrentlySelected = shelvesStore.isShelfSelected(props.shelf.id);
         const selectionSize = shelvesStore.selectedShelfIds.size;
         if (isCurrentlySelected && selectionSize === 1) {
-            // Se a prateleira já estiver selecionada e for a única selecionada, desmarque-a
             shelvesStore.clearSelection();
             shelvesStore.clearSelectedShelfIds();
         } else {
-            // Caso contrário, selecione apenas a prateleira atual
             shelvesStore.clearSelectedShelfIds();
             shelvesStore.setSelectedShelfIds(props.shelf.id);
         }
     }
 };
 const controlDeleteShelf = (event: KeyboardEvent) => {
-    // Verificar se Ctrl+Delete foi pressionado
     if ((event.key === 'Delete' || event.key === 'Backspace') && event.ctrlKey) {
         event.preventDefault();
         shelvesStore.deleteSelectedShelf();
     }
 };
 
-// Handler global para capturar Ctrl+Delete em qualquer parte da aplicação
 const globalKeyHandler = (event: KeyboardEvent) => {
     if (shelvesStore.selectedShelf && shelvesStore.selectedShelf.id === props.shelf.id) {
         controlDeleteShelf(event);
     }
 };
 
+// Função auxiliar para chamar a action do editorStore
+const updateAlignment = (alignment: string | null) => {
+    if (!gondolaId.value || !props.shelf.section_id || !props.shelf.id) {
+        console.error('updateAlignment: IDs faltando (gondola, section, ou shelf).');
+        // Adicionar toast de erro?
+        return;
+    }
+    editorStore.setShelfAlignment(gondolaId.value, props.shelf.section_id, props.shelf.id, alignment);
+}
+
 const setAlignmentLeft = () => {
-    shelvesStore.setSectionAlignment(props.shelf.id, 'left');
+    // REMOVIDO: shelvesStore.setSectionAlignment(props.shelf.id, 'left');
+    updateAlignment('left');
 };
 
 const setAlignmentCenter = () => {
-    shelvesStore.setSectionAlignment(props.shelf.id, 'center');
+    // REMOVIDO: shelvesStore.setSectionAlignment(props.shelf.id, 'center');
+    updateAlignment('center');
 };
 
 const setAlignmentRight = () => {
-    shelvesStore.setSectionAlignment(props.shelf.id, 'right');
+    // REMOVIDO: shelvesStore.setSectionAlignment(props.shelf.id, 'right');
+    updateAlignment('right');
 };
 const setAlignmentJustify = () => {
-    shelvesStore.setSectionAlignment(props.shelf.id, 'justify');
+    // REMOVIDO: shelvesStore.setSectionAlignment(props.shelf.id, 'justify');
+    updateAlignment('justify');
+};
+const setAlignmentNone = () => {
+    // REMOVIDO: shelvesStore.setSectionAlignment(props.shelf.id, null);
+    updateAlignment(null);
 };
 
 const invertSegments = () => {
-    // Inverter a ordem dos segmentos
     const invertedSegments = [...sortableSegments.value].reverse();
     sortableSegments.value = invertedSegments;
+    console.warn("InvertSegments agora usa setShelfSegmentsOrder via computed.");
 };
 
 onMounted(() => {
-    // Adicionar lógica para quando a prateleira é montada
     if (shelfElement.value) {
         shelfElement.value.addEventListener('click', selectShelfClick);
     }
 
-    // Adicionar listener global para capturar Ctrl+Delete
     document.addEventListener('keydown', globalKeyHandler);
 });
 
 onUnmounted(() => {
-    // Remover os listeners quando o componente for desmontado
     if (shelfElement.value) {
         shelfElement.value.removeEventListener('click', selectShelfClick);
     }
 
-    // Remover listener global
     document.removeEventListener('keydown', globalKeyHandler);
 });
 </script>
 
 <style scoped>
 .shelf-container {
-    /* Adicionar transições se houver feedback visual no dragover */
     transition: border-color 0.2s ease-in-out;
 }
 
-/* Estilo para feedback visual ao arrastar sobre */
 .shelf-container.drag-over {
     border-color: theme('colors.blue.500');
-    /* background-color: theme('colors.blue.50 / 50%'); */
 }
 
 .drag-over {
@@ -292,14 +313,10 @@ onUnmounted(() => {
     border-width: 2px;
     border-style: dashed;
     border-radius: 4px;
-    /* Adicionar sombra se necessário */
     box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
-    /* Adicionar transição suave */
     transition:
         border-color 0.2s ease-in-out,
         background-color 0.2s ease-in-out;
-    /* Aumentar a area de drop */
     padding: 0 0 30px 0;
-    /* Adicionar um efeito de escala */
 }
 </style>

@@ -185,11 +185,17 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useSectionStore } from '../../../store/section';
+import { useEditorStore } from '../../../store/editor';
 
 import { PencilIcon } from 'lucide-vue-next';
 import { Section } from '../../../types/sections';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 
 const sectionStore = useSectionStore();
+const editorStore = useEditorStore();
 
 const selectedSection = computed(() => sectionStore.getSelectedSection);
 const isEditing = computed(() => sectionStore.isEditingSection);
@@ -255,12 +261,45 @@ const cancelEditing = () => {
     }
 };
 
-const saveChanges = () => {
-    sectionStore.updateSection(formData.value);
-    sectionStore.finishEditing();
+const saveChanges = async () => {
+    if (!selectedSection.value) return;
 
-    // Aqui você poderia adicionar uma chamada para API para persistir as alterações
-    // Por exemplo:
-    // apiService.updateSection(selectedSection.value.id, formData.value);
+    // ---> Lógica para encontrar o GondolaId correto <---
+    const sectionId = selectedSection.value.id;
+    let correctGondolaId: string | null = null;
+
+    if (!editorStore.currentState || !editorStore.currentState.gondolas) {
+        console.error('Erro ao salvar: Estado do editor ou gôndolas não encontrados.');
+        // Adicionar feedback para o usuário
+        return;
+    }
+
+    for (const gondola of editorStore.currentState.gondolas) {
+        if (gondola.sections.some(section => section.id === sectionId)) {
+            correctGondolaId = gondola.id;
+            break; // Encontrou a gôndola correta
+        }
+    }
+    // ---> Fim da lógica <---
+
+    // Obter o ID da gôndola ativa do editorStore
+    // const gondolaId = editorStore.currentGondolaId; // <-- Remover uso do getter genérico
+
+    if (!correctGondolaId) { // Usa a variável encontrada
+        console.error(`Erro ao salvar: Gôndola contendo a seção ${sectionId} não encontrada no estado do editor.`);
+        // Poderia mostrar um toast/notificação aqui
+        return;
+    }
+
+    try {
+        // Chama a action no editorStore para atualizar os dados da seção com o ID correto da gôndola
+        editorStore.updateSectionData(correctGondolaId, sectionId, formData.value);
+        console.log('Alterações da seção enviadas para o editorStore.');
+        // sectionStore.updateSection(selectedSection.value.id, formData.value); // <-- Remover ou comentar a chamada antiga
+        sectionStore.finishEditing(); // Finaliza o modo de edição no sectionStore local
+    } catch (error) {
+        console.error('Erro ao salvar as alterações da seção:', error);
+        // Adicionar tratamento de erro, como exibir uma notificação para o usuário
+    }
 };
 </script>

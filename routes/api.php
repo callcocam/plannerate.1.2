@@ -13,7 +13,7 @@ Route::middleware(['api', 'auth:sanctum'])
     ->name('api.')
     ->group(function () {
 
-        Route::get('plannerate/show/{id}', [PlannerateController::class, 'show'])->name('plannerate.show');
+        Route::get('plannerate/{id}', [PlannerateController::class, 'show'])->name('plannerate.show');
 
 
         Route::resource('gondolas', GondolaController::class);

@@ -1,0 +1,77 @@
+/* Plannerate - Sistema de gerenciamento de planogramas */
+
+/* Base Tailwind directives - caso o projeto principal use Tailwind */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Variáveis de cores personalizadas */
+:root {
+  --primary-color: #4f46e5;
+  --secondary-color: #0ea5e9;
+  --accent-color: #e11d48;
+  --background-color: #f9fafb;
+  --text-color: #1f2937;
+}
+
+/* Estilos específicos do Plannerate */
+.plannerate-container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+/* Estilos para as gôndolas */
+.gondola {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background-color: var(--background-color);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  margin-bottom: 1rem;
+}
+
+.gondola-header {
+  background-color: var(--primary-color);
+  color: white;
+  padding: 0.75rem 1rem;
+  border-top-left-radius: 0.5rem;
+  border-top-right-radius: 0.5rem;
+  font-weight: 600;
+}
+
+.section {
+  padding: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+ 
+
+/* Estilos de suporte para ações e botões */
+.plannerate-btn {
+  padding: 0.5rem 0.5rem; 
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.plannerate-btn-primary {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.plannerate-btn-secondary {
+  background-color: var(--secondary-color);
+  color: white;
+}
+
+.plannerate-btn-danger {
+  background-color: var(--accent-color);
+  color: white;
+}
+
+/* Utilitários para layout responsivo */
+@media (max-width: 768px) {
+  .plannerate-container {
+    padding: 0.5rem;
+  }
+}

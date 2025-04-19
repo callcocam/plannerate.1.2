@@ -91,41 +91,75 @@
 import { computed, Ref, ref, watch } from 'vue';
 
 import { useShelvesStore } from '../../../store/shelves';
+import { useEditorStore } from '../../../store/editor';
 import { Shelf } from '../../../types/shelves';
 
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+
 const shelvesStore = useShelvesStore();
+const editorStore = useEditorStore();
 
 const selectedShelf = computed(() => shelvesStore.getSelectedShelf) as Ref<Shelf>;
 
-// Inicializa o formulário com valores padrão
-const formData = ref<Shelf>(selectedShelf.value);
+const formData = ref<Partial<Shelf>>({});
 
-// Atualiza o formulário quando a prateleira selecionada muda
 watch(
     selectedShelf,
     (newShelf) => {
         if (newShelf) {
-            formData.value = newShelf;
+            formData.value = { ...newShelf };
+        } else {
+            formData.value = {};
         }
     },
-    { immediate: true },
+    { immediate: true, deep: true },
 );
 
 const cancelEditing = () => {
-    shelvesStore.finishEditing();
-
-    // Reset do formulário para os valores originais
     if (selectedShelf.value) {
-        formData.value = selectedShelf.value;
+        formData.value = { ...selectedShelf.value };
     }
+    shelvesStore.finishEditing();
 };
 
 const saveChanges = () => {
-    if (!formData.value) return;
-    // Validação simples
-    shelvesStore.updateShelf(formData.value.id, formData.value, true);
-    shelvesStore.finishEditing(); 
+    if (!selectedShelf.value || !formData.value) return;
+
+    const sectionId = selectedShelf.value.section_id;
+    const shelfId = selectedShelf.value.id;
+    let correctGondolaId: string | null = null;
+
+    if (!editorStore.currentState || !editorStore.currentState.gondolas) {
+        console.error('Erro ao salvar: Estado do editor ou gôndolas não encontrados.');
+        return;
+    }
+
+    for (const gondola of editorStore.currentState.gondolas) {
+        if (gondola.sections.some(section => section.id === sectionId)) {
+            correctGondolaId = gondola.id;
+            break;
+        }
+    }
+
+    if (!correctGondolaId) {
+        console.error(`Erro ao salvar: Gôndola contendo a seção ${sectionId} não encontrada no estado do editor.`);
+        return;
+    }
+    if (!sectionId) {
+        console.error('Erro ao salvar: ID da Seção não encontrado na prateleira selecionada.');
+        return;
+    }
+
+    try {
+        editorStore.updateShelfData(correctGondolaId, sectionId, shelfId, formData.value);
+        console.log('Alterações da prateleira enviadas para o editorStore.');
+        shelvesStore.finishEditing();
+    } catch (error) {
+        console.error('Erro ao salvar as alterações da prateleira via editorStore:', error);
+    }
 };
- 
- 
 </script>
