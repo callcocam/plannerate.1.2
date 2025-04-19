@@ -262,14 +262,34 @@ export const useEditorStore = defineStore('editor', () => {
     }
 
     /**
-     * Define a gôndola atual e calcula os tabindex para acessibilidade
+     * Define a gôndola atual, calcula os tabindex e reseta o histórico se a gôndola mudou.
      */
     function setCurrentGondola(gondola: Gondola | null) {
-        // Só calcula tabindex se a gondola não for null
-        if (gondola) {
-            calculateTabindex(gondola);
+        const previousGondolaId = currentGondola.value?.id;
+        const newGondolaId = gondola?.id;
+
+        // Verifica se a gôndola realmente mudou
+        if (previousGondolaId !== newGondolaId) {
+            console.log(`Mudando de gôndola ${previousGondolaId || 'nenhuma'} para ${newGondolaId || 'nenhuma'}. Resetando histórico.`);
+            // Reseta o histórico ANTES de mudar a gôndola atual
+            // Isso garante que o histórico comece limpo para o novo contexto
+            resetHistory();
+
+            // Atualiza a gôndola atual
+            currentGondola.value = gondola;
+
+            // Calcula tabindex para a nova gôndola (se não for null)
+            if (gondola) {
+                calculateTabindex(gondola);
+            }
+        } else {
+             // Mesmo se o ID for o mesmo, garante que a referência seja atualizada (útil após undo/redo)
+             // Mas NÃO reseta o histórico neste caso.
+             currentGondola.value = gondola;
+              if (gondola) {
+                calculateTabindex(gondola);
+            }
         }
-        currentGondola.value = gondola;
     }
 
     /**
@@ -985,6 +1005,30 @@ export const useEditorStore = defineStore('editor', () => {
         setIsLoading(false);
     }
 
+    /**
+     * Reseta o histórico, mantendo apenas o estado atual como ponto inicial.
+     * Útil ao carregar um novo planograma ou mudar de contexto principal (ex: outra gôndola).
+     */
+    function resetHistory() {
+        if (!currentState.value) {
+            console.warn("Tentativa de resetar histórico sem estado atual.");
+            history.value = [];
+            historyIndex.value = -1;
+            return;
+        }
+
+        // Cria um novo ponto inicial no histórico com o estado atual
+        const initialEntry: HistoryEntry = {
+            timestamp: Date.now(),
+            state: JSON.parse(JSON.stringify(currentState.value))
+        };
+
+        history.value = [initialEntry];
+        historyIndex.value = 0; // Aponta para o único estado no histórico
+        isTimeTraveling.value = false; // Garante que não esteja em modo de viagem no tempo
+        console.log("Histórico resetado.");
+    }
+
     // =========================================================
     // EXPORTAÇÕES
     // =========================================================
@@ -1018,6 +1062,7 @@ export const useEditorStore = defineStore('editor', () => {
         recordChange,
         undo,
         redo,
+        resetHistory,
         saveChanges,
 
         // Funções de manipulação de dados básicos

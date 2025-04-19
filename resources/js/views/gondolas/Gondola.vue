@@ -21,20 +21,20 @@
             <!-- TODO: Adicionar botão para tentar novamente ou voltar -->
         </div>
         <!-- Conteúdo Principal -->
-        <!-- Passa a gôndola do store para os filhos -->
+        <!-- Passa a gôndola correta encontrada pelo computed para os filhos -->
         <div v-if="editorGondola" class="flex h-full w-full flex-col gap-6 overflow-hidden">
-            <!-- Passar a gôndola reativa do editorStore -->
+            <!-- Passar a gôndola reativa encontrada -->
             <Info :gondola="editorGondola" />
-            <div class="flex  flex-col overflow-auto relative">
-                <!-- <MovableContainer> -->
+            <div class="flex flex-col overflow-auto relative">
                 <Sections :gondola="editorGondola" :scale-factor="scaleFactor" />
-                <!-- </MovableContainer> -->
             </div>
         </div>
         <!-- Mensagem se nenhuma gôndola for encontrada após carregar -->
         <div v-else
             class="flex h-full flex-grow items-center justify-center p-4 text-center text-gray-400 dark:text-gray-500">
-            <p>Gôndola não encontrada ou ID inválido.</p>
+            <!-- Condicionalmente mostra mensagem dependendo se há ID na rota -->
+            <p v-if="!gondolaId">Selecione uma gôndola.</p>
+            <p v-else>Gôndola com ID '{{ route.params.gondolaId }}' não encontrada.</p>
         </div>
 
         <!-- Permite que rotas filhas (como o modal de edição) sejam renderizadas -->
@@ -44,38 +44,46 @@
 
 <script setup lang="ts">
 // Imports de Bibliotecas Externas
-import { computed, ref } from 'vue'; // Adicionado watch
+import { computed, watchEffect, nextTick } from 'vue'; // Importa nextTick
 import { useRoute } from 'vue-router';
 
 // Imports Internos
-// Removido apiService daqui, pois a chamada está no store  
-import { useEditorStore } from '@plannerate/store/editor'; // <-- Importar editorStore
+import { useEditorStore } from '@plannerate/store/editor';
 import Info from '@plannerate/views/gondolas/partials/Info.vue';
 import Sections from '@plannerate/views/gondolas/sections/Sections.vue';
-import { Gondola } from '@/types/gondola';
+// Removido import não utilizado de Gondola type
 
-// Hookcomputed(() => gondolaStore.scaleFac
-const editorStore = useEditorStore(); // <-- Instanciar editorStore
+// Hooks
+const editorStore = useEditorStore();
 const route = useRoute();
 
-
 // Computeds
-const scaleFactor = computed(() => editorStore.currentScaleFactor); // <-- Ler do editorStore
+const scaleFactor = computed(() => editorStore.currentScaleFactor);
 
-// Estado Reativo (apenas ID da rota)
-const gondolaId = ref<string>(route.params.gondolaId as string);
+// ID da gôndola reativo a partir da rota
+const gondolaId = computed(() => route.params.gondolaId as string | undefined);
 
+// Efeito para sincronizar a gôndola atual no store com a rota
+watchEffect(() => {
+    const currentId = gondolaId.value; // ID da rota
+    const storeGondolaId = editorStore.getCurrentGondola?.id; // ID da gôndola no store
 
-// *** NOVA Computed para a gôndola reativa do editorStore ***
-const editorGondola = computed(() => {
-    if (!gondolaId.value) return null;
-    if (!editorStore.currentState?.gondolas) return null;
-    if (editorStore.getCurrentGondola) return editorStore.getCurrentGondola;
-
-    editorStore.setCurrentGondola(editorStore.currentState?.gondolas.find(g => g.id === gondolaId.value) as Gondola);
-    // Busca a gôndola correspondente no estado atual do editor
-    return editorStore.getCurrentGondola;
+    // Chama setCurrentGondola se o ID da rota for diferente do ID no store
+    // A lógica de resetar o histórico e atualizar a gôndola está agora dentro de setCurrentGondola
+    if (currentId !== storeGondolaId) {
+        if (currentId) {
+            // Se há um ID na rota, encontra a gôndola correspondente
+            const targetGondola = editorStore.currentState?.gondolas?.find(g => g.id === currentId) ?? null;
+            editorStore.setCurrentGondola(targetGondola);
+        } else {
+            // Se não há ID na rota, define a gôndola no store como null
+            editorStore.setCurrentGondola(null);
+        }
+    }
 });
+
+// Computed para obter a gôndola correspondente à rota atual para usar no template
+const editorGondola = computed(() => editorStore.getCurrentGondola);
 
 </script>
 
