@@ -84,15 +84,37 @@ export function updateSectionData(gondolaId: string, sectionId: string, sectionD
         return;
     }
 
-    // Mescla os dados antigos com os novos dados
     const originalSection = gondola.sections[sectionIndex];
-    const updatedSection = Object.assign({}, originalSection, sectionData);
+    let changed = false;
 
-    // Verifica se houve realmente alguma mudança
-    if (JSON.stringify(originalSection) !== JSON.stringify(updatedSection)) {
+    // Verifica se alguma propriedade realmente mudou antes de fazer qualquer coisa
+    for (const key in sectionData) {
+        if (Object.prototype.hasOwnProperty.call(sectionData, key) && 
+            originalSection[key as keyof Section] !== sectionData[key as keyof Section]) {
+            changed = true;
+            break;
+        }
+    }
+
+    if (changed) {
+        // Cria o objeto atualizado para o histórico
+        const updatedSection = { ...originalSection, ...sectionData };
+
+        // Atualiza a seção dentro do array da gôndola (para histórico)
         gondola.sections[sectionIndex] = updatedSection;
+        
+        // Se a seção atualizada for a mesma que está selecionada, atualiza as propriedades da ref
+        if (selectedSection.value && selectedSection.value.id === sectionId) {
+            console.log(`Atualizando propriedades da ref selectedSection para ${sectionId}`);
+            // Mescla as novas propriedades no objeto existente da ref
+            Object.assign(selectedSection.value, sectionData);
+            // Para garantir reatividade em casos de propriedades aninhadas (se houver), 
+            // pode ser necessário forçar um gatilho, mas Object.assign geralmente basta.
+            // Exemplo (geralmente não necessário): selectedSection.value = { ...selectedSection.value }; 
+        }
+
         console.log(`Dados da seção ${sectionId} atualizados.`);
-        recordChange();
+        recordChange(); // Registra após todas as mutações
     } else {
         console.log(`Dados da seção ${sectionId} não foram alterados.`);
     }

@@ -81,8 +81,7 @@ const shelfContentStyle = computed((): CSSProperties => {
     if (currentIndex === 0) {
         heightPx = Math.max(minTopHeightPx, heightPx);
         // Para a primeira, o padding inferior é aplicado, mas o topo começa em 0
-        heightPx = Math.max(props.shelf.shelf_position, heightPx - bottomPaddingPx);
-        console.log('heightPx', heightPx, props.shelf.shelf_position * scaleFactor);
+        heightPx = Math.max(props.shelf.shelf_position, heightPx - bottomPaddingPx); 
         otherStyles = {
             transform: `translateY(-${heightPx}px)`
         }

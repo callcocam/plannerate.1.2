@@ -196,6 +196,7 @@ import { Separator } from '@/components/ui/separator';
     const editorStore = useEditorStore();
 
 const selectedSection = computed(() => editorStore.getSelectedSection as Section);
+const editorGondola = computed(() => editorStore.getCurrentGondola);
 const isEditing = computed(() => editorStore.isSectionSelected());
 
 // Inicializa o formulário com valores padrão
@@ -264,20 +265,7 @@ const saveChanges = async () => {
 
     // ---> Lógica para encontrar o GondolaId correto <---
     const sectionId = selectedSection.value.id;
-    let correctGondolaId: string | null = null;
-
-    if (!editorStore.currentState || !editorStore.currentState.gondolas) {
-        console.error('Erro ao salvar: Estado do editor ou gôndolas não encontrados.');
-        // Adicionar feedback para o usuário
-        return;
-    }
-
-    for (const gondola of editorStore.currentState.gondolas) {
-        if (gondola.sections.some(section => section.id === sectionId)) {
-            correctGondolaId = gondola.id;
-            break; // Encontrou a gôndola correta
-        }
-    }
+    let correctGondolaId: string | null = editorGondola.value?.id || null; 
     // ---> Fim da lógica <---
 
     // Obter o ID da gôndola ativa do editorStore
