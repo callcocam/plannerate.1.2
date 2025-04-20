@@ -195,7 +195,7 @@ import { Separator } from '@/components/ui/separator';
 
     const editorStore = useEditorStore();
 
-const selectedSection = computed(() => editorStore.getSelectedSection() as Section);
+const selectedSection = computed(() => editorStore.getSelectedSection as Section);
 const isEditing = computed(() => editorStore.isSectionSelected());
 
 // Inicializa o formulário com valores padrão

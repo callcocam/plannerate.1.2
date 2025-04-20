@@ -6,11 +6,10 @@
                 @drop-product="(product: Product, shelf: Shelf) => $emit('drop-product', product, shelf)"
                 @drop-segment-copy="(segment: SegmentType, shelf: Shelf) => $emit('drop-segment-copy', segment, shelf)"
                 @drop-segment="(segment: SegmentType, oldShelf: Shelf) => $emit('drop-segment', segment, oldShelf)" />
-            <div class="shelf relative flex flex-col items-center bg-gray-700 text-gray-50 dark:bg-gray-800"
-                :class="{
-                    'border-2 border-blue-800 border-dashed  bg-gray-500': isSelected,
-                    'border-2 border-gray-700 bg-gray-700 dark:bg-gray-800 dark:border-gray-800': !isSelected
-                }" :style="shelfStyle" ref="shelfElement">
+            <div class="shelf relative flex flex-col items-center bg-gray-700 text-gray-50 dark:bg-gray-800" :class="{
+                'border-2 border-blue-800 border-dashed  bg-gray-500': isSelected,
+                'border-2 border-gray-700 bg-gray-700 dark:bg-gray-800 dark:border-gray-800': !isSelected
+            }" :style="shelfStyle" ref="shelfElement">
                 <!-- TODO: Renderizar Segmentos/Produtos aqui -->
                 <draggable v-model="sortableSegments" item-key="id" handle=".drag-segment-handle"
                     class="relative flex w-full items-end" :class="{
@@ -219,14 +218,6 @@ const selectShelfClick = (event: MouseEvent) => {
     event.stopPropagation(); // Impede que o clique se propague para elementos pais
     editorStore.setSelectedShelf(props.shelf);
     editorStore.setIsShelfEditing(true);
-    // Remover a lógica que desfazia a seleção imediatamente
-    // const isCurrentlySelected = editorStore.isShelfSelected();
-    // if (isCurrentlySelected) {
-    //     editorStore.clearSelectedShelf();
-    // } else {
-    //     editorStore.clearSelectedShelf();
-    //     editorStore.setSelectedShelf(props.shelf);
-    // }
 };
 
 const controlDeleteShelf = (event: KeyboardEvent) => {
@@ -237,8 +228,10 @@ const controlDeleteShelf = (event: KeyboardEvent) => {
 };
 
 const globalKeyHandler = (event: KeyboardEvent) => {
-    if (editorStore.getSelectedShelf && editorStore.getSelectedShelf?.id === props.shelf.id) {
-        controlDeleteShelf(event);
+    if (editorStore.getSelectedShelf && editorStore.getSelectedShelf?.id === props.shelf.id) { 
+        if (editorStore.getSelectedLayerIds.size === 0) {
+            controlDeleteShelf(event);
+        }
     }
 };
 

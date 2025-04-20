@@ -1,9 +1,8 @@
 // /store/editor/actions/segment.ts
 import type { Segment } from '@plannerate/types/segment';
 import { findGondola, findPath, findSection, findShelf } from '../utils';
-import { recordChange } from '../history';
-import { currentState, isLoading } from '../state';
-
+import { recordChange } from '../history'; 
+import { isLoading } from '../state';
 /**
  * Adiciona um novo segmento a uma prateleira específica
  * @param gondolaId ID da gôndola
@@ -174,5 +173,37 @@ export function updateLayerQuantity(
         console.warn(`Layer com ID ${layerId} não encontrada no segmento ${segmentId}.`);
     }
 
+    isLoading.value = false;
+}
+
+/**
+ * Remove um segmento específico de uma prateleira.
+ * @param gondolaId ID da gôndola
+ * @param sectionId ID da seção
+ * @param shelfId ID da prateleira
+ * @param segmentId ID do segmento a ser removido
+ */
+export function removeSegmentFromShelf(gondolaId: string, sectionId: string, shelfId: string, segmentId: string) {
+    isLoading.value = true;
+    const path = findPath(gondolaId, sectionId, shelfId, 'removeSegmentFromShelf');
+    if (!path || !path.shelf) {
+        console.warn('Caminho para prateleira não encontrado ao tentar remover segmento.');
+        isLoading.value = false;
+        return;
+    }
+
+    const { shelf } = path;
+    const initialLength = shelf.segments.length;
+
+    // Filtra os segmentos, mantendo apenas aqueles cujo ID não corresponde ao segmentId
+    shelf.segments = shelf.segments.filter(segment => segment.id !== segmentId);
+
+    // Verifica se um segmento foi realmente removido
+    if (shelf.segments.length < initialLength) {
+        console.log(`Segmento ${segmentId} removido da prateleira ${shelfId}.`);
+        recordChange(); // Registra a mudança no histórico
+    } else {
+        console.warn(`Segmento ${segmentId} não encontrado na prateleira ${shelfId} para remoção.`);
+    }
     isLoading.value = false;
 }

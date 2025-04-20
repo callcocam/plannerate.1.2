@@ -34,6 +34,7 @@ const editorStore = useEditorStore();
 const layerQuantity = ref(props.layer.quantity || 1);
 const debounceTimer = ref<ReturnType<typeof setTimeout> | null>(null);
 const segmentSelected = ref(false);
+const editorGondola = computed(() => editorStore.getCurrentGondola);
 
 /**
  * Computed style para o layer baseado em alinhamento e dimensões
@@ -72,7 +73,6 @@ const layerStyle = computed(() => {
  */
 const isSelected = computed(() => {
     const layerId = props.layer.id;
-    console.log("isSelected", editorStore.getSelectedLayerIds);
     // Usa selectedLayerIds (nome corrigido e agora existente)
     return editorStore.isSelectedLayer(String(layerId));
 });
@@ -155,7 +155,6 @@ const onDecreaseQuantity = async () => {
     });
 }
 
-
 /**
  * Gerencia a navegação por teclado e teclas de ação
  */
@@ -168,6 +167,28 @@ const handleKeyDown = (event: KeyboardEvent) => {
         } else if (event.key === 'ArrowLeft') {
             event.preventDefault();
             onDecreaseQuantity();
+        } else if (event.key === 'Delete' || event.key === 'Backspace') {
+            event.preventDefault();
+            if (editorGondola.value) {
+                let sectionId = null;
+                let shelfId = null;
+                let segmentId = null;
+                editorGondola.value.sections.forEach(section => {
+                    section.shelves.forEach(shelf => {
+                        shelf.segments.forEach(segment => {
+                            if (segment.id === props.segment.id) {
+                                sectionId = section.id;
+                                shelfId = shelf.id;
+                                segmentId = segment.id;
+                            }
+                        });
+                    });
+                });
+                console.log("sectionId", sectionId, "shelfId", shelfId, "segmentId", segmentId);
+                if (sectionId && shelfId && segmentId) {
+                    editorStore.removeSegmentFromShelf(editorGondola.value.id, sectionId, shelfId, segmentId);
+                }
+            }
         }
     }
 };

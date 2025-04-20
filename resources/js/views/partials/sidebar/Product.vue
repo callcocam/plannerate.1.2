@@ -39,7 +39,7 @@
 <script setup lang="ts">
 import { TrashIcon } from 'lucide-vue-next';
 import { ref, watch } from 'vue';
-import { apiService } from '../../../services'; 
+import { apiService } from '../../../services';
 import { Layer } from '@/types/segment';
 import { useEditorStore } from '../../../store/editor';
 
@@ -48,7 +48,11 @@ const editorStore = useEditorStore();
 const selectedLayers = ref<Layer[]>([]);
 const isLoadingDetails = ref(false);
 
- 
+const emit = defineEmits<{
+    (e: 'remove-layer', layer: Layer): void;
+}>();
+
+
 
 watch(
     editorStore.getSelectedLayerIds,
@@ -94,9 +98,9 @@ const confirmDelete = () => {
         console.error('Layer not found for the selected product');
         return;
     }
-     
+
     // Emitir evento de exclusão apenas quando confirmado
-    // editorStore.deleteLayerFromLayer(layer);
+    emit('remove-layer', layer);
 };
 const cancelDelete = () => {
     // Apenas fechar o modal
