@@ -168,124 +168,21 @@ class GondolaController extends Controller
     {
         try {
             DB::beginTransaction();
+
             $planogram = Planogram::findOrFail($request->input('planogram_id'));
-            $planogram->gondolas->map(function ($gondola) use ($request) {
-                // Atualizar gôndola
-                $gondola->sections->map(function ($section) use ($request) {
-                    // Atualizar seção
-                    $section->shelves->map(function ($shelf) use ($request) {
-                        // Atualizar prateleira
-                        $shelf->forceDelete();
-                    });
-                    $section->forceDelete();
-                });
-                $gondola->forceDelete();
-            });
+
+            // Limpar gôndolas existentes
+            $this->deleteExistingGondolas($planogram->gondolas);
 
             // Validar dados
             $validatedData = $request->validated();
-
-            // Adicionar informações complementares 
             $validatedData['user_id'] = auth()->id();
 
-            // Configurar o serviço de posicionamento
-            $shelfService = new ShelfPositioningService();
+            // Criar nova gôndola
+            $gondola = $this->createGondola($request, $planogram);
 
-            // Dados da gôndola
-            $gondolaData = [
-                'planogram_id' => $request->input('planogram_id', '01jrva4fe6xjjba2hskqqj8mzp'),
-                'name' => $request->input('name', 'GND-2504-5941'),
-                'location' => $request->input('location', 'Center'),
-                'side' => $request->input('side', 'A'),
-                'flow' => $request->input('flow', 'left_to_right'),
-                'scale_factor' => $request->input('scale_factor', 3),
-                'num_modulos' => $request->input('num_modulos', 4),
-                'status' => $request->input('status', 'published'),
-                'user_id' => auth()->id(),
-                'tenant_id' => $planogram->tenant_id,
-            ];
-
-            // Criar a gôndola
-            $gondola = Gondola::create($gondolaData);
-
-            // Número de módulos/seções a criar
-            $num_modulos = $request->input('num_modulos', 4);
-
-            // Criar seções
-            for ($num = 0; $num < $num_modulos; $num++) {
-                // Nome da seção
-                $sectionName = $num . '# Seção';
-
-                // Calcular furos para posicionamento das prateleiras
-                $sectionSettings = [
-                    'holes' => $shelfService->calculateHoles([
-                        'height' => $request->input('altura_secao', 180),
-                        'hole_height' => $request->input('altura_furo', 3),
-                        'hole_spacing' => $request->input('espacamento_furo', 2),
-                        'num_shelves' => $request->input('num_prateleiras', 4),
-                        'hole_width' => $request->input('largura_furo', 2),
-                        'base_height' => $request->input('altura_base', 17),
-                    ])
-                ];
-
-                // Preparar dados da seção
-                $sectionToCreate = [
-                    'gondola_id' => $gondola->id,
-                    'name' => $sectionName,
-                    'code' => 'S' . now()->format('ymd') . rand(1000, 9999),
-                    'width' => $request->input('largura_secao', 130),
-                    'height' => $request->input('altura_secao', 180),
-                    'num_shelves' => $request->input('num_prateleiras', 4),
-                    'base_height' => $request->input('altura_base', 17),
-                    'base_depth' => $request->input('profundidade_base', 40),
-                    'base_width' => $request->input('largura_base', 130),
-                    'cremalheira_width' => $request->input('largura_cremalheira', 4),
-                    'hole_height' => $request->input('altura_furo', 3),
-                    'hole_width' => $request->input('largura_furo', 2),
-                    'hole_spacing' => $request->input('espacamento_furo', 2),
-                    'ordering' => $num,
-                    'settings' => $sectionSettings,
-                    'status' => $request->input('status', 'published'),
-                    'user_id' => auth()->id(),
-                    'tenant_id' => $planogram->tenant_id,
-                ];
-
-                // Criar a seção
-                $section = $gondola->sections()->create($sectionToCreate);
-
-                // Definir a quantidade de prateleiras
-                $shelfQty = $request->input('num_prateleiras', 4);
-                $product_type = $request->input('tipo_produto_prateleira', 'normal');
-
-                // Criar prateleiras
-                for ($i = 0; $i < $shelfQty; $i++) {
-                    // Calcular posição vertical da prateleira (shelf_position)
-                    $position = $shelfService->calculateShelfPosition(
-                        $shelfQty,
-                        $request->input('altura_prateleira', 4),
-                        $sectionSettings['holes'],
-                        $i,
-                        $gondola->scale_factor
-                    );
-
-                    $shelfData = [
-                        'section_id' => $section->id,
-                        'code' => 'SLF' . $i . '-' . now()->format('ymd') . rand(100, 999),
-                        'product_type' => $product_type,
-                        'shelf_width' => $request->input('largura_prateleira', 125),
-                        'shelf_height' => $request->input('altura_prateleira', 4),
-                        'shelf_depth' => $request->input('profundidade_prateleira', 40),
-                        'shelf_position' => round($position),
-                        'ordering' => $i,
-                        'settings' => [],
-                        'status' => $request->input('status', 'published'),
-                        'user_id' => auth()->id(),
-                        'tenant_id' => $planogram->tenant_id,
-                    ];
-
-                    $section->shelves()->create($shelfData);
-                }
-            }
+            // Criar seções e prateleiras
+            $this->createSectionsWithShelves($gondola, $request);
 
             DB::commit();
 
@@ -298,24 +195,9 @@ class GondolaController extends Controller
                     'status' => 'success'
                 ]);
         } catch (ModelNotFoundException $e) {
-            DB::rollBack();
-            return response()->json([
-                'message' => 'Planograma não encontrado',
-                'status' => 'error'
-            ], 404);
+            return $this->handleNotFoundException('Planograma não encontrado');
         } catch (Throwable $e) {
-            DB::rollBack();
-            Log::error('Erro ao criar gôndola', [
-                'data' => $request->all(),
-                'exception' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ]);
-
-            return response()->json([
-                'message' => 'Ocorreu um erro ao criar a gôndola',
-                'status' => 'error'
-            ], 500);
+            return $this->handleException($e, 'Erro ao criar gôndola', $request->all());
         }
     }
 
@@ -332,81 +214,20 @@ class GondolaController extends Controller
         try {
             DB::beginTransaction();
 
-            // Verificar se o planograma existe
-            Planogram::findOrFail($planogramId);
-
-            // Buscar a gôndola
+            $planogram = Planogram::findOrFail($planogramId);
             $gondola = Gondola::where('planogram_id', $planogramId)->findOrFail($id);
+
+            // Limpar seções e prateleiras existentes
+            $this->deleteSectionsAndShelves($gondola->sections);
 
             // Validar dados
             $validatedData = $request->validated();
 
-            // Atualizar slug se o nome foi alterado
-            if (isset($validatedData['name']) && $gondola->name !== $validatedData['name']) {
-                $validatedData['slug'] = Str::slug($validatedData['name']);
-            }
-
             // Atualizar a gôndola
-            $gondola->update($validatedData);
+            $this->updateGondola($gondola, $request);
 
-            // Atualizar seção se fornecida
-            if ($request->has('section')) {
-                $sectionData = $request->input('section');
-
-                // Verificar se a seção existe
-                if ($gondola->sections()->exists()) {
-                    $section = $gondola->sections()->first();
-                    $section->update($sectionData);
-                } else {
-                    // Criar seção se não existir
-                    $sectionData['gondola_id'] = $gondola->id;
-                    $sectionData['user_id'] = auth()->id();
-                    $sectionData['tenant_id'] = auth()->user()->tenant_id ?? null;
-
-                    $section = $gondola->sections()->create($sectionData);
-                }
-
-                // Atualizar prateleiras se necessário
-                if (isset($sectionData['num_shelves'])) {
-                    // Obter o número atual de prateleiras
-                    $currentShelves = $section->shelves()->count();
-                    $numShelves = $sectionData['num_shelves'];
-
-                    if ($numShelves > $currentShelves) {
-                        // Adicionar novas prateleiras
-                        $shelves = [];
-                        for ($i = $currentShelves; $i < $numShelves; $i++) {
-                            $shelves[] = [
-                                'id' => (string) Str::ulid(),
-                                'section_id' => $section->id,
-                                'name' => "Prateleira " . ($i + 1),
-                                'position' => $i,
-                                'height' => $sectionData['shelf_height'] ?? 4,
-                                'width' => $sectionData['width'] ?? 130,
-                                'depth' => $sectionData['shelf_depth'] ?? 40,
-                                'created_at' => now(),
-                                'updated_at' => now(),
-                            ];
-                        }
-
-                        if (!empty($shelves)) {
-                            $section->shelves()->insert($shelves);
-                        }
-                    } elseif ($numShelves < $currentShelves) {
-                        // Remover prateleiras excedentes
-                        $section->shelves()->where('position', '>=', $numShelves)->delete();
-                    }
-
-                    // Atualizar dimensões das prateleiras existentes
-                    if (isset($sectionData['shelf_height']) || isset($sectionData['width']) || isset($sectionData['shelf_depth'])) {
-                        $section->shelves()->update([
-                            'height' => $sectionData['shelf_height'] ?? $section->shelf_height ?? 4,
-                            'width' => $sectionData['width'] ?? $section->width ?? 130,
-                            'depth' => $sectionData['shelf_depth'] ?? $section->shelf_depth ?? 40,
-                        ]);
-                    }
-                }
-            }
+            // Recriar seções e prateleiras
+            $this->createSectionsWithShelves($gondola, $request);
 
             DB::commit();
 
@@ -419,54 +240,29 @@ class GondolaController extends Controller
                     'status' => 'success'
                 ]);
         } catch (ModelNotFoundException $e) {
-            DB::rollBack();
-            return response()->json([
-                'message' => 'Gôndola ou planograma não encontrado',
-                'status' => 'error'
-            ], 404);
+            return $this->handleNotFoundException('Gôndola ou planograma não encontrado');
         } catch (Throwable $e) {
-            DB::rollBack();
-            Log::error('Erro ao atualizar gôndola', [
+            return $this->handleException($e, 'Erro ao atualizar gôndola', [
                 'planogram_id' => $planogramId,
                 'gondola_id' => $id,
-                'data' => $request->all(),
-                'exception' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
+                'data' => $request->all()
             ]);
-
-            return response()->json([
-                'message' => 'Ocorreu um erro ao atualizar a gôndola',
-                'status' => 'error'
-            ], 500);
         }
     }
 
     /**
      * Remove uma gôndola
      *
-     * @param string $id
+     * @param Gondola $gondola
      * @return JsonResponse
      */
     public function destroy(Gondola $gondola)
     {
         try {
             DB::beginTransaction();
-            $gondola->sections->map(function ($section) {
-                // Atualizar seção
-                $section->shelves->map(function ($shelf) {
 
-                    $shelf->segments->map(function ($segment) {
-                        $segment->layer()->forceDelete();
-                        // Atualizar segmento
-                        $segment->forceDelete();
-                    });
-                    // Atualizar prateleira
-                    $shelf->forceDelete();
-                });
-                $section->forceDelete();
-            });
-            $gondola->forceDelete();
+            // Limpar seções e prateleiras
+            $this->deleteGondolaWithRelations($gondola);
 
             DB::commit();
 
@@ -475,24 +271,251 @@ class GondolaController extends Controller
                 'status' => 'success'
             ]);
         } catch (ModelNotFoundException $e) {
-            DB::rollBack();
-            return response()->json([
-                'message' => 'Gôndola ou planograma não encontrado',
-                'status' => 'error'
-            ], 404);
+            return $this->handleNotFoundException('Gôndola ou planograma não encontrado');
         } catch (Throwable $e) {
-            DB::rollBack();
-            Log::error('Erro ao excluir gôndola', [
-                'exception' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ]);
-
-            return response()->json([
-                'message' => 'Ocorreu um erro ao excluir a gôndola',
-                'status' => 'error'
-            ], 500);
+            return $this->handleException($e, 'Erro ao excluir gôndola');
         }
     }
- 
+
+    /**
+     * Cria uma nova gôndola
+     *
+     * @param Request $request
+     * @param Planogram $planogram
+     * @return Gondola
+     */
+    private function createGondola(Request $request, Planogram $planogram): Gondola
+    {
+        $gondolaData = [
+            'planogram_id' => $request->input('planogram_id', $planogram->id),
+            'name' => $request->input('name', 'GND-' . now()->format('ymd') . '-' . rand(1000, 9999)),
+            'location' => $request->input('location', 'Center'),
+            'side' => $request->input('side', 'A'),
+            'flow' => $request->input('flow', 'left_to_right'),
+            'scale_factor' => $request->input('scale_factor', 3),
+            'num_modulos' => $request->input('num_modulos', 4),
+            'status' => $request->input('status', 'published'),
+            'user_id' => auth()->id(),
+            'tenant_id' => $planogram->tenant_id,
+        ];
+
+        return Gondola::create($gondolaData);
+    }
+
+    /**
+     * Atualiza uma gôndola existente
+     *
+     * @param Gondola $gondola
+     * @param Request $request
+     * @return void
+     */
+    private function updateGondola(Gondola $gondola, Request $request): void
+    {
+        $gondolaData = [
+            'name' => $request->input('name', $gondola->name),
+            'location' => $request->input('location', $gondola->location),
+            'side' => $request->input('side', $gondola->side),
+            'flow' => $request->input('flow', $gondola->flow),
+            'scale_factor' => $request->input('scale_factor', $gondola->scale_factor),
+            'num_modulos' => $request->input('num_modulos', $gondola->num_modulos),
+            'status' => $request->input('status', $gondola->status),
+            'user_id' => auth()->id(),
+        ];
+
+        // Atualizar slug se o nome foi alterado
+        if ($gondola->name !== $gondolaData['name']) {
+            $gondolaData['slug'] = Str::slug($gondolaData['name']);
+        }
+
+        $gondola->update($gondolaData);
+    }
+
+    /**
+     * Cria seções e prateleiras para uma gôndola
+     *
+     * @param Gondola $gondola
+     * @param Request $request
+     * @return void
+     */
+    private function createSectionsWithShelves(Gondola $gondola, Request $request): void
+    {
+        $shelfService = new ShelfPositioningService();
+        $num_modulos = $request->input('num_modulos', $gondola->num_modulos);
+
+        for ($num = 0; $num < $num_modulos; $num++) {
+            // Criar seção
+            $sectionName = $num . '# Seção';
+
+            // Calcular furos para posicionamento das prateleiras
+            $sectionSettings = [
+                'holes' => $shelfService->calculateHoles([
+                    'height' => $request->input('altura_secao', 180),
+                    'hole_height' => $request->input('altura_furo', 3),
+                    'hole_spacing' => $request->input('espacamento_furo', 2),
+                    'num_shelves' => $request->input('num_prateleiras', 4),
+                    'hole_width' => $request->input('largura_furo', 2),
+                    'base_height' => $request->input('altura_base', 17),
+                ])
+            ];
+
+            // Dados da seção
+            $sectionToCreate = [
+                'gondola_id' => $gondola->id,
+                'name' => $sectionName,
+                'code' => 'S' . now()->format('ymd') . rand(1000, 9999),
+                'width' => $request->input('largura_secao', 130),
+                'height' => $request->input('altura_secao', 180),
+                'num_shelves' => $request->input('num_prateleiras', 4),
+                'base_height' => $request->input('altura_base', 17),
+                'base_depth' => $request->input('profundidade_base', 40),
+                'base_width' => $request->input('largura_base', 130),
+                'cremalheira_width' => $request->input('largura_cremalheira', 4),
+                'hole_height' => $request->input('altura_furo', 3),
+                'hole_width' => $request->input('largura_furo', 2),
+                'hole_spacing' => $request->input('espacamento_furo', 2),
+                'ordering' => $num,
+                'settings' => $sectionSettings,
+                'status' => $request->input('status', 'published'),
+                'user_id' => auth()->id(),
+                'tenant_id' => $gondola->tenant_id,
+            ];
+
+            // Criar a seção
+            $section = $gondola->sections()->create($sectionToCreate);
+
+            // Criar prateleiras para a seção
+            $this->createShelvesForSection($section, $request, $sectionSettings, $shelfService);
+        }
+    }
+
+    /**
+     * Cria prateleiras para uma seção
+     *
+     * @param mixed $section
+     * @param Request $request
+     * @param array $sectionSettings
+     * @param ShelfPositioningService $shelfService
+     * @return void
+     */
+    private function createShelvesForSection($section, Request $request, array $sectionSettings, ShelfPositioningService $shelfService): void
+    {
+        $shelfQty = $request->input('num_prateleiras', 4);
+        $product_type = $request->input('tipo_produto_prateleira', 'normal');
+
+        for ($i = 0; $i < $shelfQty; $i++) {
+            // Calcular posição vertical da prateleira
+            $position = $shelfService->calculateShelfPosition(
+                $shelfQty,
+                $request->input('altura_prateleira', 4),
+                $sectionSettings['holes'],
+                $i,
+                $section->gondola->scale_factor
+            );
+
+            $shelfData = [
+                'section_id' => $section->id,
+                'code' => 'SLF' . $i . '-' . now()->format('ymd') . rand(100, 999),
+                'product_type' => $product_type,
+                'shelf_width' => $request->input('largura_prateleira', 125),
+                'shelf_height' => $request->input('altura_prateleira', 4),
+                'shelf_depth' => $request->input('profundidade_prateleira', 40),
+                'shelf_position' => round($position),
+                'ordering' => $i,
+                'settings' => [],
+                'status' => $request->input('status', 'published'),
+                'user_id' => auth()->id(),
+                'tenant_id' => $section->tenant_id,
+            ];
+
+            $section->shelves()->create($shelfData);
+        }
+    }
+
+    /**
+     * Deleta gôndolas existentes com todas as relações
+     * 
+     * @param $gondolas
+     * @return void
+     */
+    private function deleteExistingGondolas($gondolas): void
+    {
+        $gondolas->map(function ($gondola) {
+            $this->deleteGondolaWithRelations($gondola);
+        });
+    }
+
+    /**
+     * Deleta uma gôndola com todas as suas relações
+     * 
+     * @param Gondola $gondola
+     * @return void
+     */
+    private function deleteGondolaWithRelations(Gondola $gondola): void
+    {
+        $this->deleteSectionsAndShelves($gondola->sections);
+        $gondola->forceDelete();
+    }
+
+    /**
+     * Deleta seções e prateleiras
+     * 
+     * @param $sections
+     * @return void
+     */
+    private function deleteSectionsAndShelves($sections): void
+    {
+        $sections->map(function ($section) {
+            $section->shelves->map(function ($shelf) {
+                // Delete segments and layers if they exist
+                if (method_exists($shelf, 'segments') && $shelf->segments) {
+                    $shelf->segments->map(function ($segment) {
+                        if (method_exists($segment, 'layer') && $segment->layer) {
+                            $segment->layer()->forceDelete();
+                        }
+                        $segment->forceDelete();
+                    });
+                }
+                $shelf->forceDelete();
+            });
+            $section->forceDelete();
+        });
+    }
+
+    /**
+     * Trata exceção de item não encontrado
+     * 
+     * @param string $message
+     * @return JsonResponse
+     */
+    private function handleNotFoundException(string $message): JsonResponse
+    {
+        DB::rollBack();
+        return response()->json([
+            'message' => $message,
+            'status' => 'error'
+        ], 404);
+    }
+
+    /**
+     * Trata exceções gerais
+     * 
+     * @param Throwable $exception
+     * @param string $message
+     * @param array $context
+     * @return JsonResponse
+     */
+    private function handleException(Throwable $exception, string $message, array $context = []): JsonResponse
+    {
+        DB::rollBack();
+        Log::error($message, array_merge($context, [
+            'exception' => $exception->getMessage(),
+            'file' => $exception->getFile(),
+            'line' => $exception->getLine(),
+        ]));
+
+        return response()->json([
+            'message' => 'Ocorreu um erro ao processar a solicitação',
+            'status' => 'error'
+        ], 500);
+    }
 }
