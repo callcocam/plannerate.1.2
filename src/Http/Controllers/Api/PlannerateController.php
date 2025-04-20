@@ -16,6 +16,7 @@ use Callcocam\Plannerate\Models\Planogram;
 use Callcocam\Plannerate\Models\Section;
 use Callcocam\Plannerate\Models\Segment;
 use Callcocam\Plannerate\Models\Shelf;
+use Callcocam\Plannerate\Services\ShelfPositioningService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -226,6 +227,8 @@ class PlannerateController extends Controller
         $existingSectionIds = $gondola->sections()->pluck('id')->toArray();
         $processedSectionIds = [];
 
+        // Criar seções se fornecidas
+        $shelfService =  new ShelfPositioningService();
         foreach ($sections as $sectionData) {
             // Verificar se é uma seção existente ou nova
             $section = Section::query()->where('id', data_get($sectionData, 'id'))->first();
@@ -240,7 +243,7 @@ class PlannerateController extends Controller
             }
 
             // Atualizar atributos da seção
-            $section->fill($this->filterSectionAttributes($sectionData));
+            $section->fill($this->filterSectionAttributes($sectionData, $shelfService, $gondola));
             $section->save();
 
             // Registrar o ID para não remover depois
@@ -248,7 +251,7 @@ class PlannerateController extends Controller
 
             // Processar prateleiras desta seção
             if (isset($sectionData['shelves'])) {
-                $this->processShelves($section, data_get($sectionData, 'shelves', []));
+                $this->processShelves($section, data_get($sectionData, 'shelves', []), $shelfService);
             }
         }
 
@@ -263,9 +266,10 @@ class PlannerateController extends Controller
      * Filtra atributos da seção
      * 
      * @param array $data
+     * @param ShelfPositioningService $shelfService
      * @return array
      */
-    private function filterSectionAttributes(array $data): array
+    private function filterSectionAttributes(array $data, ShelfPositioningService $shelfService, Gondola $gondola): array
     {
         $fillable = [
             'name',
@@ -288,10 +292,12 @@ class PlannerateController extends Controller
             // Adicione outros campos conforme necessário
         ];
 
-        // Converter settings para JSON se for array
-        if (isset($data['settings']) && is_array($data['settings'])) {
-            // $data['settings'] = json_encode($data['settings']);
-        }
+
+        $sectionSettings = $sectionData['settings'] ?? [];
+
+        $sectionSettings['holes'] = $shelfService->calculateHoles($data, $gondola->scale_factor);
+
+        $data['settings'] = $sectionSettings;
 
         return array_intersect_key($data, array_flip($fillable));
     }
@@ -303,13 +309,13 @@ class PlannerateController extends Controller
      * @param array $shelves
      * @return void
      */
-    private function processShelves(Section $section, array $shelves): void
+    private function processShelves(Section $section, array $shelves, ShelfPositioningService $shelfService): void
     {
         // Coletar IDs existentes para depois remover os que não estão mais presentes
         $existingShelfIds = $section->shelves()->pluck('id')->toArray();
         $processedShelfIds = [];
 
-        foreach ($shelves as $shelfData) {
+        foreach ($shelves as  $i => $shelfData) {
             // Verificar se é uma prateleira existente ou nova
             $shelf = Shelf::query()->where('id', data_get($shelfData, 'id'))->first();
             if (!$shelf) {
@@ -322,7 +328,7 @@ class PlannerateController extends Controller
             }
 
             // Atualizar atributos da prateleira
-            $shelf->fill($this->filterShelfAttributes($shelfData));
+            $shelf->fill($this->filterShelfAttributes($shelfData, $shelfService, $i, $section));
             $shelf->save();
 
             // Registrar o ID para não remover depois
@@ -345,9 +351,12 @@ class PlannerateController extends Controller
      * Filtra atributos da prateleira
      * 
      * @param array $data
+     * @param ShelfPositioningService $shelfService
+     * @param int $i
+     * @param Section $section
      * @return array
      */
-    private function filterShelfAttributes(array $data): array
+    private function filterShelfAttributes(array $data, ShelfPositioningService $shelfService, int $i, Section $section): array
     {
         $fillable = [
             'code',
@@ -365,11 +374,11 @@ class PlannerateController extends Controller
             'alignment',
             // Adicione outros campos conforme necessário
         ];
-
+        $holes = data_get($section, 'settings.holes', []);
+        $position = $shelfService->calculateShelfPosition($section->num_shelves, data_get($data, 'shelf_height', 4), $holes, $i, $section->gondola->scale_factor);
+        $data['shelf_position'] = $position;
         // Converter settings para JSON se for array
-        if (isset($data['settings']) && is_array($data['settings'])) {
-            $data['settings'] = json_encode($data['settings']);
-        }
+         
 
         return array_intersect_key($data, array_flip($fillable));
     }
