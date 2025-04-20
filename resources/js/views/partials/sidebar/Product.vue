@@ -38,21 +38,20 @@
 </template>
 <script setup lang="ts">
 import { TrashIcon } from 'lucide-vue-next';
-import { storeToRefs } from 'pinia';
 import { ref, watch } from 'vue';
-import { apiService } from '../../../services';
-import { useProductStore } from '../../../store/product';
+import { apiService } from '../../../services'; 
 import { Layer } from '@/types/segment';
+import { useEditorStore } from '../../../store/editor';
 
-const productStore = useProductStore();
+const editorStore = useEditorStore();
 
 const selectedLayers = ref<Layer[]>([]);
 const isLoadingDetails = ref(false);
 
-const { selectedProductIds } = storeToRefs(productStore);
+ 
 
 watch(
-    selectedProductIds,
+    editorStore.getSelectedLayerIds,
     async (newIdsSet) => {
         const idsToFetch = Array.from(newIdsSet);
 
@@ -80,32 +79,24 @@ watch(
 
 const handleLayerRemove = (layer: Layer) => {
     showDeleteConfirm.value = true;
-    productStore.setSelectedProduct(layer.product);
+    editorStore.setSelectedLayer(layer);
 };
 const showDeleteConfirm = ref(false);
 const confirmDelete = () => {
-    const selectedProduct = productStore.selectedProduct;
-    if (!selectedProduct) {
-        console.error('No product selected');
+    const selectedLayer = editorStore.selectedLayer;
+    if (!selectedLayer) {
+        console.error('No layer selected');
         return;
     }
 
-    const layer = selectedProduct;
+    const layer = selectedLayer;
     if (!layer) {
         console.error('Layer not found for the selected product');
         return;
     }
-    if (!layer.segment) {
-        console.error('Segment not found for the selected layer');
-        return;
-    }
-    const shelf = layer.segment?.shelf;
-    if (!shelf) {
-        console.error('Shelf not found for the selected layer');
-        return;
-    }
+     
     // Emitir evento de exclusão apenas quando confirmado
-    productStore.deleteProductFromLayer(layer, shelf);
+    // editorStore.deleteLayerFromLayer(layer);
 };
 const cancelDelete = () => {
     // Apenas fechar o modal

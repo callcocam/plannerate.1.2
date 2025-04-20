@@ -14,7 +14,22 @@ import {
     canRedo,
     hasChanges,
     currentGondolaId,
-    getCurrentGondola
+    getCurrentGondola,
+    productIdsInCurrentGondola,
+    selectedLayerIds,
+    selectedShelf,
+    isShelfEditing,
+    selectedSection,
+    isSectionEditing,
+    selectedSegment,
+    isSegmentEditing,
+    selectedLayer,
+    isLayerEditing,
+    getSelectedShelf,
+    getSelectedSection,
+    getSelectedSegment,
+    getSelectedLayer,
+    getSelectedLayerIds,
 } from './editor/state';
 
 // Funções de histórico
@@ -40,6 +55,15 @@ export const useEditorStore = defineStore('editor', () => {
         currentGondola,
         isLoading,
         error,
+        selectedShelf,
+        isShelfEditing,
+        selectedSection,
+        isSectionEditing,
+        selectedSegment,
+        isSegmentEditing,
+        selectedLayerIds,
+        selectedLayer,
+        isLayerEditing,
 
         // Getters computados
         hasChanges,
@@ -49,6 +73,12 @@ export const useEditorStore = defineStore('editor', () => {
         isGridVisible,
         currentGondolaId,
         getCurrentGondola,
+        productIdsInCurrentGondola,
+        getSelectedShelf,
+        getSelectedSection,
+        getSelectedSegment,
+        getSelectedLayer,
+        getSelectedLayerIds,
 
         // Funções de inicialização
         initialize: actions.initialize,
@@ -84,6 +114,10 @@ export const useEditorStore = defineStore('editor', () => {
         removeSectionFromGondola: actions.removeSectionFromGondola,
         setSectionAlignment: actions.setSectionAlignment,
         updateSectionData: actions.updateSectionData,
+        setIsSectionEditing: actions.setIsSectionEditing,
+        setSelectedSection: actions.setSelectedSection,
+        clearSelectedSection: actions.clearSelectedSection,
+        isSectionSelected: actions.isSectionSelected,
 
         // Manipulação de prateleiras
         invertShelvesInSection: actions.invertShelvesInSection,
@@ -93,11 +127,25 @@ export const useEditorStore = defineStore('editor', () => {
         removeShelfFromSection: actions.removeShelfFromSection,
         updateShelfData: actions.updateShelfData,
         transferShelfBetweenSections: actions.transferShelfBetweenSections,
+        setIsShelfEditing: actions.setIsShelfEditing,
+        setSelectedShelf: actions.setSelectedShelf,
+        clearSelectedShelf: actions.clearSelectedShelf,
+        isShelfSelected: actions.isShelfSelected,
 
         // Manipulação de segmentos
         addSegmentToShelf: actions.addSegmentToShelf,
         setShelfSegmentsOrder: actions.setShelfSegmentsOrder,
         transferSegmentBetweenShelves: actions.transferSegmentBetweenShelves,
         updateLayerQuantity: actions.updateLayerQuantity,
+
+        // Manipulação de layers
+        selectLayer: actions.selectLayer,
+        isSelectedLayer: actions.isSelectedLayer,
+        deselectLayer: actions.deselectLayer,
+        isDeselectedLayer: actions.isDeselectedLayer,
+        toggleLayerSelection: actions.toggleLayerSelection,
+        isToggleSelectedLayer: actions.isToggleSelectedLayer,
+        clearLayerSelection: actions.clearLayerSelection,
+        setSelectedLayer: actions.setSelectedLayer,
     };
 });

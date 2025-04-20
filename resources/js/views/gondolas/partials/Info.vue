@@ -20,10 +20,9 @@ import { useRouter } from 'vue-router';
 
 // Imports Internos 
 import { useEditorStore } from '@plannerate/store/editor';
-import { useShelvesStore } from '@plannerate/store/shelves';
-import Category from './Category.vue'; 
+import Category from './Category.vue';
 import { Button } from '@/components/ui/button';
-import type { Gondola } from '@plannerate/types/gondola'; 
+import type { Gondola } from '@plannerate/types/gondola';
 
 // Definição das Props usando sintaxe padrão
 const props = defineProps({
@@ -48,7 +47,6 @@ const emit = defineEmits(['update:invertOrder', 'update:category']);
 
 // Hooks e Stores
 const router = useRouter();
-const shelvesStore = useShelvesStore();
 const editorStore = useEditorStore(); // Instanciar editorStore
 
 // Estado Local
@@ -67,7 +65,7 @@ const sections = computed(() => (props.gondola as Gondola | undefined)?.sections
 
 const shelfSelected = computed(() => {
     // Verifica se há prateleiras selecionadas
-    return shelvesStore.selectedShelf;
+    return editorStore.getSelectedShelf;
 });
 
 // Adicionar Computed Props do Editor
@@ -144,8 +142,8 @@ const navigateToAddSection = () => {
 const confirmDeleteGondola = async () => {
     const currentGondola = props.gondola as Gondola | undefined;
     if (!currentGondola) return;
-    try { 
-        const planogramId = currentGondola.planogram_id; 
+    try {
+        const planogramId = currentGondola.planogram_id;
         router.push({
             name: 'plannerate.home',
             params: { id: planogramId },
@@ -181,7 +179,9 @@ const confirmDeleteShelf = async () => {
     if (!shelfSelected.value) return;
     try {
         // Chamar o método de exclusão da prateleira no gondolaStore
-        await shelvesStore.deleteSelectedShelf();
+        if (props.gondola) {
+            await editorStore.removeShelfFromSection(props.gondola.id, shelfSelected.value.section_id, shelfSelected.value.id);
+        }
     } catch (error) {
         console.error('Erro ao excluir prateleira:', error);
     }
@@ -211,7 +211,7 @@ const setGondolaAlignmentHandler = (alignment: string | null = null) => {
     }
 
 
-    
+
     try {
         console.log(`Setting default alignment to ${alignment} for gondola ${gondolaId}`);
         editorStore.setGondolaAlignment(gondolaId, alignment);

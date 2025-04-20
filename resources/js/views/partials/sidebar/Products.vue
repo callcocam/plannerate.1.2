@@ -77,11 +77,11 @@
 
         <!-- Lista de produtos com design limpo -->
         <div class="flex-1 overflow-y-auto p-2 dark:bg-gray-800">
-            <div v-if="!productStore.isLoading && filteredProducts.length > 0" class="mb-2 px-2 py-1 text-sm text-gray-500 dark:text-gray-400">
+            <div v-if="!editorStore.isLoading && filteredProducts.length > 0" class="mb-2 px-2 py-1 text-sm text-gray-500 dark:text-gray-400">
                 <span>{{ filteredProducts.length }} produtos encontrados</span>
             </div>
 
-            <ul v-if="!productStore.isLoading && filteredProducts.length > 0" class="space-y-1">
+            <ul v-if="!editorStore.isLoading && filteredProducts.length > 0" class="space-y-1">
                 <li
                     v-for="product in filteredProducts"
                     :key="product.id"
@@ -108,13 +108,13 @@
             </ul>
 
             <!-- Loading state -->
-            <div v-if="productStore.isLoading" class="flex items-center justify-center py-10">
+            <div v-if="editorStore.isLoading" class="flex items-center justify-center py-10">
                 <Loader class="h-6 w-6 animate-spin text-primary" />
                 <span class="ml-2 text-sm text-gray-500 dark:text-gray-400">Carregando...</span>
             </div>
 
             <!-- Empty state -->
-            <div v-if="!productStore.isLoading && filteredProducts.length === 0" class="flex flex-col items-center justify-center py-10 text-center">
+            <div v-if="!editorStore.isLoading && filteredProducts.length === 0" class="flex flex-col items-center justify-center py-10 text-center">
                 <Package class="h-10 w-10 text-gray-300 dark:text-gray-600" />
                 <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Nenhum produto disponível encontrado</p>
                 <p v-if="Object.values(filters).some((f) => f)" class="mt-1 text-xs text-gray-400 dark:text-gray-500">Tente ajustar os filtros.</p>
@@ -137,10 +137,9 @@
 import { ChevronDown, Loader, Package, Search, SlidersHorizontal } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
 import { onMounted, reactive, ref, watch } from 'vue';
-import { apiService } from '../../../services';
-import { useGondolaStore } from '../../../store/gondola'; 
-import { useProductStore } from '../../../store/product';
-import { Product } from '../../../types/segments';
+import { apiService } from '@plannerate/services';
+import { useEditorStore } from '@plannerate/store/editor'; 
+import { Product } from '@plannerate/types/segment';
 
 interface Category {
     id: number | string;
@@ -159,11 +158,10 @@ interface FilterState {
         default: () => [],
     },
 });
+ 
+const editorStore = useEditorStore();
 
-const productStore = useProductStore();
-const gondolaStore = useGondolaStore();
-
-const { productIdsInGondola } = storeToRefs(gondolaStore);
+const { productIdsInCurrentGondola } = storeToRefs(editorStore);
 
 const emit = defineEmits(['select-product', 'drag-start', 'view-stats']);
 
@@ -195,12 +193,14 @@ const fetchProducts = async (page = 1, append = false) => {
     console.log(`Fetching products: page=${page}, append=${append}`);
 
     try {
+        const idsArray = Array.from(productIdsInCurrentGondola.value);
+
         const params: Record<string, any> = {
             search: filters.search || undefined,
             category: filters.category || undefined,
             hangable: filters.hangable || undefined,
             stackable: filters.stackable || undefined,
-            notInGondola: productIdsInGondola.value,
+            notInGondola: idsArray,
             page: page,
             limit: LIST_LIMIT,
         };
@@ -247,8 +247,8 @@ watch(
     { deep: true },
 );
 
-watch(productIdsInGondola, () => {
-    // console.log('Product IDs in gondola changed, fetching page 1...');
+watch(productIdsInCurrentGondola, () => {
+    console.log('Product IDs in current gondola changed (via editorStore), fetching page 1...');
     setTimeout(async () => { 
         await fetchProducts(1, false);
     }, 300); // Pequeno delay

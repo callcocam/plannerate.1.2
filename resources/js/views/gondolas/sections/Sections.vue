@@ -5,44 +5,31 @@
                 <template #item="{ element: section, index }">
                     <div :key="section.id">
                         <div class="flex items-center relative">
-                            <Cremalheira :section="section" :scale-factor="scaleFactor" @delete-section="deleteSection" @edit-section="editSection">
+                            <Cremalheira :section="section" :scale-factor="scaleFactor" @delete-section="deleteSection"
+                                @edit-section="editSection">
                                 <template #actions>
-                                    <Button
-                                        size="sm"
+                                    <Button size="sm"
                                         class="drag-handle h-6 w-6 cursor-move p-0 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-                                        variant="secondary"
-                                    >
-                                        <MoveIcon class="h-3 w-3" /> 
+                                        variant="secondary">
+                                        <MoveIcon class="h-3 w-3" />
                                     </Button>
                                 </template>
                             </Cremalheira>
-                            <SectionComponent
-                                :key="section.id"
-                                :gondola="gondola"
-                                :section-index="index"
-                                :section="section"
-                                :scale-factor="scaleFactor" 
-                                :sections-container="sectionsContainer" 
-                                @segment-select="$emit('segment-select', $event)"   
-                                @delete-section="deleteSection"
-                            >
-                            <!-- <div class=" w-full h-full" >
+                            <SectionComponent :key="section.id" :gondola="gondola" :section-index="index"
+                                :section="section" :scale-factor="scaleFactor" :sections-container="sectionsContainer"
+                                @segment-select="$emit('segment-select', $event)" @delete-section="deleteSection">
+                                <!-- <div class=" w-full h-full" >
                                  <SectionDrop :section="section" :scale-factor="scaleFactor" />
                             </div> -->
                             </SectionComponent>
-                            
+
                         </div>
                     </div>
                 </template>
             </draggable>
             <div v-if="lastSectionData" class="flex items-center">
-                <Cremalheira
-                    :section="lastSectionData"
-                    :scale-factor="scaleFactor"
-                    :is-last-section="true"
-                    :key="`rack-end-${lastSectionData.id}`"
-                    @edit-section="editSection"
-                />
+                <Cremalheira :section="lastSectionData" :scale-factor="scaleFactor" :is-last-section="true"
+                    :key="`rack-end-${lastSectionData.id}`" @edit-section="editSection" />
             </div>
         </div>
     </div>
@@ -57,22 +44,20 @@ import type { Gondola } from '@plannerate/types/gondola';
 import type { Section as SectionType } from '@plannerate/types/sections';
 
 import Cremalheira from '@plannerate/views/gondolas/sections/Cremalheira.vue';
-import SectionComponent from '@plannerate/views/gondolas/sections/Section.vue'; 
-import { useSectionStore } from '@plannerate/store/section'; 
-import { useEditorStore } from '@plannerate/store/editor'; 
- 
+import SectionComponent from '@plannerate/views/gondolas/sections/Section.vue';
+import { useEditorStore } from '@plannerate/store/editor';
+
 
 const props = defineProps<{
-    gondola: Gondola; 
+    gondola: Gondola;
     scaleFactor: number;
-}>(); 
+}>();
 
 
 const sectionsContainer = ref<HTMLElement | null>(null);
 
 const emit = defineEmits(['sections-reordered', 'shelves-updated', 'move-shelf-to-section', 'segment-select']);
- 
-const sectionStore = useSectionStore(); 
+
 const editorStore = useEditorStore();
 
 const draggableSectionsModel = computed<SectionType[]>({
@@ -100,11 +85,10 @@ const deleteSection = (sectionToDelete: SectionType) => {
     }
     editorStore.removeSectionFromGondola(props.gondola.id, sectionToDelete.id);
 };
- 
+
 
 const editSection = (section: SectionType) => {
-    sectionStore.setSelectedSection(section);
-    sectionStore.startEditing();
+    editorStore.setSelectedSection(section);
 };
 </script>
 

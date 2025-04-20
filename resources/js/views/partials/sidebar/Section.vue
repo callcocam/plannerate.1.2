@@ -184,7 +184,6 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { useSectionStore } from '../../../store/section';
 import { useEditorStore } from '../../../store/editor';
 
 import { PencilIcon } from 'lucide-vue-next';
@@ -194,11 +193,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 
-const sectionStore = useSectionStore();
-const editorStore = useEditorStore();
+    const editorStore = useEditorStore();
 
-const selectedSection = computed(() => sectionStore.getSelectedSection);
-const isEditing = computed(() => sectionStore.isEditingSection);
+const selectedSection = computed(() => editorStore.getSelectedSection() as Section);
+const isEditing = computed(() => editorStore.isSectionSelected());
 
 // Inicializa o formulário com valores padrão
 const formData = ref<Partial<Section>>({
@@ -217,7 +215,7 @@ const formData = ref<Partial<Section>>({
 // Atualiza o formulário quando a seção selecionada muda
 watch(
     selectedSection,
-    (newSection) => {
+    (newSection: Section) => {
         if (newSection) {
             formData.value = {
                 name: newSection.name,
@@ -238,11 +236,11 @@ watch(
 
 // Métodos para gerenciar a edição
 const startEditing = () => {
-    sectionStore.startEditing();
+    editorStore.setIsSectionEditing(true);
 };
 
 const cancelEditing = () => {
-    sectionStore.finishEditing();
+    editorStore.setIsSectionEditing(false);
 
     // Reset do formulário para os valores originais
     if (selectedSection.value) {
@@ -296,7 +294,7 @@ const saveChanges = async () => {
         editorStore.updateSectionData(correctGondolaId, sectionId, formData.value);
         console.log('Alterações da seção enviadas para o editorStore.');
         // sectionStore.updateSection(selectedSection.value.id, formData.value); // <-- Remover ou comentar a chamada antiga
-        sectionStore.finishEditing(); // Finaliza o modo de edição no sectionStore local
+        editorStore.setIsSectionEditing(false); // Finaliza o modo de edição no sectionStore local
     } catch (error) {
         console.error('Erro ao salvar as alterações da seção:', error);
         // Adicionar tratamento de erro, como exibir uma notificação para o usuário

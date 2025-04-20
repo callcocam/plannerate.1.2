@@ -90,7 +90,6 @@
 <script setup lang="ts">
 import { computed, Ref, ref, watch } from 'vue';
 
-import { useShelvesStore } from '../../../store/shelves';
 import { useEditorStore } from '../../../store/editor';
 import { Shelf } from '../../../types/shelves';
 
@@ -100,10 +99,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 
-const shelvesStore = useShelvesStore();
 const editorStore = useEditorStore();
 
-const selectedShelf = computed(() => shelvesStore.getSelectedShelf) as Ref<Shelf>;
+const selectedShelf = computed(() => editorStore.getSelectedShelf as Shelf);
 
 const formData = ref<Partial<Shelf>>({});
 
@@ -123,7 +121,7 @@ const cancelEditing = () => {
     if (selectedShelf.value) {
         formData.value = { ...selectedShelf.value };
     }
-    shelvesStore.finishEditing();
+    editorStore.setIsShelfEditing(false);
 };
 
 const saveChanges = () => {
@@ -157,7 +155,7 @@ const saveChanges = () => {
     try {
         editorStore.updateShelfData(correctGondolaId, sectionId, shelfId, formData.value);
         console.log('Alterações da prateleira enviadas para o editorStore.');
-        shelvesStore.finishEditing();
+        editorStore.setIsShelfEditing(false);
     } catch (error) {
         console.error('Erro ao salvar as alterações da prateleira via editorStore:', error);
     }

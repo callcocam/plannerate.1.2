@@ -2,7 +2,7 @@
 import type { Section } from '@plannerate/types/sections';
 import { findGondola, findPath } from '../utils';
 import { recordChange } from '../history';
-
+import { isSectionEditing, selectedSection } from '../state';
 /**
  * Define a ordem das seções para uma gôndola específica
  * @param gondolaId ID da gôndola
@@ -96,4 +96,25 @@ export function updateSectionData(gondolaId: string, sectionId: string, sectionD
     } else {
         console.log(`Dados da seção ${sectionId} não foram alterados.`);
     }
+}
+
+export function setIsSectionEditing(value: boolean) {
+    isSectionEditing.value = value;
+}
+
+export function setSelectedSection(section: Section) {
+    selectedSection.value = section;
+    isSectionEditing.value = true;
+}
+
+export function getSelectedSection() {
+    return selectedSection.value;
+}
+
+export function clearSelectedSection() {
+    selectedSection.value = null;
+}
+
+export function isSectionSelected() {
+    return selectedSection.value !== null;
 }

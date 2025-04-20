@@ -6,8 +6,8 @@
             <h3 class="text-center text-lg font-medium text-gray-800 dark:text-gray-100">Propriedades</h3>
         </div>
         <Product v-if="selectionSize" />
-        <Section v-else-if="isEditing" />
-        <Shelf v-else-if="isEditingShelf" />
+        <Section v-else-if="isSectionEditing" />
+        <Shelf v-else-if="isShelfEditing" />
         <div v-else class="flex h-full flex-col items-center justify-center p-6 text-center">
             <div class="rounded-full bg-gray-100 p-4 dark:bg-gray-700">
                 <InfoIcon class="h-12 w-12 text-gray-400 dark:text-gray-500" />
@@ -20,18 +20,14 @@
 
 <script setup lang="ts">
 import { InfoIcon } from 'lucide-vue-next';
-import { computed } from 'vue';
-import { useProductStore } from '../../../store/product';
-import { useSectionStore } from '../../../store/section';
-import { useShelvesStore } from '../../../store/shelves';
+    import { computed } from 'vue'; 
+    import { useEditorStore } from '../../../store/editor';
 import Product from './Product.vue';
 import Section from './Section.vue';
 import Shelf from './Shelf.vue';
 
-const productStore = useProductStore();
-const sectionStore = useSectionStore();
-const shelvesStore = useShelvesStore();
-const isEditing = computed(() => sectionStore.isEditingSection);
-const selectionSize = computed(() => productStore.selectedProductIds.size);
-const isEditingShelf = computed(() => shelvesStore.isEditingShelf);
+const editorStore = useEditorStore();
+const isSectionEditing = computed(() => editorStore.isSectionSelected());
+const isShelfEditing = computed(() => editorStore.isShelfSelected());
+const selectionSize = computed(() => editorStore.getSelectedLayerIds.size);
 </script>

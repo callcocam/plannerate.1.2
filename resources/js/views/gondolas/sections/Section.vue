@@ -68,9 +68,7 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from 'vue';
-import { useProductStore } from '@plannerate/store/product';
-import { useSectionStore } from '@plannerate/store/section';
-import { useShelvesStore } from '@plannerate/store/shelves';
+
 import { useEditorStore } from '@plannerate/store/editor';
 import { type Shelf as ShelfType } from '@plannerate/types/shelves';
 import { Section } from '@plannerate/types/sections';
@@ -95,10 +93,7 @@ const emit = defineEmits(['update:segments']);
 // Previne acesso repetido às props nos computed
 const { gondola, section } = props;
 
-// ------- STORES & SERVICES -------
-const productStore = useProductStore();
-const shelvesStore = useShelvesStore();
-const sectionStore = useSectionStore();
+// ------- STORES & SERVICES ------- 
 const editorStore = useEditorStore();
 const { toast } = useToast();
 
@@ -147,8 +142,7 @@ const sectionStyle = computed(() => {
  * Abre o modal de edição da seção
  */
 const editSection = () => {
-    sectionStore.setSelectedSection(section);
-    sectionStore.startEditing();
+    editorStore.setSelectedSection(section);
 };
 
 /**
@@ -156,10 +150,10 @@ const editSection = () => {
  * @param event Evento do mouse
  */
 const addShelf = (event: MouseEvent) => {
-    shelvesStore.handleDoubleClick({
+    editorStore.addShelfToSection(gondola.id, section.id, {
         shelf_position: event.offsetY / props.scaleFactor,
-        section_id: section.id,
-    });
+        section_id: section.id
+    } as ShelfType);
     event.stopPropagation();
 };
 
@@ -535,7 +529,7 @@ const updateSegment = (segment: Segment, targetShelf: ShelfType) => {
  */
 const handleKeydown = (event: KeyboardEvent) => {
     if (event.key === 'Escape') {
-        productStore.clearSelection();
+        editorStore.clearLayerSelection();
     }
 };
 
@@ -553,17 +547,15 @@ const handleClickOutside = (event: MouseEvent) => {
 
     // Limpa seleções com base no elemento clicado
     if (!clickedElement.closest('.layer')) {
-        productStore.clearSelection();
+        editorStore.clearLayerSelection();
     }
 
     if (!clickedElement.closest('.shelves')) {
-        shelvesStore.clearSelection();
-        shelvesStore.clearSelectedShelfIds();
+        editorStore.clearSelectedShelf();
     }
 
     if (!clickedElement.closest('.sections')) {
-        sectionStore.setSelectedSection(null);
-        sectionStore.clearSelectedSectionIds();
+        editorStore.clearSelectedSection();
     }
 };
 
@@ -573,10 +565,10 @@ const handleClickOutside = (event: MouseEvent) => {
  */
 const handleDoubleClick = (event: MouseEvent) => {
     event.stopPropagation();
-    shelvesStore.handleDoubleClick({
+    editorStore.addShelfToSection(gondola.id, section.id, {
         shelf_position: event.offsetY / props.scaleFactor,
-        section_id: section.id 
-    });
+        section_id: section.id
+    } as ShelfType);
 };
 
 // ------- LIFECYCLE HOOKS -------

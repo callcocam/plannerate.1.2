@@ -15,3 +15,6 @@ export * from './shelf';
 
 // Ações de segmentos
 export * from './segment';
+
+// Ações de layers
+export * from './layer';

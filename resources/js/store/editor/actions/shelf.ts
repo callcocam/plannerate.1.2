@@ -4,7 +4,7 @@ import type { ShelfPosition } from '../types';
 import { findGondola, findPath, findSection } from '../utils';
 import { recordChange } from '../history';
 import { isEqual } from 'lodash-es';
-
+import { selectedShelf, isShelfEditing } from '../state';
 /**
  * Inverte a ordem das prateleiras de uma seção específica
  * @param gondolaId ID da gôndola
@@ -225,4 +225,21 @@ export function transferShelfBetweenSections(gondolaId: string, oldSectionId: st
 
     console.log(`Prateleira ${shelfId} transferida de ${oldSectionId} para ${newSectionId}`);
     recordChange();
+}
+
+export function setIsShelfEditing(value: boolean) {
+    isShelfEditing.value = value;
+}
+
+export function setSelectedShelf(shelf: Shelf) {
+    console.log("setSelectedShelf", shelf);
+    selectedShelf.value = shelf;
+}
+
+export function clearSelectedShelf() {
+    selectedShelf.value = null;
+}
+
+export function isShelfSelected() {
+    return selectedShelf.value !== null;
 }

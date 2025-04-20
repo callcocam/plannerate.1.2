@@ -61,3 +61,4 @@ export function invertGondolaSectionOrder(gondolaId: string) {
         console.warn(`Não foi possível inverter seções: Gôndola ${gondolaId} tem menos de 2 seções.`);
     }
 }
+

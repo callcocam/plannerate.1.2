@@ -7,6 +7,7 @@
                 @drop-segment-copy="(segment: SegmentType, shelf: Shelf) => $emit('drop-segment-copy', segment, shelf)"
                 @drop-segment="(segment: SegmentType, oldShelf: Shelf) => $emit('drop-segment', segment, oldShelf)" />
             <div class="shelf relative flex flex-col items-center   border-y border-gray-400 bg-gray-700 text-gray-50 dark:bg-gray-800"
+                :class="{ 'shelf-selected': isSelected }"
                 :style="shelfStyle" ref="shelfElement">
                 <!-- TODO: Renderizar Segmentos/Produtos aqui -->
                 <draggable v-model="sortableSegments" item-key="id" handle=".drag-segment-handle"
@@ -23,7 +24,7 @@
                 </draggable>
                 <ShelfControls :shelf="shelf" :scale-factor="scaleFactor" :section-width="sectionWidth"
                     :section-height="sectionHeight" :shelf-element="shelfElement" :base-height="baseHeight"
-                    :sections-container="sectionsContainer" :section-index="sectionIndex" /> 
+                    :sections-container="sectionsContainer" :section-index="sectionIndex" />
             </div>
         </ContextMenuTrigger>
         <ContextMenuContent class="w-64">
@@ -74,9 +75,8 @@
 <script setup lang="ts">
 import { computed, defineEmits, defineProps, onMounted, onUnmounted, ref, type CSSProperties } from 'vue';
 import draggable from 'vuedraggable';
-import { useShelvesStore } from '@plannerate/store/shelves';
 import { useEditorStore } from '@plannerate/store/editor';
-import {  type Product, type Segment as SegmentType } from '@plannerate/types/segment';
+import { type Product, type Segment as SegmentType } from '@plannerate/types/segment';
 import { type Shelf } from '@plannerate/types/shelves';
 import Segment from './Segment.vue';
 import ShelfContent from './ShelfContent.vue';
@@ -105,7 +105,6 @@ const shelfElement = ref<HTMLElement | null>(null);
 const gondolaId = computed(() => props.gondola.id);
 // Definir Emits
 const emit = defineEmits(['drop-product', 'drop-segment-copy', 'drop-segment']);
-const shelvesStore = useShelvesStore();
 const editorStore = useEditorStore();
 const alignment = computed(() => {
     let alignment = props.gondola?.alignment;
@@ -122,6 +121,11 @@ const alignment = computed(() => {
         }
     });
     return alignment;
+});
+
+const isSelected = computed(() => {
+    console.log("isSelected", editorStore.getSelectedShelf);
+    return editorStore.getSelectedShelf?.id === props.shelf.id;
 });
 // --- Computeds para Estilos ---
 const shelfStyle = computed(() => {
@@ -182,7 +186,7 @@ const sortableSegments = computed<SegmentType[]>({
     },
     set(newSegments: SegmentType[]) {
         if (!gondolaId.value || !props.shelf.section_id || !props.shelf.id) {
-            console.error('sortableSegments.set: IDs faltando (gondola, section, ou shelf).');
+            console.log('sortableSegments.set: IDs faltando (gondola, section, ou shelf).');
             return;
         }
 
@@ -211,33 +215,29 @@ const segmentsContainerStyle = computed(() => {
 });
 
 const selectShelfClick = (event: MouseEvent) => {
-    shelvesStore.setSelectedShelf(props.shelf);
-    shelvesStore.startEditing();
-    event.stopPropagation();
-    const isCtrlOrMetaPressed = event.ctrlKey || event.metaKey;
-    if (isCtrlOrMetaPressed) {
-        shelvesStore.setSelectedShelfIds(props.shelf.id);
-    } else {
-        const isCurrentlySelected = shelvesStore.isShelfSelected(props.shelf.id);
-        const selectionSize = shelvesStore.selectedShelfIds.size;
-        if (isCurrentlySelected && selectionSize === 1) {
-            shelvesStore.clearSelection();
-            shelvesStore.clearSelectedShelfIds();
-        } else {
-            shelvesStore.clearSelectedShelfIds();
-            shelvesStore.setSelectedShelfIds(props.shelf.id);
-        }
-    }
+    event.stopPropagation(); // Impede que o clique se propague para elementos pais
+    console.log('Clicou na prateleira:', props.shelf.id); // Adiciona log para confirmar clique
+    editorStore.setSelectedShelf(props.shelf);
+    editorStore.setIsShelfEditing(true);
+    // Remover a lógica que desfazia a seleção imediatamente
+    // const isCurrentlySelected = editorStore.isShelfSelected();
+    // if (isCurrentlySelected) {
+    //     editorStore.clearSelectedShelf();
+    // } else {
+    //     editorStore.clearSelectedShelf();
+    //     editorStore.setSelectedShelf(props.shelf);
+    // }
 };
+
 const controlDeleteShelf = (event: KeyboardEvent) => {
     if ((event.key === 'Delete' || event.key === 'Backspace') && event.ctrlKey) {
         event.preventDefault();
-        shelvesStore.deleteSelectedShelf();
+        editorStore.removeShelfFromSection(gondolaId.value, props.shelf.section_id, props.shelf.id);
     }
 };
 
 const globalKeyHandler = (event: KeyboardEvent) => {
-    if (shelvesStore.selectedShelf && shelvesStore.selectedShelf.id === props.shelf.id) {
+    if (editorStore.getSelectedShelf && editorStore.getSelectedShelf?.id === props.shelf.id) {
         controlDeleteShelf(event);
     }
 };

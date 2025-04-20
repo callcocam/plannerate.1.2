@@ -8,8 +8,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
-import { useGondolaStore } from '@plannerate/store/gondola';
-import { useProductStore } from '@plannerate/store/product';
+import { useEditorStore } from '@plannerate/store/editor';
 import Product from '@plannerate/views/gondolas/sections/Product.vue';
 import { Layer as LayerType, Segment as SegmentType } from '@/types/segment';
 
@@ -28,9 +27,8 @@ const emit = defineEmits<{
     (e: 'layer-click', layer: LayerType): void;
 }>();
 
-// Stores
-const productStore = useProductStore();
-const gondolaStore = useGondolaStore();
+//  
+const editorStore = useEditorStore();
 
 // Refs 
 const layerQuantity = ref(props.layer.quantity || 1);
@@ -44,17 +42,23 @@ const layerStyle = computed(() => {
     const layerHeight = props.layer.product.height;
     const productWidth = props.layer.product.width * props.scaleFactor;
     const quantity = props.layer.quantity || 1;
-    let layerWidthFinal = `100%`;
+    let layerWidthFinal = `100%`; // Default para justify ou se não houver gôndola/alinhamento
 
-    if (gondolaStore.getAligmentLeft()) {
+    // Obtém o alinhamento da gôndola atual do editorStore
+    const alignment = editorStore.getCurrentGondola?.alignment;
+
+    // Define a largura final com base no alinhamento
+    if (alignment === 'left' || alignment === 'right') {
+        // Para alinhamento à esquerda ou direita, usa a largura calculada dos produtos
         layerWidthFinal = `${productWidth * quantity}px`;
-    } else if (gondolaStore.getAligmentRight()) {
-        layerWidthFinal = `${productWidth * quantity}px`;
-    } else if (gondolaStore.getAligmentCenter() || gondolaStore.getAligmentJustify()) {
+    } else if (alignment === 'center') {
+        // Para centralizado, ocupa 100% (o CSS tratará a centralização interna)
         layerWidthFinal = `100%`;
-    } else {
-        layerWidthFinal = `${productWidth * quantity}px`;
+    } else if (alignment === 'justify' || !alignment) {
+        // Para justificado ou sem alinhamento definido, ocupa 100%
+        layerWidthFinal = `100%`;
     }
+    // Não precisa de um else final, pois o default já é 100%
 
     return {
         width: layerWidthFinal,
@@ -66,11 +70,11 @@ const layerStyle = computed(() => {
 /**
  * Verifica se o layer está selecionado
  */
-const isSelected = computed(() => {
-    if (!props.layer.product?.id) return false; 
+const isSelected = computed(() => { 
     const layerId = props.layer.id;
-    // Concatena IDs para comparação na Set
-    return productStore.isSelectedProductIds.has(String(layerId));
+    console.log("isSelected", editorStore.getSelectedLayerIds);
+    // Usa selectedLayerIds (nome corrigido e agora existente)
+    return editorStore.isSelectedLayer(String(layerId));
 });
 
 /**
@@ -94,28 +98,29 @@ const handleLayerClick = (event: MouseEvent) => {
 const handleSelectedLayer = (isCtrlOrMetaPressed: boolean, productId: string, layerId: string) => {
     if (!productId) return;
 
-    const productIdAsString = String(layerId);
-    const compositeId = productIdAsString ;
+    const layerIdAsString = String(layerId);
+    const compositeId = layerIdAsString;
 
     if (isCtrlOrMetaPressed) {
         // Alternar seleção para este produto
         segmentSelected.value = !segmentSelected.value;
-        productStore.toggleProductSelection(productIdAsString);
-        productStore.isToggleSelectedProduct(compositeId);
+        // Ação toggleLayerSelection ainda não existe, comentando por enquanto
+        // editorStore.toggleLayerSelection(layerIdAsString);
     } else {
         // Verifica o estado atual de seleção
-        const isCurrentlySelected = productStore.isSelectedProductIds.has(compositeId);
-        const selectionSize = productStore.isSelectedProductIds.size;
+        const isCurrentlySelected = editorStore.isSelectedLayer(compositeId); // Usa selectedLayerIds
+        const selectionSize = editorStore.getSelectedLayerIds.size; // Usa selectedLayerIds
 
         if (isCurrentlySelected && selectionSize === 1) {
             // Desselecionar se já for o único item selecionado
-            productStore.clearSelection();
+            // Ação clearSelection ainda não existe, comentando por enquanto
+            // editorStore.clearSelection();
             segmentSelected.value = false;
         } else {
             // Limpar seleção anterior e selecionar apenas este
-            productStore.clearSelection();
-            productStore.selectProduct(productIdAsString);
-            productStore.isSelectedProduct(compositeId);
+            // Ações clearSelection e selectLayer ainda não existem, comentando por enquanto
+            // editorStore.clearSelection();
+            // editorStore.selectLayer(layerIdAsString);
             segmentSelected.value = true;
         }
     }
@@ -126,7 +131,8 @@ const handleSelectedLayer = (isCtrlOrMetaPressed: boolean, productId: string, la
  * Aumenta a quantidade de produtos no layer
  */
 const onIncreaseQuantity = async () => {
-    if (productStore.selectedProductIds.size > 1) return;
+    // Usa selectedLayerIds
+    if (editorStore.getSelectedLayerIds.size > 1) return;
 
     emit('increase', {
         ...props.layer,
@@ -138,7 +144,8 @@ const onIncreaseQuantity = async () => {
  * Diminui a quantidade de produtos no layer
  */
 const onDecreaseQuantity = async () => {
-    if (productStore.selectedProductIds.size > 1) return;
+    // Usa selectedLayerIds
+    if (editorStore.getSelectedLayerIds.size > 1) return;
     if (layerQuantity.value <= 1) return;
     const layerQuantityValue = (layerQuantity.value -= 1);
     if (layerQuantityValue === 0) return;
