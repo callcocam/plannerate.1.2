@@ -1,7 +1,6 @@
 // store/product.ts
 import { defineStore } from 'pinia';
-import { useProductService } from '../services/productService';
-import { useGondolaStore } from './gondola';
+import { useProductService } from '../services/productService'; 
 import { useShelvesStore } from './shelves'; 
 import { useToast } from '../components/ui/toast'; 
 import { Layer, Product } from '../types/segment';
@@ -71,8 +70,7 @@ export const useProductStore = defineStore('product', {
         },
         setSelectedProduct(product: Product) {
             this.selectedProduct = product;
-        },
-
+        }, 
         toggleProductSelection(productId: string) {
             if (this.selectedProductIds.has(productId)) {
                 this.selectedProductIds.delete(productId);
@@ -106,13 +104,12 @@ export const useProductStore = defineStore('product', {
         // Função generalizada para atualizar shelf através da API
         async updateShelfFromAPI(shelfId: string) {
             try {
-                const shelvesStore = useShelvesStore();
+               
                 const productService = useProductService();
 
                 const response = await productService.getShelf(shelfId);
                 const resetShelf = response.data;
-
-                shelvesStore.updateShelf(resetShelf.id, resetShelf, false);
+ 
                 return resetShelf;
             } catch (error: any) {
                 this.error = error.response?.data?.message || error.message || 'Failed to fetch updated shelf data';
@@ -216,7 +213,7 @@ export const useProductStore = defineStore('product', {
             } catch (error: any) {
                 this.error = error.response?.data?.message || error.message || 'Failed to sync with backend';
                 console.error('Error syncing with backend:', error);
-                this.showToast('error', 'Erro na sincronização', this.error);
+                this.showToast('error', 'Erro na sincronização', this.error || 'Erro desconhecido');
             } finally {
                 this.loading = false;
             }

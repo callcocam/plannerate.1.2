@@ -50,7 +50,7 @@ class LayerController extends Controller
                 'product',
                 'product.image',
             ]); 
-            return new LayerResource($layer);
+            return response()->json(new LayerResource($layer), 200);
         } catch (\Exception $e) { 
             return $this->handleInternalServerError('Erro ao carregar a camada');
         }
