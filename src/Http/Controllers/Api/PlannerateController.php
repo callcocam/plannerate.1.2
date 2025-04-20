@@ -244,6 +244,7 @@ class PlannerateController extends Controller
 
             // Atualizar atributos da seção
             $section->fill($this->filterSectionAttributes($sectionData, $shelfService, $gondola));
+            $section->gondola_id = $gondola->id;
             $section->save();
 
             // Registrar o ID para não remover depois
@@ -329,6 +330,7 @@ class PlannerateController extends Controller
 
             // Atualizar atributos da prateleira
             $shelf->fill($this->filterShelfAttributes($shelfData, $shelfService, $i, $section));
+            $shelf->section_id = $section->id;
             $shelf->save();
 
             // Registrar o ID para não remover depois
@@ -411,6 +413,7 @@ class PlannerateController extends Controller
 
             // Atualizar atributos do segmento
             $segment->fill($this->filterSegmentAttributes($segmentData));
+            $segment->shelf_id = $shelf->id;
             $segment->save();
 
             // Registrar o ID para não remover depois
@@ -471,8 +474,7 @@ class PlannerateController extends Controller
         // Para camadas temporárias (ex: "layer-1745084634214-01jqp9bx4t369a5aqe9z90xdhg"), geramos um novo ID
         $layer = Layer::query()->where('id', data_get($layerData, 'id'))->first();
         if (!$layer) {
-            $layer = Layer::query()->create([
-                'id' => (string) Str::orderedUuid(),
+            $layer = Layer::query()->create([ 
                 'tenant_id' => $segment->tenant_id,
                 'user_id' => $segment->user_id,
                 'segment_id' => $segment->id,
@@ -480,6 +482,7 @@ class PlannerateController extends Controller
         }
         // Atualizar atributos da camada
         $layer->fill($this->filterLayerAttributes($layerData));
+        $layer->segment_id = $segment->id;
         $layer->save();
     }
 

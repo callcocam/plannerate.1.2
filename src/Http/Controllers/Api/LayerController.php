@@ -45,18 +45,13 @@ class LayerController extends Controller
      */
     public function show(Request $request, Layer $layer)
     {
-        try {
-            DB::beginTransaction();
+        try { 
             $layer->load([
                 'product',
                 'product.image',
-            ]);
-            DB::commit();
-            return $this->handleSuccess('Camada carregada com sucesso', [
-                'data' => new LayerResource($layer),
-            ]);
-        } catch (\Exception $e) {
-            DB::rollBack();
+            ]); 
+            return new LayerResource($layer);
+        } catch (\Exception $e) { 
             return $this->handleInternalServerError('Erro ao carregar a camada');
         }
     }

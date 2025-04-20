@@ -32,8 +32,7 @@ const emit = defineEmits<{
 const productStore = useProductStore();
 const gondolaStore = useGondolaStore();
 
-// Refs
-const layerSpacing = ref(props.layer.spacing);
+// Refs 
 const layerQuantity = ref(props.layer.quantity || 1);
 const debounceTimer = ref<ReturnType<typeof setTimeout> | null>(null);
 const segmentSelected = ref(false);
@@ -68,11 +67,10 @@ const layerStyle = computed(() => {
  * Verifica se o layer está selecionado
  */
 const isSelected = computed(() => {
-    if (!props.layer.product?.id) return false;
-    const productId = props.layer.product.id;
+    if (!props.layer.product?.id) return false; 
     const layerId = props.layer.id;
     // Concatena IDs para comparação na Set
-    return productStore.isSelectedProductIds.has(String(productId).concat('-').concat(layerId));
+    return productStore.isSelectedProductIds.has(String(layerId));
 });
 
 /**
@@ -96,8 +94,8 @@ const handleLayerClick = (event: MouseEvent) => {
 const handleSelectedLayer = (isCtrlOrMetaPressed: boolean, productId: string, layerId: string) => {
     if (!productId) return;
 
-    const productIdAsString = String(productId);
-    const compositeId = productIdAsString.concat('-').concat(layerId);
+    const productIdAsString = String(layerId);
+    const compositeId = productIdAsString ;
 
     if (isCtrlOrMetaPressed) {
         // Alternar seleção para este produto
@@ -141,7 +139,6 @@ const onIncreaseQuantity = async () => {
  */
 const onDecreaseQuantity = async () => {
     if (productStore.selectedProductIds.size > 1) return;
-    console.log('layerQuantity.value', layerQuantity.value);
     if (layerQuantity.value <= 1) return;
     const layerQuantityValue = (layerQuantity.value -= 1);
     if (layerQuantityValue === 0) return;

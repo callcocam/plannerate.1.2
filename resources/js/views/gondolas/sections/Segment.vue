@@ -4,7 +4,7 @@
         'justify-start': alignment === 'left',
         'justify-center': alignment === 'center',
         'justify-end': alignment === 'right'
-    }" @dragstart="onDragStart" draggable="true" :tabindex="segment.tabindex" >
+    }" @dragstart="onDragStart" draggable="true" :tabindex="segment.tabindex" v-if="segment.layer">
         <LayerComponent v-for="(_, index) in segmentQuantity" :key="index" :shelf="shelf" :segment="segment"
             :layer="segment.layer" :scale-factor="scaleFactor" :section-width="sectionWidth"
             :shelf-depth="shelf.shelf_depth" @increase="onIncreaseQuantity" @decrease="onDecreaseQuantity" />

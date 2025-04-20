@@ -137,10 +137,10 @@
 import { ChevronDown, Loader, Package, Search, SlidersHorizontal } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
 import { onMounted, reactive, ref, watch } from 'vue';
-import { apiService } from '@plannerate/services';
-import { useGondolaStore } from '@plannerate/store/gondola'; 
-import { useProductStore } from '@plannerate/store/product';
-import { type Product } from '@plannerate/types/segments';
+import { apiService } from '../../../services';
+import { useGondolaStore } from '../../../store/gondola'; 
+import { useProductStore } from '../../../store/product';
+import { Product } from '../../../types/segments';
 
 interface Category {
     id: number | string;
@@ -289,9 +289,9 @@ function clearFilters() {
     showFilters.value = false;
 }
 
-onMounted(async () => {
+onMounted(() => {
     // console.log('Component mounted, fetching initial products...');
-    await fetchProducts(1, false);
+    fetchProducts(1, false);
 });
 </script>
 

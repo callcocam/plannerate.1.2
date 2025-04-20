@@ -575,7 +575,7 @@ const handleDoubleClick = (event: MouseEvent) => {
     event.stopPropagation();
     shelvesStore.handleDoubleClick({
         shelf_position: event.offsetY / props.scaleFactor,
-        section_id: section.id,
+        section_id: section.id 
     });
 };
 

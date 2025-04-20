@@ -114,8 +114,8 @@ export const useShelvesStore = defineStore('shelves', {
         async handleDoubleClick(data: { shelf_position: number; section_id: string }) {
             const shelfData: Omit<Shelf, 'id' | 'segments' | 'created_at' | 'updated_at'> = {
                 shelf_height: 10,
-                shelf_width: 100,
-                shelf_depth: 30,
+                shelf_width: 4,
+                shelf_depth: 40,
                 shelf_position: data.shelf_position,
                     section_id: data.section_id,
                 shelf_x_position: 0,
