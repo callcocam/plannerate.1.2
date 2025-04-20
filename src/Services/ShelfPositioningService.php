@@ -21,7 +21,7 @@ class ShelfPositioningService
         $sectionHeight = $section['height'];
         $holeHeight = $section['hole_height'];
         $holeWidth = $section['hole_width'];
-        $holeSpacing = 0;
+        $holeSpacing = $section['hole_spacing'];
         $baseHeight = $section['base_height'] ?? 0;
 
         // Calculate available height for holes (excluding the base at the bottom)
