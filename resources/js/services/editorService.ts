@@ -3,8 +3,8 @@ import apiService from "./api";
 // services/editorService.ts 
 export const useEditorService = () => {
 
-  const savePlanogram = ( content: string) => {
-    return apiService.post(`/plannerate`,  content );
+  const savePlanogram = (planogramId: string, content: string) => {
+    return apiService.put(`/plannerate/${planogramId}`,  content );
   };
 
   /**

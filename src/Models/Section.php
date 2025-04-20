@@ -59,7 +59,7 @@ class Section extends Model
         'hole_width' => 'integer',
         'hole_spacing' => 'integer',
         'ordering' => 'integer',
-        'settings' => 'json',
+        'settings' => 'array',
         'status' => SectionStatus::class,
     ];
 

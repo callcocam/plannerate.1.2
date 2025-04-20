@@ -169,18 +169,18 @@ class GondolaController extends Controller
         try {
             DB::beginTransaction();
             $planogram = Planogram::findOrFail($request->input('planogram_id'));
-            // $planogram->gondolas->map(function ($gondola) use ($request) {
-            //     // Atualizar gôndola
-            //     $gondola->sections->map(function ($section) use ($request) {
-            //         // Atualizar seção
-            //         $section->shelves->map(function ($shelf) use ($request) {
-            //             // Atualizar prateleira
-            //             $shelf->forceDelete();
-            //         });
-            //         $section->forceDelete();
-            //     });
-            //     $gondola->forceDelete();
-            // });
+            $planogram->gondolas->map(function ($gondola) use ($request) {
+                // Atualizar gôndola
+                $gondola->sections->map(function ($section) use ($request) {
+                    // Atualizar seção
+                    $section->shelves->map(function ($shelf) use ($request) {
+                        // Atualizar prateleira
+                        $shelf->forceDelete();
+                    });
+                    $section->forceDelete();
+                });
+                $gondola->forceDelete();
+            });
 
             // Validar dados
             $validatedData = $request->validated();

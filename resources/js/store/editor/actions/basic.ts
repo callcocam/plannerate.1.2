@@ -177,20 +177,20 @@ export async function saveChanges(): Promise<any> {
         };
 
         // Remove campos temporários ou desnecessários antes de enviar
-        delete planogramData.error;
-        delete planogramData.isLoading;
+        delete (planogramData as any).error;
+        delete (planogramData as any).isLoading;
 
         const editorService = useEditorService();
 
         // Chama a API para salvar os dados
-        const response = await editorService.savePlanogram(planogramData);
-
+        const response = await editorService.savePlanogram(planogramData.id as string, planogramData as any);
+        console.log('response', response.data);  
         setIsLoading(false);
 
-        if (response.data && response.data.success) {
+        if (response.data && response.success) {
             // Se salvou com sucesso, atualiza o estado com os dados retornados (se houver)
-            if (response.data.data) {
-                initialize(response.data.data);
+            if (response.data) {
+                // initialize(response.data);
             }
 
             // Reseta o histórico com o novo estado como base
@@ -224,7 +224,7 @@ export async function saveChanges(): Promise<any> {
         }
     } catch (error) {
         setIsLoading(false);
-
+        console.log('error', error);
         // Tratar o erro
         const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido ao salvar';
         console.error('Erro ao salvar alterações:', error);
