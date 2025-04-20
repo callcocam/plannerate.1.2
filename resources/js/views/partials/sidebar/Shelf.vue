@@ -88,10 +88,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, Ref, ref, watch } from 'vue';
+import { computed,  ref, watch } from 'vue';
 
-import { useEditorStore } from '../../../store/editor';
-import { Shelf } from '../../../types/shelves';
+import { useEditorStore } from '@plannerate/store/editor';
+import { Shelf } from '@plannerate/types/shelves';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

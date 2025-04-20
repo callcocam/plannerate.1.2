@@ -110,7 +110,7 @@ const handleSelectedLayer = (isCtrlOrMetaPressed: boolean, productId: string, la
         // Verifica o estado atual de seleção
         const isCurrentlySelected = editorStore.isSelectedLayer(compositeId); // Usa selectedLayerIds
         const selectionSize = editorStore.getSelectedLayerIds.size; // Usa selectedLayerIds
-
+        console.log("isCurrentlySelected", isCurrentlySelected, selectionSize);
         if (isCurrentlySelected && selectionSize === 1) {
             // Desselecionar se já for o único item selecionado
             // Ação clearSelection ainda não existe, comentando por enquanto

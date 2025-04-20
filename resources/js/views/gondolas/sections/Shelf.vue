@@ -6,9 +6,11 @@
                 @drop-product="(product: Product, shelf: Shelf) => $emit('drop-product', product, shelf)"
                 @drop-segment-copy="(segment: SegmentType, shelf: Shelf) => $emit('drop-segment-copy', segment, shelf)"
                 @drop-segment="(segment: SegmentType, oldShelf: Shelf) => $emit('drop-segment', segment, oldShelf)" />
-            <div class="shelf relative flex flex-col items-center   border-y border-gray-400 bg-gray-700 text-gray-50 dark:bg-gray-800"
-                :class="{ 'shelf-selected': isSelected }"
-                :style="shelfStyle" ref="shelfElement">
+            <div class="shelf relative flex flex-col items-center bg-gray-700 text-gray-50 dark:bg-gray-800"
+                :class="{
+                    'border-2 border-blue-800 border-dashed  bg-gray-500': isSelected,
+                    'border-2 border-gray-700 bg-gray-700 dark:bg-gray-800 dark:border-gray-800': !isSelected
+                }" :style="shelfStyle" ref="shelfElement">
                 <!-- TODO: Renderizar Segmentos/Produtos aqui -->
                 <draggable v-model="sortableSegments" item-key="id" handle=".drag-segment-handle"
                     class="relative flex w-full items-end" :class="{
@@ -124,7 +126,7 @@ const alignment = computed(() => {
 });
 
 const isSelected = computed(() => {
-    console.log("isSelected", editorStore.getSelectedShelf);
+    console.log("isSelected", editorStore.getSelectedShelf?.id === props.shelf.id);
     return editorStore.getSelectedShelf?.id === props.shelf.id;
 });
 // --- Computeds para Estilos ---

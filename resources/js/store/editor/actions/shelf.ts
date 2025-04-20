@@ -231,8 +231,7 @@ export function setIsShelfEditing(value: boolean) {
     isShelfEditing.value = value;
 }
 
-export function setSelectedShelf(shelf: Shelf) {
-    console.log("setSelectedShelf", shelf);
+export function setSelectedShelf(shelf: Shelf) { 
     selectedShelf.value = shelf;
 }
 

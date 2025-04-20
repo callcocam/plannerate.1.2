@@ -1,5 +1,5 @@
 <template>
-    <div class="segment drag-segment-handle group relative flex items-center border-2" :style="segmentStyle" :class="{
+    <div class="segment drag-segment-handle group relative flex items-center " :style="segmentStyle" :class="{
         'justify-around': alignment === 'justify',
         'justify-start': alignment === 'left',
         'justify-center': alignment === 'center',
