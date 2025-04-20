@@ -348,8 +348,7 @@ const handleMouseUp = (e?: MouseEvent) => {
 
             // Atualiza apenas se houver mudança significativa
             if (Math.abs(clampedPositionCm - initialShelfY.value) > 0.01 && !relativeY.value) {
-                const holeWidth = props.holeWidth || 0;
-                console.log("holeWidth", holeWidth);
+                const holeWidth = props.holeWidth || 0; 
                 editorStore.setShelfPosition(
                     gondolaId,
                     currentSectionId.value,

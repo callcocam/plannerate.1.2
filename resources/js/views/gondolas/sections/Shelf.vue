@@ -162,8 +162,7 @@ const shelfStyle = computed(() => {
     const moveStyle: Record<string, string> = {};
     if (props.shelf?.shelf_x_position !== undefined) {
         const leftPosition = props.shelf.shelf_x_position;
-        moveStyle['left'] = `-${leftPosition}px`;
-        console.log("leftPosition", leftPosition);
+        moveStyle['left'] = `-${leftPosition}px`; 
     }
     const holeWidth = props.section.hole_width;
     // Retornar o objeto de estilo completo
