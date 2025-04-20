@@ -210,8 +210,22 @@ const {
     errors     
 } = useGondolaCreateForm({ 
     initialPlanogramId: planogramId, 
-    onSuccess: (newGondola) => { /* ... */ },
-    onError: (error) => { /* ... */ }
+    onSuccess: (newGondola) => { 
+        router.push({ 
+            name: 'gondola.view',
+            params: {
+                gondolaId: newGondola.id,
+                id: planogramId.value
+            }
+        });
+     },
+        onError: (error) => { 
+            console.error('Error creating gondola:', error);
+            toast({
+                title: 'Error creating gondola',
+                description: error.message,
+            });
+        }
 });
 // --------------------------
 

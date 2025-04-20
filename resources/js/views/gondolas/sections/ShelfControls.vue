@@ -25,15 +25,15 @@
 
 <script setup lang="ts">
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-vue-next';
-import {  onMounted, ref, computed } from 'vue';
+import { onMounted, ref, computed } from 'vue';
 import { useEditorStore } from '@plannerate/store/editor';
 import { Shelf } from '@plannerate/types/shelves';
-
+import { Section } from '@plannerate/types/sections';
 /**
  * Props do componente
  */
 const props = defineProps<{
-    shelf: Shelf;
+    shelf: Shelf & { section: Section };
     scaleFactor: number;
     sectionWidth: number;
     sectionHeight: number;
@@ -333,7 +333,7 @@ const handleMouseUp = (e?: MouseEvent) => {
                     gondolaId,
                     currentSectionId.value,
                     shelfId.value,
-                    { shelf_x_position: -4 }
+                    { shelf_x_position: props.shelf.section?.hole_width * props.scaleFactor }
                 );
             }
         } else if (dragType.value === 'vertical' && e) {
@@ -353,7 +353,7 @@ const handleMouseUp = (e?: MouseEvent) => {
                     shelfId.value,
                     {
                         shelf_position: clampedPositionCm,
-                        shelf_x_position: -4
+                        shelf_x_position: props.shelf.section?.hole_width * props.scaleFactor
                     }
                 );
             }

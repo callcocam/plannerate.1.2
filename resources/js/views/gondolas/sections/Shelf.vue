@@ -166,8 +166,8 @@ const shelfStyle = computed(() => {
     // Retornar o objeto de estilo completo
     return {
         position: 'absolute' as const,
-        left: '-4px',
-        width: `${props.sectionWidth * props.scaleFactor + 4}px`,
+        left: `${props.section.hole_width * props.scaleFactor}px`,
+        width: `${props.sectionWidth * props.scaleFactor}px`,
         height: `${props.shelf.shelf_height * props.scaleFactor}px`,
         top: `${topPosition}px`, // <-- Usar a posição calculada com snap
         zIndex: '1',

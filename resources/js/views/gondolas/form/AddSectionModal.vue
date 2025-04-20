@@ -193,7 +193,7 @@
 <script setup lang="ts">
 import { Loader2Icon, SaveIcon, X } from 'lucide-vue-next';
 import { ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
 // Composables
 import { useSectionCreateForm } from '@plannerate/composables/useSectionCreateForm';
@@ -210,7 +210,7 @@ const props = defineProps({
 });
 
 const route = useRoute();
-
+const router = useRouter();
 // Obter IDs da rota uma vez
 const initialPlanogramId = ref(route.params.id as string);
 const initialGondolaId = ref(route.params.gondolaId as string);
@@ -232,6 +232,13 @@ const {
         emit('section-added', newSection);
         // A navegação padrão do composable já acontece, talvez não precise de fecharModal aqui
         // fecharModal(); // Opcional: pode ser removido se a navegação do composable for suficiente
+        router.push({ 
+            name: 'gondola.view',
+            params: {
+                gondolaId: initialGondolaId.value,
+                id: initialPlanogramId.value
+            }
+        });
     },
     // onError: (error) => { /* Tratamento adicional opcional */ }
 });
@@ -264,7 +271,13 @@ const fecharModal = () => {
     // Se quisermos apenas fechar o modal sem navegar, emitimos o evento.
     emit('update:open', false);
     emit('close');
-    // router.push({ ... }); // Removido - Deixar composable/onSuccess decidir a navegação
+    router.push({ 
+        name: 'gondola.view',
+        params: {
+            gondolaId: initialGondolaId.value,
+            id: initialPlanogramId.value
+        }
+      }); // Removido - Deixar composable/onSuccess decidir a navegação
 };
 
 // Wrapper para submitForm (se necessário, ou usar diretamente no template)
