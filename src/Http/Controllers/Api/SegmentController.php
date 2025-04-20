@@ -8,11 +8,9 @@
 
 namespace Callcocam\Plannerate\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use Callcocam\Plannerate\Http\Requests\Segment\Api\UpdateTransferSegmentRequest;
 use Callcocam\Plannerate\Http\Resources\SegmentResource;
 use Callcocam\Plannerate\Http\Resources\ShelfResource;
-use Callcocam\Plannerate\Models\Gondola;
 use Callcocam\Plannerate\Models\Segment;
 use Callcocam\Plannerate\Models\Shelf;
 use Illuminate\Http\Request;
@@ -32,10 +30,9 @@ class SegmentController extends Controller
             'layer.product',
             'layer.product.image',
         ]);
-        return response()->json([
-            'message' => 'Segmentos carregados com sucesso',
+        return $this->handleSuccess('Segmentos carregados com sucesso', [
             'data' => SegmentResource::collection($segment->all()),
-        ], 200);
+        ]);
     }
 
     /** 
@@ -51,16 +48,12 @@ class SegmentController extends Controller
                 'layer.product',
                 'layer.product.image',
             ]);
-            return response()->json([
-                'message' => 'Segmento carregado com sucesso',
+            return $this->handleSuccess('Segmento carregado com sucesso', [
                 'data' => new SegmentResource($segment),
-            ], 200);
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'message' => 'Erro ao carregar segmento',
-                'error' => $e->getMessage(),
-            ], 500);
+            return $this->handleInternalServerError('Erro ao carregar segmento');
         } finally {
             DB::commit();
         }
@@ -76,16 +69,12 @@ class SegmentController extends Controller
             DB::beginTransaction();
             $validated = $request->all();
             $segment = Segment::create($validated);
-            return response()->json([
-                'message' => 'Segmento criado com sucesso',
+            return $this->handleSuccess('Segmento criado com sucesso', [
                 'data' => new SegmentResource($segment),
-            ], 201);
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'message' => 'Erro ao criar segmento',
-                'error' => $e->getMessage(),
-            ], 500);
+            return $this->handleInternalServerError('Erro ao criar segmento');
         } finally {
             DB::commit();
         }
@@ -101,16 +90,12 @@ class SegmentController extends Controller
             DB::beginTransaction();
             $validated = $request->all();
             $segment->update($validated);
-            return response()->json([
-                'message' => 'Segmento atualizado com sucesso',
+            return $this->handleSuccess('Segmento atualizado com sucesso', [
                 'data' => new SegmentResource($segment),
-            ], 200);
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'message' => 'Erro ao atualizar segmento',
-                'error' => $e->getMessage(),
-            ], 500);
+            return $this->handleInternalServerError('Erro ao atualizar segmento');
         } finally {
             DB::commit();
         }
@@ -124,60 +109,10 @@ class SegmentController extends Controller
         try {
             DB::beginTransaction();
             $segment->delete();
-            return response()->json([
-                'message' => 'Segmento deletado com sucesso',
-            ], 200);
+            return $this->handleSuccess('Segmento deletado com sucesso');
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'message' => 'Erro ao deletar segmento',
-                'error' => $e->getMessage(),
-            ], 500);
-        } finally {
-            DB::commit();
-        }
-    }
-    /**
-     * @param Request $request
-     * @param Shelf $segment
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function reorder(Request $request, Shelf $shelf)
-    {
-        try {
-            DB::beginTransaction();
-            $validated = $request->all();
-            return response()->json([
-                'message' => 'Segmento reordenado com sucesso',
-                'data' => new ShelfResource($shelf),
-            ], 200);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'message' => 'Erro ao reordenar segmento',
-                'error' => $e->getMessage(),
-            ], 500);
-        } finally {
-            DB::commit();
-        }
-    }
-
-    public function transfer(UpdateTransferSegmentRequest $request, Segment $segment)
-    {
-        try {
-            DB::beginTransaction();
-            $validated = $request->validated();
-            $segment->update($validated);
-            return response()->json([
-                'message' => 'Segmento transferido com sucesso',
-                'data' => new SegmentResource($segment),
-            ], 200);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'message' => 'Erro ao transferir segmento',
-                'error' => $e->getMessage(),
-            ], 500);
+            return $this->handleInternalServerError('Erro ao deletar segmento');
         } finally {
             DB::commit();
         }

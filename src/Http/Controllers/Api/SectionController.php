@@ -8,7 +8,6 @@
 
 namespace Callcocam\Plannerate\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use Callcocam\Plannerate\Enums\SectionStatus;
 use Callcocam\Plannerate\Http\Requests\Section\StoreSectionRequest;
 use Callcocam\Plannerate\Http\Requests\Section\UpdateSectionRequest;
@@ -59,46 +58,13 @@ class SectionController extends Controller
             $perPage = request()->input('per_page', 15);
             $data = $query->paginate($perPage);
 
-            return SectionResource::collection($data)
-                ->additional([
-                    'meta' => [
-                        'gondola' => [
-                            'id' => $gondola->id,
-                            'name' => $gondola->name,
-                        ],
-                        'pagination' => [
-                            'total' => $data->total(),
-                            'count' => $data->count(),
-                            'per_page' => $data->perPage(),
-                            'current_page' => $data->currentPage(),
-                            'total_pages' => $data->lastPage(),
-                            'has_more_pages' => $data->hasMorePages(),
-                            'next_page_url' => $data->nextPageUrl(),
-                            'previous_page_url' => $data->previousPageUrl(),
-                            'from' => $data->firstItem(),
-                            'to' => $data->lastItem(),
-                        ],
-                    ],
-                    'message' => null,
-                    'status' => 'success',
-                ]);
-        } catch (ModelNotFoundException $e) {
-            return response()->json([
-                'message' => 'Gôndola não encontrada',
-                'status' => 'error'
-            ], 404);
-        } catch (Throwable $e) {
-            Log::error('Erro ao listar seções', [
-                'gondola_id' => $gondolaId,
-                'exception' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
+            return $this->handleSuccess('Seções carregadas com sucesso', [
+                'data' => SectionResource::collection($data)
             ]);
-
-            return response()->json([
-                'message' => 'Ocorreu um erro ao carregar as seções',
-                'status' => 'error'
-            ], 500);
+        } catch (ModelNotFoundException $e) {
+            return $this->handleNotFoundException('Gôndola não encontrada');
+        } catch (Throwable $e) {
+            return $this->handleInternalServerError('Ocorreu um erro ao carregar as seções');
         }
     }
 
@@ -119,29 +85,13 @@ class SectionController extends Controller
                 ->where('gondola_id', $gondolaId)
                 ->findOrFail($id);
 
-            return (new SectionResource($section))
-                ->additional([
-                    'message' => null,
-                    'status' => 'success'
-                ]);
-        } catch (ModelNotFoundException $e) {
-            return response()->json([
-                'message' => 'Seção ou gôndola não encontrada',
-                'status' => 'error'
-            ], 404);
-        } catch (Throwable $e) {
-            Log::error('Erro ao exibir seção', [
-                'gondola_id' => $gondolaId,
-                'section_id' => $id,
-                'exception' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
+            return $this->handleSuccess('Seção carregada com sucesso', [
+                'data' => new SectionResource($section)
             ]);
-
-            return response()->json([
-                'message' => 'Ocorreu um erro ao carregar a seção',
-                'status' => 'error'
-            ], 500);
+        } catch (ModelNotFoundException $e) {
+            return $this->handleNotFoundException('Seção ou gôndola não encontrada');
+        } catch (Throwable $e) {
+            return $this->handleInternalServerError('Ocorreu um erro ao carregar a seção');
         }
     }
 
@@ -205,30 +155,15 @@ class SectionController extends Controller
             // Carregar relacionamentos para o retorno
             $section = $section->fresh(['gondola', 'shelves']);
 
-            return (new SectionResource($section))
-                ->additional([
-                    'message' => 'Seção criada com sucesso',
-                    'status' => 'success'
-                ]);
+            return $this->handleSuccess('Seção criada com sucesso', [
+                'data' => new SectionResource($section)
+            ]);
         } catch (ModelNotFoundException $e) {
             DB::rollBack();
-            return response()->json([
-                'message' => 'Gôndola não encontrada',
-                'status' => 'error'
-            ], 404);
+            return $this->handleInternalServerError('Ocorreu um erro ao criar a seção');
         } catch (Throwable $e) {
             DB::rollBack();
-            Log::error('Erro ao criar seção', [
-                'data' => $request->all(),
-                'exception' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ]);
-
-            return response()->json([
-                'message' => 'Ocorreu um erro ao criar a seção',
-                'status' => 'error'
-            ], 500);
+            return $this->handleInternalServerError('Ocorreu um erro ao criar a seção');
         }
     }
 
@@ -308,32 +243,15 @@ class SectionController extends Controller
             // Carregar relacionamentos para o retorno
             $section = $section->fresh(['gondola', 'shelves']);
 
-            return (new SectionResource($section))
-                ->additional([
-                    'message' => 'Seção atualizada com sucesso',
-                    'status' => 'success'
-                ]);
+            return $this->handleSuccess('Seção atualizada com sucesso', [
+                'data' => new SectionResource($section)
+            ]);
         } catch (ModelNotFoundException $e) {
             DB::rollBack();
-            return response()->json([
-                'message' => 'Seção ou gôndola não encontrada',
-                'status' => 'error'
-            ], 404);
+            return $this->handleInternalServerError('Ocorreu um erro ao atualizar a seção');
         } catch (Throwable $e) {
             DB::rollBack();
-            Log::error('Erro ao atualizar seção', [
-                'gondola_id' => $gondolaId,
-                'section_id' => $id,
-                'data' => $request->all(),
-                'exception' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ]);
-
-            return response()->json([
-                'message' => 'Ocorreu um erro ao atualizar a seção',
-                'status' => 'error'
-            ], 500);
+            return $this->handleInternalServerError('Ocorreu um erro ao atualizar a seção');
         }
     }
 
@@ -363,215 +281,13 @@ class SectionController extends Controller
 
             DB::commit();
 
-            return response()->json([
-                'message' => 'Seção excluída com sucesso',
-                'status' => 'success'
-            ]);
+            return $this->handleSuccess('Seção excluída com sucesso');
         } catch (ModelNotFoundException $e) {
             DB::rollBack();
-            return response()->json([
-                'message' => 'Seção ou gôndola não encontrada',
-                'status' => 'error'
-            ], 404);
+            return $this->handleNotFoundException('Seção ou gôndola não encontrada');
         } catch (Throwable $e) {
             DB::rollBack();
-            Log::error('Erro ao excluir seção', [
-                'exception' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ]);
-
-            return response()->json([
-                'message' => 'Ocorreu um erro ao excluir a seção',
-                'status' => 'error'
-            ], 500);
-        }
-    }
-
-    /**
-     * Reordena as seções de uma gôndola
-     *
-     * @param Request $request
-     * @param string $gondolaId
-     * @return JsonResponse
-     */
-    public function reorder(Request $request, string $gondolaId)
-    {
-        try {
-            DB::beginTransaction();
-
-            // Verificar se a gôndola existe
-            Gondola::findOrFail($gondolaId);
-
-            // Validar a requisição
-            $request->validate([
-                'sections' => 'required|array',
-                'sections.*.id' => 'required|string|exists:sections,id',
-                'sections.*.ordering' => 'required|integer|min:0',
-            ]);
-
-            // Atualizar a ordem das seções
-            $sections = $request->input('sections');
-
-            foreach ($sections as $sectionData) {
-                Section::where('id', $sectionData['id'])
-                    ->where('gondola_id', $gondolaId)
-                    ->update(['ordering' => $sectionData['ordering']]);
-            }
-
-            DB::commit();
-
-            return response()->json([
-                'message' => 'Ordem das seções atualizada com sucesso',
-                'status' => 'success'
-            ]);
-        } catch (ModelNotFoundException $e) {
-            DB::rollBack();
-            return response()->json([
-                'message' => 'Gôndola não encontrada',
-                'status' => 'error'
-            ], 404);
-        } catch (Throwable $e) {
-            DB::rollBack();
-            Log::error('Erro ao reordenar seções', [
-                'gondola_id' => $gondolaId,
-                'data' => $request->all(),
-                'exception' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ]);
-
-            return response()->json([
-                'message' => 'Ocorreu um erro ao reordenar as seções',
-                'status' => 'error'
-            ], 500);
-        }
-    }
-
-
-
-    public function updateInvertOrder(Request $request, Gondola $gondola)
-    {
-        $sections =  $gondola->sections()
-            ->with(
-                'shelves',
-                'shelves.segments',
-                'shelves.segments.layer',
-                'shelves.segments.layer.product',
-                'shelves.segments.layer.product.image',
-            )
-            ->orderBy('ordering', 'desc')->get();
-        if (empty($sections)) {
-            return response()->json([
-                'message' => 'Nenhuma seção encontrada para reordenar.',
-            ], 404);
-        }
-        try {
-            $count = $sections->count();
-            $order = [];
-            foreach ($sections as $index => $section) {
-                $section->update(['ordering' =>  $count - $index]);
-                $order[] = $section;
-            }
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Erro ao reordenar seções',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
-
-        return response()->json([
-            'message' => 'Seções reordenadas com sucesso',
-            'data' => SectionResource::collection($gondola->sections()
-                ->with(
-                    'shelves',
-                    'shelves.segments',
-                    'shelves.segments.layer',
-                    'shelves.segments.layer.product',
-                    'shelves.segments.layer.product.image',
-                )
-                ->orderBy('ordering', 'desc')->get()),
-            'order' => $order,
-        ], 200);
-    }
-
-
-    public function alignment(Request $request, Section $section): JsonResponse
-    {
-        $validated = $request->validate([
-            'alignment' => 'required|string|min:1|max:10',
-        ]);
-
-        try {
-
-            $section->update($validated);
-            $gondola = $section->gondola;
-            $data = $gondola->load([
-                'sections',
-                'sections.shelves',
-                'sections.shelves.segments',
-                'sections.shelves.segments.layer',
-                'sections.shelves.segments.layer.product',
-                'sections.shelves.segments.layer.product.image',
-                'sections.shelves.section',
-                'sections.shelves.section.gondola',
-            ]);
-            return response()->json([
-                'message' => 'Alinhamento atualizado com sucesso',
-                'data' => $data,
-                'status' => 'success'
-            ]);
-        } catch (Throwable $e) {
-            Log::error('Erro ao atualizar alinhamento', [
-                'section_id' => $section->id,
-                'exception' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ]);
-
-            return response()->json([
-                'message' => 'Ocorreu um erro ao atualizar o alinhamento',
-                'status' => 'error'
-            ], 500);
-        }
-    }
-
-    public function inverterShelves(Section $section): JsonResponse
-    {
-
-        try {
-            $positions = $section->shelves()->orderBy('shelf_position', 'desc')->pluck('shelf_position')->toArray();
-             
-            $shelves = $section->shelves()->orderBy('shelf_position', 'asc')->get();
-            foreach ($shelves as $index => $s) {
-                $position = $positions[$index];
-                $s->update(['shelf_position' => $position]);
-            }
-            return response()->json([
-                'message' => 'Inversão de produtos atualizada com sucesso',
-                'status' => 'success',
-                'data' => new SectionResource($section->load([
-                    'shelves',
-                    'shelves.segments',
-                    'shelves.segments.layer',
-                    'shelves.segments.layer.product',
-                    'shelves.segments.layer.product.image',
-                    'shelves.section',
-                    'shelves.section.gondola',
-                ]))
-            ]);
-        } catch (Throwable $e) {
-            Log::error('Erro ao inverter produtos', [
-                'section_id' => $section->id,
-                'exception' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ]);
-
-            return response()->json([
-                'message' => $e->getMessage(),
-                'status' => 'error'
-            ], 500);
+            return $this->handleInternalServerError('Ocorreu um erro ao excluir a seção');
         }
     }
 }

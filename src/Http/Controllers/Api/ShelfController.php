@@ -8,7 +8,6 @@
 
 namespace Callcocam\Plannerate\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use Callcocam\Plannerate\Http\Requests\Shelf\StoreShelfRequest;
 use Callcocam\Plannerate\Http\Resources\ShelfResource;
 use Callcocam\Plannerate\Models\Shelf;
@@ -32,10 +31,9 @@ class ShelfController extends Controller
             'segments.layer.product',
             'segments.layer.product.image',
         ]);
-        return response()->json([
-            'message' => 'Prateleiras carregadas com sucesso',
+        return $this->handleSuccess('Prateleiras carregadas com sucesso', [
             'data' => ShelfResource::collection($shelf->all()),
-        ], 200);
+        ]);
     }
 
     /**
@@ -51,10 +49,9 @@ class ShelfController extends Controller
             'segments.layer.product',
             'segments.layer.product.image',
         ]);
-        return response()->json([
-            'message' => 'Prateleira carregada com sucesso',
+        return $this->handleSuccess('Prateleira carregada com sucesso', [
             'data' => new ShelfResource($shelf),
-        ], 200);
+        ]);
     }
 
     /**
@@ -71,15 +68,12 @@ class ShelfController extends Controller
             DB::beginTransaction();
             $shelf = $shelf->create($validated);
             DB::commit();
-            return response()->json([
-                'message' => 'Prateleira criada com sucesso',
+            return $this->handleSuccess('Prateleira criada com sucesso', [
                 'data' => new ShelfResource($shelf),
-            ], 201);
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'error' => 'Erro ao criar prateleira: ' . $e->getMessage(),
-            ], 500);
+            return $this->handleInternalServerError('Erro ao criar prateleira: ' . $e->getMessage());
         }
     }
 
@@ -112,15 +106,12 @@ class ShelfController extends Controller
                 'segments.layer.product.image',
             ]);
             DB::commit();
-            return response()->json([
-                'message' => 'Prateleira atualizada com sucesso',
+            return $this->handleSuccess('Prateleira atualizada com sucesso', [
                 'data' => new ShelfResource($shelf),
-            ], 200);
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'error' => 'Erro ao atualizar prateleira: ' . $e->getMessage(),
-            ], 500);
+            return $this->handleInternalServerError('Erro ao atualizar prateleira: ' . $e->getMessage());
         }
     }
     /**
@@ -134,14 +125,10 @@ class ShelfController extends Controller
             DB::beginTransaction();
             $shelf->delete();
             DB::commit();
-            return response()->json([
-                'message' => 'Prateleira excluída com sucesso',
-            ], 200);
+            return $this->handleSuccess('Prateleira excluída com sucesso');
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'error' => 'Erro ao excluir prateleira: ' . $e->getMessage(),
-            ], 500);
+            return $this->handleInternalServerError('Erro ao excluir prateleira: ' . $e->getMessage());
         }
     }
 
@@ -167,15 +154,12 @@ class ShelfController extends Controller
                 'segments.layer.product',
                 'segments.layer.product.image',
             ]);
-            return response()->json([
-                'message' => 'Segmento criado com sucesso',
+            return $this->handleSuccess('Segmento criado com sucesso', [
                 'data' => new ShelfResource($shelf),
-            ], 201);
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'error' => 'Erro ao criar segmento: ' . $e->getMessage(),
-            ], 500);
+            return $this->handleInternalServerError('Erro ao criar segmento: ' . $e->getMessage());
         }
     }
 
@@ -201,15 +185,12 @@ class ShelfController extends Controller
                 'segments.layer.product',
                 'segments.layer.product.image',
             ]);
-            return response()->json([
-                'message' => 'Segmento copiado com sucesso',
+            return $this->handleSuccess('Segmento copiado com sucesso', [
                 'data' => new ShelfResource($shelf),
-            ], 201);
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'error' => 'Erro ao copiar segmento: ' . $e->getMessage(),
-            ], 500);
+            return $this->handleInternalServerError('Erro ao copiar segmento: ' . $e->getMessage());
         }
     }
 
@@ -217,20 +198,18 @@ class ShelfController extends Controller
     {
         $validated = $request->all();
         $shelf->update($validated);
-        return response()->json([
-            'message' => 'Prateleira transferida com sucesso',
+        return $this->handleSuccess('Prateleira transferida com sucesso', [
             'data' => new ShelfResource($shelf),
-        ], 200);
+        ]);
     }
 
     public function inverterSegments(Request $request, Shelf $shelf)
     {
         $validated = $request->all();
         $shelf->update($validated);
-        return response()->json([
-            'message' => 'Segmentos invertidos com sucesso',
+        return $this->handleSuccess('Segmentos invertidos com sucesso', [
             'data' => new ShelfResource($shelf),
-        ], 200);
+        ]);
     }
     public function alignment(Request $request, Shelf $shelf)
     {
@@ -238,10 +217,9 @@ class ShelfController extends Controller
             'alignment' => 'required|string|max:255',
         ]);
         $shelf->update($validated);
-        return response()->json([
-            'message' => 'Alinhamento atualizado com sucesso',
+        return $this->handleSuccess('Alinhamento atualizado com sucesso', [
             'data' => new ShelfResource($shelf),
-        ], 200);
+        ]);
     }
 
     public function updatePosition(Request $request, Shelf $shelf)
@@ -250,9 +228,8 @@ class ShelfController extends Controller
             'shelf_position' => 'required|integer',
         ]);
         $shelf->update($validated);
-        return response()->json([
-            'message' => 'Posição atualizada com sucesso',
+        return $this->handleSuccess('Posição atualizada com sucesso', [
             'data' => new ShelfResource($shelf),
-        ], 200);
+        ]);
     }
 }

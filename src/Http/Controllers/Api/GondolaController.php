@@ -8,7 +8,6 @@
 
 namespace Callcocam\Plannerate\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use Callcocam\Plannerate\Http\Requests\Gondola\StoreGondolaRequest;
 use Callcocam\Plannerate\Http\Requests\Gondola\UpdateGondolaRequest;
 use Callcocam\Plannerate\Http\Resources\GondolaResource;
@@ -91,22 +90,10 @@ class GondolaController extends Controller
                     'status' => 'success',
                 ]);
         } catch (ModelNotFoundException $e) {
-            return response()->json([
-                'message' => 'Planograma não encontrado',
-                'status' => 'error'
-            ], 404);
+            return $this->handleNotFoundException('Planograma não encontrado');
         } catch (Throwable $e) {
-            Log::error('Erro ao listar gôndolas', [
-                'planogram_id' => $planogramId,
-                'exception' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ]);
 
-            return response()->json([
-                'message' => 'Ocorreu um erro ao carregar as gôndolas',
-                'status' => 'error'
-            ], 500);
+            return $this->handleInternalServerError('Ocorreu um erro ao carregar as gôndolas');
         }
     }
 
@@ -139,22 +126,9 @@ class GondolaController extends Controller
                     'status' => 'success'
                 ]);
         } catch (ModelNotFoundException $e) {
-            return response()->json([
-                'message' => 'Gôndola ou planograma não encontrado',
-                'status' => 'error'
-            ], 404);
+            return $this->handleNotFoundException('Gôndola ou planograma não encontrado');
         } catch (Throwable $e) {
-            Log::error('Erro ao exibir gôndola', [
-                'gondola_id' => $id,
-                'exception' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ]);
-
-            return response()->json([
-                'message' => 'Ocorreu um erro ao carregar a gôndola',
-                'status' => 'error'
-            ], 500);
+            return $this->handleInternalServerError('Ocorreu um erro ao carregar a gôndola');
         }
     }
 
@@ -266,10 +240,7 @@ class GondolaController extends Controller
 
             DB::commit();
 
-            return response()->json([
-                'message' => 'Gôndola excluída com sucesso',
-                'status' => 'success'
-            ]);
+            return $this->handleSuccess('Gôndola excluída com sucesso');
         } catch (ModelNotFoundException $e) {
             return $this->handleNotFoundException('Gôndola ou planograma não encontrado');
         } catch (Throwable $e) {
@@ -481,41 +452,5 @@ class GondolaController extends Controller
         });
     }
 
-    /**
-     * Trata exceção de item não encontrado
-     * 
-     * @param string $message
-     * @return JsonResponse
-     */
-    private function handleNotFoundException(string $message): JsonResponse
-    {
-        DB::rollBack();
-        return response()->json([
-            'message' => $message,
-            'status' => 'error'
-        ], 404);
-    }
-
-    /**
-     * Trata exceções gerais
-     * 
-     * @param Throwable $exception
-     * @param string $message
-     * @param array $context
-     * @return JsonResponse
-     */
-    private function handleException(Throwable $exception, string $message, array $context = []): JsonResponse
-    {
-        DB::rollBack();
-        Log::error($message, array_merge($context, [
-            'exception' => $exception->getMessage(),
-            'file' => $exception->getFile(),
-            'line' => $exception->getLine(),
-        ]));
-
-        return response()->json([
-            'message' => 'Ocorreu um erro ao processar a solicitação',
-            'status' => 'error'
-        ], 500);
-    }
+   
 }

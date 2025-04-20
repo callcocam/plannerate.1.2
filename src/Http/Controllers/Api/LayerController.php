@@ -6,9 +6,8 @@
  * https://www.sigasmart.com.br
  */
 
-namespace Callcocam\Plannerate\Http\Controllers\Api;
+namespace Callcocam\Plannerate\Http\Controllers\Api; 
 
-use App\Http\Controllers\Controller;
 use Callcocam\Plannerate\Http\Requests\Layer\Api\UpdateLayerRequest;
 use Callcocam\Plannerate\Http\Resources\LayerResource;
 use Callcocam\Plannerate\Models\Layer;
@@ -31,16 +30,12 @@ class LayerController extends Controller
                 'product.image',
             ]);
             DB::commit();
-            return response()->json([
-                'message' => 'Camadas carregadas com sucesso',
+            return $this->handleSuccess('Camadas carregadas com sucesso', [
                 'data' => LayerResource::collection($layer->all()),
-            ], 200);
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'message' => 'Erro ao carregar as camadas',
-                'error' => $e->getMessage(),
-            ], 500);
+            return $this->handleInternalServerError('Erro ao carregar as camadas');
         }
     }
     /**
@@ -57,16 +52,12 @@ class LayerController extends Controller
                 'product.image',
             ]);
             DB::commit();
-            return response()->json([
-                'message' => 'Camada carregada com sucesso',
+            return $this->handleSuccess('Camada carregada com sucesso', [
                 'data' => new LayerResource($layer),
-            ], 200);
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'message' => 'Erro ao carregar a camada',
-                'error' => $e->getMessage(),
-            ], 500);
+            return $this->handleInternalServerError('Erro ao carregar a camada');
         }
     }
     /**
@@ -76,22 +67,18 @@ class LayerController extends Controller
      */
     public function store(Request $request, Layer $layer)
     {
-        $validated = $request->all();
-
+        $validated = $request->all(); 
         // Processa atualização normal
         try {
             DB::beginTransaction();
             $layer = $layer->create($validated);
             DB::commit();
-            return response()->json([
-                'message' => 'Camada criada com sucesso',
+            return $this->handleSuccess('Camada criada com sucesso', [
                 'data' => new LayerResource($layer),
-            ], 201);
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'error' => 'Erro ao criar camada: ' . $e->getMessage(),
-            ], 500);
+            return $this->handleInternalServerError('Erro ao criar camada: ' . $e->getMessage());
         }
     }
     /**
@@ -108,15 +95,12 @@ class LayerController extends Controller
             DB::beginTransaction();
             $layer->update($validated);
             DB::commit();
-            return response()->json([
-                'message' => 'Camada atualizada com sucesso',
+            return $this->handleSuccess('Camada atualizada com sucesso', [
                 'data' => new LayerResource($layer),
-            ], 200);
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'error' => 'Erro ao atualizar camada: ' . $e->getMessage(),
-            ], 500);
+            return $this->handleInternalServerError('Erro ao atualizar camada: ' . $e->getMessage());
         }
     }
     /**
@@ -133,14 +117,10 @@ class LayerController extends Controller
             // Remove o segmento da camada
             $layer->segment()->delete();
             DB::commit();
-            return response()->json([
-                'message' => 'Camada excluída com sucesso',
-            ], 200);
+            return $this->handleSuccess('Camada excluída com sucesso');
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'error' => 'Erro ao excluir camada: ' . $e->getMessage(),
-            ], 500);
+            return $this->handleInternalServerError('Erro ao excluir camada: ' . $e->getMessage());
         }
     }
 }
