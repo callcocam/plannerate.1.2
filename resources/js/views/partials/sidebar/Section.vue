@@ -187,7 +187,7 @@ import { computed, ref, watch } from 'vue';
 import { useEditorStore } from '../../../store/editor';
 
 import { PencilIcon } from 'lucide-vue-next';
-import { Section } from '../../../types/sections';
+import { Section } from '@plannerate/types/sections';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

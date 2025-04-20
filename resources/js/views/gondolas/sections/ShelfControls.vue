@@ -25,21 +25,21 @@
 
 <script setup lang="ts">
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-vue-next';
-import { onMounted, ref, computed } from 'vue';
+import {  onMounted, ref, computed } from 'vue';
 import { useEditorStore } from '@plannerate/store/editor';
-import { Shelf } from '@plannerate/types/shelves';
-import { Section } from '@plannerate/types/sections';
+import { Shelf } from '@plannerate/types/shelves'; 
 /**
  * Props do componente
  */
 const props = defineProps<{
-    shelf: Shelf & { section: Section };
+    shelf: Shelf ;
     scaleFactor: number;
     sectionWidth: number;
     sectionHeight: number;
     baseHeight: number;
     shelfElement?: HTMLElement | null; // Referência ao elemento da prateleira
     sectionsContainer: HTMLElement | null; // Referência ao container das seções
+    holeWidth: number;
 }>();
 
 // Emits para comunicar com componentes pai
@@ -329,11 +329,12 @@ const handleMouseUp = (e?: MouseEvent) => {
                 );
             } else if (props.shelf.shelf_x_position !== 0) {
                 // Reset da posição X se não houver transferência
+                const holeWidth = props.holeWidth || 0;
                 editorStore.updateShelfData(
                     gondolaId,
                     currentSectionId.value,
                     shelfId.value,
-                    { shelf_x_position: props.shelf.section?.hole_width * props.scaleFactor }
+                    { shelf_x_position: holeWidth * props.scaleFactor }
                 );
             }
         } else if (dragType.value === 'vertical' && e) {
@@ -347,13 +348,15 @@ const handleMouseUp = (e?: MouseEvent) => {
 
             // Atualiza apenas se houver mudança significativa
             if (Math.abs(clampedPositionCm - initialShelfY.value) > 0.01 && !relativeY.value) {
+                const holeWidth = props.holeWidth || 0;
+                console.log("holeWidth", holeWidth);
                 editorStore.setShelfPosition(
                     gondolaId,
                     currentSectionId.value,
                     shelfId.value,
                     {
                         shelf_position: clampedPositionCm,
-                        shelf_x_position: props.shelf.section?.hole_width * props.scaleFactor
+                        shelf_x_position: holeWidth * props.scaleFactor
                     }
                 );
             }

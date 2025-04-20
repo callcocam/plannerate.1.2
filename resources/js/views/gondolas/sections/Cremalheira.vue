@@ -1,5 +1,5 @@
 <template>
-    <div :style="gramalheiraStyle" class="group  bg-slate-900 dark:bg-gray-700 absolute">
+    <div :style="gramalheiraStyle" class="group relative bg-slate-900 dark:bg-gray-700">
         <!-- Botões que aparecem apenas no hover, posicionados acima da gramalheira em coluna -->
         <div
             v-if="!props.isLastSection"
@@ -95,7 +95,6 @@ function cancelDelete(): void {
 }
 
 const gramalheiraStyle = computed(() => {
-    console.log("gramalheiraStyle",  props.section.height);
     return {
         width: `${props.section.cremalheira_width * props.scaleFactor}px`,
         height: `${props.section.height * props.scaleFactor}px`,

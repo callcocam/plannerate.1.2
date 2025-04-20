@@ -1,5 +1,5 @@
-import { Section } from "./sections";
-import { Segment as SegmentType } from "./segment";
+import { Section } from "@plannerate/types/sections";
+import { Segment as SegmentType } from "@plannerate/types/segment";
 
 interface Segment extends SegmentType {
     // Defina as propriedades de um segmento aqui
