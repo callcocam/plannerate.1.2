@@ -126,7 +126,7 @@ const navigateToAddSection = () => {
     const currentGondola = props.gondola as Gondola | undefined;
     if (currentGondola) {
         router.push({
-            name: 'plannerate.gondola.edit',
+            name: 'plannerate.gondola.add_section',
             params: {
                 id: currentGondola.planogram_id,
                 gondolaId: currentGondola.id,

@@ -108,47 +108,19 @@ class SectionController extends Controller
             DB::beginTransaction();
 
             // Verificar se a gôndola existe
-            $gondola = Gondola::findOrFail($request->input('gondola_id'));;
+            $gondola = Gondola::findOrFail($request->input('gondola_id'));
 
             // Validar dados
             $validatedData = $request->validated();
 
             // Obter a última ordem se não fornecida 
-            $lastOrdering = Section::where('gondola_id', $gondola->id)
-                ->max('ordering') ?? 0;
-            $validatedData['ordering'] = $lastOrdering + 1;
+            $lastOrdering = $this->getLastOrdering($gondola->id);
 
-            // Criar seções se fornecidas
-            $shelfService =  new ShelfPositioningService();
-            if (!isset($validatedData['settings'])) $validatedData['settings'] = [];
-            $sectionSettings =   [];
-            $sectionSettings['holes'] = $shelfService->calculateHoles($validatedData, $gondola->scale_factor);
-            $validatedData['settings'] = $sectionSettings;
-            // Criar a seção
-            $section = Section::create($validatedData);
+            // Criar a seção com configurações adequadas
+            $section = $this->createSection($gondola, $validatedData, $lastOrdering);
 
-            // Criar prateleiras se necessário
-            if (isset($validatedData['num_shelves']) && $validatedData['num_shelves'] > 0) {
-                $shelfHeight = $validatedData['shelf_height'] ?? 4;
-                $shelves = [];
-                for ($i = 0; $i < $validatedData['num_shelves']; $i++) {
-                    $shelves[] = [
-                        'id' => (string) Str::ulid(),
-                        'section_id' => $section->id,
-                        'code' => uniqid($i),
-                        'shelf_position' => $i,
-                        'shelf_height' => $shelfHeight,
-                        'shelf_width' => $validatedData['width'] ?? 130,
-                        'shelf_depth' => $validatedData['shelf_depth'] ?? 40,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ];
-                }
-
-                if (!empty($shelves)) {
-                    $section->shelves()->insert($shelves);
-                }
-            }
+            // Criar prateleiras para a seção
+            $this->createShelvesForSection($section, $request);
 
             DB::commit();
 
@@ -159,13 +131,12 @@ class SectionController extends Controller
                 'data' => new SectionResource($section)
             ]);
         } catch (ModelNotFoundException $e) {
-            DB::rollBack();
-            return $this->handleInternalServerError('Ocorreu um erro ao criar a seção');
+            return $this->handleNotFoundException('Gôndola não encontrada');
         } catch (Throwable $e) {
-            DB::rollBack();
-            return $this->handleInternalServerError('Ocorreu um erro ao criar a seção');
+            return $this->handleException($e, 'Erro ao criar seção', $request->all());
         }
     }
+
 
     /**
      * Atualiza uma seção existente
@@ -288,6 +259,115 @@ class SectionController extends Controller
         } catch (Throwable $e) {
             DB::rollBack();
             return $this->handleInternalServerError('Ocorreu um erro ao excluir a seção');
+        }
+    }
+
+
+    /**
+     * Obtém o último número de ordenação para seções de uma gôndola
+     * 
+     * @param string $gondolaId
+     * @return int
+     */
+    private function getLastOrdering(string $gondolaId): int
+    {
+        return Section::where('gondola_id', $gondolaId)->max('ordering') ?? 0;
+    }
+
+    /**
+     * Cria uma nova seção
+     * 
+     * @param Gondola $gondola
+     * @param array $validatedData
+     * @param int $lastOrdering
+     * @return Section
+     */
+    private function createSection(Gondola $gondola, array $validatedData, int $lastOrdering): Section
+    {
+        // Configurar serviço de posicionamento para cálculo de furos
+        $shelfService = new ShelfPositioningService();
+
+        // Preparar configurações da seção
+        $sectionSettings = [
+            'holes' => $shelfService->calculateHoles([
+                'height' => $validatedData['height'] ?? 180,
+                'hole_height' => $validatedData['hole_height'] ?? 3,
+                'hole_spacing' => $validatedData['hole_spacing'] ?? 2,
+                'num_shelves' => $validatedData['num_shelves'] ?? 4,
+                'hole_width' => $validatedData['hole_width'] ?? 2,
+                'base_height' => $validatedData['base_height'] ?? 17,
+            ], $gondola->scale_factor)
+        ];
+
+        // Preparar dados da seção
+        $sectionData = [
+            'gondola_id' => $gondola->id,
+            'name' => $validatedData['name'] ?? 'SEC-' . now()->format('ymd') . rand(1000, 9999) . ' - Section',
+            'code' => $validatedData['code'] ?? 'SEC-' . rand(100000, 999999),
+            'width' => $validatedData['width'] ?? 130,
+            'height' => $validatedData['height'] ?? 180,
+            'num_shelves' => $validatedData['num_shelves'] ?? 4,
+            'base_height' => $validatedData['base_height'] ?? 17,
+            'base_depth' => $validatedData['base_depth'] ?? 40,
+            'base_width' => $validatedData['base_width'] ?? 130,
+            'cremalheira_width' => $validatedData['cremalheira_width'] ?? 4,
+            'hole_height' => $validatedData['hole_height'] ?? 3,
+            'hole_width' => $validatedData['hole_width'] ?? 2,
+            'hole_spacing' => $validatedData['hole_spacing'] ?? 2,
+            'ordering' => $lastOrdering + 1,
+            'settings' => $sectionSettings,
+            'status' => $validatedData['status'] ?? 'published',
+            'user_id' => auth()->id(),
+            'tenant_id' => $gondola->tenant_id,
+        ];
+
+        return Section::create($sectionData);
+    }
+
+    /**
+     * Cria prateleiras para uma seção
+     * 
+     * @param Section $section
+     * @param Request $request
+     * @return void
+     */
+    private function createShelvesForSection(Section $section, Request $request): void
+    {
+        $shelfQty = $request->input('num_shelves', 4);
+        $productType = $request->input('product_type', 'normal');
+
+        if ($shelfQty > 0) {
+            // Configurar serviço de posicionamento
+            $shelfService = new ShelfPositioningService();
+
+            // Criar prateleiras
+            for ($i = 0; $i < $shelfQty; $i++) {
+                // Calcular posição vertical da prateleira
+                $position = $shelfService->calculateShelfPosition(
+                    $shelfQty,
+                    $request->input('shelf_height', 4),
+                    $section->settings['holes'] ?? [],
+                    $i,
+                    $section->gondola->scale_factor
+                );
+
+                $shelfData = [
+                    'section_id' => $section->id,
+                    'code' => 'SLF' . $i . '-' . now()->format('ymd') . rand(100, 999),
+                    'product_type' => $productType,
+                    'shelf_width' => $request->input('shelf_width', 125),
+                    'shelf_height' => $request->input('shelf_height', 4),
+                    'shelf_depth' => $request->input('shelf_depth', 40),
+                    'shelf_position' => round($position),
+                    'ordering' => $i,
+                    'settings' => [],
+                    'status' => $request->input('status', 'published'),
+                    'user_id' => auth()->id(),
+                    'tenant_id' => $section->tenant_id,
+                ];
+
+                $section->shelves()->create($shelfData);
+            }
         }
     }
 }
