@@ -188,95 +188,105 @@ class GondolaController extends Controller
             // Adicionar informações complementares 
             $validatedData['user_id'] = auth()->id();
 
-            // Criar seções se fornecidas
-            $shelfService =  new ShelfPositioningService();
-            // Obtém os dados da seção, se disponíveis
-            $sectionData = $request->has('section') ? $request->input('section') : [];
+            // Configurar o serviço de posicionamento
+            $shelfService = new ShelfPositioningService();
 
             // Dados da gôndola
             $gondolaData = [
-                'planogram_id' => $request->input('planogram_id'),
-                'name' => $request->input('name'),
-                'location' => $request->input('location'),
-                'side' => $request->input('side', null),
+                'planogram_id' => $request->input('planogram_id', '01jrva4fe6xjjba2hskqqj8mzp'),
+                'name' => $request->input('name', 'GND-2504-5941'),
+                'location' => $request->input('location', 'Center'),
+                'side' => $request->input('side', 'A'),
                 'flow' => $request->input('flow', 'left_to_right'),
                 'scale_factor' => $request->input('scale_factor', 3),
-                'num_modulos' => isset($sectionData['num_modulos']) ? (int)$sectionData['num_modulos'] : 1,
-                'status' => $request->input('status', 'draft'),
+                'num_modulos' => $request->input('num_modulos', 4),
+                'status' => $request->input('status', 'published'),
                 'user_id' => auth()->id(),
                 'tenant_id' => $planogram->tenant_id,
             ];
+
             // Criar a gôndola
             $gondola = Gondola::create($gondolaData);
 
-            // Criar seção se fornecida
-            // Se temos dados para criar seções
-            if ($request->has('section')) {
-                $sectionData = $request->input('section');
-                $num_modulos = isset($sectionData['num_modulos']) ? (int)$sectionData['num_modulos'] : 1;
-                for ($num = 0; $num < $num_modulos; $num++) {
-                    // Nome da seção
-                    $sectionName = $num . '# ' . ($sectionData['name'] ?? 'Seção');
-                    if ($sectionData['name'] == 'undefined - Seção') {
-                        $sectionName = $num . '# Seção';
-                    }
+            // Número de módulos/seções a criar
+            $num_modulos = $request->input('num_modulos', 4);
 
-                    $sectionSettings = $sectionData['settings'] ?? [];
-                    $sectionSettings['holes'] = $shelfService->calculateHoles($sectionData, $gondola->scale_factor);
+            // Criar seções
+            for ($num = 0; $num < $num_modulos; $num++) {
+                // Nome da seção
+                $sectionName = $num . '# Seção';
 
-                    // Preparar dados da seção
-                    $sectionToCreate = [
-                        'gondola_id' => $gondola->id,
-                        'name' => $sectionName,
-                        'code' => 'S' . now()->format('ymd') . rand(1000, 9999),
-                        'width' => data_get($sectionData, 'width', 130),
-                        'height' => data_get($sectionData, 'height', 180),
-                        'num_shelves' =>  data_get($sectionData, 'num_shelves', 4),
-                        'base_height' => data_get($sectionData, 'base_height', 17),
-                        'base_depth' => data_get($sectionData, 'base_depth', 40),
-                        'base_width' => data_get($sectionData, 'base_width', 17),
-                        'cremalheira_width' => data_get($sectionData, 'cremalheira_width', 4),
-                        'hole_height' => data_get($sectionData, 'hole_height', 2),
-                        'hole_width' => data_get($sectionData, 'hole_width', 2),
-                        'hole_spacing' => data_get($sectionData, 'hole_spacing', 2),
-                        'ordering' => $num,
-                        'settings' =>  $sectionSettings,
-                        'status' => $request->input('status', 'draft'),
+                // Calcular furos para posicionamento das prateleiras
+                $sectionSettings = [
+                    'holes' => $shelfService->calculateHoles([
+                        'height' => $request->input('altura_secao', 180),
+                        'hole_height' => $request->input('altura_furo', 3),
+                        'hole_spacing' => $request->input('espacamento_furo', 2),
+                        'num_shelves' => $request->input('num_prateleiras', 4),
+                        'hole_width' => $request->input('largura_furo', 2),
+                        'base_height' => $request->input('altura_base', 17),
+                    ])
+                ];
+
+                // Preparar dados da seção
+                $sectionToCreate = [
+                    'gondola_id' => $gondola->id,
+                    'name' => $sectionName,
+                    'code' => 'S' . now()->format('ymd') . rand(1000, 9999),
+                    'width' => $request->input('largura_secao', 130),
+                    'height' => $request->input('altura_secao', 180),
+                    'num_shelves' => $request->input('num_prateleiras', 4),
+                    'base_height' => $request->input('altura_base', 17),
+                    'base_depth' => $request->input('profundidade_base', 40),
+                    'base_width' => $request->input('largura_base', 130),
+                    'cremalheira_width' => $request->input('largura_cremalheira', 4),
+                    'hole_height' => $request->input('altura_furo', 3),
+                    'hole_width' => $request->input('largura_furo', 2),
+                    'hole_spacing' => $request->input('espacamento_furo', 2),
+                    'ordering' => $num,
+                    'settings' => $sectionSettings,
+                    'status' => $request->input('status', 'published'),
+                    'user_id' => auth()->id(),
+                    'tenant_id' => $planogram->tenant_id,
+                ];
+
+                // Criar a seção
+                $section = $gondola->sections()->create($sectionToCreate);
+
+                // Definir a quantidade de prateleiras
+                $shelfQty = $request->input('num_prateleiras', 4);
+                $product_type = $request->input('tipo_produto_prateleira', 'normal');
+
+                // Criar prateleiras
+                for ($i = 0; $i < $shelfQty; $i++) {
+                    // Calcular posição vertical da prateleira (shelf_position)
+                    $position = $shelfService->calculateShelfPosition(
+                        $shelfQty,
+                        $request->input('altura_prateleira', 4),
+                        $sectionSettings['holes'],
+                        $i,
+                        $gondola->scale_factor
+                    );
+
+                    $shelfData = [
+                        'section_id' => $section->id,
+                        'code' => 'SLF' . $i . '-' . now()->format('ymd') . rand(100, 999),
+                        'product_type' => $product_type,
+                        'shelf_width' => $request->input('largura_prateleira', 125),
+                        'shelf_height' => $request->input('altura_prateleira', 4),
+                        'shelf_depth' => $request->input('profundidade_prateleira', 40),
+                        'shelf_position' => round($position),
+                        'ordering' => $i,
+                        'settings' => [],
+                        'status' => $request->input('status', 'published'),
                         'user_id' => auth()->id(),
                         'tenant_id' => $planogram->tenant_id,
                     ];
 
-                    // Criar a seção
-                    $section = $gondola->sections()->create($sectionToCreate);
-
-                    // Definir a quantidade de prateleiras
-                    $shelfQty = data_get($sectionData, 'shelf_config.num_shelves', 4);
-                    $product_type = data_get($sectionData, 'shelf_config.product_type', 'normal');
-
-                    // Criar prateleiras
-                    for ($i = 0; $i < $shelfQty; $i++) {
-                        // Calcular posição vertical da prateleira (shelf_position)
-                        $position = $shelfService->calculateShelfPosition($shelfQty, data_get($sectionData, 'shelf_config.shelf_height', 4), data_get($sectionSettings, 'holes', []), $i, $gondola->scale_factor);
-
-                        $shelfData = [
-                            'section_id' => $section->id,
-                            'code' => 'SLF' . $i . '-' . now()->format('ymd') . rand(100, 999),
-                            'product_type' => $product_type,
-                            'shelf_width' => data_get($sectionData, 'shelf_config.shelf_width', 130),
-                            'shelf_height' => data_get($sectionData, 'shelf_config.shelf_height', 4),
-                            'shelf_depth' => data_get($sectionData, 'shelf_config.shelf_depth', 40),
-                            'shelf_position' => round($position),
-                            'ordering' => $i,
-                            'settings' => [],
-                            'status' => $request->input('status', 'draft'),
-                            'user_id' => auth()->id(),
-                            'tenant_id' => $planogram->tenant_id,
-                        ];
-
-                        $section->shelves()->create($shelfData);
-                    }
+                    $section->shelves()->create($shelfData);
                 }
             }
+
             DB::commit();
 
             // Carregar relacionamentos para o retorno

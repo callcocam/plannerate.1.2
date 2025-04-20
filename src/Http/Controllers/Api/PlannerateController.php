@@ -288,14 +288,14 @@ class PlannerateController extends Controller
             'ordering',
             'alignment',
             // 'settings',
-            'status',
+            // 'status',
             // Adicione outros campos conforme necessário
         ];
 
 
         $sectionSettings = $sectionData['settings'] ?? [];
 
-        $sectionSettings['holes'] = $shelfService->calculateHoles($data, $gondola->scale_factor);
+        $sectionSettings['holes'] = $shelfService->calculateHoles($data);
 
         $data['settings'] = $sectionSettings;
 
@@ -374,9 +374,9 @@ class PlannerateController extends Controller
             'alignment',
             // Adicione outros campos conforme necessário
         ];
-        $holes = data_get($section, 'settings.holes', []);
-        $position = $shelfService->calculateShelfPosition($section->num_shelves, data_get($data, 'shelf_height', 4), $holes, $i, $section->gondola->scale_factor);
-        $data['shelf_position'] = $position;
+        // $holes = data_get($section, 'settings.holes', []);
+        // $position = $shelfService->calculateShelfPosition($section->num_shelves, data_get($data, 'shelf_height', 4), $holes, $i, $section->gondola->scale_factor);
+        // $data['shelf_position'] = $position;
         // Converter settings para JSON se for array
          
 

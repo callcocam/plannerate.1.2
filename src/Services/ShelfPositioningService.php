@@ -13,16 +13,15 @@ class ShelfPositioningService
     /**
      * Calcula os furos em uma seção com base nas dimensões fornecidas
      *
-     * @param array $section Dados da seção contendo altura, dimensões dos furos, etc.
-     * @param float $scaleFactor Fator de escala para ajuste de tamanho
+     * @param array $section Dados da seção contendo altura, dimensões dos furos, etc
      * @return array Array de furos calculados com suas dimensões e posições
      */
-    public function calculateHoles(array $section, float $scaleFactor): array
+    public function calculateHoles(array $section): array
     {
         $sectionHeight = $section['height'];
         $holeHeight = $section['hole_height'];
         $holeWidth = $section['hole_width'];
-        $holeSpacing = $section['hole_spacing'];
+        $holeSpacing = 0;
         $baseHeight = $section['base_height'] ?? 0;
 
         // Calculate available height for holes (excluding the base at the bottom)
