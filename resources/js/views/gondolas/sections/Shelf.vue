@@ -126,7 +126,6 @@ const alignment = computed(() => {
 });
 
 const isSelected = computed(() => {
-    console.log("isSelected", editorStore.getSelectedShelf?.id === props.shelf.id);
     return editorStore.getSelectedShelf?.id === props.shelf.id;
 });
 // --- Computeds para Estilos ---
@@ -218,7 +217,6 @@ const segmentsContainerStyle = computed(() => {
 
 const selectShelfClick = (event: MouseEvent) => {
     event.stopPropagation(); // Impede que o clique se propague para elementos pais
-    console.log('Clicou na prateleira:', props.shelf.id); // Adiciona log para confirmar clique
     editorStore.setSelectedShelf(props.shelf);
     editorStore.setIsShelfEditing(true);
     // Remover a lógica que desfazia a seleção imediatamente

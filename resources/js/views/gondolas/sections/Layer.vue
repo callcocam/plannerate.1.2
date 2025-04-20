@@ -70,7 +70,7 @@ const layerStyle = computed(() => {
 /**
  * Verifica se o layer está selecionado
  */
-const isSelected = computed(() => { 
+const isSelected = computed(() => {
     const layerId = props.layer.id;
     console.log("isSelected", editorStore.getSelectedLayerIds);
     // Usa selectedLayerIds (nome corrigido e agora existente)
@@ -105,7 +105,7 @@ const handleSelectedLayer = (isCtrlOrMetaPressed: boolean, productId: string, la
         // Alternar seleção para este produto
         segmentSelected.value = !segmentSelected.value;
         // Ação toggleLayerSelection ainda não existe, comentando por enquanto
-        // editorStore.toggleLayerSelection(layerIdAsString);
+        editorStore.toggleLayerSelection(layerIdAsString);
     } else {
         // Verifica o estado atual de seleção
         const isCurrentlySelected = editorStore.isSelectedLayer(compositeId); // Usa selectedLayerIds
@@ -114,13 +114,13 @@ const handleSelectedLayer = (isCtrlOrMetaPressed: boolean, productId: string, la
         if (isCurrentlySelected && selectionSize === 1) {
             // Desselecionar se já for o único item selecionado
             // Ação clearSelection ainda não existe, comentando por enquanto
-            // editorStore.clearSelection();
+            editorStore.clearLayerSelection();
             segmentSelected.value = false;
         } else {
             // Limpar seleção anterior e selecionar apenas este
             // Ações clearSelection e selectLayer ainda não existem, comentando por enquanto
-            // editorStore.clearSelection();
-            // editorStore.selectLayer(layerIdAsString);
+            editorStore.clearLayerSelection();
+            editorStore.selectLayer(layerIdAsString);
             segmentSelected.value = true;
         }
     }
