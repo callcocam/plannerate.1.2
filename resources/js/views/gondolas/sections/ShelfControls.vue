@@ -352,7 +352,8 @@ const handleMouseUp = (e?: MouseEvent) => {
                     currentSectionId.value,
                     shelfId.value,
                     {
-                        shelf_position: clampedPositionCm,
+                        //arredonda para o mais próximo
+                        shelf_position: Math.round(clampedPositionCm),
                         shelf_x_position: -4
                     }
                 );
