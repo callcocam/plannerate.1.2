@@ -101,9 +101,7 @@ const shelfContentStyle = computed((): CSSProperties => {
         height: `${heightPx}px`,
         top: `${topPx}px`,
         left: '0',
-        position: 'absolute',
-        transition: 'all 0.2s ease',
-        zIndex: dragShelfActive.value ? '9999' : '1',
+        position: 'absolute', 
         ...otherStyles,
         // Adicione outros estilos se necessário (background, borda para debug, etc.)
         // Ex: backgroundColor: 'rgba(255, 0, 0, 0.3)',

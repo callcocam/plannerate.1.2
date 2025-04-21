@@ -43,6 +43,9 @@ const { toast } = useToast(); // <-- Instanciar toast
 
 const currentSectionId = computed(() => props.shelf.section_id);
 
+
+const shelfType = computed(() => props.shelf.product_type);
+
 const depthCount = computed(() => {
     const depth = props.segment.layer.product.depth;
     if (!depth) return 0;
@@ -102,15 +105,21 @@ const segmentStyle = computed(() => {
 
     const totalWidth = layerWidthFinal;
     const selectedStyle = {};
- 
-
-    return {
+  if (shelfType.value === 'hook') {
+        return {
+        height: `${layerHeight}px`,
+        width: `${totalWidth}px`,
+        transform: `translateY(100%) !important`,
+        ...selectedStyle,
+    } as CSSProperties;
+    }
+ return {
         height: `${layerHeight}px`,
         width: `${totalWidth}px`,
         marginBottom: `${props.shelf.shelf_height * props.scaleFactor}px`,
-        // transform: `translateY(100%)`,
         ...selectedStyle,
     } as CSSProperties;
+   
 });
 
 // Funções para ajustar a quantidade
@@ -200,33 +209,7 @@ const onDecreaseQuantity = () => {
     }
 };
 
-
-/**
- * Gerencia a navegação por teclado e teclas de ação
- */
-// const handleKeyDown = (event: KeyboardEvent) => {
-//     console.log('handleKeyDown', event.key);
-//     // Gerencia a navegação por Tab
-//     if (event.key === 'Tab') {
-//         // const direction = event.shiftKey ? 'prev' : 'next';
-//         // const currentTabIndex = Number(props.segment.tabindex || 0);
-
-//         // Verifica se é o último elemento na navegação por tab
-//         // Um elemento é considerado o último se seu tabindex for o maior valor
-//         // Você precisará de uma forma de determinar qual é o maior tabIndex
-//         // no contexto do seu aplicativo
-
-//         // Emite evento para permitir que o componente pai gerencie a navegação
-//         // emit('tab-navigation', {
-//         //     isLast: false, // Isso será determinado pelo componente pai
-//         //     direction,
-//         //     currentTabIndex
-//         // });
-
-//         // Não impedimos o comportamento padrão do Tab para manter a navegação nativa
-//     }
-
-// };
+ 
 
 /**
  * Configura dados para arrastar o segmento
@@ -257,6 +240,5 @@ const onDragStart = (event: DragEvent) => {
 <style scoped>
 .segment {
     position: relative;
-    transition: all 0.3s ease;
 }
 </style>

@@ -40,8 +40,7 @@ const layerQuantity = ref(props.layer.quantity || 1);
 const debounceTimer = ref<ReturnType<typeof setTimeout> | null>(null);
 const segmentSelected = ref(false);
 const editorGondola = computed(() => editorStore.getCurrentGondola);
-
-const shelfType = computed(() => props.shelf.product_type);
+ 
 /**
  * Computed style para o layer baseado em alinhamento e dimensões
  */
@@ -64,16 +63,7 @@ const layerStyle = computed(() => {
     } else if (alignment === 'justify' || !alignment) {
         // Para justificado ou sem alinhamento definido, ocupa 100%
         layerWidthFinal = `100%`;
-    }
-    // Não precisa de um else final, pois o default já é 100%
-    if (shelfType.value === 'hook') {
-        return {
-            width: layerWidthFinal,
-            height: `${layerHeight * props.scaleFactor}px`,
-            transform: `translateY(100%)`,
-            zIndex: '2',
-        };
-    }
+    } 
     return {
         width: layerWidthFinal,
         height: `${layerHeight * props.scaleFactor}px`, 
