@@ -146,7 +146,7 @@ class GondolaController extends Controller
             $planogram = Planogram::findOrFail($request->input('planogram_id'));
 
             // Limpar gôndolas existentes
-            $this->deleteExistingGondolas($planogram->gondolas);
+            // $this->deleteExistingGondolas($planogram->gondolas);
 
             // Validar dados
             $validatedData = $request->validated();
@@ -189,6 +189,8 @@ class GondolaController extends Controller
             DB::beginTransaction();
 
             $planogram = Planogram::findOrFail($planogramId);
+
+            
             $gondola = Gondola::where('planogram_id', $planogramId)->findOrFail($id);
 
             // Limpar seções e prateleiras existentes

@@ -116,20 +116,20 @@ export function setShelfPosition(
  * @param shelfId ID da prateleira
  * @param alignment Novo valor de alinhamento
  */
-export function setShelfAlignment(gondolaId: string, sectionId: string, shelfId: string, alignment: string | null) {
-    const path = findPath(gondolaId, sectionId, shelfId, 'setShelfAlignment');
-    if (!path) return;
+// export function setShelfAlignment(gondolaId: string, sectionId: string, shelfId: string, alignment: string | null) {
+//     const path = findPath(gondolaId, sectionId, shelfId, 'setShelfAlignment');
+//     if (!path) return;
 
-    const { shelf } = path;
+//     const { shelf } = path;
 
-    if (shelf && shelf.alignment !== alignment) {
-        shelf.alignment = alignment;
-        console.log(`Alinhamento da prateleira ${shelfId} definido para ${alignment}`);
-        recordChange();
-    } else {
-        console.log(`Alinhamento da prateleira ${shelfId} já era ${alignment}.`);
-    }
-}
+//     if (shelf && shelf.alignment !== alignment) {
+//         shelf.alignment = alignment;
+//         console.log(`Alinhamento da prateleira ${shelfId} definido para ${alignment}`);
+//         recordChange();
+//     } else {
+//         console.log(`Alinhamento da prateleira ${shelfId} já era ${alignment}.`);
+//     }
+// }
 
 /**
  * Remove uma prateleira específica de uma seção

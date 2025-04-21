@@ -1,69 +1,16 @@
 <template>
-    <ContextMenu>
-        <ContextMenuTrigger>
-            <div class="bg-gray-800" :style="sectionStyle" :data-section-id="section.id"
-                @dragover.prevent="handleSectionDragOver" @drop.prevent="handleSectionDrop"
-                @dragleave="handleSectionDragLeave" ref="sectionRef">
-                <!-- Conteúdo da Seção (Prateleiras) -->
-                <slot />
-                <ShelfComponent v-for="(shelf, index) in sortedShelves" :key="shelf.id" :shelf="shelf"
-                    :gondola="gondola" :sorted-shelves="sortedShelves" :index="index" :section="section"
-                    :scale-factor="scaleFactor" :section-width="section.width" :section-height="section.height"
-                    :base-height="baseHeight" :sections-container="sectionsContainer" :section-index="sectionIndex"
-                    :holes="holes" @drop-product="handleProductDropOnShelf" @drop-segment-copy="handleSegmentCopy"
-                    @drop-segment="updateSegment" @drag-shelf="handleShelfDragStart" />
-            </div>
-        </ContextMenuTrigger>
-        <ContextMenuContent class="w-64">
-            <ContextMenuRadioGroup model-value="modulos">
-                <ContextMenuLabel inset> Modulos </ContextMenuLabel>
-                <ContextMenuSeparator />
-                <ContextMenuItem inset @click="editSection">
-                    Editar
-                    <ContextMenuShortcut>⌘E</ContextMenuShortcut>
-                </ContextMenuItem>
-                <ContextMenuItem inset @click="addShelf">
-                    Adicionar prateleira
-                    <ContextMenuShortcut>⌘A</ContextMenuShortcut>
-                </ContextMenuItem>
-                <ContextMenuItem inset @click="inverterModule">
-                    Inverter ordem
-                    <ContextMenuShortcut>⌘I</ContextMenuShortcut>
-                </ContextMenuItem>
-                <ContextMenuSeparator />
-                <ContextMenuLabel inset> Alinhamento </ContextMenuLabel>
-                <ContextMenuSeparator />
-                <ContextMenuItem inset @click="() => justifyModule('justify')"
-                    :disabled="section.alignment === 'justify'">
-                    Justificado
-                    <ContextMenuShortcut>⌘⇧J</ContextMenuShortcut>
-                </ContextMenuItem>
-                <ContextMenuItem inset @click="() => justifyModule('left')" :disabled="section.alignment === 'left'">
-                    à esquerda
-                    <ContextMenuShortcut>⌘⇧L</ContextMenuShortcut>
-                </ContextMenuItem>
-                <ContextMenuItem inset @click="() => justifyModule('center')"
-                    :disabled="section.alignment === 'center'">
-                    ao centro
-                    <ContextMenuShortcut>⌘⇧C</ContextMenuShortcut>
-                </ContextMenuItem>
-                <ContextMenuItem inset @click="() => justifyModule('right')" :disabled="section.alignment === 'right'">
-                    à direita
-                    <ContextMenuShortcut>⌘⇧R</ContextMenuShortcut>
-                </ContextMenuItem>
-                <ContextMenuItem inset @click="() => justifyModule()"
-                    :disabled="!section.alignment || section.alignment === 'justify'">
-                    Não alinhar
-                    <ContextMenuShortcut>⌘⇧N</ContextMenuShortcut>
-                </ContextMenuItem>
-                <ContextMenuSeparator />
-                <ContextMenuItem inset disabled>
-                    Excluir
-                    <ContextMenuShortcut>⌘D</ContextMenuShortcut>
-                </ContextMenuItem>
-            </ContextMenuRadioGroup>
-        </ContextMenuContent>
-    </ContextMenu>
+    <div class="bg-gray-800" :style="sectionStyle" :data-section-id="section.id"
+        @dragover.prevent="handleSectionDragOver" @drop.prevent="handleSectionDrop" @dragleave="handleSectionDragLeave"
+        @dragstart="editorStore.disableDragging" @dragend="editorStore.enableDragging" ref="sectionRef">
+        <!-- Conteúdo da Seção (Prateleiras) -->
+        <slot />
+        <ShelfComponent v-for="(shelf, index) in sortedShelves" :key="shelf.id" :shelf="shelf" :gondola="gondola"
+            :sorted-shelves="sortedShelves" :index="index" :section="section" :scale-factor="scaleFactor"
+            :section-width="section.width" :section-height="section.height" :base-height="baseHeight"
+            :sections-container="sectionsContainer" :section-index="sectionIndex" :holes="holes"
+            @drop-product="handleProductDropOnShelf" @drop-segment-copy="handleSegmentCopy"
+            @drop-segment="updateSegment" @drag-shelf="handleShelfDragStart" />
+    </div>
 </template>
 
 <script setup lang="ts">
@@ -157,21 +104,6 @@ const addShelf = (event: MouseEvent) => {
     event.stopPropagation();
 };
 
-/**
- * Define o alinhamento do módulo
- * @param alignment Tipo de alinhamento ('justify', 'left', 'center', 'right') ou null para não alinhar
- */
-const justifyModule = (alignment: string | null = null) => {
-    if (!gondola.id) {
-        toast({
-            title: 'Aviso',
-            description: 'Não é possível justificar módulo: gondolaId não fornecido.',
-            variant: 'default'
-        });
-        return;
-    }
-    editorStore.setSectionAlignment(gondola.id, section.id, alignment);
-};
 
 /**
  * Inverte a ordem das prateleiras no módulo

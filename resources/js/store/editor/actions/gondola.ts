@@ -55,7 +55,14 @@ export function invertGondolaSectionOrder(gondolaId: string) {
 
     if (gondola.sections.length > 1) {
         gondola.sections.reverse();
-        console.log(`Ordem das seções invertida para a gôndola ${gondolaId}`);
+
+        // Atualiza o campo 'ordering' de cada seção com base no novo índice
+        gondola.sections.forEach((section, index) => {
+            section.ordering = index; 
+        });
+
+        console.log(`Ordem das seções invertida e campo 'ordering' atualizado para a gôndola ${gondolaId}`);
+        
         recordChange();
     } else {
         console.warn(`Não foi possível inverter seções: Gôndola ${gondolaId} tem menos de 2 seções.`);

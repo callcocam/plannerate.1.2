@@ -51,7 +51,7 @@ class PlannerateController extends Controller
             ])->findOrFail($id);
 
 
-            return new PlannerateResource($planogram);
+            return response()->json(new PlannerateResource($planogram));
         } catch (ModelNotFoundException $e) {
             return response()->json([
                 'message' => 'Planograma não encontrado',

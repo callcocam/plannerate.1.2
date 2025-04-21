@@ -30,6 +30,7 @@ import {
     getSelectedSegment,
     getSelectedLayer,
     getSelectedLayerIds,
+    getIsDragging,
 } from './editor/state';
 
 // Funções de histórico
@@ -112,18 +113,21 @@ export const useEditorStore = defineStore('editor', () => {
         // Manipulação de seções
         setGondolaSectionOrder: actions.setGondolaSectionOrder,
         removeSectionFromGondola: actions.removeSectionFromGondola,
-        setSectionAlignment: actions.setSectionAlignment,
+        // setSectionAlignment: actions.setSectionAlignment,
         updateSectionData: actions.updateSectionData,
         setIsSectionEditing: actions.setIsSectionEditing,
         setSelectedSection: actions.setSelectedSection,
         clearSelectedSection: actions.clearSelectedSection,
         isSectionSelected: actions.isSectionSelected,
-
+        setIsDragging: actions.setIsDragging,
+        disableDragging: actions.disableDragging,
+        enableDragging: actions.enableDragging,
+        getIsDragging,
         // Manipulação de prateleiras
         invertShelvesInSection: actions.invertShelvesInSection,
         addShelfToSection: actions.addShelfToSection,
         setShelfPosition: actions.setShelfPosition,
-        setShelfAlignment: actions.setShelfAlignment,
+        // setShelfAlignment: actions.setShelfAlignment,
         removeShelfFromSection: actions.removeShelfFromSection,
         updateShelfData: actions.updateShelfData,
         transferShelfBetweenSections: actions.transferShelfBetweenSections,

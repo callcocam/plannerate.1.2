@@ -230,30 +230,7 @@
                                     </TooltipContent>
                                 </Tooltip>
                                 <Input id="name" v-model="formData.name" class="h-8" />
-                            </div>
-                            <!-- Novo campo de Alinhamento -->
-                            <div class="space-y-1">
-                                 <Tooltip>
-                                     <TooltipTrigger as-child>
-                                          <Label for="alignment" class="truncate block cursor-help">Alinhamento</Label>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                          <p>Alinhamento dos produtos/segmentos dentro das prateleiras desta seção.</p>
-                                      </TooltipContent>
-                                  </Tooltip>
-                                 <Select id="alignment" v-model="formData.alignment">
-                                     <SelectTrigger class="h-8">
-                                         <SelectValue placeholder="Herdar/Padrão" />
-                                     </SelectTrigger>
-                                     <SelectContent>
-                                         <SelectItem value="inherit">Herdar/Padrão</SelectItem> 
-                                         <SelectItem value="left">Esquerda</SelectItem>
-                                         <SelectItem value="center">Centro</SelectItem>
-                                         <SelectItem value="right">Direita</SelectItem>
-                                         <SelectItem value="justify">Justificado</SelectItem>
-                                     </SelectContent>
-                                 </Select>
-                             </div>
+                            </div> 
                         </div>
                     </div>
 

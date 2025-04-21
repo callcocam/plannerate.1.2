@@ -19,8 +19,8 @@ const planogramData = computed(() => editorStore.currentState);
  
 
 onMounted(async () => {
-    const response = await editorService.fetchPlanogram(route.params.id);
-    editorStore.initialize(response.data);
+    const response = await editorService.fetchPlanogram(route.params.id); 
+    editorStore.initialize(response);
 
 });
 </script>

@@ -1,13 +1,17 @@
 <template>
-    <div class="segment drag-segment-handle group relative flex items-center " :style="segmentStyle" :class="{
-        'justify-around': alignment === 'justify',
-        'justify-start': alignment === 'left',
-        'justify-center': alignment === 'center',
-        'justify-end': alignment === 'right'
-    }" @dragstart="onDragStart" draggable="true" :tabindex="segment.tabindex" v-if="segment.layer">
+    <div class="segment drag-segment-handle group relative flex items-center " :style="segmentStyle"
+        @dragstart="onDragStart" draggable="true" :tabindex="segment.tabindex" v-if="segment.layer">
         <LayerComponent v-for="(_, index) in segmentQuantity" :key="index" :shelf="shelf" :segment="segment"
             :layer="segment.layer" :scale-factor="scaleFactor" :section-width="sectionWidth"
-            :shelf-depth="shelf.shelf_depth" @increase="onIncreaseQuantity" @decrease="onDecreaseQuantity" />
+            :shelf-depth="shelf.shelf_depth" @increase="onIncreaseQuantity" @decrease="onDecreaseQuantity">
+            <template #depth-count>
+
+                <Label :title="`Profundidade da prateleira: ${depthCount}`"
+                    class="product-content-depth absolute -top-2 -left-2 text-xs text-gray-100 bg-gray-700 
+                             flex items-center justify-center h-3 w-3 rounded-full  z-10 dark:text-gray-800 dark:bg-gray-300 cursor-help">
+                    {{ depthCount }}</Label>
+            </template>
+        </LayerComponent>
     </div>
 </template>
 <script setup lang="ts">
@@ -38,6 +42,12 @@ const editorStore = useEditorStore(); // <-- INSTANCIAR EDITOR STORE
 const { toast } = useToast(); // <-- Instanciar toast
 
 const currentSectionId = computed(() => props.shelf.section_id);
+
+const depthCount = computed(() => {
+    const depth = props.segment.layer.product.depth;
+    if (!depth) return 0;
+    return Math.round(props.shelf.shelf_depth / depth);
+});
 
 /** Segment quantity (number of layers) */
 const segmentQuantity = computed(() => {
@@ -72,35 +82,8 @@ const layerWidth = () => {
     });
     return sectionWidth;
 };
-
 // Corrigido: Determina o alinhamento efetivo do segmento seguindo a hierarquia
-const alignment = computed(() => {
-    // 1. Prioridade: Alinhamento do próprio segmento
-    if (props.segment.alignment !== undefined && props.segment.alignment !== null) {
-        return props.segment.alignment;
-    }
-    // 2. Senão: Alinhamento da prateleira pai
-    if (props.shelf.alignment !== undefined && props.shelf.alignment !== null) {
-        return props.shelf.alignment;
-    }
-
-    // 3. Senão: Alinhamento da seção avó (precisa buscar)
-    const parentSection = editorStore.currentState?.gondolas
-        .find(g => g.id === props.gondola.id)?.sections
-        .find(s => s.id === props.shelf.section_id);
-    
-    if (parentSection && parentSection.alignment !== undefined && parentSection.alignment !== null) {
-        return parentSection.alignment;
-    }
-
-    // 4. Senão: Alinhamento da gôndola bisavó
-    if (props.gondola.alignment !== undefined && props.gondola.alignment !== null) {
-        return props.gondola.alignment;
-    }
-
-    // 5. Padrão: Se nenhum estiver definido
-    return 'justify'; // Ou retorne undefined/null
-});
+const alignment = computed(() => props.gondola.alignment);
 
 const segmentStyle = computed(() => {
     const layerHeight = props.segment.layer.product.height * props.scaleFactor;
@@ -119,10 +102,13 @@ const segmentStyle = computed(() => {
 
     const totalWidth = layerWidthFinal;
     const selectedStyle = {};
+ 
+
     return {
         height: `${layerHeight}px`,
         width: `${totalWidth}px`,
         marginBottom: `${props.shelf.shelf_height * props.scaleFactor}px`,
+        // transform: `translateY(100%)`,
         ...selectedStyle,
     } as CSSProperties;
 });
@@ -170,7 +156,7 @@ const onIncreaseQuantity = () => {
     );
 };
 
-const onDecreaseQuantity = () => { 
+const onDecreaseQuantity = () => {
     if (!props.gondola?.id || !currentSectionId.value || !props.shelf?.id || !props.segment?.id || !props.segment?.layer?.product?.id) {
         console.error("onDecreaseQuantity: IDs faltando para validação/atualização.");
         toast({ title: "Erro Interno", description: "Dados incompletos para diminuir quantidade.", variant: "destructive" });

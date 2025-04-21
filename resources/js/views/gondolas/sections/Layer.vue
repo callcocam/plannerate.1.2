@@ -2,7 +2,11 @@
     <div class="layer group flex cursor-pointer justify-around " :style="layerStyle" @click="handleLayerClick"
         @keydown="handleKeyDown" :class="{ 'layer--selected': isSelected, 'layer--focused': !isSelected }">
         <Product v-for="index in layer.quantity" :key="index" :product="layer.product" :scale-factor="scaleFactor"
-            :index="index" :shelf-depth="props.shelfDepth" />
+            :index="index" :shelf-depth="props.shelfDepth">
+            <template #depth-count v-if="index === 1">
+                <slot name="depth-count"></slot>
+            </template>
+        </Product>
     </div>
 </template>
 
@@ -11,10 +15,11 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useEditorStore } from '@plannerate/store/editor';
 import Product from '@plannerate/views/gondolas/sections/Product.vue';
 import { Layer as LayerType, Segment as SegmentType } from '@/types/segment';
-
+import { Shelf } from '@plannerate/types/shelves';
 const props = defineProps<{
     layer: LayerType;
     segment: SegmentType;
+    shelf: Shelf;
     scaleFactor: number;
     sectionWidth: number;
     shelfDepth: number;
@@ -36,6 +41,7 @@ const debounceTimer = ref<ReturnType<typeof setTimeout> | null>(null);
 const segmentSelected = ref(false);
 const editorGondola = computed(() => editorStore.getCurrentGondola);
 
+const shelfType = computed(() => props.shelf.product_type);
 /**
  * Computed style para o layer baseado em alinhamento e dimensões
  */
@@ -60,10 +66,17 @@ const layerStyle = computed(() => {
         layerWidthFinal = `100%`;
     }
     // Não precisa de um else final, pois o default já é 100%
-
+    if (shelfType.value === 'hook') {
+        return {
+            width: layerWidthFinal,
+            height: `${layerHeight * props.scaleFactor}px`,
+            transform: `translateY(100%)`,
+            zIndex: '2',
+        };
+    }
     return {
         width: layerWidthFinal,
-        height: `${layerHeight * props.scaleFactor}px`,
+        height: `${layerHeight * props.scaleFactor}px`, 
         zIndex: '2',
     };
 });

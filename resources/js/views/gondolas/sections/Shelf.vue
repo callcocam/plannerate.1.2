@@ -8,7 +8,7 @@
                 @drop-segment="(segment: SegmentType, oldShelf: Shelf) => $emit('drop-segment', segment, oldShelf)" />
             <div class="shelf relative flex flex-col items-center bg-gray-700 text-gray-50 dark:bg-gray-800" :class="{
                 'border-2 border-blue-800 border-dashed  bg-gray-500': isSelected,
-                'border-2 border-gray-700 bg-gray-700 dark:bg-gray-800 dark:border-gray-800': !isSelected
+                'border-2 border-gray-700 bg-gray-700 dark:bg-gray-800 dark:border-gray-800': !isSelected,
             }" :style="shelfStyle" ref="shelfElement">
                 <!-- TODO: Renderizar Segmentos/Produtos aqui -->
                 <draggable v-model="sortableSegments" item-key="id" handle=".drag-segment-handle"
@@ -36,35 +36,12 @@
                     Editar
                     <ContextMenuShortcut>⌘]</ContextMenuShortcut>
                 </ContextMenuItem>
-                <ContextMenuItem inset @click="invertSegments">
-                    Inverter
+                <ContextMenuItem inset @click="invertSegments" :disabled="shelf.segments.length < 2">
+                    Inverter ({{ shelf.segments.length }})
                     <ContextMenuShortcut>⌘⇧I</ContextMenuShortcut>
                 </ContextMenuItem>
                 <ContextMenuSeparator />
-                <ContextMenuLabel inset> Alinhamento </ContextMenuLabel>
-                <ContextMenuSeparator />
-                <ContextMenuItem inset @click="setAlignmentJustify">
-                    Justificado
-                    <ContextMenuShortcut>⌘⇧J</ContextMenuShortcut>
-                </ContextMenuItem>
-                <ContextMenuItem inset @click="setAlignmentLeft" :disabled="alignment === 'left'">
-                    Alinhado à esquerda
-                    <ContextMenuShortcut>⌘⇧L</ContextMenuShortcut>
-                </ContextMenuItem>
-                <ContextMenuItem inset @click="setAlignmentCenter" :disabled="alignment === 'center'">
-                    Alinhado ao centro
-                    <ContextMenuShortcut>⌘⇧C</ContextMenuShortcut>
-                </ContextMenuItem>
-                <ContextMenuItem inset @click="setAlignmentRight" :disabled="alignment === 'right'">
-                    Alinhado à direita
-                    <ContextMenuShortcut>⌘⇧R</ContextMenuShortcut>
-                </ContextMenuItem>
-                <ContextMenuItem inset @click="setAlignmentNone" :disabled="!alignment || alignment === 'justify'">
-                    Não alinhar
-                    <ContextMenuShortcut>⌘⇧N</ContextMenuShortcut>
-                </ContextMenuItem>
-                <ContextMenuSeparator />
-                <ContextMenuItem inset disabled>
+                <ContextMenuItem inset @click="deleteShelf">
                     Excluir
                     <ContextMenuShortcut>⌘D</ContextMenuShortcut>
                 </ContextMenuItem>
@@ -105,6 +82,7 @@ const shelfElement = ref<HTMLElement | null>(null);
 
 const gondolaId = computed(() => props.gondola.id);
 const holeWidth = computed(() => props.section.hole_width);
+const shelfType = computed(() => props.shelf.product_type);
 // Definir Emits
 const emit = defineEmits(['drop-product', 'drop-segment-copy', 'drop-segment']);
 const editorStore = useEditorStore();
@@ -165,7 +143,7 @@ const shelfStyle = computed(() => {
         const leftPosition = props.shelf.shelf_x_position;
         moveStyle['left'] = `${leftPosition}px`;
     }
-
+   
     // Retornar o objeto de estilo completo
     return {
         position: 'absolute' as const,
@@ -238,43 +216,13 @@ const globalKeyHandler = (event: KeyboardEvent) => {
     }
 };
 
-// Função auxiliar para chamar a action do editorStore
-const updateAlignment = (alignment: string | null) => {
-    if (!gondolaId.value || !props.shelf.section_id || !props.shelf.id) {
-        console.error('updateAlignment: IDs faltando (gondola, section, ou shelf).');
-        // Adicionar toast de erro?
-        return;
-    }
-    editorStore.setShelfAlignment(gondolaId.value, props.shelf.section_id, props.shelf.id, alignment);
-}
-
-const setAlignmentLeft = () => {
-    // REMOVIDO: shelvesStore.setSectionAlignment(props.shelf.id, 'left');
-    updateAlignment('left');
-};
-
-const setAlignmentCenter = () => {
-    // REMOVIDO: shelvesStore.setSectionAlignment(props.shelf.id, 'center');
-    updateAlignment('center');
-};
-
-const setAlignmentRight = () => {
-    // REMOVIDO: shelvesStore.setSectionAlignment(props.shelf.id, 'right');
-    updateAlignment('right');
-};
-const setAlignmentJustify = () => {
-    // REMOVIDO: shelvesStore.setSectionAlignment(props.shelf.id, 'justify');
-    updateAlignment('justify');
-};
-const setAlignmentNone = () => {
-    // REMOVIDO: shelvesStore.setSectionAlignment(props.shelf.id, null);
-    updateAlignment(null);
+const deleteShelf = () => {
+    editorStore.removeShelfFromSection(gondolaId.value, props.shelf.section_id, props.shelf.id);
 };
 
 const invertSegments = () => {
     const invertedSegments = [...sortableSegments.value].reverse();
     sortableSegments.value = invertedSegments;
-    console.warn("InvertSegments agora usa setShelfSegmentsOrder via computed.");
 };
 
 onMounted(() => {

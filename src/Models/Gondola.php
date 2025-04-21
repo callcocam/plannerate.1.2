@@ -48,12 +48,12 @@ class Gondola extends Model
 
     public function scopePublished($query)
     {
-        return $query->where('status', GondolaStatus::PUBLISHED);
+        return $query->where('status', GondolaStatus::Published);
     }
 
     public function scopeDraft($query)
     {
-        return $query->where('status', GondolaStatus::DRAFT);
+        return $query->where('status', GondolaStatus::Draft);
     }
 
     /**

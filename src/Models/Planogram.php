@@ -25,8 +25,8 @@ class Planogram extends Model
     protected $guarded = ['id'];
 
     protected $casts = [
-        'start_date' => 'datetime',
-        'end_date' => 'datetime',
+        'start_date' => 'datetime:Y-m-d',
+        'end_date' => 'datetime:Y-m-d',
         'status' => PlanogramStatus::class,
     ];
 

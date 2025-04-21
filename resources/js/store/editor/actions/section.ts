@@ -1,8 +1,8 @@
 // /store/editor/actions/section.ts
 import type { Section } from '@plannerate/types/sections';
-import { findGondola, findPath } from '../utils';
+import { findGondola } from '../utils';
 import { recordChange } from '../history';
-import { isSectionEditing, selectedSection } from '../state';
+import { isSectionEditing, selectedSection, isDragging } from '../state';
 /**
  * Define a ordem das seções para uma gôndola específica
  * @param gondolaId ID da gôndola
@@ -12,19 +12,31 @@ export function setGondolaSectionOrder(gondolaId: string, newSections: Section[]
     const gondola = findGondola(gondolaId, 'setGondolaSectionOrder');
     if (!gondola) return;
 
-    // Compara se a nova ordem é realmente diferente da atual
-    const currentSectionIds = gondola.sections.map(s => s.id);
-    const newSectionIds = newSections.map(s => s.id);
+    // Atualiza o campo 'ordering' em cada seção da nova lista com base no índice
+    const updatedSections = newSections.map((section, index) => ({
+        ...section,
+        ordering: index, 
+    }));
 
+    // Compara se a nova ordem (IDs e ordenação implícita pelo índice) é diferente da atual
+    // (Considerando que a ordenação no estado pode não estar correta antes desta função)
+    const currentSectionIds = gondola.sections.map(s => s.id);
+    const newSectionIds = updatedSections.map(s => s.id);
+
+    // Verificamos apenas a ordem dos IDs por enquanto, pois a atualização de 'ordering' será feita abaixo.
     if (JSON.stringify(currentSectionIds) === JSON.stringify(newSectionIds)) {
-        console.log('Ordem das seções não mudou, nenhum registro no histórico.');
-        return;
+        // Poderíamos adicionar uma verificação mais profunda aqui se necessário,
+        // comparando também o campo 'ordering' atual com o novo índice, mas
+        // geralmente, se a ordem dos IDs não mudou, a intenção não é reordenar.
+        console.log('Ordem dos IDs das seções não mudou.');
+        // No entanto, ainda pode ser necessário atualizar os campos 'ordering' se estiverem dessincronizados.
+        // Vamos garantir que o estado reflita a ordem atualizada de qualquer maneira.
     }
 
-    // Atualiza o array de seções com a nova ordem
-    gondola.sections = [...newSections];
-    console.log(`Nova ordem das seções definida para a gôndola ${gondolaId}`);
-    recordChange();
+    // Atualiza o array de seções com a nova ordem E com o campo ordering atualizado
+    gondola.sections = updatedSections;
+    console.log(`Nova ordem das seções definida e campo 'ordering' atualizado para a gôndola ${gondolaId}`);
+    recordChange(); // Registra a mudança para que as seções atualizadas sejam salvas posteriormente
 }
 
 /**
@@ -53,20 +65,20 @@ export function removeSectionFromGondola(gondolaId: string, sectionId: string) {
  * @param sectionId ID da seção
  * @param alignment Novo valor de alinhamento
  */
-export function setSectionAlignment(gondolaId: string, sectionId: string, alignment: string | null) {
-    const path = findPath(gondolaId, sectionId, null, 'setSectionAlignment');
-    if (!path) return;
+// export function setSectionAlignment(gondolaId: string, sectionId: string, alignment: string | null) {
+//     const path = findPath(gondolaId, sectionId, null, 'setSectionAlignment');
+//     if (!path) return;
 
-    const { section } = path;
+//     const { section } = path;
 
-    if (section.alignment !== alignment) {
-        section.alignment = alignment;
-        console.log(`Alinhamento da seção ${sectionId} definido para ${alignment}`);
-        recordChange();
-    } else {
-        console.log(`Alinhamento da seção ${sectionId} já era ${alignment}.`);
-    }
-}
+//     if (section.alignment !== alignment) {
+//         section.alignment = alignment;
+//         console.log(`Alinhamento da seção ${sectionId} definido para ${alignment}`);
+//         recordChange();
+//     } else {
+//         console.log(`Alinhamento da seção ${sectionId} já era ${alignment}.`);
+//     }
+// }
 
 /**
  * Atualiza os dados de uma seção específica
@@ -139,4 +151,16 @@ export function clearSelectedSection() {
 
 export function isSectionSelected() {
     return selectedSection.value !== null;
+}
+
+export function setIsDragging(value: boolean) {
+    isDragging.value = value;
+}
+
+export function disableDragging() {
+    isDragging.value = false;
+}
+
+export function enableDragging() {
+    isDragging.value = true;
 }

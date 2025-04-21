@@ -42,6 +42,9 @@ export const selectedLayer = ref<Layer | null>(null);
 export const isLoading = ref(false);
 export const error = ref<string | null>(null);
 
+// Estado de sessão na ora de drag and drop
+export const isDragging = ref(false);
+
 // =========================================================
 // GETTERS
 // =========================================================
@@ -121,3 +124,6 @@ export const productIdsInCurrentGondola = computed(() => {
     }
     return productIds; // Retorna o Set diretamente
 });
+
+// Estado de sessão na ora de drag and drop
+export const getIsDragging = computed(() => isDragging.value);

@@ -2,12 +2,8 @@
     <div class="product relative" :style="productStyle">
         <!-- Aqui você pode adicionar a representação visual do produto -->
         <!-- Pode ser uma imagem, um retângulo colorido, ou qualquer outro elemento visual -->
-        <span class="product-content-depth absolute -top-2 -left-2 text-xs text-gray-100 bg-gray-700  flex items-center justify-center h-3 w-3 rounded-full  z-10 dark:text-gray-800 dark:bg-gray-300">
-                {{ depthCount }}
-            </span>
-        <div class="product-content relative overflow-auto" :style="contentStyle">
-          
-        </div>
+        <slot name="depth-count"></slot>
+        <div class="product-content relative overflow-auto" :style="contentStyle"></div>
     </div>
 </template>
 
@@ -49,10 +45,6 @@ const contentStyle = computed(() => {
         alignItems: 'center',
         justifyContent: 'center',
     };
-});
-
-const depthCount = computed(() => {
-    return Math.round(props.shelfDepth / props.product.depth);
 });
 
 </script>

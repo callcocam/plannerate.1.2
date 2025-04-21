@@ -46,7 +46,7 @@
                         </div>
                         <div>
                             <Label for="height" class="dark:text-gray-300">Altura da Seção (cm)</Label>
-                            <Input id="height" v-model.number="formData.height" type="number" min="0" step="any"
+                            <Input id="height" v-model.number="formData.height" type="text" readonly
                                 class="mt-1 w-full dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200" />
                             <span v-if="errors?.height" class="mt-1 text-xs text-red-500">{{ errors.height[0] }}</span>
                         </div>
@@ -62,21 +62,21 @@
                                 step="any"
                                 class="mt-1 w-full dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200" />
                             <span v-if="errors?.base_height" class="mt-1 text-xs text-red-500">{{ errors.base_height[0]
-                                }}</span>
+                            }}</span>
                         </div>
                         <div>
                             <Label for="base_width" class="dark:text-gray-300">Largura da Base (cm)</Label>
                             <Input id="base_width" v-model.number="formData.base_width" type="number" min="0" step="any"
                                 class="mt-1 w-full dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200" />
                             <span v-if="errors?.base_width" class="mt-1 text-xs text-red-500">{{ errors.base_width[0]
-                                }}</span>
+                            }}</span>
                         </div>
                         <div>
                             <Label for="base_depth" class="dark:text-gray-300">Profundidade da Base (cm)</Label>
                             <Input id="base_depth" v-model.number="formData.base_depth" type="number" min="0" step="any"
                                 class="mt-1 w-full dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200" />
                             <span v-if="errors?.base_depth" class="mt-1 text-xs text-red-500">{{ errors.base_depth[0]
-                                }}</span>
+                            }}</span>
                         </div>
                     </div>
 
@@ -98,14 +98,14 @@
                                 step="any"
                                 class="mt-1 w-full dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200" />
                             <span v-if="errors?.hole_height" class="mt-1 text-xs text-red-500">{{ errors.hole_height[0]
-                                }}</span>
+                            }}</span>
                         </div>
                         <div>
                             <Label for="hole_width" class="dark:text-gray-300">Largura Furo (cm)</Label>
                             <Input id="hole_width" v-model.number="formData.hole_width" type="number" min="0" step="any"
                                 class="mt-1 w-full dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200" />
                             <span v-if="errors?.hole_width" class="mt-1 text-xs text-red-500">{{ errors.hole_width[0]
-                                }}</span>
+                            }}</span>
                         </div>
                         <div>
                             <Label for="hole_spacing" class="dark:text-gray-300">Espaçamento Furos (cm)</Label>
@@ -127,7 +127,7 @@
                                 step="any"
                                 class="mt-1 w-full dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200" />
                             <span v-if="errors?.shelf_width" class="mt-1 text-xs text-red-500">{{ errors.shelf_width[0]
-                                }}</span>
+                            }}</span>
                         </div>
                         <div>
                             <Label for="shelf_height" class="dark:text-gray-300">Altura (cm)</Label>
@@ -143,14 +143,14 @@
                                 step="any"
                                 class="mt-1 w-full dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200" />
                             <span v-if="errors?.shelf_depth" class="mt-1 text-xs text-red-500">{{ errors.shelf_depth[0]
-                                }}</span>
+                            }}</span>
                         </div>
                         <div>
                             <Label for="num_shelves" class="dark:text-gray-300">Número de Prateleiras</Label>
                             <Input id="num_shelves" v-model.number="formData.num_shelves" type="number" min="0"
                                 class="mt-1 w-full dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200" />
                             <span v-if="errors?.num_shelves" class="mt-1 text-xs text-red-500">{{ errors.num_shelves[0]
-                                }}</span>
+                            }}</span>
                         </div>
                     </div>
                     <div>
@@ -168,7 +168,7 @@
                             </SelectContent>
                         </Select>
                         <span v-if="errors?.product_type" class="mt-1 text-xs text-red-500">{{ errors.product_type[0]
-                            }}</span>
+                        }}</span>
                     </div>
                 </form>
             </div>
@@ -232,7 +232,7 @@ const {
         emit('section-added', newSection);
         // A navegação padrão do composable já acontece, talvez não precise de fecharModal aqui
         // fecharModal(); // Opcional: pode ser removido se a navegação do composable for suficiente
-        router.push({ 
+        router.push({
             name: 'gondola.view',
             params: {
                 gondolaId: initialGondolaId.value,
@@ -271,13 +271,13 @@ const fecharModal = () => {
     // Se quisermos apenas fechar o modal sem navegar, emitimos o evento.
     emit('update:open', false);
     emit('close');
-    router.push({ 
+    router.push({
         name: 'gondola.view',
         params: {
             gondolaId: initialGondolaId.value,
             id: initialPlanogramId.value
         }
-      }); // Removido - Deixar composable/onSuccess decidir a navegação
+    }); // Removido - Deixar composable/onSuccess decidir a navegação
 };
 
 // Wrapper para submitForm (se necessário, ou usar diretamente no template)

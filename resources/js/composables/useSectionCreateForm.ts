@@ -49,7 +49,14 @@ export function useSectionCreateForm(options: UseSectionCreateFormOptions) {
 
     const isSending = ref(false);
     const errors = ref<Record<string, string[]>>({});
-
+    // vamos pegar a altura da gôndola e setar no formData
+    const gondola = editorStore.getGondola(gondolaId.value)
+    const sectionHeight = ref(0);
+    const sectionWidth = ref(0);
+    gondola?.sections.forEach(section => {
+        sectionHeight.value = section.height;
+        sectionWidth.value = section.width;
+    });
     // Função para gerar código (precisa ser importada ou movida para utils se usada em mais lugares)
     const generateSectionCode = () => `SEC-${Date.now().toString().slice(-6)}`;
 
@@ -58,16 +65,16 @@ export function useSectionCreateForm(options: UseSectionCreateFormOptions) {
         name: generateSectionCode() + ' - Section', // Nome padrão
         code: generateSectionCode(), // Código padrão
         num_modulos: 1,
-        width: 130,
-        height: 180,
+        width: sectionWidth.value || 130,
+        height: sectionHeight.value || 180,
         base_height: 17,
-        base_width: 130,
+        base_width: sectionWidth.value || 130,
         base_depth: 40,
         cremalheira_width: 4,
         hole_height: 3,
         hole_width: 2,
         hole_spacing: 2,
-        shelf_width: 125, // Exemplo: largura seção - 2 * largura cremalheira
+        shelf_width: sectionWidth.value - (4 * 2), // Exemplo: largura seção - 2 * largura cremalheira
         shelf_height: 4,
         shelf_depth: 40,
         num_shelves: 4,
@@ -77,14 +84,14 @@ export function useSectionCreateForm(options: UseSectionCreateFormOptions) {
     const formData = reactive<SectionFormData>(getInitialFormData());
 
     const updateForm = (newData: Partial<SectionFormData>) => {
-         for (const key in newData) {
+        for (const key in newData) {
             if (Object.prototype.hasOwnProperty.call(formData, key)) {
                 (formData as any)[key] = newData[key as keyof SectionFormData];
             }
         }
         // Exemplo de lógica reativa se shelf_width depende de width e cremalheira_width
         if ('width' in newData || 'cremalheira_width' in newData) {
-             formData.shelf_width = formData.width - (formData.cremalheira_width * 2);
+            formData.shelf_width = formData.width - (formData.cremalheira_width * 2);
         }
     };
 
@@ -95,11 +102,11 @@ export function useSectionCreateForm(options: UseSectionCreateFormOptions) {
         errors.value = {};
     };
 
-     const validateForm = (): boolean => {
+    const validateForm = (): boolean => {
         const result = sectionFormSchema.safeParse(formData);
         if (!result.success) {
             errors.value = result.error.flatten().fieldErrors as Record<string, string[]>;
-             toast({ title: 'Validation Error', description: 'Please check the form fields.', variant: 'destructive'});
+            toast({ title: 'Validation Error', description: 'Please check the form fields.', variant: 'destructive' });
             return false;
         }
         errors.value = {};
@@ -117,7 +124,7 @@ export function useSectionCreateForm(options: UseSectionCreateFormOptions) {
             const response = await apiService.post<{ data: Section }>('sections', payload);
             const newSection = response.data;
 
-            toast({ title: 'Success', description: 'Section added successfully!', variant: 'default'});
+            toast({ title: 'Success', description: 'Section added successfully!', variant: 'default' });
 
             // TODO: Implementar a lógica correta no store para adicionar a seção
             // editorStore.addSectionToGondola(gondolaId.value, newSection);
@@ -125,17 +132,17 @@ export function useSectionCreateForm(options: UseSectionCreateFormOptions) {
             if (options.onSuccess) {
                 options.onSuccess(newSection);
             } else {
-                 // Navegação padrão: voltar para a gôndola
+                // Navegação padrão: voltar para a gôndola
                 router.push({ name: 'gondola.view', params: { id: planogramId.value, gondolaId: gondolaId.value } });
             }
 
         } catch (error: any) {
             console.error('Error adding section:', error);
-             if (error.response && error.response.status === 422) {
+            if (error.response && error.response.status === 422) {
                 errors.value = { ...errors.value, ...(error.response.data.errors || {}) };
-                toast({ title: 'Validation Error', description: 'Please correct the highlighted fields.', variant: 'destructive'});
+                toast({ title: 'Validation Error', description: 'Please correct the highlighted fields.', variant: 'destructive' });
             } else {
-                toast({ title: 'Unexpected Error', description: error.response?.data?.message || 'An error occurred.', variant: 'destructive'});
+                toast({ title: 'Unexpected Error', description: error.response?.data?.message || 'An error occurred.', variant: 'destructive' });
             }
             if (options.onError) {
                 options.onError(error);
@@ -145,7 +152,7 @@ export function useSectionCreateForm(options: UseSectionCreateFormOptions) {
         }
     };
 
-     return {
+    return {
         formData,
         updateForm,
         resetForm,
