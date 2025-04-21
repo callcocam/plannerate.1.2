@@ -19,8 +19,13 @@
                         'justify-around': alignment === 'justify',
                     }" :style="segmentsContainerStyle">
                     <template #item="{ element: segment }">
-                        <Segment :key="segment.id" :shelf="shelf" :segment="segment" :scale-factor="scaleFactor"
-                            :section-width="sectionWidth" :gondola="gondola" />
+                        <template v-if="shelf.product_type === 'hook'">
+                            <!-- TODO: Renderizar Hook aqui -->
+                        </template>
+                        <template v-else>
+                            <Segment :key="segment.id" :shelf="shelf" :segment="segment" :scale-factor="scaleFactor"
+                                :section-width="sectionWidth" :gondola="gondola" />
+                        </template>
                     </template>
                 </draggable>
                 <ShelfControls :shelf="shelf" :scale-factor="scaleFactor" :section-width="sectionWidth"
@@ -143,7 +148,7 @@ const shelfStyle = computed(() => {
         const leftPosition = props.shelf.shelf_x_position;
         moveStyle['left'] = `${leftPosition}px`;
     }
-   
+
     // Retornar o objeto de estilo completo
     return {
         position: 'absolute' as const,

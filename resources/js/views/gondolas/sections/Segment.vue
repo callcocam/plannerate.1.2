@@ -1,17 +1,19 @@
 <template>
-    <div class="segment drag-segment-handle group relative flex items-center " :style="segmentStyle"
+    <div class="segment drag-segment-handle group relative flex items-center " :style="outerSegmentStyle"
         @dragstart="onDragStart" draggable="true" :tabindex="segment.tabindex" v-if="segment.layer">
-        <LayerComponent v-for="(_, index) in segmentQuantity" :key="index" :shelf="shelf" :segment="segment"
-            :layer="segment.layer" :scale-factor="scaleFactor" :section-width="sectionWidth"
-            :shelf-depth="shelf.shelf_depth" @increase="onIncreaseQuantity" @decrease="onDecreaseQuantity">
-            <template #depth-count>
+        <div :style="innerSegmentStyle">
+            <LayerComponent v-for="(_, index) in segmentQuantity" :key="index" :shelf="shelf" :segment="segment"
+                :layer="segment.layer" :scale-factor="scaleFactor" :section-width="sectionWidth"
+                :shelf-depth="shelf.shelf_depth" @increase="onIncreaseQuantity" @decrease="onDecreaseQuantity">
+                <template #depth-count>
 
-                <Label :title="`Profundidade da prateleira: ${depthCount}`"
-                    class="product-content-depth absolute -top-2 -left-2 text-xs text-gray-100 bg-gray-700 
+                    <Label :title="`Profundidade da prateleira: ${depthCount}`"
+                        class="product-content-depth absolute -top-2 -left-2 text-xs text-gray-100 bg-gray-700 
                              flex items-center justify-center h-3 w-3 rounded-full  z-10 dark:text-gray-800 dark:bg-gray-300 cursor-help">
-                    {{ depthCount }}</Label>
-            </template>
-        </LayerComponent>
+                        {{ depthCount }}</Label>
+                </template>
+            </LayerComponent>
+        </div>
     </div>
 </template>
 <script setup lang="ts">
@@ -88,14 +90,35 @@ const layerWidth = () => {
 // Corrigido: Determina o alinhamento efetivo do segmento seguindo a hierarquia
 const alignment = computed(() => props.gondola.alignment);
 
-const segmentStyle = computed(() => {
+// Estilo para o container interno (conteúdo visual)
+const innerSegmentStyle = computed(() => {
     const layerHeight = props.segment.layer.product.height * props.scaleFactor;
+    const selectedStyle = {}; // Manter para futura lógica de seleção aqui, se necessário
+
+    if (shelfType.value === 'hook') {
+        return {
+            height: `${layerHeight}px`,
+            width: '100%', // Ocupa a largura do container externo
+            transform: `translateY(100%)`, // Aplica o deslocamento aqui
+            ...selectedStyle,
+        } as CSSProperties;
+    }
+    // Estilos para tipos de prateleira normais (não-hook)
+    return {
+        height: `${layerHeight}px`,
+        width: '100%', // Ocupa a largura do container externo
+        marginBottom: `${props.shelf.shelf_height * props.scaleFactor}px`,
+        ...selectedStyle,
+    } as CSSProperties;
+});
+
+// Estilo para o container externo (manipulado pelo draggable)
+const outerSegmentStyle = computed(() => {
     const productWidth = props.segment.layer.product.width;
     const productQuantity = props.segment.layer.quantity;
     let layerWidthFinal = 0;
 
     let currentAlignment = alignment.value;
-
 
     if (currentAlignment === 'justify') {
         layerWidthFinal = productWidth * productQuantity * props.scaleFactor + layerWidth();
@@ -104,22 +127,13 @@ const segmentStyle = computed(() => {
     }
 
     const totalWidth = layerWidthFinal;
-    const selectedStyle = {};
-  if (shelfType.value === 'hook') {
-        return {
-        height: `${layerHeight}px`,
+
+    // O container externo define apenas a largura total calculada
+    // A altura será determinada pelo conteúdo interno (innerSegmentStyle)
+    return {
         width: `${totalWidth}px`,
-        transform: `translateY(100%) !important`,
-        ...selectedStyle,
+        height: 'auto', // Ou pode remover, default é auto
     } as CSSProperties;
-    }
- return {
-        height: `${layerHeight}px`,
-        width: `${totalWidth}px`,
-        marginBottom: `${props.shelf.shelf_height * props.scaleFactor}px`,
-        ...selectedStyle,
-    } as CSSProperties;
-   
 });
 
 // Funções para ajustar a quantidade
