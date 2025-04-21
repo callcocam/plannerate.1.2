@@ -108,21 +108,23 @@ const holeWidth = computed(() => props.section.hole_width);
 // Definir Emits
 const emit = defineEmits(['drop-product', 'drop-segment-copy', 'drop-segment']);
 const editorStore = useEditorStore();
+
+// Corrigido: Determina o alinhamento efetivo da prateleira seguindo a hierarquia
 const alignment = computed(() => {
-    let alignment = props.gondola?.alignment;
-    props.gondola?.sections.map((section: Section) => {
-        if (section.id === props.shelf.section_id) {
-            if (section.alignment) {
-                alignment = section.alignment;
-            }
-            section.shelves.map((shelf: Shelf) => {
-                if (shelf.alignment) {
-                    alignment = shelf.alignment;
-                }
-            });
-        }
-    });
-    return alignment;
+    // 1. Prioridade: Alinhamento da própria prateleira
+    if (props.shelf.alignment !== undefined && props.shelf.alignment !== null) {
+        return props.shelf.alignment;
+    }
+    // 2. Senão: Alinhamento da seção pai
+    if (props.section.alignment !== undefined && props.section.alignment !== null) {
+        return props.section.alignment;
+    }
+    // 3. Senão: Alinhamento da gôndola pai
+    if (props.gondola.alignment !== undefined && props.gondola.alignment !== null) {
+        return props.gondola.alignment;
+    }
+    // 4. Padrão: Se nenhum estiver definido (considerando 'justify' como padrão implícito ou ausência de alinhamento)
+    return 'justify'; // Ou retorne undefined/null se preferir tratar ausência explicitamente
 });
 
 const isSelected = computed(() => {

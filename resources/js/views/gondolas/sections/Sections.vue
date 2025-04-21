@@ -13,14 +13,17 @@
                                         variant="secondary">
                                         <MoveIcon class="h-3 w-3" />
                                     </Button>
+                                    <Button
+                                        class=" h-6 w-6  p-0 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                                        size="sm" variant="outline" @click="invertShelves(section)"
+                                        v-if="section.shelves.length > 1">
+                                        <ArrowUpDownIcon class="h-3 w-3" />
+                                    </Button>
                                 </template>
                             </Cremalheira>
                             <SectionComponent :key="section.id" :gondola="gondola" :section-index="index"
                                 :section="section" :scale-factor="scaleFactor" :sections-container="sectionsContainer"
-                                @segment-select="$emit('segment-select', $event)" @delete-section="deleteSection">
-                                <!-- <div class=" w-full h-full" >
-                                 <SectionDrop :section="section" :scale-factor="scaleFactor" />
-                            </div> -->
+                                @segment-select="$emit('segment-select', $event)" @delete-section="deleteSection"> 
                             </SectionComponent>
 
                         </div>
@@ -36,10 +39,10 @@
 </template>
 
 <script setup lang="ts">
-import { MoveIcon } from 'lucide-vue-next';
+import { MoveIcon, ArrowUpDownIcon } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import draggable from 'vuedraggable';
-
+import { useToast } from '@/components/ui/toast';
 import type { Gondola } from '@plannerate/types/gondola';
 import type { Section as SectionType } from '@plannerate/types/sections';
 
@@ -53,6 +56,7 @@ const props = defineProps<{
     scaleFactor: number;
 }>();
 
+const { toast } = useToast();
 
 const sectionsContainer = ref<HTMLElement | null>(null);
 
@@ -89,6 +93,37 @@ const deleteSection = (sectionToDelete: SectionType) => {
 
 const editSection = (section: SectionType) => {
     editorStore.setSelectedSection(section);
+};
+
+
+
+const invertShelves = (section: SectionType) => {
+    if (!section || !props.gondola?.id) {
+        console.error('Erro ao inverter: Seção ou Gôndola não selecionada.');
+        toast({
+            title: 'Erro',
+            description: 'Seção ou Gôndola não encontrada para inverter prateleiras.',
+            variant: 'destructive',
+        });
+        return;
+    }
+
+    const gondolaId = props.gondola.id;
+    const sectionId = section.id;
+
+    try {
+        editorStore.invertShelvesInSection(gondolaId, sectionId);
+        toast({
+            title: 'Sucesso',
+            description: 'Ordem das prateleiras invertida.',
+        });
+    } catch (error) {
+        toast({
+            title: 'Erro',
+            description: 'Falha ao inverter a ordem das prateleiras.',
+            variant: 'destructive',
+        });
+    }
 };
 </script>
 

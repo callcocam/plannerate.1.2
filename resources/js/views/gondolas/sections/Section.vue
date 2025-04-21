@@ -540,10 +540,25 @@ const handleKeydown = (event: KeyboardEvent) => {
 const handleClickOutside = (event: MouseEvent) => {
     const clickedElement = event.target as HTMLElement;
 
-    // Ignora cliques em elementos específicos
-    if (clickedElement.closest('.border-destructive')) return;
-    if (clickedElement.dataset.state) return;
-    if (clickedElement.closest('.no-remove-properties')) return;
+    // Ignora cliques diretos no html/body (ex: scrollbar)
+    if (clickedElement === document.documentElement || clickedElement === document.body) {
+        return;
+    }
+
+    // Ignora cliques dentro da sidebar de propriedades da seção
+    if (clickedElement.closest('#section-properties-sidebar')) {
+        return;
+    }
+
+    // Ignora cliques dentro do conteúdo teleportado de componentes Radix/Shadcn (ex: Select, Dropdown)
+    if (clickedElement.closest('[data-radix-popper-content-wrapper], [role="listbox"]')) {
+        return;
+    }
+
+    // Ignora cliques em elementos específicos que não devem limpar seleções
+    if (clickedElement.closest('.border-destructive, .no-remove-properties')) {
+        return;
+    }
 
     // Limpa seleções com base no elemento clicado
     if (!clickedElement.closest('.layer')) {

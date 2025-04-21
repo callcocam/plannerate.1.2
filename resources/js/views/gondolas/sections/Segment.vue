@@ -73,21 +73,33 @@ const layerWidth = () => {
     return sectionWidth;
 };
 
+// Corrigido: Determina o alinhamento efetivo do segmento seguindo a hierarquia
 const alignment = computed(() => {
-    let alignment = props.gondola.alignment;
-    props.gondola.sections.map((section: Section) => {
-        if (section.id === currentSectionId.value) {
-            if (section.alignment) {
-                alignment = section.alignment;
-            }
-            section.shelves.map((shelf: Shelf) => {
-                if (shelf.alignment) {
-                    alignment = shelf.alignment;
-                }
-            });
-        }
-    });
-    return alignment;
+    // 1. Prioridade: Alinhamento do próprio segmento
+    if (props.segment.alignment !== undefined && props.segment.alignment !== null) {
+        return props.segment.alignment;
+    }
+    // 2. Senão: Alinhamento da prateleira pai
+    if (props.shelf.alignment !== undefined && props.shelf.alignment !== null) {
+        return props.shelf.alignment;
+    }
+
+    // 3. Senão: Alinhamento da seção avó (precisa buscar)
+    const parentSection = editorStore.currentState?.gondolas
+        .find(g => g.id === props.gondola.id)?.sections
+        .find(s => s.id === props.shelf.section_id);
+    
+    if (parentSection && parentSection.alignment !== undefined && parentSection.alignment !== null) {
+        return parentSection.alignment;
+    }
+
+    // 4. Senão: Alinhamento da gôndola bisavó
+    if (props.gondola.alignment !== undefined && props.gondola.alignment !== null) {
+        return props.gondola.alignment;
+    }
+
+    // 5. Padrão: Se nenhum estiver definido
+    return 'justify'; // Ou retorne undefined/null
 });
 
 const segmentStyle = computed(() => {
