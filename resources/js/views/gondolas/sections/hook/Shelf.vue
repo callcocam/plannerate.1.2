@@ -17,7 +17,7 @@
                  ref="shelfElement">
                 <!-- TODO: Renderizar Segmentos/Produtos aqui -->
                 <draggable v-model="sortableSegments" item-key="id" handle=".drag-segment-handle"
-                    class="relative flex w-full items-end" :class="{
+                    class="relative flex w-full items-start" :class="{
                         'justify-center': alignment === 'center',
                         'justify-start': alignment === 'left',
                         'justify-end': alignment === 'right',

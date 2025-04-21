@@ -23,8 +23,7 @@
                         'justify-end': alignment === 'right',
                         'justify-around': alignment === 'justify',
                     }" :style="segmentsContainerStyle">
-                    <template #item="{ element: segment }">
-                         <!-- Renderiza diretamente o Segment normal -->
+                    <template #item="{ element: segment }"> 
                          <Segment 
                             :key="segment.id" 
                             :shelf="shelf" 

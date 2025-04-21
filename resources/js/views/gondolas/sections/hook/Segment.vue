@@ -94,8 +94,7 @@ const innerSegmentStyle = computed(() => {
     // Aplicamos diretamente o estilo hook
     return {
         height: `${layerHeight}px`,
-        width: '100%', // Ocupa a largura do container externo
-        transform: `translateY(100%)`, // Aplica o deslocamento aqui
+        width: '100%', // Ocupa a largura do container externo 
         ...selectedStyle,
     } as CSSProperties;
 });
