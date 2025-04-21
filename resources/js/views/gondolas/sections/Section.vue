@@ -566,6 +566,8 @@ const handleClickOutside = (event: MouseEvent) => {
 const handleDoubleClick = (event: MouseEvent) => {
     event.stopPropagation();
     editorStore.addShelfToSection(gondola.id, section.id, {
+        id: `temp-shelf-${Date.now()}`,
+        shelf_height: 4,
         shelf_position: event.offsetY / props.scaleFactor,
         section_id: section.id
     } as ShelfType);

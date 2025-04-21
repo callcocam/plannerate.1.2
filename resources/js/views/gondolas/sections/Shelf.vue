@@ -25,8 +25,7 @@
                 </draggable>
                 <ShelfControls :shelf="shelf" :scale-factor="scaleFactor" :section-width="sectionWidth"
                     :section-height="sectionHeight" :shelf-element="shelfElement" :base-height="baseHeight"
-                    :sections-container="sectionsContainer" :section-index="sectionIndex"
-                    :hole-width="holeWidth" />
+                    :sections-container="sectionsContainer" :section-index="sectionIndex" :hole-width="holeWidth" />
             </div>
         </ContextMenuTrigger>
         <ContextMenuContent class="w-64">
@@ -162,14 +161,14 @@ const shelfStyle = computed(() => {
     const moveStyle: Record<string, string> = {};
     if (props.shelf?.shelf_x_position !== undefined) {
         const leftPosition = props.shelf.shelf_x_position;
-        moveStyle['left'] = `-${leftPosition}px`; 
+        moveStyle['left'] = `${leftPosition}px`;
     }
-    const holeWidth = props.section.hole_width;
+
     // Retornar o objeto de estilo completo
     return {
         position: 'absolute' as const,
-        left: `-${holeWidth * props.scaleFactor}px`,
-        width: `${props.sectionWidth * props.scaleFactor + holeWidth * props.scaleFactor}px`,
+        left: '-4px',
+        width: `${props.sectionWidth * props.scaleFactor + 4}px`,
         height: `${props.shelf.shelf_height * props.scaleFactor}px`,
         top: `${topPosition}px`, // <-- Usar a posição calculada com snap
         zIndex: '1',
@@ -230,7 +229,7 @@ const controlDeleteShelf = (event: KeyboardEvent) => {
 };
 
 const globalKeyHandler = (event: KeyboardEvent) => {
-    if (editorStore.getSelectedShelf && editorStore.getSelectedShelf?.id === props.shelf.id) { 
+    if (editorStore.getSelectedShelf && editorStore.getSelectedShelf?.id === props.shelf.id) {
         if (editorStore.getSelectedLayerIds.size === 0) {
             controlDeleteShelf(event);
         }

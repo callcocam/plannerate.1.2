@@ -69,7 +69,7 @@ export function addShelfToSection(gondolaId: string, sectionId: string, newShelf
     const { section } = path;
 
     // Criar uma cópia e ajustar tipos antes de adicionar ao estado
-    const shelfToAdd = {
+    const shelfToAdd = { 
         ...newShelfData,
         // Garante que alignment seja string ou undefined, tratando null
         alignment: newShelfData.alignment === null ? undefined : newShelfData.alignment,

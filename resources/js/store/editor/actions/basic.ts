@@ -183,8 +183,7 @@ export async function saveChanges(): Promise<any> {
         const editorService = useEditorService();
 
         // Chama a API para salvar os dados
-        const response = await editorService.savePlanogram(planogramData.id as string, planogramData as any);
-        console.log('response', response.data);  
+        const response = await editorService.savePlanogram(planogramData.id as string, planogramData as any); 
         setIsLoading(false);
 
         if (response.data && response.success) {
