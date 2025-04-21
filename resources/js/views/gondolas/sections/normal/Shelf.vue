@@ -6,11 +6,16 @@
                 @drop-product="(product: Product, shelf: Shelf) => $emit('drop-product', product, shelf)"
                 @drop-segment-copy="(segment: SegmentType, shelf: Shelf) => $emit('drop-segment-copy', segment, shelf)"
                 @drop-segment="(segment: SegmentType, oldShelf: Shelf) => $emit('drop-segment', segment, oldShelf)" />
-            <div class="shelf relative flex flex-col items-center bg-gray-700 text-gray-50 dark:bg-gray-800" :class="{
-                'border-2 border-blue-800 border-dashed  bg-gray-500': isSelected,
-                'border-2 border-gray-700 bg-gray-700 dark:bg-gray-800 dark:border-gray-800': !isSelected,
-            }" :style="shelfStyle" ref="shelfElement">
-                <!-- TODO: Renderizar Segmentos/Produtos aqui -->
+            <div class="shelf relative flex flex-col items-center text-gray-50" 
+                 :class="{
+                    'border-2 border-blue-800 border-dashed bg-gray-500': isSelected, // Selecionado
+                    'border-2 border-transparent': !isSelected, // Não selecionado - Borda transparente
+                    // Fundo para não selecionado (sempre normal neste componente):
+                    'bg-gray-700 dark:bg-gray-800': !isSelected 
+                 }" 
+                 :style="shelfStyle" 
+                 ref="shelfElement">
+                <!-- Renderiza Segmentos normais -->
                 <draggable v-model="sortableSegments" item-key="id" handle=".drag-segment-handle"
                     class="relative flex w-full items-end" :class="{
                         'justify-center': alignment === 'center',
@@ -19,13 +24,14 @@
                         'justify-around': alignment === 'justify',
                     }" :style="segmentsContainerStyle">
                     <template #item="{ element: segment }">
-                        <template v-if="shelf.product_type === 'hook'">
-                            <!-- TODO: Renderizar Hook aqui -->
-                        </template>
-                        <template v-else>
-                            <Segment :key="segment.id" :shelf="shelf" :segment="segment" :scale-factor="scaleFactor"
-                                :section-width="sectionWidth" :gondola="gondola" />
-                        </template>
+                         <!-- Renderiza diretamente o Segment normal -->
+                         <Segment 
+                            :key="segment.id" 
+                            :shelf="shelf" 
+                            :segment="segment" 
+                            :scale-factor="scaleFactor"
+                            :section-width="sectionWidth" 
+                            :gondola="gondola" />
                     </template>
                 </draggable>
                 <ShelfControls :shelf="shelf" :scale-factor="scaleFactor" :section-width="sectionWidth"
@@ -140,7 +146,9 @@ const shelfStyle = computed(() => {
     }
 
     // Calcular a posição TOP final usando a posição do furo mais próximo
-    const topPosition = closestHolePosition * props.scaleFactor;
+    const snappedTopPosition = closestHolePosition * props.scaleFactor;
+    // Não adiciona mais verticalOffset
+    const finalTopPosition = snappedTopPosition; 
 
     // Calcular estilo de movimento horizontal (se existir)
     const moveStyle: Record<string, string> = {};
@@ -155,7 +163,7 @@ const shelfStyle = computed(() => {
         left: '-4px',
         width: `${props.sectionWidth * props.scaleFactor + 4}px`,
         height: `${props.shelf.shelf_height * props.scaleFactor}px`,
-        top: `${topPosition}px`, // <-- Usar a posição calculada com snap
+        top: `${finalTopPosition}px`, // Usa a posição sem offset
         zIndex: '1',
         ...moveStyle,
     } as CSSProperties;

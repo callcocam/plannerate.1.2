@@ -6,7 +6,6 @@
                 :layer="segment.layer" :scale-factor="scaleFactor" :section-width="sectionWidth"
                 :shelf-depth="shelf.shelf_depth" @increase="onIncreaseQuantity" @decrease="onDecreaseQuantity">
                 <template #depth-count>
-
                     <Label :title="`Profundidade da prateleira: ${depthCount}`"
                         class="product-content-depth absolute -top-2 -left-2 text-xs text-gray-100 bg-gray-700 
                              flex items-center justify-center h-3 w-3 rounded-full  z-10 dark:text-gray-800 dark:bg-gray-300 cursor-help">
@@ -44,9 +43,6 @@ const editorStore = useEditorStore(); // <-- INSTANCIAR EDITOR STORE
 const { toast } = useToast(); // <-- Instanciar toast
 
 const currentSectionId = computed(() => props.shelf.section_id);
-
-
-const shelfType = computed(() => props.shelf.product_type);
 
 const depthCount = computed(() => {
     const depth = props.segment.layer.product.depth;
@@ -95,19 +91,11 @@ const innerSegmentStyle = computed(() => {
     const layerHeight = props.segment.layer.product.height * props.scaleFactor;
     const selectedStyle = {}; // Manter para futura lógica de seleção aqui, se necessário
 
-    if (shelfType.value === 'hook') {
-        return {
-            height: `${layerHeight}px`,
-            width: '100%', // Ocupa a largura do container externo
-            transform: `translateY(100%)`, // Aplica o deslocamento aqui
-            ...selectedStyle,
-        } as CSSProperties;
-    }
-    // Estilos para tipos de prateleira normais (não-hook)
+    // Aplicamos diretamente o estilo hook
     return {
         height: `${layerHeight}px`,
         width: '100%', // Ocupa a largura do container externo
-        marginBottom: `${props.shelf.shelf_height * props.scaleFactor}px`,
+        transform: `translateY(100%)`, // Aplica o deslocamento aqui
         ...selectedStyle,
     } as CSSProperties;
 });
@@ -128,11 +116,13 @@ const outerSegmentStyle = computed(() => {
 
     const totalWidth = layerWidthFinal;
 
-    // O container externo define apenas a largura total calculada
-    // A altura será determinada pelo conteúdo interno (innerSegmentStyle)
+    // Calcula a altura do conteúdo interno para definir a altura do container externo
+    const layerHeight = props.segment.layer.product.height * props.scaleFactor;
+
+    // O container externo define a largura total calculada e a altura explícita
     return {
         width: `${totalWidth}px`,
-        height: 'auto', // Ou pode remover, default é auto
+        height: `${layerHeight}px`, // Define altura explícita
     } as CSSProperties;
 });
 
@@ -222,8 +212,6 @@ const onDecreaseQuantity = () => {
         );
     }
 };
-
- 
 
 /**
  * Configura dados para arrastar o segmento

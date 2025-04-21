@@ -4,12 +4,20 @@
         @dragstart="editorStore.disableDragging" @dragend="editorStore.enableDragging" ref="sectionRef">
         <!-- Conteúdo da Seção (Prateleiras) -->
         <slot />
-        <ShelfComponent v-for="(shelf, index) in sortedShelves" :key="shelf.id" :shelf="shelf" :gondola="gondola"
-            :sorted-shelves="sortedShelves" :index="index" :section="section" :scale-factor="scaleFactor"
-            :section-width="section.width" :section-height="section.height" :base-height="baseHeight"
-            :sections-container="sectionsContainer" :section-index="sectionIndex" :holes="holes"
-            @drop-product="handleProductDropOnShelf" @drop-segment-copy="handleSegmentCopy"
-            @drop-segment="updateSegment" @drag-shelf="handleShelfDragStart" />
+        <template v-for="(shelf, index) in sortedShelves" :key="shelf.id">
+            <ShelfHook v-if="shelf.product_type === 'hook'" :shelf="shelf" :gondola="gondola"
+                :sorted-shelves="sortedShelves" :index="index" :section="section" :scale-factor="scaleFactor"
+                :section-width="section.width" :section-height="section.height" :base-height="baseHeight"
+                :sections-container="sectionsContainer" :section-index="sectionIndex" :holes="holes"
+                @drop-product="handleProductDropOnShelf" @drop-segment-copy="handleSegmentCopy"
+                @drop-segment="updateSegment" @drag-shelf="handleShelfDragStart" />
+            <ShelfNormal v-else :shelf="shelf" :gondola="gondola" :sorted-shelves="sortedShelves" :index="index"
+                :section="section" :scale-factor="scaleFactor" :section-width="section.width"
+                :section-height="section.height" :base-height="baseHeight" :sections-container="sectionsContainer"
+                :section-index="sectionIndex" :holes="holes" @drop-product="handleProductDropOnShelf"
+                @drop-segment-copy="handleSegmentCopy" @drop-segment="updateSegment"
+                @drag-shelf="handleShelfDragStart" />
+        </template>
     </div>
 </template>
 
@@ -20,7 +28,8 @@ import { useEditorStore } from '@plannerate/store/editor';
 import { type Shelf as ShelfType } from '@plannerate/types/shelves';
 import { Section } from '@plannerate/types/sections';
 import { Layer, Product, Segment } from '@plannerate/types/segment';
-import ShelfComponent from './Shelf.vue';
+import ShelfHook from './hook/Shelf.vue';
+import ShelfNormal from './normal/Shelf.vue';
 import { useToast } from '@/components/ui/toast';
 import { Gondola } from '@plannerate/types/gondola';
 import { validateShelfWidth } from '@plannerate/utils/validation';
