@@ -22,6 +22,8 @@ return new class extends Migration
             $table->ulid('department_id')->nullable(); // Departamento
             $table->string('name')->nullable()->comment('Nome do planograma');
             $table->string('slug')->unique()->comment('Slug do planograma');
+             $table->enum('type', ['Realograma', 'Planograma'])->nullable()
+            ->default('Planograma')->comment('Tipo do planograma (Ex: Realograma ou planograma)'); 
             // informar prazo para loja executar o planograma
             $table->date('start_date')->nullable()->comment('Data de início do planograma');
             $table->date('end_date')->nullable()->comment('Data de término do planograma');

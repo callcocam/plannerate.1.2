@@ -29,10 +29,10 @@
                 <!-- Informar a direção do fluxo da gôndola -->
                 <div class="flex flex-col gap-2  px-10">
                     <p class="flex items-center gap-1 text-lg text-gray-500 w-full"
-                     :class="{ 'justify-start': editorGondola.flow === 'left_to_right' }"
+                     :class="{ 'justify-start': editorGondola.flow === 'left_to_right', 'justify-end': editorGondola.flow === 'right_to_left' }"
                     >
                         <IconArrowLeft v-if="editorGondola.flow === 'right_to_left'" class="h-6 w-6" />
-                        <span>Fluxo da gôndola:</span>
+                        <span>Fluxo da gôndola: </span>
                         <IconArrowRight v-if="editorGondola.flow === 'left_to_right'" class="h-6 w-6" />
                     </p>
                 </div>
