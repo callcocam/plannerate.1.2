@@ -221,6 +221,7 @@ const onDragStart = (event: DragEvent) => {
         event.dataTransfer.setData('text/segment', JSON.stringify(segmentData));
     }
 };
+
 </script>
 
 <style scoped>

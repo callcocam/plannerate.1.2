@@ -27,6 +27,7 @@ class GondolaResource extends JsonResource
             'scale_factor' => $this->scale_factor,
             'location' => $this->location,
             'alignment' => $this->alignment,
+            'flow' => $this->flow,
             'status' => [
                 'value' => $this->status->value,
                 'label' => $this->status->label(),

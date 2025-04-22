@@ -207,3 +207,18 @@ export function removeSegmentFromShelf(gondolaId: string, sectionId: string, she
     }
     isLoading.value = false;
 }
+
+//segment.quantity
+export function updateSegmentQuantity(gondolaId: string, sectionId: string, shelfId: string, segmentId: string, newQuantity: number) {
+    const path = findPath(gondolaId, sectionId, shelfId, 'updateSegmentQuantity');
+    if (!path) return;
+
+    const { shelf } = path;
+    if (!shelf) return;
+    const segment = shelf.segments.find(seg => seg.id === segmentId);
+    if (!segment) {
+        console.warn(`Segmento ${segmentId} não encontrado na prateleira ${shelfId}.`);
+        return;
+    }
+    segment.quantity = newQuantity;
+}

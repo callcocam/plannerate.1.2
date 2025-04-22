@@ -1,5 +1,6 @@
 <template>
     <div class="flex flex-col md:flex-row">
+        <slot name="flow-direction"></slot>
         <div class="mt-28 flex px-10 md:flex-row" ref="sectionsContainer">
             <draggable v-model="draggableSectionsModel" item-key="id" handle=".drag-handle" class="flex md:flex-row">
                 <template #item="{ element: section, index }">

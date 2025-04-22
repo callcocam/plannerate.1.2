@@ -37,9 +37,12 @@ const editorStore = useEditorStore();
 
 // Refs 
 const layerQuantity = ref(props.layer.quantity || 1);
+const segmentQuantity = ref(props.segment.quantity || 1);
 const debounceTimer = ref<ReturnType<typeof setTimeout> | null>(null);
 const segmentSelected = ref(false);
 const editorGondola = computed(() => editorStore.getCurrentGondola);
+const currentSectionId = computed(() => props.shelf.section_id);
+
  
 /**
  * Computed style para o layer baseado em alinhamento e dimensões
@@ -158,6 +161,36 @@ const onDecreaseQuantity = async () => {
     });
 }
 
+
+const onIncreaseSegmentQuantity = () => {
+    if (!editorGondola.value?.id || !currentSectionId.value || !props.shelf?.id || !props.segment?.id) {
+        console.error("onIncreaseSegmentQuantity: IDs faltando para atualização."); 
+        return;
+    }
+    segmentQuantity.value += 1;     
+    editorStore.updateSegmentQuantity(
+        editorGondola.value.id,
+        currentSectionId.value,
+        props.shelf.id,
+        props.segment.id,
+        segmentQuantity.value
+    );
+};
+
+const onDecreaseSegmentQuantity = () => {
+    if (!editorGondola.value?.id || !currentSectionId.value || !props.shelf?.id || !props.segment?.id) {
+        console.error("onDecreaseSegmentQuantity: IDs faltando para atualização."); 
+        return;
+    }
+    segmentQuantity.value -= 1; 
+    editorStore.updateSegmentQuantity(
+        editorGondola.value.id,
+        currentSectionId.value,
+        props.shelf.id,
+        props.segment.id,
+        segmentQuantity.value
+    );
+};
 /**
  * Gerencia a navegação por teclado e teclas de ação
  */
@@ -170,6 +203,12 @@ const handleKeyDown = (event: KeyboardEvent) => {
         } else if (event.key === 'ArrowLeft') {
             event.preventDefault();
             onDecreaseQuantity();
+        } else if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            onIncreaseSegmentQuantity();
+        } else if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            onDecreaseSegmentQuantity();
         } else if (event.key === 'Delete' || event.key === 'Backspace') {
             event.preventDefault();
             if (editorGondola.value) {

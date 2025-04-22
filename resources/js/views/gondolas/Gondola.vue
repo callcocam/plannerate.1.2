@@ -26,6 +26,16 @@
             <!-- Passar a gôndola reativa encontrada -->
             <Info :gondola="editorGondola" />
             <div class="flex flex-col overflow-auto relative">
+                <!-- Informar a direção do fluxo da gôndola -->
+                <div class="flex flex-col gap-2  px-10">
+                    <p class="flex items-center gap-1 text-lg text-gray-500 w-full"
+                     :class="{ 'justify-start': editorGondola.flow === 'left_to_right' }"
+                    >
+                        <IconArrowLeft v-if="editorGondola.flow === 'right_to_left'" class="h-6 w-6" />
+                        <span>Fluxo da gôndola:</span>
+                        <IconArrowRight v-if="editorGondola.flow === 'left_to_right'" class="h-6 w-6" />
+                    </p>
+                </div>
                 <Sections :gondola="editorGondola" :scale-factor="scaleFactor" />
             </div>
         </div>
@@ -51,6 +61,8 @@ import { useRoute } from 'vue-router';
 import { useEditorStore } from '@plannerate/store/editor';
 import Info from '@plannerate/views/gondolas/partials/Info.vue';
 import Sections from '@plannerate/views/gondolas/sections/Sections.vue';
+import IconArrowRight from '@plannerate/components/icons/IconArrowRight.vue';
+import IconArrowLeft from '@plannerate/components/icons/IconArrowLeft.vue';
 
 // Hooks
 const editorStore = useEditorStore();
