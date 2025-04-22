@@ -6,7 +6,7 @@
                 @drop-product="(product: Product, shelf: Shelf) => $emit('drop-product', product, shelf)"
                 @drop-segment-copy="(segment: SegmentType, shelf: Shelf) => $emit('drop-segment-copy', segment, shelf)"
                 @drop-segment="(segment: SegmentType, oldShelf: Shelf) => $emit('drop-segment', segment, oldShelf)" />
-            <div class="shelf relative flex flex-col items-center text-gray-50" 
+            <div class="shelf relative flex flex-col items-center text-gray-50 " 
                  :class="{
                     'border-2 border-blue-800 border-dashed bg-gray-500': isSelected, // Selecionado
                     'border-2 border-transparent dark:border-gray-700 border-dashed': !isSelected, // Não selecionado - Borda transparente
@@ -24,7 +24,7 @@
                         'justify-center': alignment === 'center',
                         'justify-start': alignment === 'left',
                         'justify-end': alignment === 'right',
-                        'justify-around': alignment === 'justify',
+                        'justify-between': alignment === 'justify',
                     }" :style="segmentsContainerStyle">
                     <template #item="{ element: segment }"> 
                          <Segment 
@@ -38,7 +38,7 @@
                 </draggable>
                 <ShelfControls :shelf="shelf" :scale-factor="scaleFactor" :section-width="sectionWidth"
                     :section-height="sectionHeight" :shelf-element="shelfElement" :base-height="baseHeight"
-                    :sections-container="sectionsContainer" :section-index="sectionIndex" :hole-width="holeWidth" />
+                    :sections-container="sectionsContainer" :section-index="sectionIndex" :hole-width="holeWidth"  :index="index"/>
             </div>
         </ContextMenuTrigger>
         <ContextMenuContent class="w-64">
@@ -94,8 +94,7 @@ const props = defineProps<{
 const shelfElement = ref<HTMLElement | null>(null);
 
 const gondolaId = computed(() => props.gondola.id);
-const holeWidth = computed(() => props.section.hole_width);
-const shelfType = computed(() => props.shelf.product_type);
+const holeWidth = computed(() => props.section.hole_width); 
 // Definir Emits
 const emit = defineEmits(['drop-product', 'drop-segment-copy', 'drop-segment']);
 const editorStore = useEditorStore();
@@ -217,7 +216,7 @@ const selectShelfClick = (event: MouseEvent) => {
 };
 
 const controlDeleteShelf = (event: KeyboardEvent) => {
-    if ((event.key === 'Delete' || event.key === 'Backspace') && event.ctrlKey) {
+    if ((event.key === 'Delete' || event.key === 'Backspace')) {
         event.preventDefault();
         editorStore.removeShelfFromSection(gondolaId.value, props.shelf.section_id, props.shelf.id);
     }

@@ -4,19 +4,7 @@
         @dragstart="editorStore.disableDragging" @dragend="editorStore.enableDragging" ref="sectionRef">
         <!-- Conteúdo da Seção (Prateleiras) -->
         <slot />
-        <template v-for="(shelf, index) in sortedShelves" :key="shelf.id">
-            <!-- <ShelfHook v-if="shelf.product_type === 'hook'" :shelf="shelf" :gondola="gondola"
-                :sorted-shelves="sortedShelves" :index="index" :section="section" :scale-factor="scaleFactor"
-                :section-width="section.width" :section-height="section.height" :base-height="baseHeight"
-                :sections-container="sectionsContainer" :section-index="sectionIndex" :holes="holes"
-                @drop-product="handleProductDropOnShelf" @drop-segment-copy="handleSegmentCopy"
-                @drop-segment="updateSegment" @drag-shelf="handleShelfDragStart" />
-            <ShelfNormal v-else :shelf="shelf" :gondola="gondola" :sorted-shelves="sortedShelves" :index="index"
-                :section="section" :scale-factor="scaleFactor" :section-width="section.width"
-                :section-height="section.height" :base-height="baseHeight" :sections-container="sectionsContainer"
-                :section-index="sectionIndex" :holes="holes" @drop-product="handleProductDropOnShelf"
-                @drop-segment-copy="handleSegmentCopy" @drop-segment="updateSegment"
-                @drag-shelf="handleShelfDragStart" /> -->
+        <template v-for="(shelf, index) in sortedShelves" :key="shelf.id"> 
             <ShelfComponent :shelf="shelf" :gondola="gondola" :sorted-shelves="sortedShelves" :index="index"
                 :section="section" :scale-factor="scaleFactor" :section-width="section.width"
                 :section-height="section.height" :base-height="baseHeight" :sections-container="sectionsContainer"
@@ -99,42 +87,7 @@ const sectionStyle = computed(() => {
         willChange: isActive ? 'border-color, background-color' : 'auto'
     };
 });
-
-// ------- MÉTODOS - AÇÕES DE CONTEXTO -------
-/**
- * Abre o modal de edição da seção
- */
-const editSection = () => {
-    editorStore.setSelectedSection(section);
-};
-
-/**
- * Adiciona uma nova prateleira no local do clique
- * @param event Evento do mouse
- */
-const addShelf = (event: MouseEvent) => {
-    editorStore.addShelfToSection(gondola.id, section.id, {
-        shelf_position: event.offsetY / props.scaleFactor,
-        section_id: section.id
-    } as ShelfType);
-    event.stopPropagation();
-};
-
-
-/**
- * Inverte a ordem das prateleiras no módulo
- */
-const inverterModule = () => {
-    if (!gondola.id) {
-        toast({
-            title: 'Aviso',
-            description: 'Não é possível inverter prateleiras: gondolaId não fornecido.',
-            variant: 'default'
-        });
-        return;
-    }
-    editorStore.invertShelvesInSection(gondola.id, section.id);
-};
+ 
 
 // ------- MÉTODOS - HELPERS -------
 /**

@@ -97,7 +97,8 @@ const outerSegmentStyle = computed(() => {
     let currentAlignment = alignment.value;
 
     if (currentAlignment === 'justify') {
-        layerWidthFinal = productWidth * productQuantity * props.scaleFactor + layerWidth();
+        layerWidthFinal = props.sectionWidth * props.scaleFactor;
+        console.log('layerWidthFinal justify', layerWidthFinal);
     } else {
         layerWidthFinal = productWidth * productQuantity * props.scaleFactor;
     }
@@ -107,7 +108,7 @@ const outerSegmentStyle = computed(() => {
     return {
         width: `${totalWidth}px`,
         height: `${layerHeight}px`, // Altura explícita
-        marginBottom: `${marginBottom}px`,
+        marginBottom: `${marginBottom + 5}px`,
     } as CSSProperties;
 });
 

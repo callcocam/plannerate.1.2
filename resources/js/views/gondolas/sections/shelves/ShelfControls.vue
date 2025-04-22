@@ -11,7 +11,9 @@
                 <ChevronLeftIcon class="h-4 w-4 text-white" />
             </div>
         </transition>
-
+        <span class="absolute text-xs -top-1 z-20 flex items-center justify-center">
+            Prat: {{ invertIndex }}
+        </span>
         <transition name="fade">
             <!-- Botão para mover horizontalmente para a direita -->
             <div v-show="isHovering"
@@ -25,7 +27,7 @@
 
 <script setup lang="ts">
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-vue-next';
-import {  onMounted, ref, computed } from 'vue';
+import { onMounted, ref, computed } from 'vue';
 import { useEditorStore } from '@plannerate/store/editor';
 import { Shelf } from '@plannerate/types/shelves';
 
@@ -40,7 +42,10 @@ const props = defineProps<{
     baseHeight: number;
     shelfElement?: HTMLElement | null; // Referência ao elemento da prateleira
     sectionsContainer: HTMLElement | null; // Referência ao container das seções
+    index: number;
 }>();
+
+const invertIndex = computed(() => props.index * 1);
 
 // Emits para comunicar com componentes pai
 const emit = defineEmits(['transfer-section']);

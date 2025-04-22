@@ -25,11 +25,10 @@
                                 :section="section" :scale-factor="scaleFactor" :sections-container="sectionsContainer"
                                 @segment-select="$emit('segment-select', $event)" @delete-section="deleteSection"> 
                             </SectionComponent>
-
                         </div>
                     </div>
                 </template>
-            </draggable>
+            </draggable> 
             <div v-if="lastSectionData" class="flex items-center">
                 <Cremalheira :section="lastSectionData" :scale-factor="scaleFactor" :is-last-section="true"
                     :key="`rack-end-${lastSectionData.id}`" @edit-section="editSection" />

@@ -1,5 +1,5 @@
 <template>
-    <div class="layer group flex cursor-pointer justify-around " :style="layerStyle" @click="handleLayerClick"
+    <div class="layer group flex cursor-pointer justify-between " :style="layerStyle" @click="handleLayerClick"
         @keydown="handleKeyDown" :class="{ 'layer--selected': isSelected, 'layer--focused': !isSelected }">
         <ProductNormal v-for="index in layer.quantity" :key="index" :product="layer.product" :scale-factor="scaleFactor"
             :index="index" :shelf-depth="props.shelfDepth">
