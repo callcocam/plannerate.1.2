@@ -1,19 +1,19 @@
 <template>
     <div class="layer group flex cursor-pointer justify-around " :style="layerStyle" @click="handleLayerClick"
         @keydown="handleKeyDown" :class="{ 'layer--selected': isSelected, 'layer--focused': !isSelected }">
-        <ProductHook v-for="index in layer.quantity" :key="index" :product="layer.product" :scale-factor="scaleFactor"
+        <ProductNormal v-for="index in layer.quantity" :key="index" :product="layer.product" :scale-factor="scaleFactor"
             :index="index" :shelf-depth="props.shelfDepth">
             <template #depth-count v-if="index === 1">
                 <slot name="depth-count"></slot>
             </template>
-        </ProductHook>
+        </ProductNormal>
     </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useEditorStore } from '@plannerate/store/editor';
-import ProductHook from '@plannerate/views/gondolas/sections/hook/Product.vue';
+import ProductNormal from '@plannerate/views/gondolas/sections/shelves/Product.vue';
 import { Layer as LayerType, Segment as SegmentType } from '@/types/segment';
 import { Shelf } from '@plannerate/types/shelves';
 const props = defineProps<{

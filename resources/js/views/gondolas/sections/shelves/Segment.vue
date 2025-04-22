@@ -21,14 +21,14 @@ import {
     defineProps,
     type CSSProperties,
 } from 'vue';
-import { useEditorStore } from '@plannerate/store/editor'; // <-- ADICIONAR
+import { useEditorStore } from '@plannerate/store/editor';
 import type { Segment } from '@plannerate/types/segment';
 import type { Shelf } from '@plannerate/types/shelves';
-import type { Section } from '@plannerate/types/sections'; // <-- ADICIONAR IMPORT
+import type { Section } from '@plannerate/types/sections';
 import LayerComponent from './Layer.vue';
 import { Gondola } from '@plannerate/types/gondola';
-import { useToast } from '@plannerate/components/ui/toast'; // <-- Importar useToast
-import { validateShelfWidth } from '@plannerate/utils/validation'; // <-- Importar validação
+import { useToast } from '@plannerate/components/ui/toast';
+import { validateShelfWidth } from '@plannerate/utils/validation';
 
 // Definir Props
 const props = defineProps<{
@@ -39,8 +39,8 @@ const props = defineProps<{
     sectionWidth: number;
 }>();
 
-const editorStore = useEditorStore(); // <-- INSTANCIAR EDITOR STORE
-const { toast } = useToast(); // <-- Instanciar toast
+const editorStore = useEditorStore();
+const { toast } = useToast();
 
 const currentSectionId = computed(() => props.shelf.section_id);
 
@@ -55,13 +55,6 @@ const segmentQuantity = computed(() => {
     return props.segment?.quantity ?? 0;
 });
 
-// Computed para o estilo do segmento
-// ----------------------------------------------------
-// Computed Properties
-// ----------------------------------------------------
-/**
- * Calculate segment style based on properties and selection state
- */
 const layerWidth = () => {
     let sectionWidth = props.sectionWidth;
     props.gondola.sections.map((section: Section) => {
@@ -83,28 +76,24 @@ const layerWidth = () => {
     });
     return sectionWidth;
 };
-// Corrigido: Determina o alinhamento efetivo do segmento seguindo a hierarquia
 const alignment = computed(() => props.gondola.alignment);
 
-// Estilo para o container interno (conteúdo visual)
+// Estilo para o container interno (conteúdo visual - Normal Shelf)
 const innerSegmentStyle = computed(() => {
-    const layerHeight = props.segment.layer.product.height * props.scaleFactor;
-    const selectedStyle = {}; // Manter para futura lógica de seleção aqui, se necessário
-
-    // Aplicamos diretamente o estilo hook
+    const layerHeight = props.segment.layer.product.height * props.scaleFactor; 
+    const selectedStyle = {};
     return {
         height: `${layerHeight}px`,
-        width: '100%', // Ocupa a largura do container externo 
+        width: '100%', 
         ...selectedStyle,
     } as CSSProperties;
 });
 
-// Estilo para o container externo (manipulado pelo draggable)
+// Estilo para o container externo (manipulado pelo draggable - Normal Shelf)
 const outerSegmentStyle = computed(() => {
     const productWidth = props.segment.layer.product.width;
     const productQuantity = props.segment.layer.quantity;
     let layerWidthFinal = 0;
-
     let currentAlignment = alignment.value;
 
     if (currentAlignment === 'justify') {
@@ -112,20 +101,18 @@ const outerSegmentStyle = computed(() => {
     } else {
         layerWidthFinal = productWidth * productQuantity * props.scaleFactor;
     }
-
     const totalWidth = layerWidthFinal;
-
-    // Calcula a altura do conteúdo interno para definir a altura do container externo
     const layerHeight = props.segment.layer.product.height * props.scaleFactor;
-
-    // O container externo define a largura total calculada e a altura explícita
+    const marginBottom = props.shelf.shelf_height * props.scaleFactor;
     return {
         width: `${totalWidth}px`,
-        height: `${layerHeight}px`, // Define altura explícita
+        height: `${layerHeight}px`, // Altura explícita
+        marginBottom: `${marginBottom}px`,
     } as CSSProperties;
 });
 
-// Funções para ajustar a quantidade
+// Funções (onIncreaseQuantity, onDecreaseQuantity, onDragStart)
+// Mantidas como estavam, pois não dependem do tipo hook/normal
 const onIncreaseQuantity = () => {
     if (!props.gondola?.id || !currentSectionId.value || !props.shelf?.id || !props.segment?.id || !props.segment?.layer?.product?.id) {
         console.error("onIncreaseQuantity: IDs faltando para validação/atualização.");
@@ -167,7 +154,6 @@ const onIncreaseQuantity = () => {
         newQuantity
     );
 };
-
 const onDecreaseQuantity = () => {
     if (!props.gondola?.id || !currentSectionId.value || !props.shelf?.id || !props.segment?.id || !props.segment?.layer?.product?.id) {
         console.error("onDecreaseQuantity: IDs faltando para validação/atualização.");
@@ -211,10 +197,6 @@ const onDecreaseQuantity = () => {
         );
     }
 };
-
-/**
- * Configura dados para arrastar o segmento
- */
 const onDragStart = (event: DragEvent) => {
     if (!event.dataTransfer) return;
 
