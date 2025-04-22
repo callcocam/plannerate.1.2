@@ -144,9 +144,21 @@ const confirmDeleteGondola = async () => {
     if (!currentGondola) return;
     try {
         const planogramId = currentGondola.planogram_id;
-        router.push({
-            name: 'plannerate.home',
-            params: { id: planogramId },
+        editorStore.removeGondola(currentGondola.id, () => {
+            const editorStore = useEditorStore();
+            const gondolas = editorStore.currentState?.gondolas;
+            if (gondolas?.length) {
+                const gondola = gondolas[0];
+                router.push({
+                    name: 'gondola.view',
+                    params: { id: planogramId, gondolaId: gondola.id },
+                });
+            } else {
+                router.push({
+                    name: 'plannerate.create',
+                    params: { id: planogramId },
+                });
+            }
         });
     } catch (error) {
         console.error('Erro ao remover gôndola:', error);

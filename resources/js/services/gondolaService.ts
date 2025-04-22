@@ -52,6 +52,10 @@ export const useGondolaService = () => {
         });
     };
 
+    const deleteGondola = async (gondolaId: string) => {
+        return apiService.delete(`gondolas/${gondolaId}`);
+    };
+
 
     return {
         fetchGondola,
@@ -59,6 +63,7 @@ export const useGondolaService = () => {
         updateShelfPosition,
         transferShelf,
         updateGondola,
-        updateGondolaAlignment
+        updateGondolaAlignment,
+        deleteGondola
     };
 };

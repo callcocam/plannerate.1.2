@@ -2,22 +2,24 @@
     <div class="px-10">
         <Header v-if="record" :planogram="record" />
         <div
-            class="flex h-full w-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-8 dark:border-gray-700 dark:bg-gray-800"
-        >
+            class="flex h-full w-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-8 dark:border-gray-700 dark:bg-gray-800">
             <div class="text-center">
                 <div class="relative mx-auto mb-4 h-24 w-24">
                     <ShoppingBagIcon class="mx-auto h-16 w-16 text-gray-400 dark:text-gray-500" />
-                    <span class="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-white">
+                    <span
+                        class="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-white">
                         <PlusIcon class="h-4 w-4" />
                     </span>
                 </div>
                 <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Nenhuma gôndola encontrada</h3>
                 <p class="mt-2 max-w-md text-sm text-gray-500 dark:text-gray-400">
-                    As gôndolas são essenciais para organizar seus produtos no planograma. Adicione sua primeira gôndola para começar a criar o layout
+                    As gôndolas são essenciais para organizar seus produtos no planograma. Adicione sua primeira gôndola
+                    para começar a criar o layout
                     perfeito para sua loja.
                 </p>
                 <div class="mt-6">
-                    <Button @click="openAddGondolaModal" size="default" class="shadow-sm dark:bg-gray-700 dark:text-gray-100">
+                    <Button @click="openAddGondolaModal" size="default"
+                        class="shadow-sm dark:bg-gray-700 dark:text-gray-100">
                         <PlusIcon class="mr-2 h-4 w-4" />
                         Adicionar Gôndola
                     </Button>
@@ -31,8 +33,11 @@
 import { PlusIcon, ShoppingBagIcon } from 'lucide-vue-next';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { apiService } from '../services';
+import { useEditorService } from '@plannerate/services/editorService';
+import { useEditorStore } from '@plannerate/store/editor';
 import Header from './partials/Header.vue';
+
+
 
 const props = defineProps({
     record: {
@@ -40,12 +45,15 @@ const props = defineProps({
         default: () => ({}),
     },
 });
+
+const editorStore = useEditorStore();
+const editorService = useEditorService();
 const record = ref<any>(props.record); // Substitua 'any' pelo tipo correto, se possível
 
 const route = useRoute();
 const router = useRouter();
 
-const gondolaId = computed(() => props.record.id);
+const gondolaId = computed(() => route.params.id);
 
 // Função para abrir o modal de adicionar gôndola
 const openAddGondolaModal = () => {
@@ -65,18 +73,9 @@ onMounted(() => {
         redirectToGondola(gondola.id);
     } else {
         // Caso contrário, buscamos da API
-        apiService
-            .get(`/api/plannerate/planograms/${gondolaId.value}`)
-            .then((response) => {
-                const { gondolas } = response.data;
-                if (gondolas && gondolas.length) {
-                    const gondola = gondolas[0]; 
-                    redirectToGondola(gondola.id);
-                }
-            })
-            .catch((error) => {
-                console.error('Erro ao buscar dados da gôndola:', error);
-            });
+        editorService.fetchPlanogram(route.params.id as string).then((response) => {
+            editorStore.initialize(response);
+        });
     }
 });
 

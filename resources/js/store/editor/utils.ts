@@ -14,12 +14,14 @@ import { currentState } from './state';
 export function calculateTabindex(gondola: Gondola) {
     if (!gondola) return 0;
     let tabindex = 0;
-    return gondola.sections.map((section) => {
-        return section.shelves.map((shelf) => {
-            return shelf.segments.map((segment) => {
-                tabindex = tabindex + 1;
-                return segment.tabindex = tabindex;
-            });
+    gondola.sections.map((section) => {
+        section.shelves.map((shelf) => {
+            if (shelf.segments?.length) {
+                shelf.segments.map((segment) => {
+                    tabindex = tabindex + 1;
+                    segment.tabindex = tabindex;
+                });
+            }
         });
     });
 }

@@ -3,6 +3,7 @@ import type { Gondola } from '@plannerate/types/gondola';
 import { findGondola } from '../utils';
 import { currentState, isLoading } from '../state';
 import { recordChange } from '../history';
+import { useGondolaService } from '@plannerate/services/gondolaService';
 
 /**
  * Adiciona uma nova gôndola ao estado atual
@@ -58,14 +59,25 @@ export function invertGondolaSectionOrder(gondolaId: string) {
 
         // Atualiza o campo 'ordering' de cada seção com base no novo índice
         gondola.sections.forEach((section, index) => {
-            section.ordering = index; 
+            section.ordering = index;
         });
 
         console.log(`Ordem das seções invertida e campo 'ordering' atualizado para a gôndola ${gondolaId}`);
-        
+
         recordChange();
     } else {
         console.warn(`Não foi possível inverter seções: Gôndola ${gondolaId} tem menos de 2 seções.`);
     }
 }
 
+export function removeGondola(gondolaId: string, callback: () => void) {
+    const gondola = findGondola(gondolaId, 'removeGondola');
+    if (!gondola) return;
+
+    useGondolaService().deleteGondola(gondolaId).then((response) => {
+        console.log('Gôndola removida com sucesso:', response);
+        callback();
+    });
+
+
+}

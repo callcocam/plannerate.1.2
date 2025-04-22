@@ -109,7 +109,7 @@ export const useEditorStore = defineStore('editor', () => {
         // Manipulação de gôndolas
         setGondolaAlignment: actions.setGondolaAlignment,
         invertGondolaSectionOrder: actions.invertGondolaSectionOrder,
-
+        removeGondola: actions.removeGondola,
         // Manipulação de seções
         setGondolaSectionOrder: actions.setGondolaSectionOrder,
         removeSectionFromGondola: actions.removeSectionFromGondola,

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch, onMounted } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import Gondolas from '@plannerate/views/gondolas/Gondolas.vue'; 
 import Products from '@plannerate/views/partials/sidebar/Products.vue';
