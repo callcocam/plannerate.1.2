@@ -12,7 +12,7 @@
             </div>
         </transition>
         <span class="absolute text-xs -top-1 z-20 flex items-center justify-center">
-            Prat: {{ invertIndex }}
+           {{ invertIndex }}
         </span>
         <transition name="fade">
             <!-- Botão para mover horizontalmente para a direita -->
@@ -45,7 +45,12 @@ const props = defineProps<{
     index: number;
 }>();
 
-const invertIndex = computed(() => props.index * 1);
+const invertIndex = computed(() =>{
+    if (props.shelf.product_type === 'hook') {
+        return `Ganch: ${props.index}`;
+    }
+    return `Prat: ${props.index}`;
+});
 
 // Emits para comunicar com componentes pai
 const emit = defineEmits(['transfer-section']);

@@ -1,5 +1,5 @@
 <template>
-    <div class="segment drag-segment-handle group relative flex items-center " :style="outerSegmentStyle"
+    <div class="segment drag-segment-handle group relative flex flex-col items-start " :style="outerSegmentStyle"
         @dragstart="onDragStart" draggable="true" :tabindex="segment.tabindex" v-if="segment.layer">
         <div :style="innerSegmentStyle">
             <LayerComponent v-for="(_, index) in segmentQuantity" :key="index" :shelf="shelf" :segment="segment"
@@ -52,6 +52,7 @@ const depthCount = computed(() => {
 
 /** Segment quantity (number of layers) */
 const segmentQuantity = computed(() => {
+    console.log('segmentQuantity', props.segment.quantity);
     return props.segment?.quantity ?? 0;
 });
 
@@ -80,7 +81,8 @@ const alignment = computed(() => props.gondola.alignment);
 
 // Estilo para o container interno (conteúdo visual - Normal Shelf)
 const innerSegmentStyle = computed(() => {
-    const layerHeight = props.segment.layer.product.height * props.scaleFactor;
+    const layerHeight = (props.segment.layer.product.height * props.segment.quantity) * props.scaleFactor;
+    console.log('layerHeight', layerHeight);
     const selectedStyle = {};
     return {
         height: `${layerHeight}px`,
@@ -103,12 +105,12 @@ const outerSegmentStyle = computed(() => {
         layerWidthFinal = productWidth * productQuantity * props.scaleFactor;
     }
     const totalWidth = layerWidthFinal;
-    const layerHeight = props.segment.layer.product.height * props.scaleFactor;
+    const layerHeight = (props.segment.layer.product.height * props.segment.quantity) * props.scaleFactor;
     const marginBottom = props.shelf.shelf_height * props.scaleFactor;
     return {
         width: `${totalWidth}px`,
         height: `${layerHeight}px`, // Altura explícita
-        marginBottom: `${marginBottom + 5}px`,
+        marginBottom: `${marginBottom}px`,
     } as CSSProperties;
 });
 
