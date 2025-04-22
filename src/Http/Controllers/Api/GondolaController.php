@@ -146,7 +146,7 @@ class GondolaController extends Controller
             $planogram = Planogram::findOrFail($request->input('planogram_id'));
 
             // Limpar gôndolas existentes
-            $this->deleteExistingGondolas($planogram->gondolas);
+            // $this->deleteExistingGondolas($planogram->gondolas);
 
             // Validar dados
             $validatedData = $request->validated();

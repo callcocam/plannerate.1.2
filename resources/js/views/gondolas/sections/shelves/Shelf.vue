@@ -9,9 +9,10 @@
             <div class="shelf relative flex flex-col items-center text-gray-50" 
                  :class="{
                     'border-2 border-blue-800 border-dashed bg-gray-500': isSelected, // Selecionado
-                    'border-2 border-transparent': !isSelected, // Não selecionado - Borda transparente
+                    'border-2 border-transparent dark:border-gray-700 border-dashed': !isSelected, // Não selecionado - Borda transparente
                     // Fundo para não selecionado (sempre normal neste componente):
-                    'bg-gray-700 dark:bg-gray-800': !isSelected 
+                    'bg-gray-400 dark:bg-gray-700': !isSelected && shelf.product_type === 'hook',
+                    'bg-gray-700 dark:bg-gray-800': !isSelected && shelf.product_type === 'normal'
                  }" 
                  :style="shelfStyle" 
                  ref="shelfElement">

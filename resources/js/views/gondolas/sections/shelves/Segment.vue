@@ -80,11 +80,11 @@ const alignment = computed(() => props.gondola.alignment);
 
 // Estilo para o container interno (conteúdo visual - Normal Shelf)
 const innerSegmentStyle = computed(() => {
-    const layerHeight = props.segment.layer.product.height * props.scaleFactor; 
+    const layerHeight = props.segment.layer.product.height * props.scaleFactor;
     const selectedStyle = {};
     return {
         height: `${layerHeight}px`,
-        width: '100%', 
+        width: '100%',
         ...selectedStyle,
     } as CSSProperties;
 });
@@ -223,5 +223,20 @@ const onDragStart = (event: DragEvent) => {
 <style scoped>
 .segment {
     position: relative;
+}
+.segment--selected {
+    border: 2px solid blue;
+    box-shadow: 0 0 5px rgba(0, 0, 255, 0.5);
+    box-sizing: border-box;
+}
+
+.segment--focused {
+    outline: 1px solid transparent;
+    outline-offset: 2px;
+}
+
+.segment--focused:focus {
+    outline: 1px solid blue;
+    outline-offset: 2px;
 }
 </style>
