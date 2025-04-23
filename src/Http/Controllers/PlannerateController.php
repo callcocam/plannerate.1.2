@@ -63,11 +63,15 @@ class PlannerateController extends Controller
         $stores = Store::where('status', 'published')->get();
         $clusters = Cluster::where('status', 'published')->get();
         $departments = Departament::where('status', 'published')->get();
+        
+        // Carrega os itens do nível 1 mercadológico
+        $mercadologicoNivel1 = \App\Models\MercadologicoNivel1::where('status', 'active')->get(['id', 'name']);
 
         return Inertia::render('plannerate/Create', [
             'stores' => $stores,
             'clusters' => $clusters,
             'departments' => $departments,
+            'mercadologico_nivel1' => $mercadologicoNivel1,
             'title' => 'Novo Planograma',
             'description' => 'Criar um novo planograma',
             'breadcrumbs' => [
@@ -86,12 +90,16 @@ class PlannerateController extends Controller
         $stores = Store::where('status', 'active')->get();
         $clusters = Cluster::where('status', 'active')->get();
         $departments = Departament::where('status', 'active')->get();
+        
+        // Carrega os itens do nível 1 mercadológico
+        $mercadologicoNivel1 = \App\Models\MercadologicoNivel1::where('status', 'active')->get(['id', 'name']);
 
         return Inertia::render('plannerate/Edit', [
             'planogram' => $planogram,
             'stores' => $stores,
             'clusters' => $clusters,
             'departments' => $departments,
+            'mercadologico_nivel1' => $mercadologicoNivel1,
             'isEditing' => true,
             'title' => 'Editar Planograma',
             'description' => 'Editar planograma existente',
