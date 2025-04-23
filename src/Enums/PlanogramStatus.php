@@ -26,4 +26,14 @@ enum PlanogramStatus: string
             self::Published => 'green'
         };
     }
+
+
+    
+    public static function getOptions(): array
+    {
+        return collect(self::cases())
+            ->map(fn($case) => ['value' => $case->value, 'label' => $case->label()])
+            ->values()
+            ->toArray();
+    }   
 } 

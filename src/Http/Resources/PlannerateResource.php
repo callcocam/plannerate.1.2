@@ -30,11 +30,7 @@ class PlannerateResource extends JsonResource
             'cluster_id' => $this->cluster_id,
             'cluster' => $this->whenLoaded('cluster', function () {
                 return $this->cluster->name;
-            }),
-            'department_id' => $this->department_id,
-            'department' => $this->whenLoaded('department', function () {
-                return $this->department->name;
-            }),
+            }), 
             'user' => $this->whenLoaded('user', function () {
                 return $this->user->name;
             }),

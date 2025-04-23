@@ -44,14 +44,7 @@ class PlanogramResource extends JsonResource
                     'id' => $this->cluster->id,
                     'name' => $this->cluster->name,
                 ];
-            }),
-            'department_id' => $this->department_id,
-            'department' => $this->whenLoaded('department', function () {
-                return [
-                    'id' => $this->department->id,
-                    'name' => $this->department->name,
-                ];
-            }),
+            }), 
             'user' => $this->whenLoaded('user', function () {
                 return [
                     'id' => $this->user->id,
@@ -74,9 +67,7 @@ class PlanogramResource extends JsonResource
         if (class_exists('App\Http\Resources\ClusterResource')) {
             $data['clusters'] = ClusterResource::collection(Cluster::query()->where('status', ClusterStatus::Published->value)->get());
         }
-        if (class_exists('App\Http\Resources\DepartamentResource')) {
-            $data['departments'] = DepartamentResource::collection(Departament::query()->where('status', DepartamentStatus::Published->value)->get());
-        }
+       
         if (class_exists('App\Http\Resources\StoreResource')) {
             $data['stores'] = StoreResource::collection(Store::query()->where('status', StoreStatus::Published->value)->get());
         }

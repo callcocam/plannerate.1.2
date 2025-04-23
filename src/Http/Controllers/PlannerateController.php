@@ -40,7 +40,7 @@ class PlannerateController extends Controller
         }
         
         // Ordenação e relacionamentos
-        $query->with(['store', 'cluster', 'department', 'gondolas'])
+        $query->with(['store', 'cluster', 'gondolas'])
               ->orderBy('created_at', 'desc');
         
         // Paginação
@@ -62,16 +62,11 @@ class PlannerateController extends Controller
         // Carrega as lojas, clusters e departamentos para os selects
         $stores = Store::where('status', 'published')->get();
         $clusters = Cluster::where('status', 'published')->get();
-        $departments = Departament::where('status', 'published')->get();
-        
-        // Carrega os itens do nível 1 mercadológico
-        $mercadologicoNivel1 = \App\Models\MercadologicoNivel1::where('status', 'active')->get(['id', 'name']);
+       
 
         return Inertia::render('plannerate/Create', [
             'stores' => $stores,
-            'clusters' => $clusters,
-            'departments' => $departments,
-            'mercadologico_nivel1' => $mercadologicoNivel1,
+            'clusters' => $clusters, 
             'title' => 'Novo Planograma',
             'description' => 'Criar um novo planograma',
             'breadcrumbs' => [
@@ -84,28 +79,22 @@ class PlannerateController extends Controller
     public function edit($id)
     {
         // Busca o planograma pelo ID
-        $planogram = Planogram::with(['store', 'cluster', 'department'])->findOrFail($id);
+        $planogram = Planogram::with(['store', 'cluster'])->findOrFail($id);
         
         // Carrega as lojas, clusters e departamentos para os selects
-        $stores = Store::where('status', 'active')->get();
-        $clusters = Cluster::where('status', 'active')->get();
-        $departments = Departament::where('status', 'active')->get();
-        
-        // Carrega os itens do nível 1 mercadológico
-        $mercadologicoNivel1 = \App\Models\MercadologicoNivel1::where('status', 'active')->get(['id', 'name']);
+        $stores = Store::where('status', 'published')->get();
+
+        $clusters = Cluster::where('status', 'published')->get();
 
         return Inertia::render('plannerate/Edit', [
             'planogram' => $planogram,
             'stores' => $stores,
-            'clusters' => $clusters,
-            'departments' => $departments,
-            'mercadologico_nivel1' => $mercadologicoNivel1,
-            'isEditing' => true,
+            'clusters' => $clusters, 
             'title' => 'Editar Planograma',
-            'description' => 'Editar planograma existente',
+            'description' => 'Editar um planograma existente',
             'breadcrumbs' => [
                 ['title' => 'Planogramas', 'url' => route(Plannerate::getRoute())],
-                ['title' => 'Editar: ' . $planogram->name],
+                ['title' => $planogram->name],
             ],
         ]);
     }
@@ -113,7 +102,7 @@ class PlannerateController extends Controller
     public function show($id)
     {
         // Busca o planograma pelo ID com seus relacionamentos
-        $planogram = Planogram::with(['store', 'cluster', 'department', 'gondolas.sections.shelves.segments'])->findOrFail($id);
+        $planogram = Planogram::with(['store', 'cluster', 'gondolas.sections.shelves.segments'])->findOrFail($id);
 
         return Inertia::render('plannerate/View', [
             'record' => $planogram,
@@ -133,8 +122,7 @@ class PlannerateController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'store_id' => 'nullable|exists:stores,id',
-            'cluster_id' => 'nullable|exists:clusters,id',
-            'department_id' => 'nullable|exists:departaments,id',
+            'cluster_id' => 'nullable|exists:clusters,id', 
             'status' => 'required|string|in:draft,published,active,inactive',
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
@@ -158,8 +146,7 @@ class PlannerateController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'store_id' => 'nullable|exists:stores,id',
-            'cluster_id' => 'nullable|exists:clusters,id',
-            'department_id' => 'nullable|exists:departaments,id',
+            'cluster_id' => 'nullable|exists:clusters,id', 
             'status' => 'required|string|in:draft,published,active,inactive',
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
