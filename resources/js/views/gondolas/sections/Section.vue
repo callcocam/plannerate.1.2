@@ -1,33 +1,53 @@
 <template>
-    <div class="bg-gray-800" :style="sectionStyle" :data-section-id="section.id"
-        @dragover.prevent="handleSectionDragOver" @drop.prevent="handleSectionDrop" @dragleave="handleSectionDragLeave"
-        @dragstart="editorStore.disableDragging" @dragend="editorStore.enableDragging" ref="sectionRef">
+    <div
+        class="bg-gray-800"
+        :style="sectionStyle"
+        :data-section-id="section.id"
+        @dragover.prevent="handleSectionDragOver"
+        @drop.prevent="handleSectionDrop"
+        @dragleave="handleSectionDragLeave"
+        @dragstart="editorStore.disableDragging"
+        @dragend="editorStore.enableDragging"
+        ref="sectionRef"
+    >
         <!-- Conteúdo da Seção (Prateleiras) -->
         <slot />
-        <template v-for="(shelf, index) in sortedShelves" :key="shelf.id"> 
-            <ShelfComponent :shelf="shelf" :gondola="gondola" :sorted-shelves="sortedShelves" :index="index"
-                :section="section" :scale-factor="scaleFactor" :section-width="section.width"
-                :section-height="section.height" :base-height="baseHeight" :sections-container="sectionsContainer"
-                :section-index="sectionIndex" :holes="holes" @drop-product="handleProductDropOnShelf"
-                @drop-segment-copy="handleSegmentCopy" @drop-segment="updateSegment"
-                @drag-shelf="handleShelfDragStart" />
+        <template v-for="(shelf, index) in sortedShelves" :key="shelf.id">
+            <ShelfComponent
+                :shelf="shelf"
+                :gondola="gondola"
+                :sorted-shelves="sortedShelves"
+                :index="index"
+                :section="section"
+                :scale-factor="scaleFactor"
+                :section-width="section.width"
+                :section-height="section.height"
+                :base-height="baseHeight"
+                :sections-container="sectionsContainer"
+                :section-index="sectionIndex"
+                :holes="holes"
+                @drop-product="handleProductDropOnShelf"
+                @drop-segment-copy="handleSegmentCopy"
+                @drop-segment="updateSegment"
+                @drag-shelf="handleShelfDragStart"
+            />
         </template>
     </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 
 import { useEditorStore } from '@plannerate/store/editor';
-import { type Shelf as ShelfType } from '@plannerate/types/shelves';
 import { Section } from '@plannerate/types/sections';
 import { Layer, Product, Segment } from '@plannerate/types/segment';
+import { type Shelf as ShelfType } from '@plannerate/types/shelves';
 // import ShelfHook from './hook/Shelf.vue';
 // import ShelfNormal from './normal/Shelf.vue';
-import ShelfComponent from './shelves/Shelf.vue';
-import { useToast } from '@/components/ui/toast';
 import { Gondola } from '@plannerate/types/gondola';
 import { validateShelfWidth } from '@plannerate/utils/validation';
+import { toast } from 'vue-sonner';
+import ShelfComponent from './shelves/Shelf.vue';
 
 // ------- PROPS & EMITS -------
 const props = defineProps<{
@@ -44,9 +64,8 @@ const emit = defineEmits(['update:segments']);
 // Previne acesso repetido às props nos computed
 const { gondola, section } = props;
 
-// ------- STORES & SERVICES ------- 
+// ------- STORES & SERVICES -------
 const editorStore = useEditorStore();
-const { toast } = useToast();
 
 const holes = computed(() => {
     if (!section.settings) return [];
@@ -84,10 +103,9 @@ const sectionStyle = computed(() => {
         backgroundColor: isActive ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
         overflow: 'visible' as const,
         transition: 'border-color 0.2s ease-in-out, background-color 0.2s ease-in-out',
-        willChange: isActive ? 'border-color, background-color' : 'auto'
+        willChange: isActive ? 'border-color, background-color' : 'auto',
     };
 });
- 
 
 // ------- MÉTODOS - HELPERS -------
 /**
@@ -125,7 +143,7 @@ const createSegmentFromProduct = (product: Product, shelf: ShelfType, layerQuant
             height: product.height,
             segment_id: segmentId,
             tabindex: 0,
-        }
+        },
     };
 };
 
@@ -184,11 +202,7 @@ const handleSectionDrop = async (event: DragEvent) => {
         // Verifica se a posição é válida
         if (newPosition >= 0 && newPosition <= section.height - shelfHeight) {
             if (!gondola.id) {
-                toast({
-                    title: 'Erro Interno',
-                    description: 'Contexto da gôndola não encontrado.',
-                    variant: 'destructive'
-                });
+                toast.error('Erro Interno', { description: 'Contexto da gôndola não encontrado.' });
                 draggingShelf.value = null;
                 dropTargetActive.value = false;
                 return;
@@ -197,21 +211,17 @@ const handleSectionDrop = async (event: DragEvent) => {
             // Atualiza a posição da prateleira
             editorStore.setShelfPosition(gondola.id, section.id, shelf.id, {
                 shelf_position: newPosition,
-                shelf_x_position: -4
+                shelf_x_position: -4,
             });
         } else {
-            toast({
-                title: 'Aviso',
-                description: 'Posição de prateleira inválida',
-                variant: 'default',
+            toast.error('Aviso', {
+                description: `Posição de prateleira inválida. A posição deve estar entre 0 e ${section.height - shelfHeight}cm.`,
             });
         }
     } catch (e) {
         console.error('Erro ao processar dados da prateleira no drop:', e);
-        toast({
-            title: 'Erro',
+        toast.error('Erro', {
             description: 'Falha ao mover prateleira.',
-            variant: 'destructive'
         });
     } finally {
         draggingShelf.value = null;
@@ -228,10 +238,8 @@ const handleSectionDrop = async (event: DragEvent) => {
  */
 const handleProductDropOnShelf = async (product: Product, shelf: ShelfType) => {
     if (!gondola.id) {
-        toast({
-            title: 'Erro Interno',
+        toast.error('Erro Interno', {
             description: 'Contexto da gôndola não encontrado.',
-            variant: 'destructive'
         });
         return;
     }
@@ -251,19 +259,11 @@ const handleProductDropOnShelf = async (product: Product, shelf: ShelfType) => {
     };
 
     // *** Validação ***
-    const validation = validateShelfWidth(
-        shelf,
-        section.width,
-        null,
-        0,
-        tempLayer
-    );
+    const validation = validateShelfWidth(shelf, section.width, null, 0, tempLayer);
 
     if (!validation.isValid) {
-        toast({
-            title: "Limite de Largura Excedido",
+        toast.error('Limite de Largura Excedido', {
             description: `Adicionar este produto excederia a largura da seção (${section.width}cm). Largura resultante: ${validation.totalWidth.toFixed(1)}cm`,
-            variant: "destructive",
         });
         return;
     }
@@ -272,18 +272,16 @@ const handleProductDropOnShelf = async (product: Product, shelf: ShelfType) => {
     // Prossegue se válido
     const newSegment = createSegmentFromProduct(product, shelf, 1);
     // TODO: Calcular newSegment.position baseado em dropPosition se necessário
-    // TODO: Permitir definir o SPACING da nova layer/segmento aqui? 
+    // TODO: Permitir definir o SPACING da nova layer/segmento aqui?
     //      (newSegment atualmente não define spacing na layer criada)
 
     try {
         editorStore.addSegmentToShelf(gondola.id, section.id, shelf.id, newSegment);
     } catch (error) {
         console.error('Erro ao adicionar produto/segmento ao editorStore:', error);
-        const errorDesc = (error instanceof Error) ? error.message : 'Falha ao atualizar o estado do editor.';
-        toast({
-            title: 'Erro Interno',
+        const errorDesc = error instanceof Error ? error.message : 'Falha ao atualizar o estado do editor.';
+        toast.error('Erro Interno', {
             description: errorDesc,
-            variant: 'destructive'
         });
     }
 };
@@ -298,25 +296,17 @@ const handleSegmentCopy = async (segment: Segment, shelf: ShelfType) => {
         toast({
             title: 'Erro Interno',
             description: 'Contexto da gôndola não encontrado.',
-            variant: 'destructive'
+            variant: 'destructive',
         });
         return;
     }
 
     // *** Validação ***
-    const validation = validateShelfWidth(
-        shelf,
-        section.width,
-        null,
-        0,
-        segment.layer
-    );
+    const validation = validateShelfWidth(shelf, section.width, null, 0, segment.layer);
 
     if (!validation.isValid) {
-        toast({
-            title: "Limite de Largura Excedido",
-            description: `Copiar este produto/segmento excederia a largura da seção (${section.width}cm). Largura resultante: ${validation.totalWidth.toFixed(1)}cm`,
-            variant: "destructive",
+        toast.error('Limite de Largura Excedido', {
+            description: `Copiar este segmento excederia a largura da seção (${section.width}cm). Largura resultante: ${validation.totalWidth.toFixed(1)}cm`,
         });
         return;
     }
@@ -328,11 +318,9 @@ const handleSegmentCopy = async (segment: Segment, shelf: ShelfType) => {
         editorStore.addSegmentToShelf(gondola.id, section.id, shelf.id, newSegment);
     } catch (error) {
         console.error('Erro ao copiar camada/segmento para o editorStore:', error);
-        const errorDesc = (error instanceof Error) ? error.message : 'Falha ao atualizar o estado do editor.';
-        toast({
-            title: 'Erro Interno',
+        const errorDesc = error instanceof Error ? error.message : 'Falha ao atualizar o estado do editor.';
+        toast.error('Erro Interno', {
             description: errorDesc,
-            variant: 'destructive'
         });
     }
 };
@@ -360,7 +348,7 @@ const updateSegment = (segment: Segment, targetShelf: ShelfType) => {
         for (const g of editorStore.currentState.gondolas) {
             if (g.id === gondola.id) {
                 for (const s of g.sections) {
-                    if (s.shelves?.some(sh => sh.id === oldShelfId)) {
+                    if (s.shelves?.some((sh) => sh.id === oldShelfId)) {
                         oldSectionId = s.id;
                         break;
                     }
@@ -370,57 +358,45 @@ const updateSegment = (segment: Segment, targetShelf: ShelfType) => {
         }
     }
     // Encontrar seção de destino para obter largura
-    const destinationSection = editorStore.currentState?.gondolas
-        .find(g => g.id === gondola.id)?.sections
-        .find(s => s.id === newSectionId);
+    const destinationSection = editorStore.currentState?.gondolas.find((g) => g.id === gondola.id)?.sections.find((s) => s.id === newSectionId);
 
     if (!destinationSection) {
         console.error('updateLayer: Seção de destino não encontrada no editorStore.');
-        toast({ title: 'Erro Interno', description: 'Seção de destino não encontrada.', variant: 'destructive' });
+        toast.error('Erro Interno', { description: 'Seção de destino não encontrada.' });
         return;
     }
 
     if (oldShelfId === newShelfId) return; // Evita auto-transferência
 
     // *** Validação (na prateleira DESTINO) ***
-    const validation = validateShelfWidth(
-        targetShelf,
-        destinationSection.width,
-        null,
-        0,
-        segmentToMove.layer
-    );
+    const validation = validateShelfWidth(targetShelf, destinationSection.width, null, 0, segmentToMove.layer);
 
     if (!validation.isValid) {
-        toast({
-            title: "Limite de Largura Excedido",
+        toast.error('Limite de Largura Excedido', {
             description: `Mover este segmento excederia a largura da seção destino (${destinationSection.width}cm). Largura resultante: ${validation.totalWidth.toFixed(1)}cm`,
-            variant: "destructive",
         });
         return;
     }
     // *** Fim Validação ***
 
     if (!gondola.id || !oldSectionId || !oldShelfId || !newSectionId || !newShelfId || !segmentId) {
-        console.error('updateLayer: IDs faltando para realizar a transferência.',
-            { gondolaId: gondola.id, oldSectionId, oldShelfId, newSectionId, newShelfId, segmentId }
-        );
+        console.error('updateLayer: IDs faltando para realizar a transferência.', {
+            gondolaId: gondola.id,
+            oldSectionId,
+            oldShelfId,
+            newSectionId,
+            newShelfId,
+            segmentId,
+        });
         toast({
             title: 'Erro Interno',
             description: 'Dados insuficientes para mover o segmento.',
-            variant: 'destructive'
+            variant: 'destructive',
         });
         return;
     }
 
-    editorStore.transferSegmentBetweenShelves(
-        gondola.id,
-        oldSectionId,
-        oldShelfId,
-        newSectionId,
-        newShelfId,
-        segmentId
-    );
+    editorStore.transferSegmentBetweenShelves(gondola.id, oldSectionId, oldShelfId, newSectionId, newShelfId, segmentId);
 };
 
 // ------- MÉTODOS - EVENT HANDLERS GLOBAIS -------
@@ -485,7 +461,7 @@ const handleDoubleClick = (event: MouseEvent) => {
         id: `temp-shelf-${Date.now()}`,
         shelf_height: 4,
         shelf_position: event.offsetY / props.scaleFactor,
-        section_id: section.id
+        section_id: section.id,
     } as ShelfType);
 };
 
@@ -514,7 +490,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.section-container>.absolute.bottom-0 {
+.section-container > .absolute.bottom-0 {
     z-index: -1;
 }
 

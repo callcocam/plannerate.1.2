@@ -42,7 +42,7 @@
 import { MoveIcon, ArrowUpDownIcon } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import draggable from 'vuedraggable';
-import { useToast } from '@/components/ui/toast';
+import { toast } from 'vue-sonner';
 import type { Gondola } from '@plannerate/types/gondola';
 import type { Section as SectionType } from '@plannerate/types/sections';
 
@@ -55,8 +55,7 @@ const props = defineProps<{
     gondola: Gondola;
     scaleFactor: number;
 }>();
-
-const { toast } = useToast();
+ 
 
 const sectionsContainer = ref<HTMLElement | null>(null);
 

@@ -2,17 +2,15 @@
     <div id="section-properties-sidebar" class="h-full w-full overflow-y-auto border-l border-gray-200 bg-white p-6">
         <TooltipProvider>
             <div class="space-y-6" v-if="selectedSection">
-                <div class="flex items-center justify-between w-full ">
-                    <h2 class="text-lg font-medium flex-1">Propriedades da Seção</h2>
-                    <div class="flex items-center space-x-2 justify-between">                        
-                         <Button  type="button"
-                         v-if="isEditing"
-                          @click="cancelEditing" variant="outline" size="icon">
-                        <ArrowLeftIcon class="h-4 w-4" /> 
-                        </Button> 
+                <div class="flex w-full items-center justify-between">
+                    <h2 class="flex-1 text-lg font-medium">Propriedades da Seção</h2>
+                    <div class="flex items-center justify-between space-x-2">
+                        <Button type="button" v-if="isEditing" @click="cancelEditing" variant="outline" size="icon">
+                            <ArrowLeftIcon class="h-4 w-4" />
+                        </Button>
 
-                            <Button  type="button" v-if="!isEditing" @click="startEditing" variant="outline" size="icon">
-                            <PencilIcon class="h-4 w-4" /> 
+                        <Button type="button" v-if="!isEditing" @click="startEditing" variant="outline" size="icon">
+                            <PencilIcon class="h-4 w-4" />
                         </Button>
                     </div>
                 </div>
@@ -25,7 +23,7 @@
                             <div>
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label for="name" class="truncate block cursor-help">Nome</Label>
+                                        <Label for="name" class="block cursor-help truncate">Nome</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Nome da Seção</p>
@@ -36,7 +34,7 @@
                             <div>
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label for="id" class="truncate block cursor-help">ID</Label>
+                                        <Label for="id" class="block cursor-help truncate">ID</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Identificador único da seção</p>
@@ -47,7 +45,7 @@
                             <div>
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label for="status" class="truncate block cursor-help">Status</Label>
+                                        <Label for="status" class="block cursor-help truncate">Status</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Estado atual da seção</p>
@@ -70,7 +68,7 @@
                             <div>
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label for="width" class="truncate block cursor-help">Largura (cm)</Label>
+                                        <Label for="width" class="block cursor-help truncate">Largura (cm)</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Largura total da seção em centímetros</p>
@@ -81,7 +79,7 @@
                             <div>
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label for="height" class="truncate block cursor-help">Altura (cm)</Label>
+                                        <Label for="height" class="block cursor-help truncate">Altura (cm)</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Altura total da seção em centímetros</p>
@@ -92,7 +90,7 @@
                             <div>
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label for="base_width" class="truncate block cursor-help">Base (L) (cm)</Label>
+                                        <Label for="base_width" class="block cursor-help truncate">Base (L) (cm)</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Largura da base da seção em centímetros</p>
@@ -103,7 +101,7 @@
                             <div>
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label for="base_height" class="truncate block cursor-help">Base (A) (cm)</Label>
+                                        <Label for="base_height" class="block cursor-help truncate">Base (A) (cm)</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Altura da base da seção em centímetros</p>
@@ -114,7 +112,7 @@
                             <div>
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label for="base_depth" class="truncate block cursor-help">Base (P) (cm)</Label>
+                                        <Label for="base_depth" class="block cursor-help truncate">Base (P) (cm)</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Profundidade da base da seção em centímetros</p>
@@ -133,7 +131,7 @@
                             <div>
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label for="cremalheira_width" class="truncate block cursor-help">Largura Cremalheira (cm)</Label>
+                                        <Label for="cremalheira_width" class="block cursor-help truncate">Largura Cremalheira (cm)</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Largura da cremalheira em centímetros</p>
@@ -144,7 +142,7 @@
                             <div>
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label for="holes" class="truncate block cursor-help">Buracos</Label>
+                                        <Label for="holes" class="block cursor-help truncate">Buracos</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Quantidade de buracos na cremalheira</p>
@@ -155,7 +153,7 @@
                             <div>
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label for="hole_width" class="truncate block cursor-help">Largura Buraco (cm)</Label>
+                                        <Label for="hole_width" class="block cursor-help truncate">Largura Buraco (cm)</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Largura de cada buraco da cremalheira em centímetros</p>
@@ -166,7 +164,7 @@
                             <div>
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label for="hole_spacing" class="truncate block cursor-help">Espaçamento Buracos (cm)</Label>
+                                        <Label for="hole_spacing" class="block cursor-help truncate">Espaçamento Buracos (cm)</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Espaçamento vertical entre os buracos da cremalheira em centímetros</p>
@@ -185,7 +183,7 @@
                             <div>
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label for="num_shelves" class="truncate block cursor-help">Quantidade</Label>
+                                        <Label for="num_shelves" class="block cursor-help truncate">Quantidade</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Quantidade total de prateleiras na seção</p>
@@ -196,7 +194,7 @@
                             <div class="mt-3">
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label for="shelves" class="truncate block cursor-help">Lista de Prateleiras</Label>
+                                        <Label for="shelves" class="block cursor-help truncate">Lista de Prateleiras</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Detalhes de cada prateleira na seção</p>
@@ -223,14 +221,14 @@
                             <div class="space-y-1">
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label for="name" class="truncate block cursor-help">Nome</Label>
+                                        <Label for="name" class="block cursor-help truncate">Nome</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Nome da Seção</p>
                                     </TooltipContent>
                                 </Tooltip>
                                 <Input id="name" v-model="formData.name" class="h-8" />
-                            </div> 
+                            </div>
                         </div>
                     </div>
 
@@ -242,7 +240,7 @@
                             <div class="space-y-1">
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label for="width" class="truncate block cursor-help">Largura (cm)</Label>
+                                        <Label for="width" class="block cursor-help truncate">Largura (cm)</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Largura total da seção em centímetros</p>
@@ -253,7 +251,7 @@
                             <div class="space-y-1">
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label for="height" class="truncate block cursor-help">Altura (cm)</Label>
+                                        <Label for="height" class="block cursor-help truncate">Altura (cm)</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Altura total da seção em centímetros</p>
@@ -264,7 +262,7 @@
                             <div class="space-y-1">
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label for="base_width" class="truncate block cursor-help">Base (L) (cm)</Label>
+                                        <Label for="base_width" class="block cursor-help truncate">Base (L) (cm)</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Largura da base da seção em centímetros</p>
@@ -275,7 +273,7 @@
                             <div class="space-y-1">
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label for="base_height" class="truncate block cursor-help">Base (A) (cm)</Label>
+                                        <Label for="base_height" class="block cursor-help truncate">Base (A) (cm)</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Altura da base da seção em centímetros</p>
@@ -286,7 +284,7 @@
                             <div class="space-y-1">
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label for="base_depth" class="truncate block cursor-help">Base (P) (cm)</Label>
+                                        <Label for="base_depth" class="block cursor-help truncate">Base (P) (cm)</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Profundidade da base da seção em centímetros</p>
@@ -305,7 +303,7 @@
                             <div class="space-y-1">
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label for="cremalheira_width" class="truncate block cursor-help">Largura Cremalheira (cm)</Label>
+                                        <Label for="cremalheira_width" class="block cursor-help truncate">Largura Cremalheira (cm)</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Largura da cremalheira em centímetros</p>
@@ -316,7 +314,7 @@
                             <div class="space-y-1">
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label for="hole_width" class="truncate block cursor-help">Largura Buraco (cm)</Label>
+                                        <Label for="hole_width" class="block cursor-help truncate">Largura Buraco (cm)</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Largura de cada buraco da cremalheira em centímetros</p>
@@ -327,7 +325,7 @@
                             <div class="space-y-1">
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label for="hole_height" class="truncate block cursor-help">Altura Buraco (cm)</Label>
+                                        <Label for="hole_height" class="block cursor-help truncate">Altura Buraco (cm)</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Altura de cada buraco da cremalheira em centímetros</p>
@@ -338,7 +336,7 @@
                             <div class="space-y-1">
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label for="hole_spacing" class="truncate block cursor-help">Espaçamento Buracos (cm)</Label>
+                                        <Label for="hole_spacing" class="block cursor-help truncate">Espaçamento Buracos (cm)</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Espaçamento vertical entre os buracos da cremalheira em centímetros</p>
@@ -349,14 +347,13 @@
                         </div>
                     </div>
                     <div v-if="selectedSection.shelves.length > 1">
-                        <Button type="button"  @click="invertShelves" variant="outline" size="sm" :disabled="!canInvertShelves" class="w-full">
-                             <ArrowUpDownIcon class="mr-2 h-4 w-4" />
-                             Inverter
-                         </Button>
-                    </div>  
+                        <Button type="button" @click="invertShelves" variant="outline" size="sm" :disabled="!canInvertShelves" class="w-full">
+                            <ArrowUpDownIcon class="mr-2 h-4 w-4" />
+                            Inverter
+                        </Button>
+                    </div>
 
-                    <div class="flex items-center justify-between pt-4 gap-2">
-                        
+                    <div class="flex items-center justify-between gap-2 pt-4">
                         <Button type="button" @click="cancelEditing" variant="outline" size="sm">
                             <XIcon class="mr-2 h-4 w-4" />
                             Cancelar
@@ -376,12 +373,11 @@
 import { computed, ref, watch } from 'vue';
 import { useEditorStore } from '../../../store/editor';
 
-import { PencilIcon, ArrowUpDownIcon, XIcon, ArrowLeftIcon, CheckIcon } from 'lucide-vue-next';
-import { Section } from '@plannerate/types/sections'; 
-import { useToast } from '@/components/ui/toast'; 
+import { Section } from '@plannerate/types/sections';
+import { ArrowLeftIcon, ArrowUpDownIcon, CheckIcon, PencilIcon, XIcon } from 'lucide-vue-next';
+import { toast } from 'vue-sonner';
 
 const editorStore = useEditorStore();
-const { toast } = useToast();
 
 const selectedSection = computed(() => editorStore.getSelectedSection as Section);
 const editorGondola = computed(() => editorStore.getCurrentGondola);
@@ -459,18 +455,14 @@ const cancelEditing = () => {
 const invertShelves = () => {
     if (!selectedSection.value || !editorGondola.value?.id) {
         console.error('Erro ao inverter: Seção ou Gôndola não selecionada.');
-        toast({
-            title: 'Erro',
+        toast.error('Erro ao inverter', {
             description: 'Seção ou Gôndola não encontrada para inverter prateleiras.',
-            variant: 'destructive',
         });
         return;
     }
     if (!canInvertShelves.value) {
-        toast({
-            title: 'Aviso',
+        toast.error('Erro ao inverter', {
             description: 'Não é possível inverter: A seção precisa ter pelo menos duas prateleiras.',
-            variant: 'default',
         });
         return;
     }
@@ -480,15 +472,12 @@ const invertShelves = () => {
 
     try {
         editorStore.invertShelvesInSection(gondolaId, sectionId);
-        toast({
-            title: 'Sucesso',
+        toast.error('Sucesso', {
             description: 'Ordem das prateleiras invertida.',
         });
-    } catch (error) { 
-        toast({
-            title: 'Erro',
+    } catch (error) {
+        toast.error('Erro', {
             description: 'Falha ao inverter a ordem das prateleiras.',
-            variant: 'destructive',
         });
     }
 };
@@ -513,9 +502,12 @@ const saveChanges = async () => {
     try {
         editorStore.updateSectionData(correctGondolaId, sectionId, dataToSave); // Usa dataToSave
         console.log('Alterações da seção enviadas para o editorStore.');
-        editorStore.setIsSectionEditing(false); 
+        editorStore.setIsSectionEditing(false);
     } catch (error) {
         console.error('Erro ao salvar as alterações da seção:', error);
+        toast.error('Erro ao salvar as alterações da seção.', {
+            description: error instanceof Error ? error.message : 'Falha ao salvar as alterações.',
+        });
     }
 };
 </script>
