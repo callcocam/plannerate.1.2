@@ -39,12 +39,16 @@
                     </Badge>
                     <span v-if="editorStore.hasChanges" class="ml-2 text-xs text-yellow-600 dark:text-yellow-400">(Não salvo)</span>
                 </div>
-                <p class="text-sm text-muted-foreground dark:text-gray-400">
+                <p class="text-muted-foreground text-sm dark:text-gray-400">
                     ID: {{ planogram.id }} | Criado em: {{ formatDate(planogram.created_at) }}
                 </p>
             </div>
 
             <div class="flex items-center gap-2">
+                <a href="/plannerate" class="dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 flex items-center rounded-md border px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
+                    <XIcon class="mr-2 h-4 w-4" />
+                    <span> Voltar para a lista</span>
+                </a>
                 <Button
                     variant="outline"
                     size="sm"
@@ -60,16 +64,14 @@
                 </Button>
             </div>
         </div>
-
-        
     </div>
 </template>
 
 <script setup lang="ts">
-import { PencilIcon, PlusCircleIcon } from 'lucide-vue-next';
-import { computed } from 'vue';
-import { useRoute, useRouter } from 'vue-router'; 
 import { useEditorStore } from '@plannerate/store/editor';
+import { PencilIcon, PlusCircleIcon, XIcon } from 'lucide-vue-next';
+import { computed } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
 const router = useRouter();
 const route = useRoute();
@@ -81,13 +83,12 @@ const props = defineProps({
         type: Object,
         required: true,
     },
-}); 
+});
 
 const planogramId = computed(() => props.planogram?.id || route.params.id);
 
 // Emitir eventos para o componente pai
 const emit = defineEmits(['close', 'gondola-added']);
- 
 
 // Função para abrir o modal de adicionar gôndola
 const openAddGondolaModal = () => {
