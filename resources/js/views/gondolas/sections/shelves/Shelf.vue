@@ -15,8 +15,7 @@
                     'bg-gray-700 dark:bg-gray-800': !isSelected && shelf.product_type === 'normal'
                  }" 
                  :style="shelfStyle" 
-                 ref="shelfElement">
-                <!-- Renderiza Segmentos normais -->
+                 ref="shelfElement"> 
                 <draggable v-model="sortableSegments" item-key="id" handle=".drag-segment-handle"
                     class="relative flex w-full" :class="{
                         'items-start': shelf.product_type === 'hook',
@@ -262,7 +261,7 @@ onUnmounted(() => {
 }
 
 .shelf-container.drag-over {
-    border-color: theme('colors.blue.500');
+    border-color:  rgba(59, 130, 246, 0.5);
 }
 
 .drag-over {

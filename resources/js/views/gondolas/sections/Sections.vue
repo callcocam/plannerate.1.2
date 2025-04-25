@@ -49,6 +49,7 @@ import type { Section as SectionType } from '@plannerate/types/sections';
 import Cremalheira from '@plannerate/views/gondolas/sections/Cremalheira.vue';
 import SectionComponent from '@plannerate/views/gondolas/sections/Section.vue';
 import { useEditorStore } from '@plannerate/store/editor';
+import { Button } from '@/components/ui/button';
 
 
 const props = defineProps<{

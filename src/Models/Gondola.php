@@ -8,6 +8,7 @@
 
 namespace Callcocam\Plannerate\Models;
 
+use Callcocam\LaraGatekeeper\Core\Landlord\BelongsToTenants;
 use Callcocam\Plannerate\Enums\GondolaStatus;   
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -19,7 +20,7 @@ use Tall\Sluggable\SlugOptions;
 
 class Gondola extends Model
 {
-    use HasFactory, HasSlug, HasUlids, SoftDeletes;
+    use HasFactory, HasSlug, HasUlids, SoftDeletes, BelongsToTenants;
 
     protected $fillable = [ 
         'user_id',
