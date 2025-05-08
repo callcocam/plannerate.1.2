@@ -204,6 +204,7 @@ class PlannerateController extends Controller
             'thickness',
             'scale_factor',
             'location', 
+            'alignment',
             // 'status',
             // Adicione outros campos conforme necessário
         ];
