@@ -37,7 +37,7 @@
                 </draggable>
                 <ShelfControls :shelf="shelf" :scale-factor="scaleFactor" :section-width="sectionWidth"
                     :section-height="sectionHeight" :shelf-element="shelfElement" :base-height="baseHeight"
-                    :sections-container="sectionsContainer" :section-index="sectionIndex" :hole-width="holeWidth"  :index="index"/>
+                    :sections-container="sectionsContainer" :section-index="sectionIndex" :hole-width="holeWidth"  :index="index" :totalItems="sortedShelves.length"/>
             </div>
         </ContextMenuTrigger>
         <ContextMenuContent class="w-64">

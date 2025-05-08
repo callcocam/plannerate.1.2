@@ -357,7 +357,7 @@ class PlannerateController extends Controller
     private function filterShelfAttributes(array $data, ShelfPositioningService $shelfService, int $i, Section $section): array
     {
         $fillable = [
-            'code',
+            // 'code',
             'product_type',
             'shelf_width',
             'shelf_height',

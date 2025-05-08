@@ -66,7 +66,7 @@ const openAddGondolaModal = () => {
 };
 
 onMounted(() => {
-    // Verificar se já existem gondolas no registro atual
+    // Verificar se já existem gondolas no registro atual 
     if (record.value?.gondolas?.length) {
         // Se já temos os dados no record, usamos eles diretamente
         const gondola = record.value.gondolas[0];
@@ -74,7 +74,14 @@ onMounted(() => {
     } else {
         // Caso contrário, buscamos da API
         editorService.fetchPlanogram(route.params.id as string).then((response) => {
-            editorStore.initialize(response);
+            editorStore.initialize(response); 
+            if (response.gondolas?.length) {
+                // Se já temos os dados no record, usamos eles diretamente
+                const gondola = response.gondolas[0];
+                redirectToGondola(gondola.id);
+            }
+        }).catch((error) => {
+            console.error('Error fetching planogram:', error);
         });
     }
 });

@@ -43,13 +43,15 @@ const props = defineProps<{
     shelfElement?: HTMLElement | null; // Referência ao elemento da prateleira
     sectionsContainer: HTMLElement | null; // Referência ao container das seções
     index: number;
+    totalItems: number;
 }>();
 
 const invertIndex = computed(() =>{
+    const inverted = props.totalItems - 1 - props.index;
     if (props.shelf.product_type === 'hook') {
-        return `Ganch: ${props.index}`;
+        return `Ganch: ${inverted}`;
     }
-    return `Prat: ${props.index}`;
+    return `Prat: ${inverted}`;
 });
 
 // Emits para comunicar com componentes pai
