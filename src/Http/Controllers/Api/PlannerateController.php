@@ -104,7 +104,8 @@ class PlannerateController extends Controller
                     'gondolas.sections',
                     'gondolas.sections.shelves',
                     'gondolas.sections.shelves.segments',
-                    'gondolas.sections.shelves.segments.layer'
+                    'gondolas.sections.shelves.segments.layer',
+                    'gondolas.sections.shelves.segments.layer.product'
                 ])
             ]);
         } catch (\Exception $e) {

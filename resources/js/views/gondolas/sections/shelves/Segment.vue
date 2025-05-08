@@ -62,8 +62,7 @@ const depthCount = computed(() => {
 });
 
 /** Segment quantity (number of layers) */
-const segmentQuantity = computed(() => {
-    console.log('segmentQuantity', props.segment.quantity);
+const segmentQuantity = computed(() => { 
     return props.segment?.quantity ?? 0;
 });
 const alignment = computed(() => props.gondola.alignment);

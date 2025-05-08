@@ -455,15 +455,15 @@ const handleClickOutside = (event: MouseEvent) => {
  * Gerencia duplo clique para adicionar prateleira
  * @param event Evento de duplo clique
  */
-const handleDoubleClick = (event: MouseEvent) => {
-    event.stopPropagation();
-    editorStore.addShelfToSection(gondola.id, section.id, {
-        id: `temp-shelf-${Date.now()}`,
-        shelf_height: 4,
-        shelf_position: event.offsetY / props.scaleFactor,
-        section_id: section.id,
-    } as ShelfType);
-};
+// const handleDoubleClick = (event: MouseEvent) => {
+//     event.stopPropagation();
+//     editorStore.addShelfToSection(gondola.id, section.id, {
+//         id: `temp-shelf-${Date.now()}`,
+//         shelf_height: 4,
+//         shelf_position: event.offsetY / props.scaleFactor,
+//         section_id: section.id,
+//     } as ShelfType);
+// };
 
 // ------- LIFECYCLE HOOKS -------
 onMounted(() => {
@@ -472,9 +472,9 @@ onMounted(() => {
     document.addEventListener('click', handleClickOutside, true);
 
     // Adiciona evento de duplo clique ao elemento da seção
-    if (sectionRef.value) {
-        sectionRef.value.addEventListener('dblclick', handleDoubleClick);
-    }
+    // if (sectionRef.value) {
+    //     sectionRef.value.addEventListener('dblclick', handleDoubleClick);
+    // }
 });
 
 onUnmounted(() => {
@@ -483,9 +483,9 @@ onUnmounted(() => {
     document.removeEventListener('click', handleClickOutside, true);
 
     // Remove evento de duplo clique ao elemento da seção
-    if (sectionRef.value) {
-        sectionRef.value.removeEventListener('dblclick', handleDoubleClick);
-    }
+    // if (sectionRef.value) {
+    //     sectionRef.value.removeEventListener('dblclick', handleDoubleClick);
+    // }
 });
 </script>
 

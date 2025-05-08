@@ -1,7 +1,7 @@
 <template>
     <div class=" w-full flex items-center justify-center text-center text-xs text-gray-100 bg-transparent p-5 rounded-md "
         :style="shelfContentStyle" @dragenter.prevent="handleDragEnter" @dragover.prevent="handleDragOver"
-        @dragleave="handleDragLeave" @drop.prevent="handleDrop">
+        @dragleave="handleDragLeave" @drop.prevent="handleDrop" ref="shelfContentRef">
         <!-- Quero alinhar o texto no centro da prateleira  -->
         <span class="text-center text-gray-800 dark:text-gray-200 translate-y-1/2 pointer-events-none font-bold"
             v-if="dragShelfActive"> {{ shelftext }}</span>
@@ -9,11 +9,11 @@
 </template>
 
 <script setup lang="ts">
-import { defineEmits, defineProps, ref, watch, computed, CSSProperties } from 'vue';
+import { defineEmits, defineProps, ref, watch, computed, CSSProperties, onMounted } from 'vue';
 import { type Shelf } from '@plannerate/types/shelves';
 import { Section } from '@/types/sections';
 import type { Product, Layer } from '@plannerate/types/segment';
-
+import { useEditorStore } from '@plannerate/store/editor';
 // Definir Props
 const props = defineProps<{
     shelf: Shelf;
@@ -25,9 +25,11 @@ const props = defineProps<{
 const dragShelfActive = ref(false); // Estado para rastrear se a prateleira está sendo arrastada
 const dragEnterCount = ref(0); // Garantir que está definido aqui
 const shelftext = ref(`Shelf (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`); // Texto da prateleira
+const shelfContentRef = ref<HTMLElement | null>(null);
 // Definir Emits
 const emit = defineEmits(['drop-product', 'drop-segment', 'drop-segment-copy']); // Para quando um produto é solto na prateleira
-
+const editorStore = useEditorStore();
+import { type Shelf as ShelfType } from '@plannerate/types/shelves';
 
 watch(dragShelfActive, (newValue) => {
     if (newValue) {
@@ -81,7 +83,7 @@ const shelfContentStyle = computed((): CSSProperties => {
     if (currentIndex === 0) {
         heightPx = Math.max(minTopHeightPx, heightPx);
         // Para a primeira, o padding inferior é aplicado, mas o topo começa em 0
-        heightPx = Math.max(props.shelf.shelf_position, heightPx - bottomPaddingPx); 
+        heightPx = Math.max(props.shelf.shelf_position, heightPx - bottomPaddingPx);
         otherStyles = {
             transform: `translateY(-${heightPx}px)`
         }
@@ -101,7 +103,7 @@ const shelfContentStyle = computed((): CSSProperties => {
         height: `${heightPx}px`,
         top: `${topPx}px`,
         left: '0',
-        position: 'absolute', 
+        position: 'absolute',
         ...otherStyles,
         // Adicione outros estilos se necessário (background, borda para debug, etc.)
         // Ex: backgroundColor: 'rgba(255, 0, 0, 0.3)',
@@ -266,6 +268,27 @@ const handleDrop = (event: DragEvent) => {
         resetVisualState(); // Garante reset no final
     }
 };
+
+const handleDoubleClick = (event: MouseEvent) => {
+    event.stopPropagation();
+    const section = props.section;
+    console.log('handleDoubleClick: ', event.clientX, event.clientY);
+    editorStore.addShelfToSection(section.gondola_id, section.id, {
+        id: `temp-shelf-${Date.now()}`,
+        shelf_height: 4,
+        shelf_position: props.shelf.shelf_position,
+        section_id: section.id,
+        product_type: 'normal',
+    } as ShelfType);
+}
+
+onMounted(() => {
+    if (shelfContentRef.value) {
+        shelfContentRef.value.addEventListener('dblclick', handleDoubleClick);
+    }
+});
+
+
 
 </script>
 

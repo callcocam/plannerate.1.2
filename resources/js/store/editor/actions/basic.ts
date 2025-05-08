@@ -163,8 +163,7 @@ export async function saveChanges(): Promise<any> {
     if (!currentState.value) {
         throw new Error("Não há estado atual para salvar");
     }
-
-    console.log('Salvando alterações...', currentState.value);
+ 
 
     setIsLoading(true);
 
@@ -184,12 +183,12 @@ export async function saveChanges(): Promise<any> {
 
         // Chama a API para salvar os dados
         const response = await editorService.savePlanogram(planogramData.id as string, planogramData as any); 
-        setIsLoading(false);
-
+        setIsLoading(false); 
         if (response.data && response.success) {
             // Se salvou com sucesso, atualiza o estado com os dados retornados (se houver)
+            console.log('saveChanges: response.data', response.data);
             if (response.data) {
-                // initialize(response.data);
+                initialize(response.data);
             }
 
             // Reseta o histórico com o novo estado como base

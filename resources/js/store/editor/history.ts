@@ -9,7 +9,7 @@ import {
 import { MAX_HISTORY_SIZE, HistoryEntry } from './types';
 import { calculateTabindex } from './utils';
 import { isEqual } from 'lodash-es';
-
+import { saveChanges } from './actions/basic';
 /**
  * Inicializa o histórico para uma gôndola específica
  * @param gondolaId ID da gôndola
@@ -32,14 +32,13 @@ export function initializeGondolaHistory(gondolaId: string) {
         entries: [historyEntry],
         currentIndex: 0
     };
-
-    console.log(`Histórico inicializado para gôndola ${gondolaId}`);
+ 
 }
 
 /**
  * Registra uma mudança no estado atual no histórico da gôndola atual
  */
-export function recordChange() {
+export function recordChange(save: boolean = false) {
     isLoading.value = true;
 
     // Não registra se estamos navegando pelo histórico ou se não há estado/gôndola atual
@@ -91,9 +90,12 @@ export function recordChange() {
 
     // Atualiza o índice atual
     history.currentIndex = history.entries.length - 1;
-
-    console.log(`Estado registrado no histórico da gôndola ${gondolaId}. Índice: ${history.currentIndex}`);
+ 
     isLoading.value = false;
+
+    if (save) {
+        saveChanges();
+    }
 }
 
 /**
@@ -167,8 +169,7 @@ export function redo() {
             calculateTabindex(updatedGondola);
         }
     }
-
-    console.log(`Redo realizado para gôndola ${gondolaId}. Índice atual: ${currentHistory.currentIndex}`);
+ 
     isTimeTraveling.value = false;
 }
 
@@ -185,6 +186,5 @@ export function resetGondolaHistory(gondolaId: string) {
         return;
     }
 
-    initializeGondolaHistory(gondolaId);
-    console.log(`Histórico resetado para gôndola ${gondolaId}`);
+    initializeGondolaHistory(gondolaId); 
 }

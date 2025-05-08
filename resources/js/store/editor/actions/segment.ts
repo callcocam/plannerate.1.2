@@ -18,9 +18,9 @@ export function addSegmentToShelf(gondolaId: string, sectionId: string, shelfId:
     
     if (typeof newSegment.id === 'string') {
         if (!shelf) return;
-        shelf.segments.push(newSegment as import('@/types/shelves').Segment);
-        console.log(`Segmento ${newSegment.id} adicionado à prateleira ${shelfId}`);
-        recordChange();
+        shelf.segments.push(newSegment as import('@/types/shelves').Segment); 
+        recordChange(true);
+        
     } else {
         console.error('Tentativa de adicionar segmento sem ID.', newSegment);
     }
