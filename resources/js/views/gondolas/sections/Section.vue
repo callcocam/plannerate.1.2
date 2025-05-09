@@ -15,7 +15,7 @@
         <div class="text-black text-xs absolute bottom-5 left-1/2 -translate-x-1/2 p-2 dark:text-white uppercase font-bold" :style="{
             bottom: `${baseHeight / 2}px`
         }">
-            {{ sectionIndex }}# Sessão
+            {{ sectionIndex }}# Modulo
         </div>
     </div>
 </template>
@@ -414,6 +414,15 @@ const handleClickOutside = (event: MouseEvent) => {
     if (clickedElement.closest('[data-radix-popper-content-wrapper], [role="listbox"]')) {
         return;
     }
+
+    // Ignora cliques dentro do modal de edição de produto
+    if (clickedElement.closest('[data-dismissable-layer]')) {
+        return;
+    }  
+    // Ignora cliques dentro do modal de edição de produto
+    if (clickedElement.closest('[data-state="open"]')) {
+        return;
+    } 
 
     // Ignora cliques em elementos específicos que não devem limpar seleções
     if (clickedElement.closest('.border-destructive, .no-remove-properties')) {

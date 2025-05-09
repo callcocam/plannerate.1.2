@@ -1,5 +1,5 @@
 <template>
-    <div class="product relative" :style="productStyle">
+    <div class="product relative mb-2" :style="productStyle" @click="handleProductClick" ref="productRef">
         <!-- Aqui você pode adicionar a representação visual do produto -->
         <!-- Pode ser uma imagem, um retângulo colorido, ou qualquer outro elemento visual -->
         <slot name="depth-count"></slot>
@@ -7,27 +7,68 @@
     </div>
 </template>
 
-<script setup lang="ts">
-import { computed } from 'vue';
 
+
+<script setup lang="ts">
+import { Layer } from '@/types/segment';
+import { computed, onMounted, ref } from 'vue'; 
+import { useEditorStore } from '@plannerate/store/editor';
 const props = defineProps<{
     product: any;
     scaleFactor: number;
     index: number;
     shelfDepth: number;
+    layer: Layer;
 }>();
+ 
+const editorStore = useEditorStore();
+const productRef = ref<HTMLDivElement | null>(null);
 
+/**
+ * Verifica se o layer está selecionado
+ */
+ const isSelected = computed(() => {
+    const layerId = props.layer.id;
+    // Usa selectedLayerIds (nome corrigido e agora existente)
+    return editorStore.isSelectedLayer(String(layerId));
+});
+const productActiveTrigger = () => {
+    if (isSelected.value) {
+       
+        return {
+            border: '1px solid red',
+        }
+    }
+    return {
+        border: '1px solid transparent',
+    }
+};
 // Estilo do produto
 const productStyle = computed(() => {
+    let image_url = props.product.image_url;
+    // verifyImageExists(image_url).then((exists) => {
+    //     if (!exists) {
+    //         // Pegar as iniciais do nome do produto
+    //         const initials = props.product.name
+    //             .split(' ')
+    //             .map((word: string) => word.charAt(0).toUpperCase())
+    //             .join('')
+    //             .slice(0, 2); // Limita a 2 letras (opcional)
+
+    //         // Exemplo de uso com placehold.co
+    //         image_url = `https://placehold.co/400x600?text=${initials}`;
+    //     }
+    // });
     return {
         width: `${props.product.width * props.scaleFactor}px`,
         height: `${props.product.height * props.scaleFactor}px`,
         position: 'relative' as const,
-        boxSizing: 'border-box' as const,
-        backgroundImage: props.product.image_url ? `url(${props.product.image_url})` : 'none',
+        boxSizing: 'border-box' as const, 
+        backgroundImage: `url(${image_url})`,
         backgroundSize: 'contain',
         backgroundRepeat: 'no-repeat',
         backgroundPosition: 'center',
+        ...productActiveTrigger
     };
 });
 
@@ -45,6 +86,16 @@ const contentStyle = computed(() => {
         alignItems: 'center',
         justifyContent: 'center',
     };
+});
+
+const handleProductClick = () => {
+    productActiveTrigger();
+};
+
+onMounted(() => {
+    if (productRef.value) {
+        productRef.value.addEventListener('click', handleProductClick);
+    }
 });
 
 </script>

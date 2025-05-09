@@ -31,7 +31,7 @@
                         class="w-full rounded-md border-gray-300 bg-white py-1 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
                         v-model="filters.category">
                         <option value="">Todas as categorias</option>
-                        <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
+                        <option v-for="cat in allCategories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
                     </select>
                 </div>
 
@@ -153,7 +153,7 @@ interface FilterState {
     stackable: boolean;
     usageStatus: string;
 }
-defineProps({
+const props = defineProps({
     categories: {
         type: Array as () => Category[],
         default: () => [],
@@ -161,6 +161,8 @@ defineProps({
 });
 
 const editorStore = useEditorStore();
+
+const allCategories = ref<Category[]>(props.categories || []);
 
 const { productIdsInCurrentGondola } = storeToRefs(editorStore);
 
@@ -188,6 +190,11 @@ interface PaginatedProductsResponse {
         last_page: number;
     };
 }
+
+const fetchCategories = async () => {
+    const response = await apiService.get<Category[]>('categories'); 
+    allCategories.value = response;
+};
 
 const fetchProducts = async (page = 1, append = false) => {
     if (loading.value) return;
@@ -310,6 +317,7 @@ function clearFilters() {
 onMounted(() => {
     // console.log('Component mounted, fetching initial products...');
     fetchProducts(1, false);
+    fetchCategories();
 });
 </script>
 

@@ -4,6 +4,7 @@ import './../css/app.css';
 import type { App, Component } from 'vue'
 import Plannerate from './App.vue';
 import ConfirmModal from './components/Confirm.vue';
+import AlertConfirm from './components/AlertConfirm.vue';
 import router from './routes';
 import { createPinia } from 'pinia';
 
@@ -59,6 +60,8 @@ const registerMainComponents = (app: App): void => {
     app.component('v-plannerate', Plannerate);
     app.component('ConfirmModal', ConfirmModal);
     app.component('v-confirm-modal', ConfirmModal);
+    app.component('AlertConfirm', AlertConfirm);
+    app.component('v-alert-confirm', AlertConfirm);
 }
 
 /**

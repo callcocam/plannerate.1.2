@@ -2,7 +2,7 @@
     <div class="layer group flex cursor-pointer justify-between " :style="layerStyle" @click="handleLayerClick"
         @keydown="handleKeyDown" :class="{ 'layer--selected': isSelected, 'layer--focused': !isSelected }">
         <ProductNormal v-for="index in layer.quantity" :key="index" :product="layer.product" :scale-factor="scaleFactor"
-            :index="index" :shelf-depth="props.shelfDepth">
+            :index="index" :shelf-depth="props.shelfDepth" :layer="layer">
             <template #depth-count v-if="index === 1">
                 <slot name="depth-count"></slot>
             </template>
@@ -62,10 +62,14 @@ const layerStyle = computed(() => {
         layerWidthFinal = `${productWidth * quantity}px`;
     } else if (alignment === 'center') {
         // Para centralizado, ocupa 100% (o CSS tratará a centralização interna)
-        layerWidthFinal = `100%`;
+        layerWidthFinal = `${productWidth * quantity}px`;
     } else if (alignment === 'justify' || !alignment) {
         // Para justificado ou sem alinhamento definido, ocupa 100%
-        layerWidthFinal = `100%`;
+        if (quantity > 1) {
+            layerWidthFinal = `100%`;
+        } else {
+            layerWidthFinal = `${productWidth}px`;
+        }
     } 
     return {
         width: layerWidthFinal,
@@ -115,8 +119,7 @@ const handleSelectedLayer = (isCtrlOrMetaPressed: boolean, productId: string, la
     } else {
         // Verifica o estado atual de seleção
         const isCurrentlySelected = editorStore.isSelectedLayer(compositeId); // Usa selectedLayerIds
-        const selectionSize = editorStore.getSelectedLayerIds.size; // Usa selectedLayerIds
-        console.log("isCurrentlySelected", isCurrentlySelected, selectionSize);
+        const selectionSize = editorStore.getSelectedLayerIds.size; // Usa selectedLayerIds 
         if (isCurrentlySelected && selectionSize === 1) {
             // Desselecionar se já for o único item selecionado
             // Ação clearSelection ainda não existe, comentando por enquanto
