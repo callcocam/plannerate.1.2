@@ -65,12 +65,11 @@ const depthCount = computed(() => {
 const segmentQuantity = computed(() => { 
     return props.segment?.quantity ?? 0;
 });
-const alignment = computed(() => props.gondola.alignment);
+const alignment = computed(() => editorStore.getCurrentGondola?.alignment);
 
 // Estilo para o container interno (conteúdo visual - Normal Shelf)
 const innerSegmentStyle = computed(() => {
-    const layerHeight = props.segment.layer.product.height * props.segment.quantity * props.scaleFactor;
-    console.log('layerHeight', layerHeight);
+    const layerHeight = props.segment.layer.product.height * props.segment.quantity * props.scaleFactor; 
     const selectedStyle = {};
     return {
         height: `${layerHeight}px`,
@@ -87,8 +86,7 @@ const outerSegmentStyle = computed(() => {
     let currentAlignment = alignment.value;
 
     if (currentAlignment === 'justify') {
-        layerWidthFinal = props.sectionWidth * props.scaleFactor;
-        console.log('layerWidthFinal justify', layerWidthFinal);
+        layerWidthFinal = props.sectionWidth * props.scaleFactor; 
     } else {
         layerWidthFinal = productWidth * productQuantity * props.scaleFactor;
     }
@@ -105,13 +103,11 @@ const outerSegmentStyle = computed(() => {
 // Funções (onIncreaseQuantity, onDecreaseQuantity, onDragStart)
 // Mantidas como estavam, pois não dependem do tipo hook/normal
 const onIncreaseQuantity = () => {
-    if (!props.gondola?.id || !currentSectionId.value || !props.shelf?.id || !props.segment?.id || !props.segment?.layer?.product?.id) {
-        console.error('onIncreaseQuantity: IDs faltando para validação/atualização.');
+    if (!editorStore.getCurrentGondola?.id || !currentSectionId.value || !props.shelf?.id || !props.segment?.id || !props.segment?.layer?.product?.id) { 
         toast.error('Erro Interno', { description: 'Dados incompletos para aumentar quantidade.' });
         return;
     }
-    if (props.sectionWidth === undefined || props.sectionWidth <= 0) {
-        console.error('onIncreaseQuantity: Largura da seção (sectionWidth) inválida ou não fornecida.');
+    if (props.sectionWidth === undefined || props.sectionWidth <= 0) { 
         toast.error('Erro Interno', { description: 'Largura da seção inválida.' });
         return;
     }
@@ -129,7 +125,7 @@ const onIncreaseQuantity = () => {
     }
 
     editorStore.updateLayerQuantity(
-        props.gondola.id,
+        editorStore.getCurrentGondola?.id,
         currentSectionId.value,
         props.shelf.id,
         props.segment.id,
@@ -138,7 +134,7 @@ const onIncreaseQuantity = () => {
     );
 };
 const onDecreaseQuantity = () => {
-    if (!props.gondola?.id || !currentSectionId.value || !props.shelf?.id || !props.segment?.id || !props.segment?.layer?.product?.id) {
+    if (!editorStore.getCurrentGondola?.id || !currentSectionId.value || !props.shelf?.id || !props.segment?.id || !props.segment?.layer?.product?.id) {
         console.error('onDecreaseQuantity: IDs faltando para validação/atualização.');
         toast.error('Erro Interno', { description: 'Dados incompletos para diminuir quantidade.' });
         return;
@@ -163,7 +159,7 @@ const onDecreaseQuantity = () => {
         }
 
         editorStore.updateLayerQuantity(
-            props.gondola.id,
+            editorStore.getCurrentGondola?.id,
             currentSectionId.value,
             props.shelf.id,
             props.segment.id,
@@ -180,8 +176,7 @@ const onDragStart = (event: DragEvent) => {
     // Incluir explicitamente o shelf_id da origem
     const segmentData = {
         ...props.segment,
-    };
-    console.log('segmentData', segmentData);
+    }; 
     if (isCtrlOrMetaPressed) {
         // Copiar (quando Ctrl/Meta está pressionado)
         event.dataTransfer.effectAllowed = 'copy';

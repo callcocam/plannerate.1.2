@@ -11,6 +11,7 @@ import {
 import { calculateTabindex } from '../utils';
 import { initializeGondolaHistory, recordChange } from '../history';
 import { useEditorService } from '@plannerate/services/editorService';
+import { toast } from 'vue-sonner';
 
 /**
  * Define o estado de carregamento do editor
@@ -163,7 +164,8 @@ export async function saveChanges(): Promise<any> {
     if (!currentState.value) {
         throw new Error("Não há estado atual para salvar");
     }
- 
+
+    console.log('Salvando alterações...', currentState.value);
 
     setIsLoading(true);
 
@@ -183,10 +185,10 @@ export async function saveChanges(): Promise<any> {
 
         // Chama a API para salvar os dados
         const response = await editorService.savePlanogram(planogramData.id as string, planogramData as any); 
-        setIsLoading(false); 
+        setIsLoading(false);
+
         if (response.data && response.success) {
             // Se salvou com sucesso, atualiza o estado com os dados retornados (se houver)
-            console.log('saveChanges: response.data', response.data);
             if (response.data) {
                 initialize(response.data);
             }
@@ -242,7 +244,7 @@ export async function saveChanges(): Promise<any> {
 function showSuccessNotification(message: string) {
     // Implementar conforme seu sistema de notificações
     // Exemplo usando toast:
-    // toast.success(message);
+    toast.success(message);
 
     // Implementação temporária:
     console.log('✅ Sucesso:', message);
@@ -251,7 +253,7 @@ function showSuccessNotification(message: string) {
 function showErrorNotification(message: string) {
     // Implementar conforme seu sistema de notificações
     // Exemplo usando toast:
-    // toast.error(message);
+    toast.error(message);
 
     // Implementação temporária:
     console.error('❌ Erro:', message);

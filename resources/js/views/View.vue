@@ -21,12 +21,12 @@ const planogramData = computed(() => editorStore.currentState);
 onMounted(async () => {
     const response = await editorService.fetchPlanogram(route.params.id); 
     editorStore.initialize(response);
-
+    console.log('view: response', response);
 });
 </script>
 
 <template>
-    <div class="px-10" v-if="planogramData">
+    <div class="px-1" v-if="planogramData">
         <PlannerateHeader :planogram="planogramData" />
         <div>
             <div class="flex h-full w-full gap-6 overflow-hidden">

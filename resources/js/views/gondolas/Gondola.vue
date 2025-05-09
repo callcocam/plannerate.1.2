@@ -86,11 +86,9 @@ watchEffect(() => {
             const targetGondola = editorStore.currentState?.gondolas?.find(g => g.id === currentId) ?? null;
 
             // Define a gôndola atual no store (agora não reseta mais o histórico)
-            if (targetGondola) {
-                console.log(`Mudando para gôndola ${currentId}`);
+            if (targetGondola) { 
                 editorStore.setCurrentGondola(targetGondola);
-            } else {
-                console.warn(`Gôndola ${currentId} não encontrada.`);
+            } else { 
                 editorStore.setCurrentGondola(null);
             }
         } else {

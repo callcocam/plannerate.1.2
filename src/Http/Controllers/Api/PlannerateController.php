@@ -37,7 +37,7 @@ class PlannerateController extends Controller
     public function show(string $id)
     {
         try {
-            $planogram = $this->getModel()::query(0)->with([
+            $planogram = $this->getModel()::query()->with([
                 'tenant',
                 'store',
                 'cluster',
@@ -96,17 +96,23 @@ class PlannerateController extends Controller
             // Se chegou até aqui sem erros, confirma a transação
             DB::commit();
 
+            $planogram =  $this->getModel()::query()->with([
+                'tenant',
+                'store',
+                'cluster',
+                'client',
+                'gondolas',
+                'gondolas.sections',
+                'gondolas.sections.shelves',
+                'gondolas.sections.shelves.segments',
+                'gondolas.sections.shelves.segments.layer',
+                'gondolas.sections.shelves.segments.layer.product'
+            ])->findOrFail($planogram->id);
+
             return response()->json([
                 'success' => true,
                 'message' =>   'Planograma atualizado com sucesso',
-                'data' => $planogram->fresh()->load([
-                    'gondolas',
-                    'gondolas.sections',
-                    'gondolas.sections.shelves',
-                    'gondolas.sections.shelves.segments',
-                    'gondolas.sections.shelves.segments.layer',
-                    'gondolas.sections.shelves.segments.layer.product'
-                ])
+                'data' => new PlannerateResource($planogram)
             ]);
         } catch (\Exception $e) {
             // Em caso de erro, reverte todas as alterações
@@ -142,7 +148,7 @@ class PlannerateController extends Controller
             'store_id',
             'store',
             'cluster_id',
-            'cluster', 
+            'cluster',
             'start_date',
             'end_date',
             'status',
@@ -204,7 +210,7 @@ class PlannerateController extends Controller
             'base_height',
             'thickness',
             'scale_factor',
-            'location', 
+            'location',
             'alignment',
             // 'status',
             // Adicione outros campos conforme necessário
@@ -228,7 +234,7 @@ class PlannerateController extends Controller
 
         // Criar seções se fornecidas
         $shelfService =  new ShelfPositioningService();
-        foreach ($sections as $sectionData) {
+        foreach ($sections as $i => $sectionData) {
             // Verificar se é uma seção existente ou nova
             $section = Section::query()->where('id', data_get($sectionData, 'id'))->first();
             if (!$section) {
@@ -244,6 +250,7 @@ class PlannerateController extends Controller
             // Atualizar atributos da seção
             $section->fill($this->filterSectionAttributes($sectionData, $shelfService, $gondola));
             $section->gondola_id = $gondola->id;
+            $section->name = sprintf('%s# Sessão', $i);
             $section->save();
 
             // Registrar o ID para não remover depois
@@ -285,7 +292,7 @@ class PlannerateController extends Controller
             'hole_spacing',
             'shelf_height',
             'cremalheira_width',
-            'ordering', 
+            'ordering',
             // 'settings',
             // 'status',
             // Adicione outros campos conforme necessário
@@ -378,7 +385,7 @@ class PlannerateController extends Controller
         // $position = $shelfService->calculateShelfPosition($section->num_shelves, data_get($data, 'shelf_height', 4), $holes, $i, $section->gondola->scale_factor);
         // $data['shelf_position'] = $position;
         // Converter settings para JSON se for array
-         
+
 
         return array_intersect_key($data, array_flip($fillable));
     }
@@ -472,7 +479,7 @@ class PlannerateController extends Controller
         // Para camadas temporárias (ex: "layer-1745084634214-01jqp9bx4t369a5aqe9z90xdhg"), geramos um novo ID
         $layer = Layer::query()->where('id', data_get($layerData, 'id'))->first();
         if (!$layer) {
-            $layer = Layer::query()->create([ 
+            $layer = Layer::query()->create([
                 'tenant_id' => $segment->tenant_id,
                 'user_id' => $segment->user_id,
                 'segment_id' => $segment->id,

@@ -6,7 +6,7 @@
                 @drop-product="(product: Product, shelf: Shelf) => $emit('drop-product', product, shelf)"
                 @drop-segment-copy="(segment: SegmentType, shelf: Shelf) => $emit('drop-segment-copy', segment, shelf)"
                 @drop-segment="(segment: SegmentType, oldShelf: Shelf) => $emit('drop-segment', segment, oldShelf)" />
-            <div class="shelf relative flex flex-col items-center text-gray-50 " 
+            <div class="shelf relative flex flex-col items-center text-gray-50 shadow-md" 
                  :class="{
                     'border-2 border-blue-800 border-dashed bg-gray-500': isSelected, // Selecionado
                     'border-2 border-transparent dark:border-gray-700 border-dashed': !isSelected, // Não selecionado - Borda transparente
@@ -100,19 +100,11 @@ const editorStore = useEditorStore();
 
 // Corrigido: Determina o alinhamento efetivo da prateleira seguindo a hierarquia
 const alignment = computed(() => {
-    // 1. Prioridade: Alinhamento da própria prateleira
-    if (props.shelf.alignment !== undefined && props.shelf.alignment !== null) {
-        return props.shelf.alignment;
+    // 1. Prioridade: Alinhamento da própria prateleira  
+    if (editorStore.getCurrentGondola?.alignment !== undefined && editorStore.getCurrentGondola?.alignment !== null) {
+        return editorStore.getCurrentGondola?.alignment;
     }
-    // 2. Senão: Alinhamento da seção pai
-    if (props.section.alignment !== undefined && props.section.alignment !== null) {
-        return props.section.alignment;
-    }
-    // 3. Senão: Alinhamento da gôndola pai
-    if (props.gondola.alignment !== undefined && props.gondola.alignment !== null) {
-        return props.gondola.alignment;
-    }
-    // 4. Padrão: Se nenhum estiver definido (considerando 'justify' como padrão implícito ou ausência de alinhamento)
+    // 2. Padrão: Se nenhum estiver definido (considerando 'justify' como padrão implícito ou ausência de alinhamento)
     return 'justify'; // Ou retorne undefined/null se preferir tratar ausência explicitamente
 });
 

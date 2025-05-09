@@ -182,6 +182,7 @@ const onDecreaseSegmentQuantity = () => {
         console.error("onDecreaseSegmentQuantity: IDs faltando para atualização."); 
         return;
     }
+    if (segmentQuantity.value <= 1) return;
     segmentQuantity.value -= 1; 
     editorStore.updateSegmentQuantity(
         editorGondola.value.id,

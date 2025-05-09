@@ -1,37 +1,22 @@
 <template>
-    <div
-        class="bg-gray-800"
-        :style="sectionStyle"
-        :data-section-id="section.id"
-        @dragover.prevent="handleSectionDragOver"
-        @drop.prevent="handleSectionDrop"
-        @dragleave="handleSectionDragLeave"
-        @dragstart="editorStore.disableDragging"
-        @dragend="editorStore.enableDragging"
-        ref="sectionRef"
-    >
+    <div class="bg-gray-800" :style="sectionStyle" :data-section-id="section.id"
+        @dragover.prevent="handleSectionDragOver" @drop.prevent="handleSectionDrop" @dragleave="handleSectionDragLeave"
+        @dragstart="editorStore.disableDragging" @dragend="editorStore.enableDragging" ref="sectionRef">
         <!-- Conteúdo da Seção (Prateleiras) -->
         <slot />
         <template v-for="(shelf, index) in sortedShelves" :key="shelf.id">
-            <ShelfComponent
-                :shelf="shelf"
-                :gondola="gondola"
-                :sorted-shelves="sortedShelves"
-                :index="index"
-                :section="section"
-                :scale-factor="scaleFactor"
-                :section-width="section.width"
-                :section-height="section.height"
-                :base-height="baseHeight"
-                :sections-container="sectionsContainer"
-                :section-index="sectionIndex"
-                :holes="holes"
-                @drop-product="handleProductDropOnShelf"
-                @drop-segment-copy="handleSegmentCopy"
-                @drop-segment="updateSegment"
-                @drag-shelf="handleShelfDragStart"
-            />
+            <ShelfComponent :shelf="shelf" :gondola="gondola" :sorted-shelves="sortedShelves" :index="index"
+                :section="section" :scale-factor="scaleFactor" :section-width="section.width"
+                :section-height="section.height" :base-height="baseHeight" :sections-container="sectionsContainer"
+                :section-index="sectionIndex" :holes="holes" @drop-product="handleProductDropOnShelf"
+                @drop-segment-copy="handleSegmentCopy" @drop-segment="updateSegment"
+                @drag-shelf="handleShelfDragStart" />
         </template>
+        <div class="text-black text-xs absolute bottom-5 left-1/2 -translate-x-1/2 p-2 dark:text-white uppercase font-bold" :style="{
+            bottom: `${baseHeight / 2}px`
+        }">
+            {{ sectionIndex }}# Sessão
+        </div>
     </div>
 </template>
 
@@ -42,8 +27,6 @@ import { useEditorStore } from '@plannerate/store/editor';
 import { Section } from '@plannerate/types/sections';
 import { Layer, Product, Segment } from '@plannerate/types/segment';
 import { type Shelf as ShelfType } from '@plannerate/types/shelves';
-// import ShelfHook from './hook/Shelf.vue';
-// import ShelfNormal from './normal/Shelf.vue';
 import { Gondola } from '@plannerate/types/gondola';
 import { validateShelfWidth } from '@plannerate/utils/validation';
 import { toast } from 'vue-sonner';
@@ -490,7 +473,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.section-container > .absolute.bottom-0 {
+.section-container>.absolute.bottom-0 {
     z-index: -1;
 }
 

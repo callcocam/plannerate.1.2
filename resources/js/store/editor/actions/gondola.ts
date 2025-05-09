@@ -30,20 +30,19 @@ export function setGondolaAlignment(gondolaId: string, alignment: string | null)
     const gondola = findGondola(gondolaId, 'setGondolaAlignment');
     if (!gondola) return;
 
-    isLoading.value = true;
+    // isLoading.value = true;
 
     // Converte null para undefined para consistência
     const newAlignment = alignment === null ? undefined : alignment;
 
     if (gondola.alignment !== newAlignment) {
-        gondola.alignment = newAlignment;
-        console.log(`Alinhamento da gôndola ${gondolaId} definido para ${newAlignment}`);
+        gondola.alignment = newAlignment; 
         recordChange();
     } else {
         console.log(`Alinhamento da gôndola ${gondolaId} já era ${newAlignment}.`);
     }
 
-    isLoading.value = false;
+    // isLoading.value = false;
 }
 
 /**
