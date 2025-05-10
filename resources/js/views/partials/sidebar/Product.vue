@@ -6,32 +6,35 @@
                 <div v-for="layer in selectedLayers" :key="layer.id" class="relative mb-2 flex items-center gap-2">
                     <template v-if="layer.product">
                         <div class="flex flex-col">
-                                <div class="flex items-center gap-2">
-                                    <img :src="layer.product.image_url" alt=""
+                            <div class="flex items-center gap-2">
+                                <img :src="layer.product.image_url" alt=""
                                     class="h-16 w-16 rounded-md border object-contain dark:border-gray-600"
                                     @error="(e) => handleImageError(e, layer.product)" />
                                 <div class="flex flex-col">
-                                    <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">{{ layer.product.name }}
+                                    <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">{{
+                                        layer.product.name }}
                                     </h4>
                                     <p class="text-xs text-gray-500 dark:text-gray-400">SKU: {{ layer.product.sku }}</p>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400">Largura: {{ layer.product.width }}</p>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400">Altura: {{ layer.product.height }}</p>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400">Quantidade: {{ layer.quantity || 0 }}
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">Largura: {{ layer.product.width
+                                        }}</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">Altura: {{ layer.product.height
+                                        }}</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">Quantidade: {{ layer.quantity ||
+                                        0 }}
                                     </p>
                                 </div>
-                                <div class="absolute bottom-0 right-0 flex items-center justify-end rounded-md p-2"> 
-                                    <AlertConfirm 
-                                        v-model:isOpen="showDeleteConfirm"
-
-                                        title="Excluir produto"
+                                <div
+                                    class="absolute bottom-0 right-0 flex items-center justify-end rounded-md p-2 flex-row gap-2">
+                                    <AlertConfirm title="Excluir produto"
                                         message="Tem certeza que deseja excluir este produto? Esta ação não pode ser desfeita."
                                         confirmButtonText="Excluir" cancelButtonText="Cancelar" :isDangerous="true"
-                                        @confirm="confirmDelete" @cancel="cancelDelete" >
-                                        <template #trigger>
-                                            <TrashIcon class="h-4 w-4 cursor-pointer" @click.stop="handleLayerRemove(layer)" />
-                                        </template>
+                                        @confirm="confirmDelete" @cancel="cancelDelete" :record="layer">
+                                        <TrashIcon class="h-4 w-4 cursor-pointer" />
                                     </AlertConfirm>
-                                    <EditIcon class="h-4 w-4 cursor-pointer" @click.stop="handleLayerEdit(layer)" />
+
+                                    <EditProduct :product="layer.product" @update:product="handleLayerUpdate">
+                                        <EditIcon class="h-4 w-4 cursor-pointer" />
+                                    </EditProduct>
                                 </div>
                             </div>
                         </div>
@@ -42,8 +45,8 @@
             <div v-else class="p-3 text-center text-gray-500">
                 Carregando detalhes...
             </div>
-           
-           
+
+
         </div>
         <div v-else class="p-3 text-center text-gray-500">
             Nenhum produto selecionado.
@@ -56,19 +59,18 @@ import { ref, watch } from 'vue';
 import { apiService } from '@plannerate/services';
 import { Layer } from '@/types/segment';
 import { Product } from '@plannerate/types/segment';
-import { useEditorStore } from '@plannerate/store/editor';
-import EditProductModal from './EditProductModal.vue';
+import { useEditorStore } from '@plannerate/store/editor'; 
+import EditProduct from './EditProduct.vue';
 const editorStore = useEditorStore();
 
 const selectedLayers = ref<Layer[]>([]);
 const isLoadingDetails = ref(false);
 const showEditModal = ref(false);
-const selectedLayer = ref<Layer | null>(null);
-const selectedProduct = ref<Product | null>(null);
+const selectedLayer = ref<Layer | null>(null); 
 const emit = defineEmits<{
     (e: 'remove-layer', layer: Layer): void;
 }>();
- 
+
 
 watch(
     editorStore.getSelectedLayerIds,
@@ -96,31 +98,39 @@ watch(
     },
     { deep: true, immediate: true },
 );
-
-const handleLayerRemove = (layer: Layer) => {
-    showDeleteConfirm.value = true;
-    editorStore.setSelectedLayer(layer);
-};
+ 
 const showDeleteConfirm = ref(false);
-const confirmDelete = () => {
-    const selectedLayer = editorStore.selectedLayer;
-    if (!selectedLayer) {
+const confirmDelete = (record: any) => { 
+    if (!record) {
         console.error('No layer selected');
         return;
     }
-
-    const layer = selectedLayer;
-    if (!layer) {
-        console.error('Layer not found for the selected product');
-        return;
+    let sectionId = null;
+    let shelfId = null;
+    let segmentId = null;
+    if (editorStore.getCurrentGondola) {
+        editorStore.getCurrentGondola?.sections.forEach(section => {
+            section.shelves.forEach(shelf => {
+                shelf.segments.forEach(segment => {
+                    if (segment.id === record.segment_id) {
+                        sectionId = section.id;
+                        shelfId = shelf.id;
+                        segmentId = segment.id;
+                    }
+                });
+            });
+        });
+        if (sectionId && shelfId && segmentId) {
+            editorStore.removeSegmentFromShelf(editorStore.getCurrentGondola?.id, sectionId, shelfId, segmentId);
+        }
     }
-
     // Emitir evento de exclusão apenas quando confirmado
-    emit('remove-layer', layer);
+    // editorStore.removeSegmentFromShelf(editorStore.editorGondola.value.id, record.sectionId, record.shelfId, record.segmentId);
+    emit('remove-layer', record);
 };
-const cancelDelete = () => {
+const cancelDelete = (e: boolean) => {
     // Apenas fechar o modal
-    console.log('cancelDelete');
+    console.log('cancelDelete', e);
     showDeleteConfirm.value = false;
 };
 
@@ -137,23 +147,20 @@ const handleImageError = (event: Event, product: Product) => {
     // Exemplo de uso com placehold.co
     target.src = `https://placehold.co/400x600?text=${initials}`;
 }
-
-const handleLayerEdit = (layer: Layer) => {
-    showEditModal.value = true;
-    selectedLayer.value = layer;
-    selectedProduct.value = layer.product;
-}
+ 
 
 const handleLayerUpdate = (updatedProduct: Product) => {
-    if (selectedLayer.value && selectedLayer.value.product) {
+    console.log('handleLayerUpdate', selectedLayers.value);
+    if (selectedLayers.value) {
         // Atualiza o produto no layer selecionado
-        selectedLayer.value.product = updatedProduct;
-        
+        selectedLayers.value.forEach(layer => {
+            if (layer.product?.id === updatedProduct.id) {
+                layer.product = updatedProduct;
+            }
+        });
+
         // Opcionalmente, aqui você pode adicionar uma chamada à API para salvar as alterações
         // apiService.put(`products/${updatedProduct.id}`, updatedProduct);
-    }
-    
-    // Fecha o modal após a atualização
-    showEditModal.value = false;
+    } 
 }
 </script>

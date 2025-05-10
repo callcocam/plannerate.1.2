@@ -11,6 +11,7 @@ interface Product {
     height: number;
     depth?: number;
     sku?: string;
+    ean?: string;
     layer: Layer;
     category_id?: string;
     created_at?: string;

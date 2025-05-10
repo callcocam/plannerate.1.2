@@ -52,6 +52,26 @@ export const useProductService = () => {
         return apiService.post('/product-context/sync', contextData);
     };
 
+    /**
+     * Faz upload de uma nova imagem para o produto
+     */
+    const uploadProductImage = (productId: string, file: File) => {
+        const formData = new FormData();
+        formData.append('image', file);
+        return apiService.post(`/products/${productId}/image`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+    };
+
+    /**
+     * Atualiza um produto
+     */
+    const updateProduct = (productId: string, data: any) => {
+        return apiService.put(`/products/${productId}`, data);
+    };
+
     return {
         getProduct,
         getShelf,
@@ -59,6 +79,8 @@ export const useProductService = () => {
         updateLayer,
         updateLayerQuantity,
         updateLayerSpacing,
-        syncProductContext
+        syncProductContext,
+        uploadProductImage,
+        updateProduct
     };
 };

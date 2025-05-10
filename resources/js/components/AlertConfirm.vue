@@ -1,7 +1,7 @@
 <template>
-    <AlertDialog class="alert-confirm"  >
+    <AlertDialog>
         <AlertDialogTrigger>
-            <Trash2 class="h-4 w-4" />
+            <slot />
         </AlertDialogTrigger>
         <AlertDialogContent>
             <AlertDialogHeader>
@@ -11,36 +11,23 @@
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-                <AlertDialogCancel class="border-destructive">{{ cancelButtonText }}</AlertDialogCancel>
-                <AlertDialogAction>{{ confirmButtonText }}</AlertDialogAction>
+                <AlertDialogCancel @click="$emit('cancel', false)">{{ cancelButtonText }}</AlertDialogCancel>
+                <AlertDialogAction @click="$emit('confirm', record)">{{ confirmButtonText }}</AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
     </AlertDialog>
 </template>
 
-<script setup lang="ts">
+<script setup lang="ts"> 
 
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-} from './ui/alert-dialog'
-
-import { Trash2 } from 'lucide-vue-next';
-
-interface ConfirmModalProps { 
+interface ConfirmModalProps {
     title?: string;
     message?: string;
     confirmButtonText?: string;
     cancelButtonText?: string;
     isDangerous?: boolean;
     type?: string;
+    record?: any;
 }
 withDefaults(defineProps<ConfirmModalProps>(), {
     isOpen: false,
@@ -51,7 +38,9 @@ withDefaults(defineProps<ConfirmModalProps>(), {
     isDangerous: false,
     type: 'question',
 });
-
-const isOpen = defineModel<boolean>('isOpen', { required: true });
+defineEmits<{
+    (e: 'cancel', value: boolean): void;
+    (e: 'confirm', value: any): void;
+}>();
 
 </script>

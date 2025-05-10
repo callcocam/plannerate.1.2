@@ -1,10 +1,12 @@
 <template>
-    <div class="layer group flex cursor-pointer justify-between " :style="layerStyle" @click="handleLayerClick"
+    <div class="layer group flex cursor-pointer justify-between" :style="layerStyle" @click="handleLayerClick"
         @keydown="handleKeyDown" :class="{ 'layer--selected': isSelected, 'layer--focused': !isSelected }">
+      
         <ProductNormal v-for="index in layer.quantity" :key="index" :product="layer.product" :scale-factor="scaleFactor"
             :index="index" :shelf-depth="props.shelfDepth" :layer="layer">
             <template #depth-count v-if="index === 1">
                 <slot name="depth-count"></slot>
+
             </template>
         </ProductNormal>
     </div>
@@ -16,6 +18,7 @@ import { useEditorStore } from '@plannerate/store/editor';
 import ProductNormal from '@plannerate/views/gondolas/sections/shelves/Product.vue';
 import { Layer as LayerType, Segment as SegmentType } from '@/types/segment';
 import { Shelf } from '@plannerate/types/shelves';
+import { EditIcon } from 'lucide-vue-next';
 const props = defineProps<{
     layer: LayerType;
     segment: SegmentType;
@@ -43,7 +46,7 @@ const segmentSelected = ref(false);
 const editorGondola = computed(() => editorStore.getCurrentGondola);
 const currentSectionId = computed(() => props.shelf.section_id);
 
- 
+
 /**
  * Computed style para o layer baseado em alinhamento e dimensões
  */
@@ -70,10 +73,10 @@ const layerStyle = computed(() => {
         } else {
             layerWidthFinal = `${productWidth}px`;
         }
-    } 
+    }
     return {
         width: layerWidthFinal,
-        height: `${layerHeight * props.scaleFactor}px`, 
+        height: `${layerHeight * props.scaleFactor}px`,
         zIndex: '2',
     };
 });
@@ -167,10 +170,10 @@ const onDecreaseQuantity = async () => {
 
 const onIncreaseSegmentQuantity = () => {
     if (!editorGondola.value?.id || !currentSectionId.value || !props.shelf?.id || !props.segment?.id) {
-        console.error("onIncreaseSegmentQuantity: IDs faltando para atualização."); 
+        console.error("onIncreaseSegmentQuantity: IDs faltando para atualização.");
         return;
     }
-    segmentQuantity.value += 1;     
+    segmentQuantity.value += 1;
     editorStore.updateSegmentQuantity(
         editorGondola.value.id,
         currentSectionId.value,
@@ -182,11 +185,11 @@ const onIncreaseSegmentQuantity = () => {
 
 const onDecreaseSegmentQuantity = () => {
     if (!editorGondola.value?.id || !currentSectionId.value || !props.shelf?.id || !props.segment?.id) {
-        console.error("onDecreaseSegmentQuantity: IDs faltando para atualização."); 
+        console.error("onDecreaseSegmentQuantity: IDs faltando para atualização.");
         return;
     }
     if (segmentQuantity.value <= 1) return;
-    segmentQuantity.value -= 1; 
+    segmentQuantity.value -= 1;
     editorStore.updateSegmentQuantity(
         editorGondola.value.id,
         currentSectionId.value,
@@ -201,19 +204,21 @@ const onDecreaseSegmentQuantity = () => {
 const handleKeyDown = (event: KeyboardEvent) => {
     // Gerencia aumento/diminuição com setas quando selecionado
     if (isSelected.value) {
-        if (event.key === 'ArrowRight') {
+        const target = event?.target as HTMLElement;
+        const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+        if (event.key === 'ArrowRight' && !isInput) {
             event.preventDefault();
             onIncreaseQuantity();
-        } else if (event.key === 'ArrowLeft') {
+        } else if (event.key === 'ArrowLeft' && !isInput) {
             event.preventDefault();
             onDecreaseQuantity();
-        } else if (event.key === 'ArrowUp') {
+        } else if (event.key === 'ArrowUp' && !isInput) {
             event.preventDefault();
             onIncreaseSegmentQuantity();
-        } else if (event.key === 'ArrowDown') {
+        } else if (event.key === 'ArrowDown' && !isInput) {
             event.preventDefault();
             onDecreaseSegmentQuantity();
-        } else if (event.key === 'Delete' || event.key === 'Backspace') {
+        } else if (event.key === 'Delete' || event.key === 'Backspace' && !isInput) {
             event.preventDefault();
             if (editorGondola.value) {
                 let sectionId = null;
@@ -230,7 +235,6 @@ const handleKeyDown = (event: KeyboardEvent) => {
                         });
                     });
                 });
-                console.log("sectionId", sectionId, "shelfId", shelfId, "segmentId", segmentId);
                 if (sectionId && shelfId && segmentId) {
                     editorStore.removeSegmentFromShelf(editorGondola.value.id, sectionId, shelfId, segmentId);
                 }
@@ -254,6 +258,7 @@ onUnmounted(() => {
 .layer {
     border: 2px solid transparent;
 }
+
 .layer--selected {
     border: 2px solid blue;
     box-shadow: 0 0 5px rgba(0, 0, 255, 0.5);
