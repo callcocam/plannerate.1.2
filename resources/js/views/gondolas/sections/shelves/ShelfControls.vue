@@ -51,7 +51,7 @@ const invertIndex = computed(() =>{
     if (props.shelf.product_type === 'hook') {
         return `Ganch: ${inverted}`;
     }
-    return `Prat: ${inverted}`;
+    return `Prat: ${inverted + 1}`;
 });
 
 // Emits para comunicar com componentes pai

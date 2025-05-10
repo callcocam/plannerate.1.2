@@ -64,9 +64,7 @@ import EditProduct from './EditProduct.vue';
 const editorStore = useEditorStore();
 
 const selectedLayers = ref<Layer[]>([]);
-const isLoadingDetails = ref(false);
-const showEditModal = ref(false);
-const selectedLayer = ref<Layer | null>(null); 
+const isLoadingDetails = ref(false); 
 const emit = defineEmits<{
     (e: 'remove-layer', layer: Layer): void;
 }>();
