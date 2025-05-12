@@ -1,6 +1,13 @@
 <template>
-    <div
-        class="sticky top-0 flex h-screen w-72 flex-shrink-0 flex-col overflow-hidden rounded-lg border bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
+    <div :class="sidebarClasses">
+        <!-- Botão de fechar, visível apenas em telas pequenas -->
+        <button
+            class="absolute right-2 top-2 z-50 rounded-md bg-white p-1 shadow md:hidden"
+            @click="$emit('close')"
+            aria-label="Fechar menu de produtos"
+        >
+            <X class="h-5 w-5 text-gray-700" />
+        </button>
         <div class="border-b border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
             <h3 class="text-center text-lg font-medium text-gray-800 dark:text-gray-100">Produtos Disponíveis</h3>
 
@@ -134,9 +141,9 @@
 </template>
 
 <script setup lang="ts">
-import { ChevronDown, Loader, Package, Search, SlidersHorizontal } from 'lucide-vue-next';
+import { ChevronDown, Loader, Package, Search, SlidersHorizontal, X } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
-import { onMounted, reactive, ref, watch } from 'vue';
+import { onMounted, reactive, ref, watch, computed } from 'vue';
 import { apiService } from '@plannerate/services';
 import { useEditorStore } from '@plannerate/store/editor';
 import { Product } from '@plannerate/types/segment';
@@ -158,6 +165,10 @@ const props = defineProps({
         type: Array as () => Category[],
         default: () => [],
     },
+    open: {
+        type: Boolean,
+        default: true,
+    },
 });
 
 const editorStore = useEditorStore();
@@ -166,7 +177,7 @@ const allCategories = ref<Category[]>(props.categories || []);
 
 const { productIdsInCurrentGondola } = storeToRefs(editorStore);
 
-const emit = defineEmits(['select-product', 'drag-start', 'view-stats']);
+const emit = defineEmits(['select-product', 'drag-start', 'view-stats', 'close']);
 
 const showFilters = ref(false);
 const filters = reactive<FilterState>({
@@ -319,6 +330,15 @@ onMounted(() => {
     fetchProducts(1, false);
     fetchCategories();
 });
+
+// Computed para classes responsivas do sidebar
+const sidebarClasses = computed(() => {
+    return [
+        'sticky top-0 flex h-screen w-72 flex-shrink-0 flex-col overflow-hidden rounded-lg border bg-gray-50 dark:border-gray-700 dark:bg-gray-800 z-40 transition-transform duration-300',
+        props.open ? 'translate-x-0' : '-translate-x-full',
+        'fixed left-0',
+    ].join(' ')
+})
 </script>
 
 <style scoped>

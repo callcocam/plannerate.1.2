@@ -45,10 +45,14 @@
             </div>
 
             <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 border-r pr-4">
+                    <slot name="actions"></slot>
+                </div>
                 <a href="/plannerate" class="dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 flex items-center rounded-md border px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
                     <XIcon class="mr-2 h-4 w-4" />
                     <span> Voltar para a lista</span>
                 </a>
+               
                 <Button
                     variant="outline"
                     size="sm"

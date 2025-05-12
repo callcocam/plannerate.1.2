@@ -220,8 +220,8 @@ const setGondolaAlignmentHandler = (alignment: string | null = null) => {
     if (!gondolaId) {
         console.error("setGondolaAlignmentHandler: ID da gôndola atual não encontrado.");
         return;
-    }  
-    try { 
+    }
+    try {
         editorStore.setGondolaAlignment(gondolaId, alignment);
     } catch (error) {
         console.error('Erro ao definir alinhamento da gôndola:', error);
