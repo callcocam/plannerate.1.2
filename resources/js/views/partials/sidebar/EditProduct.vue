@@ -11,17 +11,17 @@
                     produtos que utilizam este produto.
                 </AlertDialogDescription>
             </AlertDialogHeader>
-            <div class="grid grid-cols-2 gap-4">
-                <div class="grid gap-2 col-span-2">
+            <div class="grid grid-cols-3 gap-4">
+                <div class="grid gap-2 col-span-3">
                     <ImageField v-model="record.image_url" label="Imagem" id="product-image"
                         :alt="record.name || 'Produto'" :error="validationErrors.image_url" @crop="handleImageCrop" />
                 </div>
-                <div class="flex flex-col gap-2 col-span-2">
+                <div class="flex flex-col gap-2 col-span-3">
                     <Label>Nome</Label>
                     <Input type="text" v-model="record.name" />
                     <span v-if="validationErrors.name" class="text-red-500 text-xs">{{ validationErrors.name }}</span>
                 </div>
-                <div class="flex flex-col gap-2 col-span-2">
+                <div class="flex flex-col gap-2 col-span-3">
                     <Label>EAN</Label>
                     <Input type="text" v-model="record.ean" readonly />
                     <span v-if="validationErrors.ean" class="text-red-500 text-xs">{{ validationErrors.ean }}</span>
@@ -35,9 +35,25 @@
                     <Label>Altura</Label>
                     <Input type="number" v-model="record.height" />
                     <span v-if="validationErrors.height" class="text-red-500 text-xs">{{ validationErrors.height
-                        }}</span>
+                    }}</span>
                 </div>
-                <div class="flex flex-col gap-2 col-span-2">
+                <div class="flex flex-col gap-2">
+                    <Label>Profundidade</Label>
+                    <Input type="number" v-model="record.depth" />
+                    <span v-if="validationErrors.depth" class="text-red-500 text-xs">{{ validationErrors.depth
+                    }}</span>
+                </div>
+                <div class="flex flex-col gap-2 col-span-3">
+                    <Label>Mercadologico</Label>
+                    <MercadologicoSelector :field="{
+                        name: 'mercadologico_nivel',
+                        label: 'Mercadologico',
+                        apiUrl: '/api/categories/mercadologico',
+                        valueKey: 'id',
+                        labelKey: 'name'
+                    }" :id="record.id" v-model="record.mercadologico_nivel" />
+                </div>
+                <div class="flex flex-col gap-2 col-span-3">
                     <Label>Descrição</Label>
                     <Input type="text" v-model="record.description" />
                     <span v-if="validationErrors.description" class="text-red-500 text-xs">{{
@@ -61,9 +77,9 @@ import { useProductService } from '@plannerate/services/productService';
 import { toast } from 'vue-sonner';
 import type { CropperResult } from 'vue-advanced-cropper';
 import ImageField from '@plannerate/components/fields/ImageField.vue';
-
+import MercadologicoSelector from '@/components/form/fields/MercadologicoSelector.vue';
 const props = defineProps<{
-    product: Product
+    product: Product & { mercadologico_nivel: string }
 }>();
 const emit = defineEmits<{
     (e: 'update:product', product: Product): void

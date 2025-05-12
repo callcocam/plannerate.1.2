@@ -25,7 +25,7 @@ class LayerResource extends JsonResource
             'quantity' => $this->quantity,
             'spacing' => $this->spacing,
             'settings' => $this->settings,
-            'alignment' => $this->alignment,
+            'alignment' => $this->alignment, 
             'segment' => new SegmentResource($this->whenLoaded('segment')),
             'reload' => now()->diffInSeconds($this->updated_at) < 5,
         ];
