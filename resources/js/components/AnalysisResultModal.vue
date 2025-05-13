@@ -274,10 +274,10 @@ const summary = computed(() => {
         </div>
       </div>
 
-      <!-- Tabela -->
-      <div v-if="result && Array.isArray(result) && result.length">
+      <!-- Tabela com scroll -->
+      <div class="overflow-x-auto max-h-[60vh]">
         <table class="min-w-full text-sm border">
-          <thead>
+          <thead class="sticky top-0 bg-white z-10">
             <tr class="bg-gray-100">
               <th 
                 v-for="(label, key) in {
@@ -312,7 +312,6 @@ const summary = computed(() => {
                 <span :class="{
                   'text-green-600': item.status === 'Ativo',
                   'text-yellow-600': item.status === 'Inativo',
-                  'text-red-600': item.status === 'CRITICAL'
                 }">
                   {{ item.status }}
                 </span>
@@ -325,7 +324,7 @@ const summary = computed(() => {
           </tbody>
         </table>
       </div>
-      <div v-else class="text-gray-500">Nenhum resultado encontrado.</div>
+      <div v-if="filteredResults.length === 0" class="text-gray-500 mt-4">Nenhum resultado encontrado.</div>
       <div class="flex justify-end mt-4">
         <Button @click="closeModal" variant="outline">Fechar</Button>
       </div>
