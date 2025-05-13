@@ -282,12 +282,15 @@ const summary = computed(() => {
               <th 
                 v-for="(label, key) in {
                   id: 'ID',
-                  name: 'Nome',
+                  category: 'Categoria', 
+                  weightedAverage: 'Média Ponderada',
+                  individualPercent: '% Individual',
+                  accumulatedPercent: '% Acumulada',
+                  abcClass: 'Classe ABC',
+                  ranking: 'Ranking',
+                  removeFromMix: 'Retirar?',
                   status: 'Status',
-                  quantity: 'Quantidade',
-                  value: 'Valor',
-                  margin: 'Margem',
-                  currentStock: 'Estoque'
+                  detailStatus: 'Detalhe do Status'
                 }" 
                 :key="key"
                 class="px-2 py-1 border cursor-pointer hover:bg-gray-200"
@@ -307,19 +310,26 @@ const summary = computed(() => {
           <tbody>
             <tr v-for="item in filteredResults" :key="item.id">
               <td class="px-2 py-1 border">{{ item.id }}</td>
-              <td class="px-2 py-1 border">{{ item.name }}</td>
-              <td class="px-2 py-1 border">
-                <span :class="{
-                  'text-green-600': item.status === 'Ativo',
-                  'text-yellow-600': item.status === 'Inativo',
-                }">
-                  {{ item.status }}
+              <td class="px-2 py-1 border flex flex-col">
+                <span class="text-sm font-medium">{{ item.category }}</span>
+                <span class="text-xs text-gray-500">
+                  {{ item.name }}
                 </span>
-              </td>
-              <td class="px-2 py-1 border text-right">{{ formatNumber.format(Number(item.quantity)) }}</td>
-              <td class="px-2 py-1 border text-right">{{ formatCurrency.format(Number(item.value)) }}</td>
-              <td class="px-2 py-1 border text-right">{{ formatPercent.format(Number(item.margin) / 100) }}</td>
-              <td class="px-2 py-1 border text-right">{{ formatNumber.format(Number(item.currentStock)) }}</td>
+              </td> 
+              <td class="px-2 py-1 border">{{ item.weightedAverage }}</td>
+              <td class="px-2 py-1 border">{{ (item.individualPercent * 100).toFixed(2) }}%</td>
+              <td class="px-2 py-1 border">{{ (item.accumulatedPercent * 100).toFixed(2) }}%</td>
+              <td class="px-2 py-1 border"
+                :class="{
+                  'text-green-600': item.abcClass === 'A',
+                  'text-yellow-600': item.abcClass === 'B',
+                  'text-red-600': item.abcClass === 'C',
+                }"
+              >{{ item.abcClass }}</td>
+              <td class="px-2 py-1 border">{{ item.ranking }}</td>
+              <td class="border px-2">{{ item.removeFromMix ? 'Sim' : 'Não' }}</td>
+              <td class="px-2 py-1 border">{{ item.status }}</td>
+              <td class="px-2 py-1 border">{{ item.statusDetail }}</td>
             </tr>
           </tbody>
         </table>
