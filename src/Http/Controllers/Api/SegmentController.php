@@ -29,6 +29,8 @@ class SegmentController extends Controller
             'layer',
             'layer.product',
             'layer.product.image',
+            'layer.product.sales',
+            'layer.product.purchases',
         ]);
         return $this->handleSuccess('Segmentos carregados com sucesso', [
             'data' => SegmentResource::collection($segment->all()),
@@ -47,6 +49,8 @@ class SegmentController extends Controller
                 'layer',
                 'layer.product',
                 'layer.product.image',
+                'layer.product.sales',
+                'layer.product.purchases',
             ]);
             return $this->handleSuccess('Segmento carregado com sucesso', [
                 'data' => new SegmentResource($segment),

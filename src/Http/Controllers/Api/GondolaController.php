@@ -114,6 +114,7 @@ class GondolaController extends Controller
                 'sections.shelves.segments',
                 'sections.shelves.segments.layer',
                 'sections.shelves.segments.layer.product',
+                'sections.shelves.segments.layer.product.sales',
                 'sections.shelves.segments.layer.product.image',
                 'sections.shelves.section',
                 'sections.shelves.section.gondola',

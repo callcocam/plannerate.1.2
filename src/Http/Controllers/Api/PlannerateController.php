@@ -47,7 +47,9 @@ class PlannerateController extends Controller
                 'gondolas.sections.shelves',
                 'gondolas.sections.shelves.segments',
                 'gondolas.sections.shelves.segments.layer',
-                'gondolas.sections.shelves.segments.layer.product'
+                'gondolas.sections.shelves.segments.layer.product',
+                'gondolas.sections.shelves.segments.layer.product.sales',
+                'gondolas.sections.shelves.segments.layer.product.purchases'
             ])->findOrFail($id);
 
 
@@ -106,7 +108,9 @@ class PlannerateController extends Controller
                 'gondolas.sections.shelves',
                 'gondolas.sections.shelves.segments',
                 'gondolas.sections.shelves.segments.layer',
-                'gondolas.sections.shelves.segments.layer.product'
+                'gondolas.sections.shelves.segments.layer.product',
+                'gondolas.sections.shelves.segments.layer.product.sales',
+                'gondolas.sections.shelves.segments.layer.product.purchases'
             ])->findOrFail($planogram->id);
 
             return response()->json([

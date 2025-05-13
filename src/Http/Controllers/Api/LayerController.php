@@ -49,6 +49,8 @@ class LayerController extends Controller
             $layer->load([
                 'product',
                 'product.image',
+                'product.sales',
+                'product.purchases',
             ]); 
             return response()->json(new LayerResource($layer), 200);
         } catch (\Exception $e) { 

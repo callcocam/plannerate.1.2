@@ -30,6 +30,8 @@ class ShelfController extends Controller
             'segments.layer',
             'segments.layer.product',
             'segments.layer.product.image',
+            'segments.layer.product.sales',
+            'segments.layer.product.purchases',
         ]);
         return $this->handleSuccess('Prateleiras carregadas com sucesso', [
             'data' => ShelfResource::collection($shelf->all()),
@@ -48,6 +50,8 @@ class ShelfController extends Controller
             'segments.layer',
             'segments.layer.product',
             'segments.layer.product.image',
+            'segments.layer.product.sales',
+            'segments.layer.product.purchases',
         ]);
         return $this->handleSuccess('Prateleira carregada com sucesso', [
             'data' => new ShelfResource($shelf),
@@ -104,6 +108,8 @@ class ShelfController extends Controller
                 'segments.layer',
                 'segments.layer.product',
                 'segments.layer.product.image',
+                'segments.layer.product.sales',
+                'segments.layer.product.purchases',
             ]);
             DB::commit();
             return $this->handleSuccess('Prateleira atualizada com sucesso', [
@@ -153,6 +159,8 @@ class ShelfController extends Controller
                 'segments.layer',
                 'segments.layer.product',
                 'segments.layer.product.image',
+                'segments.layer.product.sales',
+                'segments.layer.product.purchases',
             ]);
             return $this->handleSuccess('Segmento criado com sucesso', [
                 'data' => new ShelfResource($shelf),
@@ -184,6 +192,8 @@ class ShelfController extends Controller
                 'segments.layer',
                 'segments.layer.product',
                 'segments.layer.product.image',
+                'segments.layer.product.sales',
+                'segments.layer.product.purchases',
             ]);
             return $this->handleSuccess('Segmento copiado com sucesso', [
                 'data' => new ShelfResource($shelf),

@@ -16,14 +16,14 @@ import {
     Redo2Icon,
 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter } from 'vue-router'; 
 
 // Imports Internos 
 import { useEditorStore } from '@plannerate/store/editor';
-import Category from './Category.vue';
-import { Button } from '@/components/ui/button';
+import Category from './Category.vue'; 
 import type { Gondola } from '@plannerate/types/gondola';
-
+import ABCParamsPopover from '@plannerate/components/ABCParamsPopover.vue';
+import AnalysisResultModal from '@plannerate/components/AnalysisResultModal.vue';
 // Definição das Props usando sintaxe padrão
 const props = defineProps({
     gondola: {
@@ -73,6 +73,9 @@ const hasChanges = computed(() => editorStore.hasChanges);
 const canUndo = computed(() => editorStore.canUndo);
 const canRedo = computed(() => editorStore.canRedo);
 
+const showResultModal = ref(false);
+
+
 // *** NOVA Computed para a gôndola reativa do editorStore ***
 const alignment = computed(() => {
     // Busca a gôndola correspondente no estado atual do editor
@@ -80,6 +83,21 @@ const alignment = computed(() => {
     let alignment = gondolaStore?.alignment;
     return alignment;
 });
+
+// Estado para o Popover e campos do cálculo ABC
+const showABCParams = ref(false);
+const abcParams = ref({
+   weights: {   
+    quantity: 0.30,
+    value: 0.30,
+    margin: 0.40,
+   },
+   thresholds: {
+    a: 0.8,
+    b: 0.85,
+   },
+});
+
 // Métodos
 /**
  * Atualiza o fator de escala no store.
@@ -232,6 +250,24 @@ const setGondolaAlignmentHandler = (alignment: string | null = null) => {
 const undo = () => editorStore.undo();
 const redo = () => editorStore.redo();
 const saveChanges = () => editorStore.saveChanges();
+
+// Métodos para os cálculos
+const calcularABC = (params: any) => {
+    // Aqui você pode usar params para enviar os parâmetros
+    console.log('Cálculo ABC acionado', params);
+    showABCParams.value = false;
+};
+const calcularEstoqueAlvo = () => {
+    // Placeholder para lógica do cálculo de Estoque Alvo Prateleira
+    console.log('Cálculo Estoque Alvo Prateleira acionado');
+};
+const calcularBCG = () => {
+    // Placeholder para lógica do cálculo Matriz BCG
+    console.log('Cálculo Matriz BCG acionado');
+};
+const closeResultModal = () => {
+    showResultModal.value = false;
+};
 </script>
 
 <template>
@@ -350,6 +386,18 @@ const saveChanges = () => editorStore.saveChanges();
                 </div>
             </div>
         </div>
+        <div class="flex gap-2 m-2">
+            <Popover v-model:open="showABCParams">
+                <PopoverTrigger as-child >
+                    <Button variant="outline">Calculos ABC</Button>
+                </PopoverTrigger>
+                <PopoverContent class="w-auto max-w-lg z-[1000]">
+                    <ABCParamsPopover :weights="abcParams.weights" :thresholds="abcParams.thresholds" @update:weights="calcularABC" @update:thresholds="calcularABC" @show-result-modal="showResultModal = true" />
+                </PopoverContent>
+            </Popover>
+            <Button @click="calcularEstoqueAlvo" variant="outline">Calculos Estoque Alvo Prateleira</Button>
+            <Button @click="calcularBCG" variant="outline">Calculos Matriz BCG</Button>
+        </div>
         <ConfirmModal :isOpen="showDeleteConfirm.some((item) => item.gondola)"
             @update:isOpen="(isOpen: boolean) => !isOpen && (showDeleteConfirm = [])" title="Excluir gondola"
             message="Tem certeza que deseja a gondola? Esta ação não pode ser desfeita." confirmButtonText="Excluir"
@@ -360,5 +408,9 @@ const saveChanges = () => editorStore.saveChanges();
             message="Tem certeza que deseja excluir este produto? Esta ação não pode ser desfeita."
             confirmButtonText="Excluir" cancelButtonText="Cancelar" :isDangerous="true" @confirm="confirmDeleteShelf"
             @cancel="cancelDelete" />
+            <AnalysisResultModal  
+            :open="showResultModal" 
+            @close="closeResultModal"
+        />
     </div>
 </template>

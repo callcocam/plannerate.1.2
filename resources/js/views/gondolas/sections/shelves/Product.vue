@@ -1,5 +1,6 @@
 <template>
-    <div class="product relative mb-2" :style="productStyle" @click="handleProductClick" ref="productRef">
+    <div class="product relative mb-2" :style="productStyle" @click="handleProductClick" ref="productRef" 
+    >
         <!-- Aqui você pode adicionar a representação visual do produto -->
         <!-- Pode ser uma imagem, um retângulo colorido, ou qualquer outro elemento visual -->
         <slot name="depth-count"></slot>
@@ -13,6 +14,7 @@
 import { Layer } from '@/types/segment';
 import { computed, onMounted, ref } from 'vue'; 
 import { useEditorStore } from '@plannerate/store/editor';
+import { useAnalysisResultStore } from '@plannerate/store/editor/analysisResult';
 const props = defineProps<{
     product: any;
     scaleFactor: number;
@@ -22,6 +24,7 @@ const props = defineProps<{
 }>();
  
 const editorStore = useEditorStore();
+const analysisResultStore = useAnalysisResultStore();
 const productRef = ref<HTMLDivElement | null>(null);
 
 /**
@@ -32,6 +35,7 @@ const productRef = ref<HTMLDivElement | null>(null);
     // Usa selectedLayerIds (nome corrigido e agora existente)
     return editorStore.isSelectedLayer(String(layerId));
 });
+
 const productActiveTrigger = () => {
     if (isSelected.value) {
        
@@ -43,6 +47,9 @@ const productActiveTrigger = () => {
         border: '1px solid transparent',
     }
 };
+const analysisResult = computed(() => {
+    return analysisResultStore.getById(props.product.ean);
+});
 // Estilo do produto
 const productStyle = computed(() => {
     let image_url = props.product.image_url;
@@ -58,7 +65,10 @@ const productStyle = computed(() => {
     //         // Exemplo de uso com placehold.co
     //         image_url = `https://placehold.co/400x600?text=${initials}`;
     //     }
-    // });
+    // });  
+    if (analysisResult.value) {
+        productRef.value?.classList.add(analysisResult.value.abcClass);
+    }
     return {
         width: `${props.product.width * props.scaleFactor}px`,
         height: `${props.product.height * props.scaleFactor}px`,
@@ -127,5 +137,14 @@ onMounted(() => {
     color: #666;
     font-weight: bold;
     font-size: 16px;
+}
+.A {
+    background-color: #00ff00;
+}
+.B {
+    background-color: #0000ff;
+}
+.C {
+    background-color: #ff0000;
 }
 </style>
