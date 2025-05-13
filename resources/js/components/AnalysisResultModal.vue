@@ -38,12 +38,16 @@ function exportToExcel() {
   // Preparar dados para exportação
   const exportData = filteredResults.value.map(item => ({
     'ID': item.id,
+    'Categoria': item.category,
     'Nome': item.name,
-    'Status': item.status,
-    'Quantidade': item.quantity,
-    'Valor': item.value,
-    'Margem (%)': item.margin,
-    'Estoque': item.currentStock
+    'Média Ponderada': item.weightedAverage,
+    '% Individual': item.individualPercent,
+    '% Acumulada': item.accumulatedPercent,
+    'Classe ABC': item.abcClass,
+    'Ranking': item.ranking,
+    'Retirar?': item.removeFromMix,
+    'Status': item.status, 
+    'Detalhe do Status': item.statusDetail
   }));
 
   // Criar worksheet
@@ -154,12 +158,7 @@ const formatCurrency = new Intl.NumberFormat('pt-BR', {
   style: 'currency',
   currency: 'BRL'
 });
-
-const formatPercent = new Intl.NumberFormat('pt-BR', {
-  style: 'percent',
-  minimumFractionDigits: 1,
-  maximumFractionDigits: 1
-});
+ 
 
 // Cálculos do resumo
 const summary = computed(() => {
