@@ -24,3 +24,4 @@ Route::middleware(['api', 'auth:sanctum'])
         Route::resource('segments', SegmentController::class);
         Route::resource('layers', LayerController::class);
     });
+//Plannerate
