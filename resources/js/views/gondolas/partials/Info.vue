@@ -24,6 +24,8 @@ import Category from './Category.vue';
 import type { Gondola } from '@plannerate/types/gondola';
 import ABCParamsPopover from '@plannerate/components/ABCParamsPopover.vue';
 import AnalysisResultModal from '@plannerate/components/AnalysisResultModal.vue';
+import TargetStockParamsPopover from '@plannerate/components/TargetStockParamsPopover.vue';
+import BCGParamsPopover from '@plannerate/components/BCGParamsPopover.vue';
 // Definição das Props usando sintaxe padrão
 const props = defineProps({
     gondola: {
@@ -96,6 +98,20 @@ const abcParams = ref({
     a: 0.8,
     b: 0.85,
    },
+});
+
+// Estado para o Popover e campos do cálculo Estoque Alvo
+const showTargetStockParams = ref(false);
+const targetStockParams = ref({
+    serviceLevels: [],
+    replenishmentParams: [],
+});
+
+// Estado para o Popover e campos do cálculo BCG
+const showBCGParams = ref(false);
+const bcgParams = ref({
+    marketShare: 0.1,
+    growthRate: 0.1
 });
 
 // Métodos
@@ -392,11 +408,43 @@ const closeResultModal = () => {
                     <Button variant="outline">Calculos ABC</Button>
                 </PopoverTrigger>
                 <PopoverContent class="w-auto max-w-lg z-[1000]">
-                    <ABCParamsPopover :weights="abcParams.weights" :thresholds="abcParams.thresholds" @update:weights="calcularABC" @update:thresholds="calcularABC" @show-result-modal="showResultModal = true" />
+                    <ABCParamsPopover 
+                        :weights="abcParams.weights" 
+                        :thresholds="abcParams.thresholds" 
+                        @update:weights="calcularABC" 
+                        @update:thresholds="calcularABC" 
+                        @show-result-modal="showResultModal = true" 
+                    />
                 </PopoverContent>
             </Popover>
-            <Button @click="calcularEstoqueAlvo" variant="outline">Calculos Estoque Alvo Prateleira</Button>
-            <Button @click="calcularBCG" variant="outline">Calculos Matriz BCG</Button>
+            <Popover v-model:open="showTargetStockParams">
+                <PopoverTrigger as-child >
+                    <Button variant="outline">Calculos Estoque Alvo Prateleira</Button>
+                </PopoverTrigger>
+                <PopoverContent class="w-auto max-w-lg z-[1000]">
+                    <TargetStockParamsPopover 
+                        :service-levels="targetStockParams.serviceLevels" 
+                        :replenishment-params="targetStockParams.replenishmentParams" 
+                        @update:service-levels="calcularEstoqueAlvo" 
+                        @update:replenishment-params="calcularEstoqueAlvo" 
+                        @show-result-modal="showResultModal = true" 
+                    />
+                </PopoverContent>
+            </Popover>
+            <Popover v-model:open="showBCGParams">
+                <PopoverTrigger as-child >
+                    <Button variant="outline">Calculos Matriz BCG</Button>
+                </PopoverTrigger>
+                <PopoverContent class="w-auto max-w-lg z-[1000]">
+                    <BCGParamsPopover 
+                        :market-share="bcgParams.marketShare" 
+                        :growth-rate="bcgParams.growthRate" 
+                        @update:market-share="calcularBCG" 
+                        @update:growth-rate="calcularBCG" 
+                        @show-result-modal="showResultModal = true" 
+                    />
+                </PopoverContent>
+            </Popover>
         </div>
         <ConfirmModal :isOpen="showDeleteConfirm.some((item) => item.gondola)"
             @update:isOpen="(isOpen: boolean) => !isOpen && (showDeleteConfirm = [])" title="Excluir gondola"

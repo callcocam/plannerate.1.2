@@ -1,12 +1,13 @@
 <?php
 
+use Callcocam\Plannerate\Http\Controllers\Api\AnalysisController;
 use Callcocam\Plannerate\Http\Controllers\Api\GondolaController;
 use Callcocam\Plannerate\Http\Controllers\Api\LayerController;
 use Callcocam\Plannerate\Http\Controllers\Api\PlannerateController;
 use Callcocam\Plannerate\Http\Controllers\Api\SectionController;
 use Callcocam\Plannerate\Http\Controllers\Api\SegmentController;
 use Callcocam\Plannerate\Http\Controllers\Api\ShelfController;
-use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Route; 
 
 Route::middleware(['api', 'auth:sanctum'])
     ->prefix('api')
@@ -23,5 +24,12 @@ Route::middleware(['api', 'auth:sanctum'])
         Route::resource('shelves', ShelfController::class);
         Route::resource('segments', SegmentController::class);
         Route::resource('layers', LayerController::class);
+
+        // Rotas de Análise
+        Route::prefix('analysis')->group(function () {
+            Route::post('/abc', [AnalysisController::class, 'abcAnalysis']);
+            Route::post('/target-stock', [AnalysisController::class, 'targetStockAnalysis']);
+            Route::post('/bcg', [AnalysisController::class, 'bcgAnalysis']);
+        });
     });
 //Plannerate
