@@ -52,17 +52,17 @@ class TargetStockAnalysisService
     ): Collection {
         $query = Sale::whereIn('product_id', $productIds);
 
-        if ($startDate) {
-            $query->where('date', '>=', $startDate);
-        }
+        // if ($startDate) {
+        //     $query->where('date', '>=', $startDate);
+        // }
 
-        if ($endDate) {
-            $query->where('date', '<=', $endDate);
-        }
+        // if ($endDate) {
+        //     $query->where('date', '<=', $endDate);
+        // }
 
-        if ($storeId) {
-            $query->where('store_id', $storeId);
-        }
+        // if ($storeId) {
+        //     $query->where('store_id', $storeId);
+        // }
 
         return $query->get();
     }
@@ -74,8 +74,8 @@ class TargetStockAnalysisService
     {
         $grouped = [];
 
-        foreach ($sales as $sale) {
-            $date = $sale->date->format('Y-m-d');
+        foreach ($sales as $sale) { 
+            $date = $sale->sale_date;
             $productId = $sale->product_id;
 
             if (!isset($grouped[$productId])) {
@@ -86,7 +86,7 @@ class TargetStockAnalysisService
                 $grouped[$productId][$date] = 0;
             }
 
-            $grouped[$productId][$date] += $sale->quantity;
+            $grouped[$productId][$date] += $sale->sale_quantity;
         }
 
         return $grouped;

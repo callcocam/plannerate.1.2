@@ -40,18 +40,21 @@ class AnalysisController extends Controller
     public function abcAnalysis(Request $request): JsonResponse
     {
         $request->validate([
-            'products' => 'required|array',
-            'products.*' => 'required|integer|exists:products,id',
+            'products' => 'required|array', 
             'startDate' => 'nullable|date',
             'endDate' => 'nullable|date|after_or_equal:startDate',
-            'storeId' => 'nullable|integer|exists:stores,id'
+            'storeId' => 'nullable|integer|exists:stores,id',
+            'weights' => 'nullable|array',
+            'thresholds' => 'nullable|array'
         ]);
 
         $result = $this->abcService->analyze(
             $request->products,
             $request->startDate,
             $request->endDate,
-            $request->storeId
+            $request->storeId,
+            $request->weights,
+            $request->thresholds
         );
 
         return response()->json($result);
@@ -66,8 +69,7 @@ class AnalysisController extends Controller
     public function targetStockAnalysis(Request $request): JsonResponse
     {
         $request->validate([
-            'products' => 'required|array',
-            'products.*' => 'required|integer|exists:products,id',
+            'products' => 'required|array', 
             'startDate' => 'nullable|date',
             'endDate' => 'nullable|date|after_or_equal:startDate',
             'storeId' => 'nullable|integer|exists:stores,id',

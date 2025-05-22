@@ -81,18 +81,26 @@ async function executeCalculation() {
             {
                 // período padrão dos últimos 30 dias
                 startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                endDate: new Date().toISOString().split('T')[0]
+                endDate: new Date().toISOString().split('T')[0],
+                weights: weights.value as { quantity: number; value: number; margin: number },
+                thresholds: thresholds.value as { a: number; b: number }
             }
         );
         
         // Transformar os dados no formato esperado
         const productsWithData = products.map(product => {
-            const productData = analysisData.find((data: any) => data.product_id === product.id);
+            const productData = analysisData.find((data: any) => data.product_id === product.id); 
             return {
-                ...product,
+                id: productData?.ean || '',
+                ean: productData?.ean || '',
+                name: productData?.name || '',
+                category: productData?.category || '',
                 quantity: productData?.quantity || 0,
                 value: productData?.value || 0,
-                margin: productData?.margin || 0
+                margin: productData?.margin || 0,
+                lastPurchase: productData?.lastPurchase || '',
+                lastSale: productData?.lastSale || '',
+                currentStock: productData?.currentStock || 0
             };
         });
 

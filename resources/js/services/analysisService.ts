@@ -4,6 +4,15 @@ interface ABCAnalysisParams {
     startDate?: string;
     endDate?: string;
     storeId?: number;
+    weights?: {
+        quantity: number;
+        value: number;
+        margin: number;
+    };
+    thresholds?: {
+        a: number;
+        b: number;
+    };
 }
 
 interface TargetStockParams {
@@ -26,11 +35,15 @@ export const useAnalysisService = () => {
      * Retorna dados de quantidade, valor e margem dos produtos
      */
     const getABCAnalysisData = async (products: number[], params: ABCAnalysisParams = {}) => {
-        const response = await apiService.post('/analysis/abc', {
-            products,
-            startDate: params.startDate,
-            endDate: params.endDate,
-            storeId: params.storeId
+        const response = await apiService.get('/analysis/abc', {
+            params: {
+                products,
+                startDate: params.startDate,
+                endDate: params.endDate,
+                storeId: params.storeId,
+                weights: params.weights,
+                thresholds: params.thresholds
+            }
         });
         return response;
     }
@@ -40,12 +53,14 @@ export const useAnalysisService = () => {
      * Retorna dados de vendas por período para cada produto
      */
     const getTargetStockData = async (products: number[], params: TargetStockParams = {}) => {
-        const response = await apiService.post('/analysis/target-stock', {
-            products,
-            startDate: params.startDate,
-            endDate: params.endDate,
-            storeId: params.storeId,
-            period: params.period
+        const response = await apiService.get('/analysis/target-stock', {
+            params: {
+                products,
+                startDate: params.startDate,
+                endDate: params.endDate,
+                storeId: params.storeId,
+                period: params.period
+            }
         });
         return response;
     }
@@ -55,12 +70,14 @@ export const useAnalysisService = () => {
      * Retorna dados de crescimento e participação de mercado
      */
     const getBCGAnalysisData = async (products: number[], params: BCGAnalysisParams = {}) => {
-        const response = await apiService.post('/analysis/bcg', {
-            products,
-            startDate: params.startDate,
-            endDate: params.endDate,
-            storeId: params.storeId,
-            marketShare: params.marketShare
+        const response = await apiService.get('/analysis/bcg', {
+            params: {
+                products,
+                startDate: params.startDate,
+                endDate: params.endDate,
+                storeId: params.storeId,
+                marketShare: params.marketShare
+            }
         });
         return response;
     }

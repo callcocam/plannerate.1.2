@@ -8,7 +8,9 @@ import { useAnalysisResultStore } from '@plannerate/store/editor/analysisResult'
 
 interface AssortmentResult {
   id: number;
+  ean: string;
   name: string;
+  category: string;
   status: 'Ativo' | 'Inativo';
   quantity: number;
   value: number;
@@ -16,12 +18,10 @@ interface AssortmentResult {
   currentStock: number;
 }
 
-const props = defineProps<{ open: boolean }>();
+ defineProps<{ open: boolean }>();
 const emit = defineEmits(['close']);
 
-const analysisResultStore = useAnalysisResultStore();
-const result = computed<AssortmentResult[]>(() => analysisResultStore.result as AssortmentResult[]);
-console.log(analysisResultStore.result);
+const analysisResultStore = useAnalysisResultStore();  
 
 // Estado de ordenação
 const sortConfig = ref({
@@ -55,7 +55,8 @@ function exportToExcel() {
 
   // Ajustar largura das colunas
   const wscols = [
-    { wch: 10 }, // ID
+    { wch: 10 }, // EAN
+    { wch: 40 }, // Categoria
     { wch: 40 }, // Nome
     { wch: 15 }, // Status
     { wch: 15 }, // Quantidade
@@ -91,8 +92,7 @@ function clearFilters() {
 
 // Função para ordenar os resultados
 const sortedResults = computed(() => {
-  if (!analysisResultStore.result) return [];
-  console.log(analysisResultStore.result);
+  if (!analysisResultStore.result) return []; 
   return [...analysisResultStore.result].sort((a, b) => {
     const aValue = a[sortConfig.value.key];
     const bValue = b[sortConfig.value.key];
@@ -187,7 +187,7 @@ const summary = computed(() => {
 
 <template>
   <div v-if="open" class="fixed inset-0 z-50 flex items-center justify-center bg-black/25">
-    <div class="bg-white rounded-lg shadow-lg max-w-7xl w-full p-6 relative">
+    <div class="bg-white rounded-lg shadow-lg   w-full p-6 relative mx-1.5">
       <div class="flex justify-between items-center mb-4">
         <h2 class="text-lg font-bold">Resultado da Análise de Assortimento</h2>
         <Button
@@ -280,8 +280,9 @@ const summary = computed(() => {
             <tr class="bg-gray-100">
               <th 
                 v-for="(label, key) in {
-                  id: 'ID',
+                  ean: 'EAN',
                   category: 'Categoria', 
+                  name: 'Nome',
                   weightedAverage: 'Média Ponderada',
                   individualPercent: '% Individual',
                   accumulatedPercent: '% Acumulada',
@@ -308,13 +309,11 @@ const summary = computed(() => {
           </thead>
           <tbody>
             <tr v-for="item in filteredResults" :key="item.id">
-              <td class="px-2 py-1 border">{{ item.id }}</td>
+              <td class="px-2 py-1 border">{{ item.ean }}</td>
               <td class="px-2 py-1 border flex flex-col">
-                <span class="text-sm font-medium">{{ item.category }}</span>
-                <span class="text-xs text-gray-500">
-                  {{ item.name }}
-                </span>
+                {{ item.category }}
               </td> 
+              <td class="px-2 py-1 border">{{ item.name }}</td>
               <td class="px-2 py-1 border">{{ item.weightedAverage }}</td>
               <td class="px-2 py-1 border">{{ (item.individualPercent * 100).toFixed(2) }}%</td>
               <td class="px-2 py-1 border">{{ (item.accumulatedPercent * 100).toFixed(2) }}%</td>

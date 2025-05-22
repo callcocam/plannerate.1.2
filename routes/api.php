@@ -9,7 +9,7 @@ use Callcocam\Plannerate\Http\Controllers\Api\SegmentController;
 use Callcocam\Plannerate\Http\Controllers\Api\ShelfController;
 use Illuminate\Support\Facades\Route; 
 
-Route::middleware(['api', 'auth:sanctum'])
+Route::middleware(['api' ])
     ->prefix('api')
     ->name('api.')
     ->group(function () {
@@ -27,9 +27,9 @@ Route::middleware(['api', 'auth:sanctum'])
 
         // Rotas de Análise
         Route::prefix('analysis')->group(function () {
-            Route::post('/abc', [AnalysisController::class, 'abcAnalysis']);
-            Route::post('/target-stock', [AnalysisController::class, 'targetStockAnalysis']);
-            Route::post('/bcg', [AnalysisController::class, 'bcgAnalysis']);
+            Route::get('/abc', [AnalysisController::class, 'abcAnalysis']);
+            Route::get('/target-stock', [AnalysisController::class, 'targetStockAnalysis']);
+            Route::get('/bcg', [AnalysisController::class, 'bcgAnalysis']);
         });
     });
 //Plannerate

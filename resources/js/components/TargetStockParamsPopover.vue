@@ -2,10 +2,8 @@
 import { ref, defineEmits, defineProps, watch, computed } from 'vue';
 import { useEditorStore } from '@plannerate/store/editor'; 
 import { useAnalysisService } from '@plannerate/services/analysisService';
-import { useTargetStock, type ServiceLevel, type Replenishment } from '@plannerate/composables/useTargetStock';
-import { useAnalysisResultStore } from '@plannerate/store/editor/analysisResult'; 
-
-const analysisResultStore = useAnalysisResultStore();
+import { useTargetStock, type ServiceLevel, type Replenishment } from '@plannerate/composables/useTargetStock'; 
+import { SmallInput } from '@plannerate/components/ui/input'; 
 const analysisService = useAnalysisService();
 const props = defineProps({
     serviceLevels: {
@@ -37,10 +35,6 @@ const gondola = computed(() => editorStore.getCurrentGondola);
 
 const emit = defineEmits(['update:serviceLevels', 'update:replenishmentParams', 'executar', 'show-result-modal']);
 
-// Estado para controlar a visibilidade da modal
-const showResultModal = () => {
-    emit('show-result-modal');
-}
 
 watch(() => props.serviceLevels, (val) => {
     serviceLevels.value = val;
@@ -77,7 +71,7 @@ async function executeCalculation() {
                         id: product.id,
                         ean: product.ean,
                         name: product.name,
-                        classification: product.classification,
+                        classification: product.classification || 'C',
                         currentStock: product.current_stock || 0
                     });
                 }
@@ -108,8 +102,10 @@ async function executeCalculation() {
             replenishmentParams.value
         );
         
-        analysisResultStore.setResult(analyzed);
-        showResultModal();
+        emit('show-result-modal', {
+            result: analyzed,
+            replenishmentParams: replenishmentParams.value
+        });
     }
 }
 </script>
@@ -120,6 +116,7 @@ async function executeCalculation() {
             <!-- Níveis de Serviço -->
             <div class="space-y-4">
                 <h3 class="text-sm font-medium">Níveis de Serviço</h3>
+                
                 <div v-for="level in serviceLevels" :key="level.classification" class="flex flex-col">
                     <label class="text-xs font-medium mb-2">Classe {{ level.classification }}</label>
                     <SmallInput 
@@ -152,13 +149,6 @@ async function executeCalculation() {
         </div>
 
         <div class="flex justify-end mt-2 gap-2">
-            <Button 
-                v-if="analysisResultStore.result" 
-                @click="showResultModal" 
-                variant="destructive"
-            >
-                Ver Resultado
-            </Button>
             <Button 
                 @click="executeCalculation" 
                 variant="default"

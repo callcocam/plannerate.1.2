@@ -49,26 +49,31 @@ export function useTargetStock(
 
   // Step 2: Calculate stock analysis for each unique product
   const analyzed: StockAnalysis[] = Array.from(uniqueProducts.values()).map(product => {
-    // Calculate average sales and standard deviation
-    const sales = product.sales;
-    const averageSales = sales.reduce((sum, sale) => sum + sale, 0) / sales.length;
-    
-    // Calculate standard deviation
-    const squareDiffs = sales.map(sale => Math.pow(sale - averageSales, 2));
-    const standardDeviation = Math.sqrt(squareDiffs.reduce((sum, diff) => sum + diff, 0) / sales.length);
-    
-    // Calculate variability
-    const variability = averageSales > 0 ? standardDeviation / averageSales : 0;
+    // Garantir que sales seja um array válido
+    const sales = Array.isArray(product.sales) ? product.sales : [];
+    let averageSales = 0;
+    let standardDeviation = 0;
+    let variability = 0;
+
+    if (sales.length > 0) {
+      averageSales = sales.reduce((sum, sale) => sum + sale, 0) / sales.length;
+      const squareDiffs = sales.map(sale => Math.pow(sale - averageSales, 2));
+      standardDeviation = Math.sqrt(squareDiffs.reduce((sum, diff) => sum + diff, 0) / sales.length);
+      variability = averageSales > 0 ? standardDeviation / averageSales : 0;
+    }
     
     // Get service level from parameters
-    const serviceLevel = serviceLevels.find(sl => sl.classification === product.classification)?.level || 0;
+    const serviceLevel = serviceLevels.find(sl => sl.classification === product.classification)?.level;
     
     // Validate service level
-    if (serviceLevel < 0.5 || serviceLevel >= 1) {
+    if (!serviceLevel || serviceLevel < 0.5 || serviceLevel >= 1) {
       throw new Error(`Nível de serviço inválido para o produto: ${product.name}
-        Classificação: ${product.classification}
-        Valor informado: ${serviceLevel}
-        Por favor, corrija o valor nos parâmetros de nível de serviço.`);
+        Classificação: ${product.classification || 'não definida'}
+        Valor informado: ${serviceLevel || 'não definido'}
+        Por favor, verifique se:
+        1. O produto tem uma classificação válida (A, B ou C)
+        2. Existe um nível de serviço definido para esta classificação
+        3. O nível de serviço está entre 0.5 e 0.99`);
     }
     
     // Calculate z-score based on service level

@@ -16,16 +16,18 @@ import {
     Redo2Icon,
 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
-import { useRouter } from 'vue-router'; 
+import { useRouter } from 'vue-router';
 
 // Imports Internos 
 import { useEditorStore } from '@plannerate/store/editor';
-import Category from './Category.vue'; 
+import Category from './Category.vue';
 import type { Gondola } from '@plannerate/types/gondola';
 import ABCParamsPopover from '@plannerate/components/ABCParamsPopover.vue';
 import AnalysisResultModal from '@plannerate/components/AnalysisResultModal.vue';
 import TargetStockParamsPopover from '@plannerate/components/TargetStockParamsPopover.vue';
 import BCGParamsPopover from '@plannerate/components/BCGParamsPopover.vue';
+import TargetStockResultModal from '@plannerate/components/TargetStockResultModal.vue';
+import type { StockAnalysis, Replenishment } from '@plannerate/composables/useTargetStock';
 // Definição das Props usando sintaxe padrão
 const props = defineProps({
     gondola: {
@@ -89,22 +91,30 @@ const alignment = computed(() => {
 // Estado para o Popover e campos do cálculo ABC
 const showABCParams = ref(false);
 const abcParams = ref({
-   weights: {   
-    quantity: 0.30,
-    value: 0.30,
-    margin: 0.40,
-   },
-   thresholds: {
-    a: 0.8,
-    b: 0.85,
-   },
+    weights: {
+        quantity: 0.30,
+        value: 0.30,
+        margin: 0.40,
+    },
+    thresholds: {
+        a: 0.8,
+        b: 0.85,
+    },
 });
 
 // Estado para o Popover e campos do cálculo Estoque Alvo
 const showTargetStockParams = ref(false);
 const targetStockParams = ref({
-    serviceLevels: [],
-    replenishmentParams: [],
+    serviceLevels: [
+        { classification: 'A', level: 0.7 },
+        { classification: 'B', level: 0.8 },
+        { classification: 'C', level: 0.9 }
+    ],
+    replenishmentParams: [
+        { classification: 'A', coverageDays: 2 },
+        { classification: 'B', coverageDays: 5 },
+        { classification: 'C', coverageDays: 7 }
+    ],
 });
 
 // Estado para o Popover e campos do cálculo BCG
@@ -113,6 +123,15 @@ const bcgParams = ref({
     marketShare: 0.1,
     growthRate: 0.1
 });
+
+// Estado para o resultado do cálculo de Estoque Alvo
+const showTargetStockResultModal = ref(false);
+const targetStockResultData = ref<StockAnalysis[]>([]);
+const targetStockReplenishmentParams = ref<Replenishment[]>([
+    { classification: 'A', coverageDays: 2 },
+    { classification: 'B', coverageDays: 5 },
+    { classification: 'C', coverageDays: 7 }
+]);
 
 // Métodos
 /**
@@ -284,6 +303,15 @@ const calcularBCG = () => {
 const closeResultModal = () => {
     showResultModal.value = false;
 };
+
+function openTargetStockResultModal(result: StockAnalysis[], replenishmentParams: Replenishment[]) {
+    targetStockResultData.value = result;
+    targetStockReplenishmentParams.value = replenishmentParams;
+    showTargetStockResultModal.value = true;
+}
+function closeTargetStockResultModal() {
+    showTargetStockResultModal.value = false;
+}
 </script>
 
 <template>
@@ -404,45 +432,35 @@ const closeResultModal = () => {
         </div>
         <div class="flex gap-2 m-2">
             <Popover v-model:open="showABCParams">
-                <PopoverTrigger as-child >
+                <PopoverTrigger as-child>
                     <Button variant="outline">Calculos ABC</Button>
                 </PopoverTrigger>
                 <PopoverContent class="w-auto max-w-lg z-[1000]">
-                    <ABCParamsPopover 
-                        :weights="abcParams.weights" 
-                        :thresholds="abcParams.thresholds" 
-                        @update:weights="calcularABC" 
-                        @update:thresholds="calcularABC" 
-                        @show-result-modal="showResultModal = true" 
-                    />
+                    <ABCParamsPopover :weights="abcParams.weights" :thresholds="abcParams.thresholds"
+                        @update:weights="calcularABC" @update:thresholds="calcularABC"
+                        @show-result-modal="showResultModal = true" />
                 </PopoverContent>
             </Popover>
             <Popover v-model:open="showTargetStockParams">
-                <PopoverTrigger as-child >
+                <PopoverTrigger as-child>
                     <Button variant="outline">Calculos Estoque Alvo Prateleira</Button>
                 </PopoverTrigger>
                 <PopoverContent class="w-auto max-w-lg z-[1000]">
-                    <TargetStockParamsPopover 
-                        :service-levels="targetStockParams.serviceLevels" 
-                        :replenishment-params="targetStockParams.replenishmentParams" 
-                        @update:service-levels="calcularEstoqueAlvo" 
-                        @update:replenishment-params="calcularEstoqueAlvo" 
-                        @show-result-modal="showResultModal = true" 
+                    <TargetStockParamsPopover
+                        :service-levels="targetStockParams.serviceLevels"
+                        :replenishment-params="targetStockParams.replenishmentParams"
+                        @show-result-modal="openTargetStockResultModal($event.result, $event.replenishmentParams)"
                     />
                 </PopoverContent>
             </Popover>
             <Popover v-model:open="showBCGParams">
-                <PopoverTrigger as-child >
+                <PopoverTrigger as-child>
                     <Button variant="outline">Calculos Matriz BCG</Button>
                 </PopoverTrigger>
                 <PopoverContent class="w-auto max-w-lg z-[1000]">
-                    <BCGParamsPopover 
-                        :market-share="bcgParams.marketShare" 
-                        :growth-rate="bcgParams.growthRate" 
-                        @update:market-share="calcularBCG" 
-                        @update:growth-rate="calcularBCG" 
-                        @show-result-modal="showResultModal = true" 
-                    />
+                    <BCGParamsPopover :market-share="bcgParams.marketShare" :growth-rate="bcgParams.growthRate"
+                        @update:market-share="calcularBCG" @update:growth-rate="calcularBCG"
+                        @show-result-modal="showResultModal = true" />
                 </PopoverContent>
             </Popover>
         </div>
@@ -456,9 +474,12 @@ const closeResultModal = () => {
             message="Tem certeza que deseja excluir este produto? Esta ação não pode ser desfeita."
             confirmButtonText="Excluir" cancelButtonText="Cancelar" :isDangerous="true" @confirm="confirmDeleteShelf"
             @cancel="cancelDelete" />
-            <AnalysisResultModal  
-            :open="showResultModal" 
-            @close="closeResultModal"
+        <AnalysisResultModal :open="showResultModal" @close="closeResultModal" />
+        <TargetStockResultModal
+            :open="showTargetStockResultModal"
+            :result="targetStockResultData"
+            :replenishment-params="targetStockReplenishmentParams"
+            @close="closeTargetStockResultModal"
         />
     </div>
 </template>
