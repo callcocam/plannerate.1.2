@@ -31,7 +31,6 @@
                                         @confirm="confirmDelete" @cancel="cancelDelete" :record="layer">
                                         <TrashIcon class="h-4 w-4 cursor-pointer" />
                                     </AlertConfirm>
-
                                     <EditProduct :product="layer.product" @update:product="handleLayerUpdate">
                                         <EditIcon class="h-4 w-4 cursor-pointer" />
                                     </EditProduct>
@@ -45,8 +44,6 @@
             <div v-else class="p-3 text-center text-gray-500">
                 Carregando detalhes...
             </div>
-
-
         </div>
         <div v-else class="p-3 text-center text-gray-500">
             Nenhum produto selecionado.
@@ -68,7 +65,6 @@ const isLoadingDetails = ref(false);
 const emit = defineEmits<{
     (e: 'remove-layer', layer: Layer): void;
 }>();
-
 
 watch(
     editorStore.getSelectedLayerIds,
@@ -121,14 +117,11 @@ const confirmDelete = (record: any) => {
         if (sectionId && shelfId && segmentId) {
             editorStore.removeSegmentFromShelf(editorStore.getCurrentGondola?.id, sectionId, shelfId, segmentId);
         }
-    }
-    // Emitir evento de exclusão apenas quando confirmado
-    // editorStore.removeSegmentFromShelf(editorStore.editorGondola.value.id, record.sectionId, record.shelfId, record.segmentId);
+    } 
     emit('remove-layer', record);
 };
-const cancelDelete = (e: boolean) => {
-    // Apenas fechar o modal
-    console.log('cancelDelete', e);
+const cancelDelete = ( ) => {
+    // Apenas fechar o modal 
     showDeleteConfirm.value = false;
 };
 

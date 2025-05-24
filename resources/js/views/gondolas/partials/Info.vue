@@ -27,7 +27,11 @@ import AnalysisResultModal from '@plannerate/components/AnalysisResultModal.vue'
 import TargetStockParamsPopover from '@plannerate/components/TargetStockParamsPopover.vue';
 import BCGParamsPopover from '@plannerate/components/BCGParamsPopover.vue';
 import TargetStockResultModal from '@plannerate/components/TargetStockResultModal.vue';
-import type { StockAnalysis, Replenishment } from '@plannerate/composables/useTargetStock';
+import { useTargetStock, type StockAnalysis, type Replenishment } from '@plannerate/composables/useTargetStock';
+import { useAnalysisService } from '@plannerate/services/analysisService';
+import { useAssortmentStatus, type Weights, type Thresholds } from '@plannerate/composables/useSortimentoStatus';
+import { useAnalysisResultStore } from '@plannerate/store/editor/analysisResult';
+import { useTargetStockResultStore } from '@plannerate/store/editor/targetStockResult';
 // Definição das Props usando sintaxe padrão
 const props = defineProps({
     gondola: {
@@ -132,6 +136,62 @@ const targetStockReplenishmentParams = ref<Replenishment[]>([
     { classification: 'B', coverageDays: 5 },
     { classification: 'C', coverageDays: 7 }
 ]);
+
+const analysisService = useAnalysisService();
+const analysisResultStore = useAnalysisResultStore();
+const targetStockResultStore = useTargetStockResultStore();
+// Função para executar a Análise ABC
+async function executeABCAnalysis() {
+    const products: any[] = [];
+    editorStore.getCurrentGondola?.sections.forEach(section => {
+        section.shelves.forEach(shelf => {
+            shelf.segments.forEach(segment => {
+                const product = segment.layer.product as any;
+                if (product) {
+                    products.push({
+                        id: product.id,
+                        ean: product.ean,
+                        name: product.name,
+                        classification: product.classification,
+                        currentStock: product.current_stock || 0
+                    });
+                }
+            });
+        });
+    });
+
+    try {
+        if (products.length > 0) {
+            const analysisData = await analysisService.getABCAnalysisData(
+                products.map(p => p.id),
+                {
+                    // período padrão dos últimos 30 dias
+                    startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    endDate: new Date().toISOString().split('T')[0],
+                    weights: abcParams.value.weights as { quantity: number; value: number; margin: number },
+                    thresholds: abcParams.value.thresholds as { a: number; b: number }
+                }
+            );
+
+            const analyzed = useAssortmentStatus(
+                analysisData,
+                abcParams.value.weights as Weights,
+                abcParams.value.thresholds as Thresholds
+            );
+
+            analysisResultStore.setResult(analyzed);
+
+            // Abrir modal de resultado e fechar popover
+            showResultModal.value = true;
+            showABCParams.value = false;
+        }
+    } catch (error) {
+        console.error('Erro ao executar Análise ABC:', error);
+        // Optionally set an error state in the store
+    } finally {
+        analysisResultStore.loading = false;
+    }
+}
 
 // Métodos
 /**
@@ -287,14 +347,9 @@ const redo = () => editorStore.redo();
 const saveChanges = () => editorStore.saveChanges();
 
 // Métodos para os cálculos
-const calcularABC = (params: any) => {
-    // Aqui você pode usar params para enviar os parâmetros
-    console.log('Cálculo ABC acionado', params);
-    showABCParams.value = false;
-};
-const calcularEstoqueAlvo = () => {
-    // Placeholder para lógica do cálculo de Estoque Alvo Prateleira
-    console.log('Cálculo Estoque Alvo Prateleira acionado');
+const calcularABC = () => {
+    // Aqui você pode usar params para enviar os parâmetros 
+    showABCParams.value = true;
 };
 const calcularBCG = () => {
     // Placeholder para lógica do cálculo Matriz BCG
@@ -304,13 +359,117 @@ const closeResultModal = () => {
     showResultModal.value = false;
 };
 
-function openTargetStockResultModal(result: StockAnalysis[], replenishmentParams: Replenishment[]) {
-    targetStockResultData.value = result;
-    targetStockReplenishmentParams.value = replenishmentParams;
-    showTargetStockResultModal.value = true;
+// Função para executar a Análise de Estoque Alvo
+async function executeTargetStockAnalysis() {
+    const products: any[] = [];
+    editorStore.getCurrentGondola?.sections.forEach(section => {
+        section.shelves.forEach(shelf => {
+            shelf.segments.forEach(segment => {
+                const product = segment.layer.product as any;
+                if (product) {
+                    products.push({
+                        id: product.id,
+                        ean: product.ean,
+                        name: product.name,
+                        classification: product.classification || 'C',
+                        currentStock: product.current_stock || 0
+                    });
+                }
+            });
+        });
+    });
+
+    if (products.length > 0) {
+        // Definir loading no store antes de buscar os dados
+        targetStockResultStore.loading = true;
+        try {
+            const sales = await analysisService.getTargetStockData(
+                products.map(p => p.id),
+                {
+                    period: 30 // período padrão de 30 dias
+                }
+            );
+
+            // Transformar os dados de vendas no formato esperado
+            const productsWithSales = products.map(product => {
+                const productSales = sales.find((sale: any) => sale.product_id === product.id);
+                return {
+                    ...product,
+                    sales: productSales ? Object.values(productSales.sales_by_day) : []
+                };
+            });
+
+            const analyzed = useTargetStock(
+                productsWithSales,
+                targetStockParams.value.serviceLevels,
+                targetStockParams.value.replenishmentParams
+            );
+            
+            // Atualizar o store com os resultados
+            targetStockResultStore.setResult(analyzed, targetStockParams.value.replenishmentParams);
+
+        } catch (error) {
+            console.error('Erro ao executar Análise de Estoque Alvo:', error);
+            // Optionally set an error state in the store
+        } finally {
+            // Remover loading no store após a conclusão
+            targetStockResultStore.loading = false;
+        }
+    }
 }
-function closeTargetStockResultModal() {
-    showTargetStockResultModal.value = false;
+
+function openTargetStockResultModal(result: StockAnalysis[], params: Replenishment[]) {
+    targetStockResultData.value = result;
+    targetStockReplenishmentParams.value = params;
+    showTargetStockResultModal.value = true;
+    showTargetStockParams.value = false; // Fecha o popover
+}
+
+// Observar ações do store para recalculo ABC
+analysisResultStore.$onAction(({ name, store, args, after, onError }) => {
+    if (name === 'requestRecalculation') {
+        after(() => {
+            executeABCAnalysis();
+        });
+    }
+
+});
+
+// Observar ações do store para recalculo Estoque Alvo
+targetStockResultStore.$onAction(({ name, store, args, after, onError }) => {
+    if (name === 'requestRecalculation') {
+        after(() => { 
+            executeTargetStockAnalysis(); // Chamar a nova função de cálculo
+        });
+    }
+});
+
+function removeFromGondola(selectedItemId: string | null) {
+    if (selectedItemId) {
+        const record = editorStore.getCurrentGondola?.sections.flatMap(section => section.shelves.flatMap(shelf => shelf.segments.flatMap(segment => segment.layer.product))).find(product => product?.ean === selectedItemId);
+        if (record) {
+            let sectionId = null;
+            let shelfId = null;
+            let segmentId = null;
+            if (editorStore.getCurrentGondola) {
+                editorStore.getCurrentGondola?.sections.forEach(section => {
+                    section.shelves.forEach(shelf => {
+                        shelf.segments.forEach(segment => {
+                            if (segment.layer.product?.ean === selectedItemId) {
+                                sectionId = section.id;
+                                shelfId = shelf.id;
+                                segmentId = segment.id;
+                            }
+                        });
+                    });
+                });
+                if (sectionId && shelfId && segmentId) {
+                    editorStore.removeSegmentFromShelf(editorStore.getCurrentGondola?.id, sectionId, shelfId, segmentId);
+                    analysisResultStore.requestRecalculation();
+                }
+            }
+        }
+    }
 }
 </script>
 
@@ -446,11 +605,9 @@ function closeTargetStockResultModal() {
                     <Button variant="outline">Calculos Estoque Alvo Prateleira</Button>
                 </PopoverTrigger>
                 <PopoverContent class="w-auto max-w-lg z-[1000]">
-                    <TargetStockParamsPopover
-                        :service-levels="targetStockParams.serviceLevels"
+                    <TargetStockParamsPopover :service-levels="targetStockParams.serviceLevels"
                         :replenishment-params="targetStockParams.replenishmentParams"
-                        @show-result-modal="openTargetStockResultModal($event.result, $event.replenishmentParams)"
-                    />
+                        @show-result-modal="openTargetStockResultModal($event.result, $event.replenishmentParams)" />
                 </PopoverContent>
             </Popover>
             <Popover v-model:open="showBCGParams">
@@ -474,12 +631,8 @@ function closeTargetStockResultModal() {
             message="Tem certeza que deseja excluir este produto? Esta ação não pode ser desfeita."
             confirmButtonText="Excluir" cancelButtonText="Cancelar" :isDangerous="true" @confirm="confirmDeleteShelf"
             @cancel="cancelDelete" />
-        <AnalysisResultModal :open="showResultModal" @close="closeResultModal" />
-        <TargetStockResultModal
-            :open="showTargetStockResultModal"
-            :result="targetStockResultData"
-            :replenishment-params="targetStockReplenishmentParams"
-            @close="closeTargetStockResultModal"
-        />
+        <AnalysisResultModal :open="showResultModal" @close="closeResultModal"
+            @remove-from-gondola="removeFromGondola" />
+        <TargetStockResultModal :open="showTargetStockResultModal" @close="showTargetStockResultModal = false" />
     </div>
 </template>

@@ -1,5 +1,15 @@
 // types/segment.ts
 import { Layer as LayerType } from '@/types/layer';
+
+interface MercadologicoNivel {
+    mercadologico_nivel_1: string;
+    mercadologico_nivel_2: string;
+    mercadologico_nivel_3: string;
+    mercadologico_nivel_4: string;
+    mercadologico_nivel_5: string;
+    mercadologico_nivel_6: string;
+}
+
 interface Product {
     id: string;
     name: string;
@@ -16,6 +26,7 @@ interface Product {
     category_id?: string;
     created_at?: string;
     updated_at?: string;
+    mercadologico_nivel?: MercadologicoNivel;
 }
 
 // Interface para o objeto Layer dentro do Segment

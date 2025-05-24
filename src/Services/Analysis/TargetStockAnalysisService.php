@@ -3,6 +3,7 @@
 namespace Callcocam\Plannerate\Services\Analysis;
 
 use App\Models\Product;
+use App\Models\Purchase;
 use App\Models\Sale;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -35,8 +36,10 @@ class TargetStockAnalysisService
         // Agrupa as vendas por produto e dia
         $dailySales = $this->groupDailySales($sales);
 
+        $currentStock = $this->getCurrentStock($productIds, $startDate, $endDate, $storeId);
+
         // Calcula as estatísticas
-        $statistics = $this->calculateStatistics($dailySales, $period);
+        $statistics = $this->calculateStatistics($dailySales, $period, $currentStock);
 
         return $statistics;
     }
@@ -92,10 +95,33 @@ class TargetStockAnalysisService
         return $grouped;
     }
 
+    protected function getCurrentStock(array $productIds, ?string $startDate, ?string $endDate, ?string $storeId): int
+    {
+        $query = Purchase::whereIn('product_id', $productIds)
+            ->orderBy('entry_date', 'desc');
+
+        if ($startDate) {
+            $query->where('entry_date', '>=', $startDate);
+        }
+
+        if ($endDate) {
+            $query->where('entry_date', '<=', $endDate);
+        }
+
+        if ($storeId) {
+            $query->where('store_id', $storeId);
+        }
+
+        $currentStock = $query->first();
+
+
+        return data_get($currentStock, 'current_stock', 0);
+    }
+
     /**
      * Calcula as estatísticas de vendas
      */
-    protected function calculateStatistics(array $dailySales, int $period): array
+    protected function calculateStatistics(array $dailySales, int $period, int $currentStock): array
     {
         $result = [];
 
@@ -125,7 +151,8 @@ class TargetStockAnalysisService
                 'average_sales' => round($average, 2),
                 'standard_deviation' => round($standardDeviation, 2),
                 'variability' => round($variability, 2),
-                'sales_by_day' => $sales
+                'currentStock' => $currentStock,
+                'sales_by_day' => $sales,
             ];
         }
 

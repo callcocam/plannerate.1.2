@@ -2,7 +2,8 @@ import { defineStore } from 'pinia';
 
 export const useAnalysisResultStore = defineStore('analysisResult', {
   state: () => ({
-    result: null as any // Pode ser array ou objeto, conforme a análise
+    result: null as any, // Pode ser array ou objeto, conforme a análise
+    loading: false, // Add loading state
   }),
   getters: {
     getById: (state) => (id: string | number) => {
@@ -18,6 +19,10 @@ export const useAnalysisResultStore = defineStore('analysisResult', {
     },
     clearResult() {
       this.result = null;
+    },
+    requestRecalculation() {
+      // This action will be used to signal that a recalculation is needed
+      this.loading = true; // Set loading to true when recalculation is requested
     }
   },
 }); 

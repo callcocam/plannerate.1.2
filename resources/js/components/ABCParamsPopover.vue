@@ -1,13 +1,10 @@
 <script setup lang="ts">
-import { ref, defineEmits, defineProps, watch, computed } from 'vue';
-import { useEditorStore } from '@plannerate/store/editor'; 
-import { useAnalysisService } from '@plannerate/services/analysisService';
+import { ref, defineEmits, defineProps, watch } from 'vue'; 
 // @ts-ignore
 import { useAssortmentStatus, type Weights, type Thresholds } from '@plannerate/composables/useSortimentoStatus';
-import { useAnalysisResultStore } from '@plannerate/store/editor/analysisResult'; 
+import { useAnalysisResultStore } from '@plannerate/store/editor/analysisResult';
 
 const analysisResultStore = useAnalysisResultStore();
-const analysisService = useAnalysisService();
 const props = defineProps({
     weights: {
         type: Object,
@@ -28,18 +25,18 @@ const props = defineProps({
     },
 });
 
-const editorStore = useEditorStore(); 
 const weights = ref(props.weights);
 const thresholds = ref(props.thresholds);
 
-const gondola = computed(() => editorStore.getCurrentGondola);
 
-const emit = defineEmits(['update:weights', 'update:thresholds', 'executar', 'show-result-modal']);
+const emit = defineEmits(['update:weights', 'update:thresholds', 'executar'/*, 'show-result-modal'*/]);
 
 // Estado para controlar a visibilidade da modal
+/*
 const showResultModal = () => {
     emit('show-result-modal');
 }
+*/
 
 watch(() => props.weights, (val) => {
     weights.value = val;
@@ -56,64 +53,6 @@ function atualizarCampo(campo: string, valor: number) {
     emit('update:thresholds', { ...thresholds.value });
 }
 
-async function executeCalculation() {
-    const products: any[] = [];
-    gondola.value?.sections.forEach(section => {
-        section.shelves.forEach(shelf => {
-            shelf.segments.forEach(segment => {
-                const product = segment.layer.product as any;
-                if (product) {
-                    products.push({
-                        id: product.id,
-                        ean: product.ean,
-                        name: product.name,
-                        classification: product.classification,
-                        currentStock: product.current_stock || 0
-                    });
-                }
-            });
-        });
-    });
-
-    if (products.length > 0) {
-        const analysisData = await analysisService.getABCAnalysisData(
-            products.map(p => p.id),
-            {
-                // período padrão dos últimos 30 dias
-                startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                endDate: new Date().toISOString().split('T')[0],
-                weights: weights.value as { quantity: number; value: number; margin: number },
-                thresholds: thresholds.value as { a: number; b: number }
-            }
-        );
-        
-        // Transformar os dados no formato esperado
-        const productsWithData = products.map(product => {
-            const productData = analysisData.find((data: any) => data.product_id === product.id); 
-            return {
-                id: productData?.ean || '',
-                ean: productData?.ean || '',
-                name: productData?.name || '',
-                category: productData?.category || '',
-                quantity: productData?.quantity || 0,
-                value: productData?.value || 0,
-                margin: productData?.margin || 0,
-                lastPurchase: productData?.lastPurchase || '',
-                lastSale: productData?.lastSale || '',
-                currentStock: productData?.currentStock || 0
-            };
-        });
-
-        const analyzed = useAssortmentStatus(
-            productsWithData,
-            weights.value as Weights,
-            thresholds.value as Thresholds
-        );
-        
-        analysisResultStore.setResult(analyzed);
-        showResultModal();
-    }
-}
 
 </script>
 
@@ -147,9 +86,14 @@ async function executeCalculation() {
             </div>
         </div>
         <div class="flex justify-end mt-2 gap-2">
-            <Button v-if="analysisResultStore.result" @click="showResultModal" variant="destructive">Ver Resultado</Button>
-            <Button @click="executeCalculation" variant="default">Executar Cálculo</Button>
+            <Button v-if="analysisResultStore.result" @click="analysisResultStore.setResult(null);" variant="destructive">Limpar Resultado</Button>
+            <Button @click="analysisResultStore.requestRecalculation()" variant="default" :disabled="analysisResultStore.loading">
+                <span v-if="analysisResultStore.loading" class="flex items-center gap-1">
+                    <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    Calculando...
+                </span>
+                <span v-else>Executar Cálculo</span>
+            </Button>
         </div>
-
     </div>
 </template>

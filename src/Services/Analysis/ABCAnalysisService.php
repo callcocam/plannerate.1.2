@@ -112,32 +112,32 @@ class ABCAnalysisService
         $result = [];
 
         foreach ($products as $product) {
+            // $productSales = Sale::where('product_id', $product->id) ;
             $productSales = $product->sales;
             $quantity = $productSales->sum('sale_quantity');
             $value = $productSales->sum('sale_value');
             $margin = $productSales->sum('unit_contribution_margin');
             $productPurchases = $product->purchases;
-            $currentStock = $productPurchases->first()->current_stock;
+            $currentPurchases = $productPurchases->first();
             // $totals = $this->calculateTotals($productSales, $productPurchases);
- 
+            $currentStock = 0;
             // $margin = $marginPonderada + $valuePonderada + $quantityPonderada;
             $lastPurchase = null;
             $lastSale = null;
-            if ($entryDate = $productPurchases->first()) {
-                $lastPurchase = $entryDate->entry_date;
+            if ($currentPurchases) {
+                $lastPurchase = $currentPurchases->entry_date;
+                $currentStock = $currentPurchases->current_stock;
             }
             if ($saleDate = $productSales->first()) {
                 $lastSale = $saleDate->sale_date;
             }
             $result[] = [
-                'id' => $product->id,
-                'product_id' => $product->id,
-                'ean' => $product->ean,
+                'id' => $product->ean, 
                 'name' => $product->name,
                 'category' => $product->category_name, //Atributo analise de sortimento
                 'quantity' => $quantity,
-                'value' => number_format($value),
-                'margin' => floatval($margin),
+                'value' => $value,
+                'margin' => $margin,
                 'currentStock' => $currentStock,
                 'lastPurchase' => $lastPurchase,
                 'lastSale' => $lastSale,

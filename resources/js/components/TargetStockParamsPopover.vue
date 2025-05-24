@@ -4,6 +4,8 @@ import { useEditorStore } from '@plannerate/store/editor';
 import { useAnalysisService } from '@plannerate/services/analysisService';
 import { useTargetStock, type ServiceLevel, type Replenishment } from '@plannerate/composables/useTargetStock'; 
 import { SmallInput } from '@plannerate/components/ui/input'; 
+import { useTargetStockResultStore } from '@plannerate/store/editor/targetStockResult';
+
 const analysisService = useAnalysisService();
 const props = defineProps({
     serviceLevels: {
@@ -27,14 +29,14 @@ const props = defineProps({
 });
 
 const editorStore = useEditorStore(); 
- 
+const targetStockResultStore = useTargetStockResultStore();
+
 const serviceLevels = ref(props.serviceLevels);
 const replenishmentParams = ref(props.replenishmentParams);
 
 const gondola = computed(() => editorStore.getCurrentGondola);
 
-const emit = defineEmits(['update:serviceLevels', 'update:replenishmentParams', 'executar', 'show-result-modal']);
-
+const emit = defineEmits(['update:serviceLevels', 'update:replenishmentParams', 'executar', 'show-result-modal', 'close']);
 
 watch(() => props.serviceLevels, (val) => {
     serviceLevels.value = val;
@@ -85,27 +87,30 @@ async function executeCalculation() {
             {
                 period: 30 // período padrão de 30 dias
             }
-        );
-        
+        ); 
         // Transformar os dados de vendas no formato esperado
         const productsWithSales = products.map(product => {
-            const productSales = sales.filter((sale: any) => sale.product_id === product.id);
+            const productSales = sales.find((sale: any) => sale.product_id === product.id);
             return {
                 ...product,
-                sales: productSales.map((sale: any) => sale.quantity)
+                sales: productSales ? Object.values(productSales.sales_by_day) : []
             };
-        });
-
+        }); 
         const analyzed = useTargetStock(
             productsWithSales,
             serviceLevels.value,
             replenishmentParams.value
         );
         
+        // Atualizar o store com os resultados
+        targetStockResultStore.setResult(analyzed, replenishmentParams.value);
+        
+        // Emitir eventos
         emit('show-result-modal', {
             result: analyzed,
             replenishmentParams: replenishmentParams.value
         });
+        emit('close'); // Fechar o popover
     }
 }
 </script>
@@ -152,8 +157,13 @@ async function executeCalculation() {
             <Button 
                 @click="executeCalculation" 
                 variant="default"
+                :disabled="targetStockResultStore.loading"
             >
-                Executar Cálculo
+                <span v-if="targetStockResultStore.loading" class="flex items-center gap-1">
+                    <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    Calculando...
+                </span>
+                <span v-else>Executar Cálculo</span>
             </Button>
         </div>
     </div>

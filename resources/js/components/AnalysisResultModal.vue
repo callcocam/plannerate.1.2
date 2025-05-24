@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { Button } from '@/components/ui/button';
-import { ArrowUpDown, ArrowUp, ArrowDown, Search, X, Download } from 'lucide-vue-next';
+import { ArrowUpDown, ArrowUp, ArrowDown, Search, X, Download, RefreshCw } from 'lucide-vue-next';
 import { Input } from '@/components/ui/input';
 import * as XLSX from 'xlsx';
 import { useAnalysisResultStore } from '@plannerate/store/editor/analysisResult';
 
 interface AssortmentResult {
-  id: number;
+  id: string;
   ean: string;
   name: string;
   category: string;
@@ -16,12 +16,27 @@ interface AssortmentResult {
   value: number;
   margin: number;
   currentStock: number;
+  removeFromMix: boolean;
 }
 
- defineProps<{ open: boolean }>();
-const emit = defineEmits(['close']);
+defineProps<{ open: boolean }>();
+const emit = defineEmits(['close', 'remove-from-gondola']);
 
 const analysisResultStore = useAnalysisResultStore();  
+
+// Estado para a linha selecionada
+const selectedItemId = ref<string | null>(null);
+
+// Computed para o item selecionado
+const selectedItem = computed(() => {
+  if (selectedItemId.value === null || !analysisResultStore.result) return null;
+  return (analysisResultStore.result as AssortmentResult[]).find(item => item.id.toString() === selectedItemId.value);
+});
+
+// Computed para controlar a exibição do botão de remover
+const showRemoveButton = computed(() => {
+  return selectedItem.value !== null && selectedItem.value !== undefined && selectedItem.value.removeFromMix;
+});
 
 // Estado de ordenação
 const sortConfig = ref({
@@ -153,11 +168,6 @@ const formatNumber = new Intl.NumberFormat('pt-BR', {
   minimumFractionDigits: 0,
   maximumFractionDigits: 0
 });
-
-const formatCurrency = new Intl.NumberFormat('pt-BR', {
-  style: 'currency',
-  currency: 'BRL'
-});
  
 
 // Cálculos do resumo
@@ -183,26 +193,57 @@ const summary = computed(() => {
     totals
   };
 });
+
+function removeFromGondola(selectedItemId: string | null) {
+  if (selectedItemId) {
+    emit('remove-from-gondola', selectedItemId);
+  }
+}
 </script>
 
 <template>
   <div v-if="open" class="fixed inset-0 z-50 flex items-center justify-center bg-black/25">
-    <div class="bg-white rounded-lg shadow-lg   w-full p-6 relative mx-1.5">
+    <div class="bg-white rounded-lg shadow-lg   w-full p-6 relative mx-1.5 max-w-7xl overflow-auto">
       <div class="flex justify-between items-center mb-4">
         <h2 class="text-lg font-bold">Resultado da Análise de Assortimento</h2>
-        <Button
-          variant="outline"
-          size="sm"
-          @click="exportToExcel"
-          class="flex items-center gap-2"
-        >
-          <Download class="h-4 w-4" />
-          Exportar Excel
-        </Button>
+        <div class="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            @click="closeModal"
+            class="flex items-center gap-2"
+          >
+            Fechar
+            <X class="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            @click="analysisResultStore.requestRecalculation()"
+            class="flex items-center gap-2"
+            :disabled="analysisResultStore.loading"
+          >
+            <span v-if="analysisResultStore.loading" class="flex items-center gap-1">
+              <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+              Calculando...
+            </span>
+            <span v-else>Recalcular</span>
+            <RefreshCw class="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            @click="exportToExcel"
+            class="flex items-center gap-2"
+          >
+            <Download class="h-4 w-4" />
+            Exportar Excel
+          </Button>
+        </div>
       </div>
       
       <!-- Resumo -->
-      <div v-if="summary" class="mb-6 p-4 bg-gray-50 rounded-lg">
+      <div v-if="summary" class="mb-6 py-2 px-4 bg-gray-50 rounded-lg">
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div>
             <h3 class="text-sm font-medium text-gray-500">Total de Itens</h3>
@@ -210,7 +251,7 @@ const summary = computed(() => {
           </div>
           <div>
             <h3 class="text-sm font-medium text-gray-500">Status</h3>
-            <div class="space-y-1">
+            <div class="space-x-2 flex ">
               <p class="text-sm">
                 <span class="text-green-600">Ativo:</span> {{ formatNumber.format(summary.statusCounts.Ativo) }}
               </p>
@@ -218,17 +259,7 @@ const summary = computed(() => {
                 <span class="text-yellow-600">Inativo:</span> {{ formatNumber.format(summary.statusCounts.Inativo) }}
               </p> 
             </div>
-          </div>
-          <div>
-            <h3 class="text-sm font-medium text-gray-500">Valores Totais</h3>
-            <p class="text-sm">Quantidade: {{ formatNumber.format(summary.totals.quantity) }}</p>
-            <p class="text-sm">Valor: {{ formatCurrency.format(summary.totals.value) }}</p>
-            <p class="text-sm">Margem: {{ formatCurrency.format(summary.totals.margin) }}</p>
-          </div>
-          <div>
-            <h3 class="text-sm font-medium text-gray-500">Estoque Total</h3>
-            <p class="text-lg font-semibold">{{ formatNumber.format(summary.totals.currentStock) }}</p>
-          </div>
+          </div> 
         </div>
       </div>
 
@@ -275,12 +306,12 @@ const summary = computed(() => {
 
       <!-- Tabela com scroll -->
       <div class="overflow-x-auto max-h-[60vh]">
-        <table class="min-w-full text-sm border">
+        <table class="text-sm border">
           <thead class="sticky top-0 bg-white z-10">
             <tr class="bg-gray-100">
               <th 
                 v-for="(label, key) in {
-                  ean: 'EAN',
+                  id: 'EAN',
                   category: 'Categoria', 
                   name: 'Nome',
                   weightedAverage: 'Média Ponderada',
@@ -308,8 +339,13 @@ const summary = computed(() => {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in filteredResults" :key="item.id">
-              <td class="px-2 py-1 border">{{ item.ean }}</td>
+            <tr 
+              v-for="item in filteredResults" 
+              :key="item.id"
+              @click="selectedItemId = selectedItemId === item.id ? null : item.id"
+              :class="{'bg-blue-100 dark:bg-blue-900/50': selectedItemId === item.id, 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50': true}"
+            >
+              <td class="px-2 py-1 border">{{ item.id }}</td>
               <td class="px-2 py-1 border flex flex-col">
                 {{ item.category }}
               </td> 
@@ -334,8 +370,23 @@ const summary = computed(() => {
       </div>
       <div v-if="filteredResults.length === 0" class="text-gray-500 mt-4">Nenhum resultado encontrado.</div>
       <div class="flex justify-end mt-4">
+        <Button v-if="showRemoveButton" variant="destructive" class="mr-2" @click="removeFromGondola(selectedItemId)">
+          Remover da Gôndola
+        </Button>
         <Button @click="closeModal" variant="outline">Fechar</Button>
       </div>
     </div>
   </div>
 </template> 
+
+
+<style scoped>
+table {
+  border-collapse: collapse;
+}
+
+th,
+td {
+  white-space: nowrap;
+}
+</style>

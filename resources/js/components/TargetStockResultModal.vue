@@ -3,11 +3,61 @@
     <div class="bg-white rounded-lg shadow-lg max-w-7xl w-full p-6 relative">
       <div class="flex justify-between items-center mb-4">
         <h2 class="text-lg font-bold">Resultado do Estoque Alvo</h2>
-        <Button variant="outline" size="sm" @click="exportToExcel" class="flex items-center gap-2">
-          <Download class="h-4 w-4" />
-          Exportar Excel
-        </Button>
+        <div class="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            @click="closeModal"
+            class="flex items-center gap-2"
+          >
+            Fechar
+            <X class="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            @click="targetStockResultStore.requestRecalculation()"
+            class="flex items-center gap-2"
+            :disabled="targetStockResultStore.loading"
+          >
+            <span v-if="targetStockResultStore.loading" class="flex items-center gap-1">
+              <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+              Calculando...
+            </span>
+            <span v-else>Recalcular</span>
+            <RefreshCw class="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="sm" @click="exportToExcel" class="flex items-center gap-2">
+            <Download class="h-4 w-4" />
+            Exportar Excel
+          </Button>
+        </div>
       </div>
+
+      <!-- Resumo -->
+      <div v-if="summary" class="mb-6 py-2 px-4 bg-gray-50 rounded-lg">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div>
+            <h3 class="text-sm font-medium text-gray-500">Total de Itens</h3>
+            <p class="text-lg font-semibold">{{ formatNumber.format(summary.totalItems) }}</p>
+          </div>
+          <div>
+            <h3 class="text-sm font-medium text-gray-500">Classificação</h3>
+            <div class="space-x-2 flex">
+              <p class="text-sm">
+                <span class="text-green-600">A:</span> {{ formatNumber.format(summary.classificationCounts.A) }}
+              </p>
+              <p class="text-sm">
+                <span class="text-yellow-600">B:</span> {{ formatNumber.format(summary.classificationCounts.B) }}
+              </p>
+              <p class="text-sm">
+                <span class="text-red-600">C:</span> {{ formatNumber.format(summary.classificationCounts.C) }}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Filtros -->
       <div class="mb-4 flex flex-col sm:flex-row gap-4">
         <div class="flex-1">
@@ -20,7 +70,29 @@
             </button>
           </div>
         </div>
+        <div class="flex gap-2">
+          <Button
+            v-for="classification in ['A', 'B', 'C']"
+            :key="classification"
+            :variant="activeClassificationFilters.has(classification) ? 'default' : 'outline'"
+            :class="{
+              'bg-green-600 hover:bg-green-700': classification === 'A' && activeClassificationFilters.has(classification),
+              'bg-yellow-600 hover:bg-yellow-700': classification === 'B' && activeClassificationFilters.has(classification),
+              'bg-red-600 hover:bg-red-700': classification === 'C' && activeClassificationFilters.has(classification)
+            }"
+            @click="toggleClassificationFilter(classification)"
+          >
+            {{ classification }}
+          </Button>
+          <Button
+            variant="outline"
+            @click="clearFilters"
+          >
+            Limpar Filtros
+          </Button>
+        </div>
       </div>
+
       <!-- Tabela -->
       <div class="overflow-x-auto max-h-[60vh]">
         <table class="min-w-full text-xs border">
@@ -79,17 +151,18 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { Button } from '@/components/ui/button';
-import { ArrowUpDown, ArrowUp, ArrowDown, Search, X, Download } from 'lucide-vue-next';
+import { ArrowUpDown, ArrowUp, ArrowDown, Search, X, Download, RefreshCw } from 'lucide-vue-next';
 import { Input } from '@/components/ui/input';
 import * as XLSX from 'xlsx';
 import type { StockAnalysis, Replenishment } from '@plannerate/composables/useTargetStock';
+import { useTargetStockResultStore } from '@plannerate/store/editor/targetStockResult';
 
 const props = defineProps<{
   open: boolean;
-  result: StockAnalysis[];
-  replenishmentParams: Replenishment[];
 }>();
 const emit = defineEmits(['close']);
+
+const targetStockResultStore = useTargetStockResultStore();
 
 // Estado de ordenação
 const sortConfig = ref({
@@ -97,8 +170,9 @@ const sortConfig = ref({
   direction: 'asc' as 'asc' | 'desc'
 });
 
-// Estado do filtro de texto
+// Estado dos filtros
 const searchText = ref('');
+const activeClassificationFilters = ref<Set<string>>(new Set(['A', 'B', 'C']));
 
 // Função para exportar para Excel
 function exportToExcel() {
@@ -126,10 +200,25 @@ function exportToExcel() {
   XLSX.writeFile(wb, fileName);
 }
 
+// Função para alternar filtro de classificação
+function toggleClassificationFilter(classification: string) {
+  if (activeClassificationFilters.value.has(classification)) {
+    activeClassificationFilters.value.delete(classification);
+  } else {
+    activeClassificationFilters.value.add(classification);
+  }
+}
+
+// Função para limpar todos os filtros
+function clearFilters() {
+  searchText.value = '';
+  activeClassificationFilters.value = new Set(['A', 'B', 'C']);
+}
+
 // Ordenação
 const sortedResults = computed(() => {
-  if (!props.result) return [];
-  return [...props.result].sort((a, b) => {
+  if (!targetStockResultStore.result) return [];
+  return [...targetStockResultStore.result].sort((a, b) => {
     const aValue = a[sortConfig.value.key];
     const bValue = b[sortConfig.value.key];
     if (typeof aValue === 'string' && typeof bValue === 'string') {
@@ -146,6 +235,11 @@ const sortedResults = computed(() => {
 // Filtro
 const filteredResults = computed(() => {
   return sortedResults.value.filter(item => {
+    // Filtro por classificação
+    if (activeClassificationFilters.value.size > 0 && !activeClassificationFilters.value.has(item.classification)) {
+      return false;
+    }
+    // Filtro por texto
     if (searchText.value) {
       const searchLower = searchText.value.toLowerCase();
       return (
@@ -171,13 +265,30 @@ function closeModal() {
 }
 
 function getCoverageDays(classification: string) {
-  const param = props.replenishmentParams.find(rp => rp.classification === classification);
-  return param ? param.coverageDays : '-';
+  const param = targetStockResultStore.replenishmentParams.find(p => p.classification === classification);
+  return param?.coverageDays || 0;
 }
 
 const formatNumber = new Intl.NumberFormat('pt-BR', {
-  minimumFractionDigits: 0,
+  minimumFractionDigits: 2,
   maximumFractionDigits: 2
+});
+
+// Cálculos do resumo
+const summary = computed(() => {
+  if (!targetStockResultStore.result) return null;
+  
+  const totalItems = targetStockResultStore.result.length;
+  const classificationCounts = {
+    A: targetStockResultStore.result.filter(item => item.classification === 'A').length,
+    B: targetStockResultStore.result.filter(item => item.classification === 'B').length,
+    C: targetStockResultStore.result.filter(item => item.classification === 'C').length
+  };
+
+  return {
+    totalItems,
+    classificationCounts
+  };
 });
 </script>
 
