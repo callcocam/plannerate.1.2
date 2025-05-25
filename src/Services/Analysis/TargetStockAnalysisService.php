@@ -34,12 +34,10 @@ class TargetStockAnalysisService
         $sales = $this->getSales($productIds, $startDate, $endDate, $storeId);
 
         // Agrupa as vendas por produto e dia
-        $dailySales = $this->groupDailySales($sales);
-
-        $currentStock = $this->getCurrentStock($productIds, $startDate, $endDate, $storeId);
+        $dailySales = $this->groupDailySales($sales); 
 
         // Calcula as estatísticas
-        $statistics = $this->calculateStatistics($dailySales, $period, $currentStock);
+        $statistics = $this->calculateStatistics($dailySales, $period);
 
         return $statistics;
     }
@@ -95,10 +93,10 @@ class TargetStockAnalysisService
         return $grouped;
     }
 
-    protected function getCurrentStock(array $productIds, ?string $startDate, ?string $endDate, ?string $storeId): int
+    protected function getCurrentStock(string $productId, ?string $startDate, ?string $endDate, ?string $storeId): int
     {
-        $query = Purchase::whereIn('product_id', $productIds)
-            ->orderBy('entry_date', 'desc');
+        $query = Purchase::where('product_id', $productId)
+            ->orderBy('entry_date', 'asc');
 
         if ($startDate) {
             $query->where('entry_date', '>=', $startDate);
@@ -121,11 +119,12 @@ class TargetStockAnalysisService
     /**
      * Calcula as estatísticas de vendas
      */
-    protected function calculateStatistics(array $dailySales, int $period, int $currentStock): array
+    protected function calculateStatistics(array $dailySales, int $period): array
     {
         $result = [];
 
         foreach ($dailySales as $productId => $sales) {
+            $currentStock = $this->getCurrentStock($productId, null, null, null);
             $quantities = array_values($sales);
             $count = count($quantities);
 

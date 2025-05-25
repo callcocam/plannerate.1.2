@@ -73,8 +73,7 @@ async function executeCalculation() {
                         id: product.id,
                         ean: product.ean,
                         name: product.name,
-                        classification: product.classification || 'C',
-                        currentStock: product.current_stock || 0
+                        classification: product.classification || 'A', 
                     });
                 }
             });
@@ -91,11 +90,17 @@ async function executeCalculation() {
         // Transformar os dados de vendas no formato esperado
         const productsWithSales = products.map(product => {
             const productSales = sales.find((sale: any) => sale.product_id === product.id);
+            console.log(productSales.currentStock, product.ean)
             return {
-                ...product,
+                ...product, 
+                standard_deviation: productSales.standard_deviation,
+                average_sales: productSales.average_sales,
+                currentStock:productSales.currentStock,
+                variability:productSales.variability,
                 sales: productSales ? Object.values(productSales.sales_by_day) : []
             };
         }); 
+        console.log(sales)
         const analyzed = useTargetStock(
             productsWithSales,
             serviceLevels.value,

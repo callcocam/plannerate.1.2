@@ -1,7 +1,7 @@
 <template>
     <div class="layer group flex cursor-pointer justify-between" :style="layerStyle" @click="handleLayerClick"
         @keydown="handleKeyDown" :class="{ 'layer--selected': isSelected, 'layer--focused': !isSelected }">
-      
+
         <ProductNormal v-for="index in layer.quantity" :key="index" :product="layer.product" :scale-factor="scaleFactor"
             :index="index" :shelf-depth="props.shelfDepth" :layer="layer">
             <template #depth-count v-if="index === 1">
@@ -17,7 +17,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useEditorStore } from '@plannerate/store/editor';
 import ProductNormal from '@plannerate/views/gondolas/sections/shelves/Product.vue';
 import { Layer as LayerType, Segment as SegmentType } from '@/types/segment';
-import { Shelf } from '@plannerate/types/shelves'; 
+import { Shelf } from '@plannerate/types/shelves';
 const props = defineProps<{
     layer: LayerType;
     segment: SegmentType;
@@ -32,6 +32,7 @@ const emit = defineEmits<{
     (e: 'decrease', layer: LayerType): void;
     (e: 'tab-navigation', data: { isLast: boolean, direction: 'next' | 'prev', currentTabIndex: number }): void;
     (e: 'layer-click', layer: LayerType): void;
+    (e: 'update-layer-quantity', layer: LayerType): void;
 }>();
 
 //  
@@ -141,6 +142,18 @@ const handleSelectedLayer = (isCtrlOrMetaPressed: boolean, productId: string, la
 /**
  * Aumenta a quantidade de produtos no layer
  */
+const onUpdateQuantity = async (quantity: number) => {
+    // Usa selectedLayerIds
+    if (editorStore.getSelectedLayerIds.size > 1) return;
+
+    emit('update-layer-quantity', {
+        ...props.layer,
+        quantity: quantity,
+    });
+};
+/**
+ * Aumenta a quantidade de produtos no layer
+ */
 const onIncreaseQuantity = async () => {
     // Usa selectedLayerIds
     if (editorStore.getSelectedLayerIds.size > 1) return;
@@ -205,7 +218,11 @@ const handleKeyDown = (event: KeyboardEvent) => {
     if (isSelected.value) {
         const target = event?.target as HTMLElement;
         const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
-        if (event.key === 'ArrowRight' && !isInput) {
+        // Vamos verificar se e um numero e passar o numero no incremant da quantity
+        if (/^[1-9]$/.test(event.key)) {
+            event.preventDefault();
+            onUpdateQuantity(parseInt(event.key))
+        } else if (event.key === 'ArrowRight' && !isInput) {
             event.preventDefault();
             onIncreaseQuantity();
         } else if (event.key === 'ArrowLeft' && !isInput) {

@@ -89,6 +89,7 @@ export function useTargetStock(
     
     // Determine if allows facing
     const allowsFacing = product.currentStock >= targetStock;
+    console.log(product.currentStock >= targetStock, product.currentStock)
     
     return {
       ...product,

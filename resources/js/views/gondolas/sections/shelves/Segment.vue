@@ -1,32 +1,15 @@
 <template>
-    <div
-        class="segment drag-segment-handle group relative flex flex-col items-start"
-        :style="outerSegmentStyle"
-        @dragstart="onDragStart"
-        draggable="true"
-        :tabindex="segment.tabindex"
-        v-if="segment.layer"
-    >
+    <div class="segment drag-segment-handle group relative flex flex-col items-start" :style="outerSegmentStyle"
+        @dragstart="onDragStart" draggable="true" :tabindex="segment.tabindex" v-if="segment.layer">
         <div :style="innerSegmentStyle">
-            <LayerComponent
-                v-for="(_, index) in segmentQuantity"
-                :key="index"
-                :shelf="shelf"
-                :segment="segment"
-                :layer="segment.layer"
-                :scale-factor="scaleFactor"
-                :section-width="sectionWidth"
-                :shelf-depth="shelf.shelf_depth"
-                @increase="onIncreaseQuantity"
-                @decrease="onDecreaseQuantity"
-            >
+            <LayerComponent v-for="(_, index) in segmentQuantity" :key="index" :shelf="shelf" :segment="segment"
+                :layer="segment.layer" :scale-factor="scaleFactor" :section-width="sectionWidth"
+                :shelf-depth="shelf.shelf_depth" @increase="onIncreaseQuantity" @decrease="onDecreaseQuantity"
+                @update-layer-quantity="updateLayerQuantity">
                 <template #depth-count>
-                    <Label
-                        :title="`Profundidade da prateleira: ${depthCount}`"
-                        class="product-content-depth absolute -top-2 -left-2 z-10 flex h-3 w-3 cursor-help items-center justify-center rounded-full bg-gray-700 text-xs text-gray-100 dark:bg-gray-300 dark:text-gray-800"
-                    >
-                        {{ depthCount }}</Label
-                    >
+                    <Label :title="`Profundidade da prateleira: ${depthCount}`"
+                        class="product-content-depth absolute -top-2 -left-2 z-10 flex h-3 w-3 cursor-help items-center justify-center rounded-full bg-gray-700 text-xs text-gray-100 dark:bg-gray-300 dark:text-gray-800">
+                        {{ depthCount }}</Label>
                 </template>
             </LayerComponent>
         </div>
@@ -35,7 +18,7 @@
 <script setup lang="ts">
 import { useEditorStore } from '@plannerate/store/editor';
 import { Gondola } from '@plannerate/types/gondola';
-import type { Segment } from '@plannerate/types/segment';
+import type { Layer, Segment } from '@plannerate/types/segment';
 import type { Shelf } from '@plannerate/types/shelves';
 import { validateShelfWidth } from '@plannerate/utils/validation';
 import { computed, defineProps, type CSSProperties } from 'vue';
@@ -62,14 +45,14 @@ const depthCount = computed(() => {
 });
 
 /** Segment quantity (number of layers) */
-const segmentQuantity = computed(() => { 
+const segmentQuantity = computed(() => {
     return props.segment?.quantity ?? 0;
 });
 const alignment = computed(() => editorStore.getCurrentGondola?.alignment);
 
 // Estilo para o container interno (conteúdo visual - Normal Shelf)
 const innerSegmentStyle = computed(() => {
-    const layerHeight = props.segment.layer.product.height * props.segment.quantity * props.scaleFactor; 
+    const layerHeight = props.segment.layer.product.height * props.segment.quantity * props.scaleFactor;
     const selectedStyle = {};
     return {
         height: `${layerHeight}px`,
@@ -86,7 +69,7 @@ const outerSegmentStyle = computed(() => {
     let currentAlignment = alignment.value;
 
     if (currentAlignment === 'justify') {
-        layerWidthFinal = props.sectionWidth * props.scaleFactor; 
+        layerWidthFinal = props.sectionWidth * props.scaleFactor;
     } else {
         layerWidthFinal = productWidth * productQuantity * props.scaleFactor;
     }
@@ -99,15 +82,45 @@ const outerSegmentStyle = computed(() => {
         marginBottom: `${marginBottom}px`,
     } as CSSProperties;
 });
-
-// Funções (onIncreaseQuantity, onDecreaseQuantity, onDragStart)
-// Mantidas como estavam, pois não dependem do tipo hook/normal
-const onIncreaseQuantity = () => {
-    if (!editorStore.getCurrentGondola?.id || !currentSectionId.value || !props.shelf?.id || !props.segment?.id || !props.segment?.layer?.product?.id) { 
+const updateLayerQuantity = (layer: Layer) => {
+    if (!editorStore.getCurrentGondola?.id || !currentSectionId.value || !props.shelf?.id || !props.segment?.id || !props.segment?.layer?.product?.id) {
         toast.error('Erro Interno', { description: 'Dados incompletos para aumentar quantidade.' });
         return;
     }
-    if (props.sectionWidth === undefined || props.sectionWidth <= 0) { 
+    if (props.sectionWidth === undefined || props.sectionWidth <= 0) {
+        toast.error('Erro Interno', { description: 'Largura da seção inválida.' });
+        return;
+    }
+
+    let newQuantity = layer.quantity;
+
+
+    const validation = validateShelfWidth(props.shelf, props.sectionWidth, props.segment.layer.product.id, newQuantity, null);
+
+    if (!validation.isValid) {
+        toast.error('Limite de Largura Excedido', {
+            description: `A largura total (${validation.totalWidth.toFixed(1)}cm) excederia a largura da seção (${validation.sectionWidth}cm).`,
+        });
+        return;
+    }
+
+    editorStore.updateLayerQuantity(
+        editorStore.getCurrentGondola?.id,
+        currentSectionId.value,
+        props.shelf.id,
+        props.segment.id,
+        props.segment.layer.product.id,
+        newQuantity,
+    );
+}
+// Funções (onIncreaseQuantity, onDecreaseQuantity, onDragStart)
+// Mantidas como estavam, pois não dependem do tipo hook/normal
+const onIncreaseQuantity = () => {
+    if (!editorStore.getCurrentGondola?.id || !currentSectionId.value || !props.shelf?.id || !props.segment?.id || !props.segment?.layer?.product?.id) {
+        toast.error('Erro Interno', { description: 'Dados incompletos para aumentar quantidade.' });
+        return;
+    }
+    if (props.sectionWidth === undefined || props.sectionWidth <= 0) {
         toast.error('Erro Interno', { description: 'Largura da seção inválida.' });
         return;
     }
@@ -176,7 +189,7 @@ const onDragStart = (event: DragEvent) => {
     // Incluir explicitamente o shelf_id da origem
     const segmentData = {
         ...props.segment,
-    }; 
+    };
     if (isCtrlOrMetaPressed) {
         // Copiar (quando Ctrl/Meta está pressionado)
         event.dataTransfer.effectAllowed = 'copy';
@@ -194,6 +207,7 @@ const onDragStart = (event: DragEvent) => {
 .segment {
     position: relative;
 }
+
 .segment--selected {
     border: 2px solid blue;
     box-shadow: 0 0 5px rgba(0, 0, 255, 0.5);

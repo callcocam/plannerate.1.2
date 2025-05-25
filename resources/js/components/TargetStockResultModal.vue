@@ -1,27 +1,22 @@
 <template>
   <div v-if="open" class="fixed inset-0 z-[300] flex items-center justify-center bg-black/25">
-    <div class="bg-white rounded-lg shadow-lg max-w-7xl w-full p-6 relative z-[300]">
+    <div class="bg-white rounded-lg shadow-lg   w-full p-6 relative z-[300]">
       <div class="flex justify-between items-center mb-4">
         <h2 class="text-lg font-bold">Resultado do Estoque Alvo</h2>
         <div class="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            @click="closeModal"
-            class="flex items-center gap-2"
-          >
+          <Button variant="outline" size="sm" @click="closeModal" class="flex items-center gap-2">
             Fechar
             <X class="h-4 w-4" />
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            @click="targetStockResultStore.requestRecalculation()"
-            class="flex items-center gap-2"
-            :disabled="targetStockResultStore.loading"
-          >
+          <Button variant="outline" size="sm" @click="targetStockResultStore.requestRecalculation()"
+            class="flex items-center gap-2" :disabled="targetStockResultStore.loading">
             <span v-if="targetStockResultStore.loading" class="flex items-center gap-1">
-              <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+              <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                </path>
+              </svg>
               Calculando...
             </span>
             <span v-else>Recalcular</span>
@@ -71,23 +66,15 @@
           </div>
         </div>
         <div class="flex gap-2">
-          <Button
-            v-for="classification in ['A', 'B', 'C']"
-            :key="classification"
-            :variant="activeClassificationFilters.has(classification) ? 'default' : 'outline'"
-            :class="{
+          <Button v-for="classification in ['A', 'B', 'C']" :key="classification"
+            :variant="activeClassificationFilters.has(classification) ? 'default' : 'outline'" :class="{
               'bg-green-600 hover:bg-green-700': classification === 'A' && activeClassificationFilters.has(classification),
               'bg-yellow-600 hover:bg-yellow-700': classification === 'B' && activeClassificationFilters.has(classification),
               'bg-red-600 hover:bg-red-700': classification === 'C' && activeClassificationFilters.has(classification)
-            }"
-            @click="toggleClassificationFilter(classification)"
-          >
+            }" @click="toggleClassificationFilter(classification)">
             {{ classification }}
           </Button>
-          <Button
-            variant="outline"
-            @click="clearFilters"
-          >
+          <Button variant="outline" @click="clearFilters">
             Limpar Filtros
           </Button>
         </div>
@@ -109,7 +96,8 @@
                 safetyStock: 'Estoque de Segurança',
                 minimumStock: 'Estoque mínimo prateleira',
                 targetStock: 'Estoque alvo prateleira',
-                allowsFacing: 'Estoque permite numero de frentes'
+                allowsFacing: 'Estoque permite numero de frentes',
+                currentStock: 'Estoque Atual',
               }" :key="key" class="px-2 py-1 border cursor-pointer hover:bg-gray-200"
                 @click="toggleSort(key as keyof StockAnalysis)">
                 <div class="flex items-center justify-between">
@@ -136,6 +124,7 @@
               <td class="px-2 py-1 border text-right">{{ item.minimumStock }}</td>
               <td class="px-2 py-1 border text-right">{{ item.targetStock }}</td>
               <td class="px-2 py-1 border">{{ item.allowsFacing ? 'Sim' : 'Não' }}</td>
+              <td class="px-2 py-1 border">{{ item.currentStock }}</td>
             </tr>
           </tbody>
         </table>
@@ -265,6 +254,7 @@ function closeModal() {
 }
 
 function getCoverageDays(classification: string) {
+  console.log(classification)
   const param = targetStockResultStore.replenishmentParams.find(p => p.classification === classification);
   return param?.coverageDays || 0;
 }
@@ -277,7 +267,7 @@ const formatNumber = new Intl.NumberFormat('pt-BR', {
 // Cálculos do resumo
 const summary = computed(() => {
   if (!targetStockResultStore.result) return null;
-  
+
   const totalItems = targetStockResultStore.result.length;
   const classificationCounts = {
     A: targetStockResultStore.result.filter(item => item.classification === 'A').length,
