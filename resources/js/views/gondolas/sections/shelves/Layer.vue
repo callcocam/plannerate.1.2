@@ -17,8 +17,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useEditorStore } from '@plannerate/store/editor';
 import ProductNormal from '@plannerate/views/gondolas/sections/shelves/Product.vue';
 import { Layer as LayerType, Segment as SegmentType } from '@/types/segment';
-import { Shelf } from '@plannerate/types/shelves';
-import { EditIcon } from 'lucide-vue-next';
+import { Shelf } from '@plannerate/types/shelves'; 
 const props = defineProps<{
     layer: LayerType;
     segment: SegmentType;

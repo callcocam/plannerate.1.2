@@ -202,8 +202,8 @@ function removeFromGondola(selectedItemId: string | null) {
 </script>
 
 <template>
-  <div v-if="open" class="fixed inset-0 z-50 flex items-center justify-center bg-black/25">
-    <div class="bg-white rounded-lg shadow-lg   w-full p-6 relative mx-1.5 max-w-7xl overflow-auto">
+  <div v-if="open" class="fixed inset-0 z-[300] flex items-center justify-center bg-black/25">
+    <div class="bg-white rounded-lg shadow-lg   w-full p-6 relative mx-1.5 max-w-7xl overflow-auto z-[300]">
       <div class="flex justify-between items-center mb-4">
         <h2 class="text-lg font-bold">Resultado da Análise de Assortimento</h2>
         <div class="flex gap-2">
@@ -305,7 +305,7 @@ function removeFromGondola(selectedItemId: string | null) {
       </div>
 
       <!-- Tabela com scroll -->
-      <div class="overflow-x-auto max-h-[60vh]">
+      <div class="overflow-x-auto max-h-[60vh] z-[300]">
         <table class="text-sm border">
           <thead class="sticky top-0 bg-white z-10">
             <tr class="bg-gray-100">

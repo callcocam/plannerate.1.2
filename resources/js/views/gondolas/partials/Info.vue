@@ -14,8 +14,10 @@ import {
     SaveIcon,
     Undo2Icon,
     Redo2Icon,
+    PrinterIcon,
+    NutIcon,
 } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 // Imports Internos 
@@ -93,7 +95,13 @@ const alignment = computed(() => {
 });
 
 // Estado para o Popover e campos do cálculo ABC
-const showABCParams = ref(false);
+const showCalculos = ref(false);
+const showABCParams = ref(false); 
+watch(showABCParams, (newVal) => {
+    if (!newVal) {
+        showCalculos.value = false;
+    }
+});
 const abcParams = ref({
     weights: {
         quantity: 0.30,
@@ -108,6 +116,11 @@ const abcParams = ref({
 
 // Estado para o Popover e campos do cálculo Estoque Alvo
 const showTargetStockParams = ref(false);
+watch(showTargetStockParams, (newVal) => {
+    if (!newVal) {
+        showCalculos.value = false;
+    }
+});
 const targetStockParams = ref({
     serviceLevels: [
         { classification: 'A', level: 0.7 },
@@ -123,6 +136,11 @@ const targetStockParams = ref({
 
 // Estado para o Popover e campos do cálculo BCG
 const showBCGParams = ref(false);
+watch(showBCGParams, (newVal) => {
+    if (!newVal) {
+        showCalculos.value = false;
+    }
+});
 const bcgParams = ref({
     marketShare: 0.1,
     growthRate: 0.1
@@ -404,7 +422,7 @@ async function executeTargetStockAnalysis() {
                 targetStockParams.value.serviceLevels,
                 targetStockParams.value.replenishmentParams
             );
-            
+
             // Atualizar o store com os resultados
             targetStockResultStore.setResult(analyzed, targetStockParams.value.replenishmentParams);
 
@@ -438,7 +456,7 @@ analysisResultStore.$onAction(({ name, store, args, after, onError }) => {
 // Observar ações do store para recalculo Estoque Alvo
 targetStockResultStore.$onAction(({ name, store, args, after, onError }) => {
     if (name === 'requestRecalculation') {
-        after(() => { 
+        after(() => {
             executeTargetStockAnalysis(); // Chamar a nova função de cálculo
         });
     }
@@ -589,37 +607,68 @@ function removeFromGondola(selectedItemId: string | null) {
                 </div>
             </div>
         </div>
-        <div class="flex gap-2 m-2">
-            <Popover v-model:open="showABCParams">
-                <PopoverTrigger as-child>
-                    <Button variant="outline">Calculos ABC</Button>
-                </PopoverTrigger>
-                <PopoverContent class="w-auto max-w-lg z-[1000]">
-                    <ABCParamsPopover :weights="abcParams.weights" :thresholds="abcParams.thresholds"
-                        @update:weights="calcularABC" @update:thresholds="calcularABC"
-                        @show-result-modal="showResultModal = true" />
-                </PopoverContent>
-            </Popover>
-            <Popover v-model:open="showTargetStockParams">
-                <PopoverTrigger as-child>
-                    <Button variant="outline">Calculos Estoque Alvo Prateleira</Button>
-                </PopoverTrigger>
-                <PopoverContent class="w-auto max-w-lg z-[1000]">
-                    <TargetStockParamsPopover :service-levels="targetStockParams.serviceLevels"
-                        :replenishment-params="targetStockParams.replenishmentParams"
-                        @show-result-modal="openTargetStockResultModal($event.result, $event.replenishmentParams)" />
-                </PopoverContent>
-            </Popover>
-            <Popover v-model:open="showBCGParams">
-                <PopoverTrigger as-child>
-                    <Button variant="outline">Calculos Matriz BCG</Button>
-                </PopoverTrigger>
-                <PopoverContent class="w-auto max-w-lg z-[1000]">
-                    <BCGParamsPopover :market-share="bcgParams.marketShare" :growth-rate="bcgParams.growthRate"
-                        @update:market-share="calcularBCG" @update:growth-rate="calcularBCG"
-                        @show-result-modal="showResultModal = true" />
-                </PopoverContent>
-            </Popover>
+        <div class="flex gap-2 m-2 justify-between">
+            <div class="flex gap-2">
+
+
+
+            </div>
+            <div class="flex gap-2">
+                <Button v-if="analysisResultStore.result" @click="analysisResultStore.setResult(null);" variant="destructive">Limpar Resultado</Button>
+                <Popover v-model:open="showCalculos">
+                    <PopoverTrigger as-child>
+                        <Button variant="outline" size="sm" @click="showCalculos = true">
+                            <NutIcon class="h-4 w-4" />
+                            Calculos
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent class="w-auto max-w-lg z-[1000]">
+                        <div class="flex flex-col gap-2">
+                            <Button variant="outline" @click="showABCParams = true">Calculos ABC</Button>
+                            <Button variant="outline" @click="showTargetStockParams = true">Calculos Estoque Alvo
+                                Prateleira</Button>
+                            <Button variant="outline" @click="showBCGParams = true">Calculos Matriz BCG</Button>
+                        </div>
+                    </PopoverContent>
+                </Popover>
+                <Button variant="outline" size="sm">
+                    <PrinterIcon class="h-4 w-4" />
+                    Imprimir
+                </Button>
+                <Popover v-model:open="showABCParams">
+                    <PopoverTrigger as-child>
+                        <!-- Botão movido para o popover principal -->
+                        <span></span>
+                    </PopoverTrigger>
+                    <PopoverContent class="w-auto max-w-lg z-[1000]" align="end">
+                        <ABCParamsPopover :weights="abcParams.weights" :thresholds="abcParams.thresholds"
+                            @update:weights="calcularABC" @update:thresholds="calcularABC"
+                            @show-result-modal="showResultModal = true" />
+                    </PopoverContent>
+                </Popover>
+                <Popover v-model:open="showTargetStockParams">
+                    <PopoverTrigger as-child>
+                        <!-- Botão movido para o popover principal -->
+                        <span></span>
+                    </PopoverTrigger>
+                    <PopoverContent class="w-auto max-w-lg z-[1000]" align="end">
+                        <TargetStockParamsPopover :service-levels="targetStockParams.serviceLevels"
+                            :replenishment-params="targetStockParams.replenishmentParams"
+                            @show-result-modal="openTargetStockResultModal($event.result, $event.replenishmentParams)" />
+                    </PopoverContent>
+                </Popover>
+                <Popover v-model:open="showBCGParams">
+                    <PopoverTrigger as-child>
+                        <!-- Botão movido para o popover principal -->
+                        <span></span>
+                    </PopoverTrigger>
+                    <PopoverContent class="w-auto max-w-lg z-[1000]" align="end">
+                        <BCGParamsPopover :market-share="bcgParams.marketShare" :growth-rate="bcgParams.growthRate"
+                            @update:market-share="calcularBCG" @update:growth-rate="calcularBCG"
+                            @show-result-modal="showResultModal = true" />
+                    </PopoverContent>
+                </Popover>
+            </div>
         </div>
         <ConfirmModal :isOpen="showDeleteConfirm.some((item) => item.gondola)"
             @update:isOpen="(isOpen: boolean) => !isOpen && (showDeleteConfirm = [])" title="Excluir gondola"

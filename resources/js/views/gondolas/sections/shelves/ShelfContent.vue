@@ -28,8 +28,8 @@ const shelftext = ref(`Shelf (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`)
 const shelfContentRef = ref<HTMLElement | null>(null);
 // Definir Emits
 const emit = defineEmits(['drop-product', 'drop-segment', 'drop-segment-copy']); // Para quando um produto é solto na prateleira
-const editorStore = useEditorStore();
-import { type Shelf as ShelfType } from '@plannerate/types/shelves';
+// const editorStore = useEditorStore();
+// import { type Shelf as ShelfType } from '@plannerate/types/shelves';
 
 watch(dragShelfActive, (newValue) => {
     if (newValue) {
@@ -269,24 +269,24 @@ const handleDrop = (event: DragEvent) => {
     }
 };
 
-const handleDoubleClick = (event: MouseEvent) => {
-    event.stopPropagation();
-    const section = props.section;
-    console.log('handleDoubleClick: ', event.clientX, event.clientY);
-    editorStore.addShelfToSection(section.gondola_id, section.id, {
-        id: `temp-shelf-${Date.now()}`,
-        shelf_height: 4,
-        shelf_position: props.shelf.shelf_position,
-        section_id: section.id,
-        product_type: 'normal',
-    } as ShelfType);
-}
+// const handleDoubleClick = (event: MouseEvent) => {
+//     event.stopPropagation();
+//     const section = props.section;
+//     console.log('handleDoubleClick: ', event.clientX, event.clientY);
+//     editorStore.addShelfToSection(section.gondola_id, section.id, {
+//         id: `temp-shelf-${Date.now()}`,
+//         shelf_height: 4,
+//         shelf_position: props.shelf.shelf_position - 10,
+//         section_id: section.id,
+//         product_type: 'normal',
+//     } as ShelfType);
+// }
 
-onMounted(() => {
-    if (shelfContentRef.value) {
-        shelfContentRef.value.addEventListener('dblclick', handleDoubleClick);
-    }
-});
+// onMounted(() => {
+//     if (shelfContentRef.value) {
+//         shelfContentRef.value.addEventListener('dblclick', handleDoubleClick);
+//     }
+// });
 
 
 

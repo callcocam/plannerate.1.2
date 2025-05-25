@@ -53,21 +53,13 @@ const analysisResult = computed(() => {
 // Estilo do produto
 const productStyle = computed(() => {
     let image_url = props.product.image_url;
-    // verifyImageExists(image_url).then((exists) => {
-    //     if (!exists) {
-    //         // Pegar as iniciais do nome do produto
-    //         const initials = props.product.name
-    //             .split(' ')
-    //             .map((word: string) => word.charAt(0).toUpperCase())
-    //             .join('')
-    //             .slice(0, 2); // Limita a 2 letras (opcional)
-
-    //         // Exemplo de uso com placehold.co
-    //         image_url = `https://placehold.co/400x600?text=${initials}`;
-    //     }
-    // });  
+    
     if (analysisResult.value) {
         productRef.value?.classList.add(analysisResult.value.abcClass);
+    }else{
+        productRef.value?.classList.remove('A');
+        productRef.value?.classList.remove('B');
+        productRef.value?.classList.remove('C');
     }
     return {
         width: `${props.product.width * props.scaleFactor}px`,

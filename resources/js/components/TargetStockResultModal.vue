@@ -1,6 +1,6 @@
 <template>
-  <div v-if="open" class="fixed inset-0 z-50 flex items-center justify-center bg-black/25">
-    <div class="bg-white rounded-lg shadow-lg max-w-7xl w-full p-6 relative">
+  <div v-if="open" class="fixed inset-0 z-[300] flex items-center justify-center bg-black/25">
+    <div class="bg-white rounded-lg shadow-lg max-w-7xl w-full p-6 relative z-[300]">
       <div class="flex justify-between items-center mb-4">
         <h2 class="text-lg font-bold">Resultado do Estoque Alvo</h2>
         <div class="flex gap-2">
@@ -94,7 +94,7 @@
       </div>
 
       <!-- Tabela -->
-      <div class="overflow-x-auto max-h-[60vh]">
+      <div class="overflow-x-auto max-h-[60vh] z-[300]">
         <table class="min-w-full text-xs border">
           <thead class="sticky top-0 bg-white z-10">
             <tr class="bg-gray-100">
