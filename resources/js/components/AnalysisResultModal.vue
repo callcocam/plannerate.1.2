@@ -5,6 +5,9 @@ import { ArrowUpDown, ArrowUp, ArrowDown, Search, X, Download, RefreshCw } from 
 import { Input } from '@/components/ui/input';
 import * as XLSX from 'xlsx';
 import { useAnalysisResultStore } from '@plannerate/store/editor/analysisResult';
+import { useEditorStore } from '@plannerate/store/editor';
+import { useAnalysisService } from '@plannerate/services/analysisService';
+import { useAssortmentStatus } from '@plannerate/composables/useSortimentoStatus';
 
 interface AssortmentResult {
   id: string;
@@ -22,7 +25,8 @@ interface AssortmentResult {
 defineProps<{ open: boolean }>();
 const emit = defineEmits(['close', 'remove-from-gondola']);
 
-const analysisResultStore = useAnalysisResultStore();  
+const analysisResultStore = useAnalysisResultStore();
+const editorStore = useEditorStore();
 
 // Estado para a linha selecionada
 const selectedItemId = ref<string | null>(null);
@@ -37,6 +41,19 @@ const selectedItem = computed(() => {
 const showRemoveButton = computed(() => {
   return selectedItem.value !== null && selectedItem.value !== undefined && selectedItem.value.removeFromMix;
 });
+const abcParams = ref({
+  weights: {
+    quantity: 0.30,
+    value: 0.30,
+    margin: 0.40,
+  },
+  thresholds: {
+    a: 0.8,
+    b: 0.85,
+  },
+});
+
+
 
 // Estado de ordenação
 const sortConfig = ref({
@@ -197,13 +214,74 @@ const summary = computed(() => {
 function removeFromGondola(selectedItemId: string | null) {
   if (selectedItemId) {
     emit('remove-from-gondola', selectedItemId);
+    analysisResultStore.requestRecalculation();
   }
 }
+
+// Função para executar análise ABC com parâmetros específicos
+async function executeABCAnalysisWithParams(weights: any, thresholds: any) {
+    analysisResultStore.loading = true;
+    const products: any[] = [];
+    
+    editorStore.getCurrentGondola?.sections.forEach(section => {
+        section.shelves.forEach(shelf => {
+            shelf.segments.forEach(segment => {
+                const product = segment.layer.product as any;
+                if (product) {
+                    products.push({
+                        id: product.id,
+                        ean: product.ean,
+                        name: product.name,
+                        classification: product.classification,
+                        currentStock: product.current_stock || 0
+                    });
+                }
+            });
+        });
+    });
+
+    try {
+        if (products.length > 0) {
+            const { getABCAnalysisData } = useAnalysisService();
+            const analysisData = await getABCAnalysisData(
+                products.map(p => p.id),
+                {
+                    startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    endDate: new Date().toISOString().split('T')[0],
+                    weights: weights,
+                    thresholds: thresholds
+                }
+            );
+
+            const analyzed = useAssortmentStatus(analysisData, weights, thresholds);
+            analysisResultStore.setResult(analyzed);
+        } else {
+            console.log('Nenhum produto encontrado na gôndola para análise.');
+        }
+    } catch (error) {
+        console.error('Erro ao executar Análise ABC:', error);
+    } finally {
+        analysisResultStore.loading = false;
+    }
+}
+
+// Listener para executar análise quando solicitado pelo ABCParamsPopover
+window.addEventListener('execute-abc-analysis', (event: any) => {
+    const { weights, thresholds } = event.detail;
+    abcParams.value.weights = weights;
+    abcParams.value.thresholds = thresholds;
+    executeABCAnalysisWithParams(weights, thresholds);
+});
+analysisResultStore.$onAction(({ name }) => {
+    if (name === 'requestRecalculation') {
+        executeABCAnalysisWithParams(abcParams.value.weights, abcParams.value.thresholds);
+    }
+});
 </script>
 
 <template>
   <div v-if="open" class="fixed inset-0 z-[300] flex items-center justify-center bg-black/25">
-    <div class="bg-white rounded-lg shadow-lg   w-full p-6 relative mx-1.5 max-w-7xl overflow-auto z-[300]">
+    <div class="bg-white rounded-lg shadow-lg   w-full p-6 relative   mx-12 overflow-auto z-[300]">
       <div class="flex justify-between items-center mb-4">
         <h2 class="text-lg font-bold">Resultado da Análise de Assortimento</h2>
         <div class="flex gap-2">

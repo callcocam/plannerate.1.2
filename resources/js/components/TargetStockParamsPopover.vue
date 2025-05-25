@@ -1,12 +1,9 @@
 <script setup lang="ts">
-import { ref, defineEmits, defineProps, watch, computed } from 'vue';
-import { useEditorStore } from '@plannerate/store/editor'; 
-import { useAnalysisService } from '@plannerate/services/analysisService';
-import { useTargetStock, type ServiceLevel, type Replenishment } from '@plannerate/composables/useTargetStock'; 
+import { ref, defineEmits, defineProps, watch } from 'vue';
 import { SmallInput } from '@plannerate/components/ui/input'; 
 import { useTargetStockResultStore } from '@plannerate/store/editor/targetStockResult';
+import type { ServiceLevel, Replenishment } from '@plannerate/composables/useTargetStock';
 
-const analysisService = useAnalysisService();
 const props = defineProps({
     serviceLevels: {
         type: Array as () => ServiceLevel[],
@@ -28,13 +25,10 @@ const props = defineProps({
     },
 });
 
-const editorStore = useEditorStore(); 
 const targetStockResultStore = useTargetStockResultStore();
 
 const serviceLevels = ref(props.serviceLevels);
 const replenishmentParams = ref(props.replenishmentParams);
-
-const gondola = computed(() => editorStore.getCurrentGondola);
 
 const emit = defineEmits(['update:serviceLevels', 'update:replenishmentParams', 'executar', 'show-result-modal', 'close']);
 
@@ -62,62 +56,19 @@ function updateCoverageDays(classification: string, value: number) {
     }
 }
 
-async function executeCalculation() {
-    const products: any[] = [];
-    gondola.value?.sections.forEach(section => {
-        section.shelves.forEach(shelf => {
-            shelf.segments.forEach(segment => {
-                const product = segment.layer.product as any;
-                if (product) {
-                    products.push({
-                        id: product.id,
-                        ean: product.ean,
-                        name: product.name,
-                        classification: product.classification || 'A', 
-                    });
-                }
-            });
-        });
-    });
-
-    if (products.length > 0) {
-        const sales = await analysisService.getTargetStockData(
-            products.map(p => p.id),
-            {
-                period: 30 // período padrão de 30 dias
-            }
-        ); 
-        // Transformar os dados de vendas no formato esperado
-        const productsWithSales = products.map(product => {
-            const productSales = sales.find((sale: any) => sale.product_id === product.id);
-            console.log(productSales.currentStock, product.ean)
-            return {
-                ...product, 
-                standard_deviation: productSales.standard_deviation,
-                average_sales: productSales.average_sales,
-                currentStock:productSales.currentStock,
-                variability:productSales.variability,
-                sales: productSales ? Object.values(productSales.sales_by_day) : []
-            };
-        }); 
-        console.log(sales)
-        const analyzed = useTargetStock(
-            productsWithSales,
-            serviceLevels.value,
-            replenishmentParams.value
-        );
-        
-        // Atualizar o store com os resultados
-        targetStockResultStore.setResult(analyzed, replenishmentParams.value);
-        
-        // Emitir eventos
-        emit('show-result-modal', {
-            result: analyzed,
+function handleCalculate() {
+    // Emitir evento customizado para que a modal execute o cálculo
+    window.dispatchEvent(new CustomEvent('execute-target-stock-analysis', {
+        detail: {
+            serviceLevels: serviceLevels.value,
             replenishmentParams: replenishmentParams.value
-        });
-        emit('close'); // Fechar o popover
-    }
-}
+        }
+    }));
+    
+    // Emitir eventos para fechar o popover e abrir a modal no pai
+    emit('show-result-modal');
+    emit('close');
+} 
 </script>
 
 <template>
@@ -160,7 +111,7 @@ async function executeCalculation() {
 
         <div class="flex justify-end mt-2 gap-2">
             <Button 
-                @click="executeCalculation" 
+                @click="handleCalculate" 
                 variant="default"
                 :disabled="targetStockResultStore.loading"
             >

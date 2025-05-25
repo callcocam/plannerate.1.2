@@ -10,10 +10,10 @@ export interface BCGData {
 }
 
 export type BCGClassification = 
-  | 'Alto valor – manutenção'
-  | 'Incentivo – volume'
-  | 'Incentivo – lucro'
-  | 'Baixo valor – descontinuar';
+  | 'Alto valor - manutenção'
+  | 'Incentivo - volume'
+  | 'Incentivo - lucro'
+  | 'Baixo valor - descontinuar';
 
 export interface BCGResult extends BCGData {
   classification: BCGClassification;
@@ -32,10 +32,10 @@ export function useBCGMatrix() {
 
   // Cores para cada classificação
   const classificationColors = {
-    'Alto valor – manutenção': '#00B050', // Verde
-    'Incentivo – volume': '#00B0F0',      // Azul claro
-    'Incentivo – lucro': '#BF90FF',       // Roxo claro
-    'Baixo valor – descontinuar': '#FF6347' // Vermelho claro
+    'Alto valor - manutenção': '#00B050', // Verde
+    'Incentivo - volume': '#00B0F0',      // Azul claro
+    'Incentivo - lucro': '#BF90FF',       // Roxo claro
+    'Baixo valor - descontinuar': '#FF6347' // Vermelho claro
   };
 
   // Calcular médias por categoria
@@ -66,13 +66,13 @@ export function useBCGMatrix() {
     const avgX = stats.sumX / stats.count;
 
     if (item.xValue >= avgX && item.yValue >= avgY) {
-      return 'Alto valor – manutenção';
+      return 'Alto valor - manutenção';
     } else if (item.xValue >= avgX && item.yValue < avgY) {
-      return 'Incentivo – volume';
+      return 'Incentivo - volume';
     } else if (item.xValue < avgX && item.yValue >= avgY) {
-      return 'Incentivo – lucro';
+      return 'Incentivo - lucro';
     } else {
-      return 'Baixo valor – descontinuar';
+      return 'Baixo valor - descontinuar';
     }
   };
 

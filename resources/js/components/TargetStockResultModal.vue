@@ -1,6 +1,6 @@
 <template>
   <div v-if="open" class="fixed inset-0 z-[300] flex items-center justify-center bg-black/25">
-    <div class="bg-white rounded-lg shadow-lg   w-full p-6 relative z-[300]">
+    <div class="bg-white rounded-lg shadow-lg   w-full p-6 relative z-[300] mx-12">
       <div class="flex justify-between items-center mb-4">
         <h2 class="text-lg font-bold">Resultado do Estoque Alvo</h2>
         <div class="flex gap-2">
@@ -112,7 +112,8 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in filteredResults" :key="item.ean">
+            <tr v-for="item in filteredResults" :key="item.ean" @click="selectedItemId = selectedItemId === item.ean ? null : item.ean"
+              :class="{'bg-blue-100 dark:bg-blue-900/50': selectedItemId === item.ean, 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50': true}">
               <td class="px-2 py-1 border">{{ item.ean }}</td>
               <td class="px-2 py-1 border">{{ item.name }}</td>
               <td class="px-2 py-1 border text-right">{{ formatNumber.format(item.averageSales) }}</td>
@@ -145,6 +146,9 @@ import { Input } from '@/components/ui/input';
 import * as XLSX from 'xlsx';
 import type { StockAnalysis, Replenishment } from '@plannerate/composables/useTargetStock';
 import { useTargetStockResultStore } from '@plannerate/store/editor/targetStockResult';
+import { useEditorStore } from '@plannerate/store/editor';
+import { useAnalysisService } from '@plannerate/services/analysisService';
+import { useTargetStock, type ServiceLevel } from '@plannerate/composables/useTargetStock';
 
 const props = defineProps<{
   open: boolean;
@@ -152,6 +156,8 @@ const props = defineProps<{
 const emit = defineEmits(['close']);
 
 const targetStockResultStore = useTargetStockResultStore();
+const editorStore = useEditorStore();
+const analysisService = useAnalysisService();
 
 // Estado de ordenação
 const sortConfig = ref({
@@ -162,6 +168,29 @@ const sortConfig = ref({
 // Estado dos filtros
 const searchText = ref('');
 const activeClassificationFilters = ref<Set<string>>(new Set(['A', 'B', 'C']));
+
+// Parâmetros para recálculo
+const targetStockParams = ref({
+  serviceLevels: [
+    { classification: 'A', level: 0.95 },
+    { classification: 'B', level: 0.90 },
+    { classification: 'C', level: 0.85 }
+  ] as ServiceLevel[],
+  replenishmentParams: [
+    { classification: 'A', coverageDays: 7 },
+    { classification: 'B', coverageDays: 14 },
+    { classification: 'C', coverageDays: 21 }
+  ] as Replenishment[]
+});
+
+// Estado para a linha selecionada
+const selectedItemId = ref<string | null>(null);
+
+// Computed para o item selecionado
+const selectedItem = computed(() => {
+  if (selectedItemId.value === null || !targetStockResultStore.result) return null;
+  return targetStockResultStore.result.find(item => item.ean === selectedItemId.value);
+});
 
 // Função para exportar para Excel
 function exportToExcel() {
@@ -279,6 +308,85 @@ const summary = computed(() => {
     totalItems,
     classificationCounts
   };
+});
+
+// Função para executar análise de estoque alvo com parâmetros específicos
+async function executeTargetStockAnalysisWithParams(serviceLevels: ServiceLevel[], replenishmentParams: Replenishment[]) {
+    targetStockResultStore.loading = true;
+    const products: any[] = [];
+    
+    editorStore.getCurrentGondola?.sections.forEach(section => {
+        section.shelves.forEach(shelf => {
+            shelf.segments.forEach(segment => {
+                const product = segment.layer.product as any;
+                if (product) {
+                    products.push({
+                        id: product.id,
+                        ean: product.ean,
+                        name: product.name,
+                        classification: product.classification || 'A',
+                    });
+                }
+            });
+        });
+    });
+
+    try {
+        if (products.length > 0) {
+            const sales = await analysisService.getTargetStockData(
+                products.map(p => p.id),
+                {
+                    period: 30 // período padrão de 30 dias
+                }
+            );
+            
+            // Transformar os dados de vendas no formato esperado
+            const productsWithSales = products.map(product => {
+                const productSales = sales.find((sale: any) => sale.product_id === product.id);
+                return {
+                    ...product,
+                    standard_deviation: productSales.standard_deviation,
+                    average_sales: productSales.average_sales,
+                    currentStock: productSales.currentStock,
+                    variability: productSales.variability,
+                    sales: productSales ? Object.values(productSales.sales_by_day) : []
+                };
+            });
+            
+            const analyzed = useTargetStock(
+                productsWithSales,
+                serviceLevels,
+                replenishmentParams
+            );
+            
+            // Atualizar o store com os resultados
+            targetStockResultStore.setResult(analyzed, replenishmentParams);
+        } else {
+            console.log('Nenhum produto encontrado na gôndola para análise de estoque alvo.');
+        }
+    } catch (error) {
+        console.error('Erro ao executar Análise de Estoque Alvo:', error);
+    } finally {
+        targetStockResultStore.loading = false;
+    }
+}
+
+// Listener para executar análise quando solicitado pelo TargetStockParamsPopover
+window.addEventListener('execute-target-stock-analysis', (event: any) => {
+    const { serviceLevels, replenishmentParams } = event.detail;
+    targetStockParams.value.serviceLevels = serviceLevels;
+    targetStockParams.value.replenishmentParams = replenishmentParams;
+    executeTargetStockAnalysisWithParams(serviceLevels, replenishmentParams);
+});
+
+// Listener para recálculo
+targetStockResultStore.$onAction(({ name }) => {
+    if (name === 'requestRecalculation') {
+        executeTargetStockAnalysisWithParams(
+            targetStockParams.value.serviceLevels,
+            targetStockParams.value.replenishmentParams
+        );
+    }
 });
 </script>
 

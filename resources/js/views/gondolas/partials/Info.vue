@@ -28,12 +28,12 @@ import ABCParamsPopover from '@plannerate/components/ABCParamsPopover.vue';
 import AnalysisResultModal from '@plannerate/components/AnalysisResultModal.vue';
 import TargetStockParamsPopover from '@plannerate/components/TargetStockParamsPopover.vue';
 import BCGParamsPopover from '@plannerate/components/BCGParamsPopover.vue';
-import TargetStockResultModal from '@plannerate/components/TargetStockResultModal.vue';
-import { useTargetStock, type StockAnalysis, type Replenishment } from '@plannerate/composables/useTargetStock';
-import { useAnalysisService } from '@plannerate/services/analysisService';
-import { useAssortmentStatus, type Weights, type Thresholds } from '@plannerate/composables/useSortimentoStatus';
-import { useAnalysisResultStore } from '@plannerate/store/editor/analysisResult';
-import { useTargetStockResultStore } from '@plannerate/store/editor/targetStockResult';
+import TargetStockResultModal from '@plannerate/components/TargetStockResultModal.vue';  
+import { useAnalysisResultStore } from '@plannerate/store/editor/analysisResult'; 
+import Dialog from '@plannerate/components/ui/dialog/Dialog.vue';
+import DialogContent from '@plannerate/components/ui/dialog/DialogContent.vue';
+import DialogTitle from '@plannerate/components/ui/dialog/DialogTitle.vue';
+import DialogDescription from '@plannerate/components/ui/dialog/DialogDescription.vue';
 // Definição das Props usando sintaxe padrão
 const props = defineProps({
     gondola: {
@@ -84,7 +84,7 @@ const canUndo = computed(() => editorStore.canUndo);
 const canRedo = computed(() => editorStore.canRedo);
 
 const showResultModal = ref(false);
-
+const showBCGResultModal = ref(false);
 
 // *** NOVA Computed para a gôndola reativa do editorStore ***
 const alignment = computed(() => {
@@ -147,69 +147,9 @@ const bcgParams = ref({
 });
 
 // Estado para o resultado do cálculo de Estoque Alvo
-const showTargetStockResultModal = ref(false);
-const targetStockResultData = ref<StockAnalysis[]>([]);
-const targetStockReplenishmentParams = ref<Replenishment[]>([
-    { classification: 'A', coverageDays: 2 },
-    { classification: 'B', coverageDays: 5 },
-    { classification: 'C', coverageDays: 7 }
-]);
-
-const analysisService = useAnalysisService();
-const analysisResultStore = useAnalysisResultStore();
-const targetStockResultStore = useTargetStockResultStore();
-// Função para executar a Análise ABC
-async function executeABCAnalysis() {
-    const products: any[] = [];
-    editorStore.getCurrentGondola?.sections.forEach(section => {
-        section.shelves.forEach(shelf => {
-            shelf.segments.forEach(segment => {
-                const product = segment.layer.product as any;
-                if (product) {
-                    products.push({
-                        id: product.id,
-                        ean: product.ean,
-                        name: product.name,
-                        classification: product.classification,
-                        currentStock: product.current_stock || 0
-                    });
-                }
-            });
-        });
-    });
-
-    try {
-        if (products.length > 0) {
-            const analysisData = await analysisService.getABCAnalysisData(
-                products.map(p => p.id),
-                {
-                    // período padrão dos últimos 30 dias
-                    startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                    endDate: new Date().toISOString().split('T')[0],
-                    weights: abcParams.value.weights as { quantity: number; value: number; margin: number },
-                    thresholds: abcParams.value.thresholds as { a: number; b: number }
-                }
-            );
-
-            const analyzed = useAssortmentStatus(
-                analysisData,
-                abcParams.value.weights as Weights,
-                abcParams.value.thresholds as Thresholds
-            );
-
-            analysisResultStore.setResult(analyzed);
-
-            // Abrir modal de resultado e fechar popover
-            showResultModal.value = true;
-            showABCParams.value = false;
-        }
-    } catch (error) {
-        console.error('Erro ao executar Análise ABC:', error);
-        // Optionally set an error state in the store
-    } finally {
-        analysisResultStore.loading = false;
-    }
-}
+const showTargetStockResultModal = ref(false); 
+ 
+const analysisResultStore = useAnalysisResultStore(); 
 
 // Métodos
 /**
@@ -363,104 +303,15 @@ const setGondolaAlignmentHandler = (alignment: string | null = null) => {
 const undo = () => editorStore.undo();
 const redo = () => editorStore.redo();
 const saveChanges = () => editorStore.saveChanges();
-
-// Métodos para os cálculos
-const calcularABC = () => {
-    // Aqui você pode usar params para enviar os parâmetros 
-    showABCParams.value = true;
-};
-const calcularBCG = () => {
-    // Placeholder para lógica do cálculo Matriz BCG
-    console.log('Cálculo Matriz BCG acionado');
-};
+  
 const closeResultModal = () => {
     showResultModal.value = false;
 };
 
-// Função para executar a Análise de Estoque Alvo
-async function executeTargetStockAnalysis() {
-    const products: any[] = [];
-    editorStore.getCurrentGondola?.sections.forEach(section => {
-        section.shelves.forEach(shelf => {
-            shelf.segments.forEach(segment => {
-                const product = segment.layer.product as any;
-                if (product) {
-                    products.push({
-                        id: product.id,
-                        ean: product.ean,
-                        name: product.name,
-                        classification: product.classification || 'C',
-                        currentStock: product.current_stock || 0
-                    });
-                }
-            });
-        });
-    });
-
-    if (products.length > 0) {
-        // Definir loading no store antes de buscar os dados
-        targetStockResultStore.loading = true;
-        try {
-            const sales = await analysisService.getTargetStockData(
-                products.map(p => p.id),
-                {
-                    period: 30 // período padrão de 30 dias
-                }
-            );
-
-            // Transformar os dados de vendas no formato esperado
-            const productsWithSales = products.map(product => {
-                const productSales = sales.find((sale: any) => sale.product_id === product.id);
-                return {
-                    ...product,
-                    sales: productSales ? Object.values(productSales.sales_by_day) : []
-                };
-            });
-
-            const analyzed = useTargetStock(
-                productsWithSales,
-                targetStockParams.value.serviceLevels,
-                targetStockParams.value.replenishmentParams
-            );
-
-            // Atualizar o store com os resultados
-            targetStockResultStore.setResult(analyzed, targetStockParams.value.replenishmentParams);
-
-        } catch (error) {
-            console.error('Erro ao executar Análise de Estoque Alvo:', error);
-            // Optionally set an error state in the store
-        } finally {
-            // Remover loading no store após a conclusão
-            targetStockResultStore.loading = false;
-        }
-    }
-}
-
-function openTargetStockResultModal(result: StockAnalysis[], params: Replenishment[]) {
-    targetStockResultData.value = result;
-    targetStockReplenishmentParams.value = params;
+function openTargetStockResultModal() {
     showTargetStockResultModal.value = true;
-    showTargetStockParams.value = false; // Fecha o popover
+    showTargetStockParams.value = false; // Fecha o diálogo
 }
-
-// Observar ações do store para recalculo ABC
-analysisResultStore.$onAction(({ name, store, args, after, onError }) => {
-    if (name === 'requestRecalculation') {
-        after(() => {
-            executeABCAnalysis();
-        });
-    }
-
-});
-
-// Observar ações do store para recalculo Estoque Alvo
-targetStockResultStore.$onAction(({ name, store, args, after, onError }) => {
-    if (name === 'requestRecalculation') {
-        after(() => {
-            executeTargetStockAnalysis(); // Chamar a nova função de cálculo
-        });
-    }
-});
 
 function removeFromGondola(selectedItemId: string | null) {
     if (selectedItemId) {
@@ -483,12 +334,32 @@ function removeFromGondola(selectedItemId: string | null) {
                 });
                 if (sectionId && shelfId && segmentId) {
                     editorStore.removeSegmentFromShelf(editorStore.getCurrentGondola?.id, sectionId, shelfId, segmentId);
-                    analysisResultStore.requestRecalculation();
                 }
             }
         }
     }
 }
+
+// Lógica para lidar com a exibição da modal de resultado BCG
+const handleShowBCGResultModal = () => {
+    showBCGResultModal.value = true;
+    showBCGParams.value = false; // Fechar o popover de parâmetros ao abrir a modal
+};
+
+// Funções para abrir popovers de parâmetros e fechar o popover principal de cálculos
+function handleOpenABCParams() {
+    showCalculos.value = false;
+    showABCParams.value = true;
+}
+function handleOpenTargetStockParams() {
+    showCalculos.value = false;
+    showTargetStockParams.value = true;
+}
+function handleOpenBCGParams() {
+    showCalculos.value = false;
+    showBCGParams.value = true;
+}
+  
 </script>
 
 <template>
@@ -624,10 +495,9 @@ function removeFromGondola(selectedItemId: string | null) {
                     </PopoverTrigger>
                     <PopoverContent class="w-auto max-w-lg z-[1000]">
                         <div class="flex flex-col gap-2">
-                            <Button variant="outline" @click="showABCParams = true">Calculos ABC</Button>
-                            <Button variant="outline" @click="showTargetStockParams = true">Calculos Estoque Alvo
-                                Prateleira</Button>
-                            <Button variant="outline" @click="showBCGParams = true">Calculos Matriz BCG</Button>
+                            <Button variant="outline" @click="handleOpenABCParams">Calculos ABC</Button>
+                            <Button variant="outline" @click="handleOpenTargetStockParams">Calculos Estoque Alvo Prateleira</Button>
+                            <Button variant="outline" @click="handleOpenBCGParams">Calculos Matriz BCG</Button>
                         </div>
                     </PopoverContent>
                 </Popover>
@@ -635,39 +505,42 @@ function removeFromGondola(selectedItemId: string | null) {
                     <PrinterIcon class="h-4 w-4" />
                     Imprimir
                 </Button>
-                <Popover v-model:open="showABCParams">
-                    <PopoverTrigger as-child>
-                        <!-- Botão movido para o popover principal -->
-                        <span></span>
-                    </PopoverTrigger>
-                    <PopoverContent class="w-auto max-w-lg z-[1000]" align="end">
-                        <ABCParamsPopover :weights="abcParams.weights" :thresholds="abcParams.thresholds"
-                            @update:weights="calcularABC" @update:thresholds="calcularABC"
-                            @show-result-modal="showResultModal = true" />
-                    </PopoverContent>
-                </Popover>
-                <Popover v-model:open="showTargetStockParams">
-                    <PopoverTrigger as-child>
-                        <!-- Botão movido para o popover principal -->
-                        <span></span>
-                    </PopoverTrigger>
-                    <PopoverContent class="w-auto max-w-lg z-[1000]" align="end">
+                <Dialog v-model:open="showABCParams">
+                    <DialogContent class="w-auto max-w-xl z-[1000]">
+                        <DialogTitle>Parâmetros ABC</DialogTitle>
+                        <DialogDescription>
+                            Ajuste os pesos e limites para a análise ABC conforme sua estratégia.
+                        </DialogDescription>
+                        <ABCParamsPopover
+                            v-model:weights="abcParams.weights"
+                            v-model:thresholds="abcParams.thresholds"
+                            @show-result-modal="showResultModal = true"
+                            @close="showABCParams = false"
+                        />
+                    </DialogContent>
+                </Dialog>
+                <Dialog v-model:open="showTargetStockParams">
+                    <DialogContent class="w-auto max-w-xl z-[1000]">
+                        <DialogTitle>Parâmetros de Estoque Alvo</DialogTitle>
+                        <DialogDescription>
+                            Configure os níveis de serviço e parâmetros de reposição para calcular o estoque ideal.
+                        </DialogDescription>
                         <TargetStockParamsPopover :service-levels="targetStockParams.serviceLevels"
                             :replenishment-params="targetStockParams.replenishmentParams"
-                            @show-result-modal="openTargetStockResultModal($event.result, $event.replenishmentParams)" />
-                    </PopoverContent>
-                </Popover>
-                <Popover v-model:open="showBCGParams">
-                    <PopoverTrigger as-child>
-                        <!-- Botão movido para o popover principal -->
-                        <span></span>
-                    </PopoverTrigger>
-                    <PopoverContent class="w-auto max-w-lg z-[1000]" align="end">
-                        <BCGParamsPopover :market-share="bcgParams.marketShare" :growth-rate="bcgParams.growthRate"
-                            @update:market-share="calcularBCG" @update:growth-rate="calcularBCG"
-                            @show-result-modal="showResultModal = true" />
-                    </PopoverContent>
-                </Popover>
+                            @show-result-modal="openTargetStockResultModal" />
+                    </DialogContent>
+                </Dialog>
+                <Dialog v-model:open="showBCGParams">
+                    <DialogContent class="w-auto max-w-xl z-[1000]">
+                        <DialogTitle>Parâmetros Matriz BCG</DialogTitle>
+                        <DialogDescription>
+                            Defina os parâmetros de participação de mercado e taxa de crescimento para análise BCG.
+                        </DialogDescription>
+                        <BCGParamsPopover :market-share="bcgParams.marketShare" :growth-rate="bcgParams.growthRate" 
+                            @show-result-modal="handleShowBCGResultModal"
+                            @close="showBCGParams = false" />
+                    </DialogContent>
+                </Dialog>
             </div>
         </div>
         <ConfirmModal :isOpen="showDeleteConfirm.some((item) => item.gondola)"
