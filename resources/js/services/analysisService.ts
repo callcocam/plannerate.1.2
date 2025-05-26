@@ -27,6 +27,8 @@ interface BCGAnalysisParams {
     endDate?: string;
     storeId?: number;
     marketShare?: number; // percentual mínimo de participação no mercado
+    xAxis?: string;
+    yAxis?: string;
 }
 
 export const useAnalysisService = () => {
@@ -76,7 +78,9 @@ export const useAnalysisService = () => {
                 startDate: params.startDate,
                 endDate: params.endDate,
                 storeId: params.storeId,
-                marketShare: params.marketShare
+                marketShare: params.marketShare,
+                xAxis: params.xAxis,
+                yAxis: params.yAxis
             }
         });
         return response;

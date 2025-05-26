@@ -29,6 +29,7 @@ import AnalysisResultModal from '@plannerate/components/AnalysisResultModal.vue'
 import TargetStockParamsPopover from '@plannerate/components/TargetStockParamsPopover.vue';
 import BCGParamsPopover from '@plannerate/components/BCGParamsPopover.vue';
 import TargetStockResultModal from '@plannerate/components/TargetStockResultModal.vue';  
+import BCGResultModal from '@plannerate/components/BCGResultModal.vue';
 import { useAnalysisResultStore } from '@plannerate/store/editor/analysisResult'; 
 import Dialog from '@plannerate/components/ui/dialog/Dialog.vue';
 import DialogContent from '@plannerate/components/ui/dialog/DialogContent.vue';
@@ -142,8 +143,8 @@ watch(showBCGParams, (newVal) => {
     }
 });
 const bcgParams = ref({
-    marketShare: 0.1,
-    growthRate: 0.1
+    xAxis: 'MARGEM DE CONTRIBUIÇÃO',
+    yAxis: 'VALOR DE VENDA'
 });
 
 // Estado para o resultado do cálculo de Estoque Alvo
@@ -536,7 +537,7 @@ function handleOpenBCGParams() {
                         <DialogDescription>
                             Defina os parâmetros de participação de mercado e taxa de crescimento para análise BCG.
                         </DialogDescription>
-                        <BCGParamsPopover :market-share="bcgParams.marketShare" :growth-rate="bcgParams.growthRate" 
+                        <BCGParamsPopover :x-axis="bcgParams.xAxis" :y-axis="bcgParams.yAxis" 
                             @show-result-modal="handleShowBCGResultModal"
                             @close="showBCGParams = false" />
                     </DialogContent>
@@ -556,5 +557,6 @@ function handleOpenBCGParams() {
         <AnalysisResultModal :open="showResultModal" @close="closeResultModal"
             @remove-from-gondola="removeFromGondola" />
         <TargetStockResultModal :open="showTargetStockResultModal" @close="showTargetStockResultModal = false" />
+        <BCGResultModal :open="showBCGResultModal" @update:open="showBCGResultModal = $event" />
     </div>
 </template>

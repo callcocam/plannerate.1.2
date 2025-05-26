@@ -60,11 +60,11 @@ class BCGAnalysisService
         $query = Sale::whereIn('product_id', $productIds);
 
         if ($startDate) {
-            $query->where('date', '>=', $startDate);
+            $query->where('sale_date', '>=', $startDate);
         }
 
         if ($endDate) {
-            $query->where('date', '<=', $endDate);
+            $query->where('sale_date', '<=', $endDate);
         }
 
         if ($storeId) {
@@ -86,23 +86,34 @@ class BCGAnalysisService
         $result = [];
 
         // Calcula o total de vendas do mercado
-        $totalMarketSales = $currentSales->sum('total_value');
 
         foreach ($products as $product) {
-            // Vendas do produto no período atual
-            $currentProductSales = $currentSales->where('product_id', $product->id)->sum('total_value');
+
+            $category = data_get($product->category_level, 'id');
+
+            $level = data_get($product->category_level, 'level');
+
+            $parent = data_get($product->category_level, 'parent');
+
+            $productIds = Product::where($level, $category)
+            ->whereNull($parent)
+            ->pluck('id');
             
+            $totalMarketSales = Sale::query()->whereIn('product_id', $productIds)->sum('sale_value');
+            // Vendas do produto no período atual
+            $currentProductSales = $product->sales->sum('sale_value');
+ 
             // Vendas do produto no período anterior
-            $previousProductSales = $previousSales->where('product_id', $product->id)->sum('total_value');
+            $previousProductSales = $previousSales->where('product_id', $product->id)->avg('sale_value');
 
             // Taxa de crescimento
-            $growthRate = $previousProductSales > 0 
-                ? (($currentProductSales - $previousProductSales) / $previousProductSales) 
+            $growthRate = $previousProductSales > 0
+                ? (($currentProductSales - $previousProductSales) / $previousProductSales)
                 : 0;
 
             // Participação no mercado
-            $marketSharePercent = $totalMarketSales > 0 
-                ? ($currentProductSales / $totalMarketSales) 
+            $marketSharePercent = $totalMarketSales > 0
+                ? ($currentProductSales / $totalMarketSales)
                 : 0;
 
             // Classificação BCG
@@ -110,6 +121,8 @@ class BCGAnalysisService
 
             $result[] = [
                 'product_id' => $product->id,
+                'ean' => $product->ean,
+                'category' => $product->category_name,
                 'current_sales' => $currentProductSales,
                 'previous_sales' => $previousProductSales,
                 'growth_rate' => round($growthRate * 100, 2),
@@ -136,4 +149,4 @@ class BCGAnalysisService
             return 'DOG'; // Baixa participação, baixo crescimento
         }
     }
-} 
+}

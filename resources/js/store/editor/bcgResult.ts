@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import type { BCGResult } from '@/composables/useBCGMatrix';
+import type { BCGResult } from '@plannerate/composables/useBCGMatrix';
 
 export const useBCGResultStore = defineStore('bcgResult', () => {
   const result = ref<BCGResult[] | null>(null);

@@ -96,8 +96,7 @@ class AnalysisController extends Controller
     public function bcgAnalysis(Request $request): JsonResponse
     {
         $request->validate([
-            'products' => 'required|array',
-            'products.*' => 'required|integer|exists:products,id',
+            'products' => 'required|array', 
             'startDate' => 'nullable|date',
             'endDate' => 'nullable|date|after_or_equal:startDate',
             'storeId' => 'nullable|integer|exists:stores,id',

@@ -1,93 +1,155 @@
 <template>
   <Dialog :open="open" @update:open="$emit('update:open', $event)">
-    <DialogContent class="max-w-4xl">
+    <DialogContent class="md:max-w-7xl w-full max-h-[90vh] overflow-hidden flex flex-col">
       <DialogHeader>
-        <DialogTitle>Resultados da Matriz BCG</DialogTitle>
-        <DialogDescription>
-          Análise de produtos baseada na participação de mercado e taxa de crescimento
-        </DialogDescription>
+        <div class="flex justify-between items-center">
+          <div>
+            <DialogTitle>Resultados da Matriz BCG</DialogTitle>
+            <DialogDescription>
+              Análise de produtos baseada na participação de mercado e taxa de crescimento
+            </DialogDescription>
+          </div>
+
+        </div>
       </DialogHeader>
 
-      <div class="mt-4">
-        <!-- Filtros -->
-        <div class="flex gap-4 mb-4">
-          <Select v-model="selectedCategory" class="w-48">
-            <SelectTrigger>
-              <SelectValue placeholder="Filtrar por categoria" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">Todas as categorias</SelectItem>
-              <SelectItem v-for="category in categories" :key="category" :value="category">
-                {{ category }}
-              </SelectItem>
-            </SelectContent>
-          </Select>
+            <div class="flex-1 overflow-hidden flex flex-col">
+        <!-- Resumo -->
+        <div v-if="summary" class="mb-4 py-2 px-4 bg-gray-50 rounded-lg flex-shrink-0">
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <h3 class="text-sm font-medium text-gray-500">Total de Itens</h3>
+              <p class="text-lg font-semibold">{{ formatNumber.format(summary.totalItems) }}</p>
+            </div>
+            <div class="col-span-3">
+              <h3 class="text-sm font-medium text-gray-500">Classificações</h3>
+              <div class="flex flex-wrap gap-4">
+                <p class="text-xs">
+                  <span class="text-green-600">Alto valor:</span> {{
+                    formatNumber.format(summary.classificationCounts['Alto valor - manutenção']) }}
+                </p>
+                <p class="text-xs">
+                  <span class="text-blue-600">Incentivo vol.:</span> {{
+                    formatNumber.format(summary.classificationCounts['Incentivo - volume']) }}
+                </p>
+                <p class="text-xs">
+                  <span class="text-purple-600">Incentivo lucro:</span> {{
+                    formatNumber.format(summary.classificationCounts['Incentivo - lucro']) }}
+                </p>
+                <p class="text-xs">
+                  <span class="text-red-600">Baixo valor:</span> {{
+                    formatNumber.format(summary.classificationCounts['Baixo valor - descontinuar']) }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
 
-          <Select v-model="selectedClassification" class="w-48">
-            <SelectTrigger>
-              <SelectValue placeholder="Filtrar por classificação" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">Todas as classificações</SelectItem>
-              <SelectItem value="Alto valor - manutenção">Alto valor - manutenção</SelectItem>
-              <SelectItem value="Incentivo - volume">Incentivo - volume</SelectItem>
-              <SelectItem value="Incentivo - lucro">Incentivo - lucro</SelectItem>
-              <SelectItem value="Baixo valor - descontinuar">Baixo valor - descontinuar</SelectItem>
-            </SelectContent>
-          </Select>
+        <!-- Filtros -->
+        <div class="mb-4 flex flex-col sm:flex-row gap-4 flex-shrink-0">
+          <div class="flex-1">
+            <div class="relative">
+              <Search class="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
+              <Input v-model="searchText" placeholder="Buscar por EAN, descrição ou categoria..." class="pl-8" />
+              <button v-if="searchText" @click="searchText = ''"
+                class="absolute right-2 top-2.5 text-gray-500 hover:text-gray-700">
+                <X class="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <Select v-model="selectedClassification" class="w-48">
+              <SelectTrigger>
+                <SelectValue placeholder="Filtrar por classificação" />
+              </SelectTrigger>
+              <SelectContent>  
+                <SelectItem value="Alto valor - manutenção">Alto valor - manutenção</SelectItem>
+                <SelectItem value="Incentivo - volume">Incentivo - volume</SelectItem>
+                <SelectItem value="Incentivo - lucro">Incentivo - lucro</SelectItem>
+                <SelectItem value="Baixo valor - descontinuar">Baixo valor - descontinuar</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            <Button variant="outline" @click="clearFilters">
+              Limpar Filtros
+            </Button>
+          </div>
         </div>
 
         <!-- Tabela de Resultados -->
-        <div class="border rounded-lg">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>EAN</TableHead>
-                <TableHead>Descrição</TableHead>
-                <TableHead>Categoria</TableHead>
-                <TableHead>EIXO Y(Vertical)</TableHead>
-                <TableHead>EIXO X(Horizontal)</TableHead>
-                <TableHead>Classificação BCG</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow v-for="item in filteredResults" :key="item.ean">
-                <TableCell>{{ item.ean }}</TableCell>
-                <TableCell>{{ item.description }}</TableCell>
-                <TableCell>{{ item.category }}</TableCell>
-                <TableCell>{{ item.yValue }}%</TableCell>
-                <TableCell>{{ item.xValue }}%</TableCell>
-                <TableCell>
-                  <span
-                    class="px-2 py-1 rounded-full text-xs font-medium"
-                    :class="getClassificationClass(item.classification)"
-                  >
+        <div class="flex-1 overflow-auto border rounded-lg">
+          <table class="text-sm border-collapse w-full">
+            <thead class="sticky top-0 bg-white z-10">
+              <tr class="bg-gray-100">
+                <th v-for="(label, key) in {
+                  ean: 'EAN',
+                  description: 'Descrição',
+                  category: 'Categoria', 
+                  classification: 'Classificação BCG'
+                }" :key="key" class="px-2 py-1 border cursor-pointer hover:bg-gray-200 text-left"
+                  @click="toggleSort(key as keyof BCGResult)">
+                  <div class="flex items-center justify-between">
+                    {{ label }}
+                    <span class="ml-1">
+                      <ArrowUpDown v-if="sortConfig.key !== key" class="h-4 w-4" />
+                      <ArrowUp v-else-if="sortConfig.direction === 'asc'" class="h-4 w-4" />
+                      <ArrowDown v-else class="h-4 w-4" />
+                    </span>
+                  </div>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in filteredResults" :key="item.ean"
+                @click="selectedItemId = selectedItemId === item.ean ? null : item.ean"
+                :class="{ 'bg-blue-100 dark:bg-blue-900/50': selectedItemId === item.ean, 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50': true }">
+                <td class="px-2 py-1 border">{{ item.ean }}</td>
+                <td class="px-2 py-1 border">{{ item.description }}</td>
+                <td class="px-2 py-1 border">{{ item.category }}</td> 
+                <td class="px-2 py-1 border">
+                  <span class="px-2 py-1 rounded-full text-xs font-medium"
+                    :class="getClassificationClass(item.classification)">
                     {{ getClassificationLabel(item.classification) }}
                   </span>
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
+        
+        <div v-if="filteredResults.length === 0" class="text-gray-500 mt-4 text-center">Nenhum resultado encontrado.</div>
 
         <!-- Legenda -->
-        <div class="mt-4 flex gap-4">
-          <div v-for="(label, classification) in classificationLabels" :key="classification" class="flex items-center gap-2">
-            <div
-              class="w-3 h-3 rounded-full"
-              :class="getClassificationClass(classification)"
-            ></div>
+        <div class="mt-4 flex flex-wrap gap-4 flex-shrink-0">
+          <div v-for="(label, classification) in classificationLabels" :key="classification"
+            class="flex items-center gap-2">
+            <div class="w-3 h-3 rounded-full" :class="getClassificationClass(classification)"></div>
             <span class="text-sm">{{ label }}</span>
           </div>
         </div>
       </div>
 
-      <DialogFooter class="mt-6">
-        <Button variant="outline" @click="$emit('update:open', false)">
+      <DialogFooter class="mt-4 flex-shrink-0">
+        <Button variant="outline" size="sm" @click="bcgResultStore.requestRecalculation()"
+          class="flex items-center gap-2" :disabled="bcgResultStore.loading">
+          <span v-if="bcgResultStore.loading" class="flex items-center gap-1">
+            <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+              </path>
+            </svg>
+            Calculando...
+          </span>
+          <span v-else>Recalcular</span>
+          <RefreshCw class="h-4 w-4" />
+        </Button>
+        <Button variant="outline" @click="$emit('update:open', false)" size="sm">
           Fechar
         </Button>
-        <Button variant="default" @click="exportResults">
-          Exportar Resultados
+        <Button variant="outline" size="sm" @click="exportToExcel" class="flex items-center gap-2">
+          <Download class="h-4 w-4" />
+          Exportar Excel
         </Button>
       </DialogFooter>
     </DialogContent>
@@ -105,6 +167,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -112,28 +175,56 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { useBCGResultStore } from '@plannerate/store/editor/bcgResult';
-import type { BCGClassification } from '@plannerate/composables/useBCGMatrix';
+import { useEditorStore } from '@plannerate/store/editor';
+import { useAnalysisService } from '@plannerate/services/analysisService';
+import { useBCGMatrix } from '@plannerate/composables/useBCGMatrix';
+import type { BCGClassification, BCGServiceData } from '@plannerate/composables/useBCGMatrix';
+import { ArrowUpDown, ArrowUp, ArrowDown, Search, X, Download, RefreshCw } from 'lucide-vue-next';
+import * as XLSX from 'xlsx';
 
-const props = defineProps<{
+defineProps<{
   open: boolean;
 }>();
-
-const emit = defineEmits<{
+ 
+defineEmits<{
   (e: 'update:open', value: boolean): void;
 }>();
 
 const bcgResultStore = useBCGResultStore();
+const editorStore = useEditorStore();
+const analysisService = useAnalysisService();
+
 const selectedCategory = ref('');
 const selectedClassification = ref('');
+
+// Estado para a linha selecionada
+const selectedItemId = ref<string | null>(null);
+
+// Estado de ordenação
+interface BCGResult {
+  ean: string;
+  description: string;
+  category: string;
+  yValue: number;
+  xValue: number;
+  classification: BCGClassification;
+}
+
+const sortConfig = ref({
+  key: 'ean' as keyof BCGResult,
+  direction: 'asc' as 'asc' | 'desc'
+});
+
+// Estado dos filtros
+const searchText = ref('');
+ 
+
+// Parâmetros para recálculo
+const bcgParams = ref({
+  xAxis: 'MARGEM DE CONTRIBUIÇÃO', // EIXO X (vertical)
+  yAxis: 'VALOR DE VENDA'          // EIXO Y (horizontal)
+});
 
 const classificationLabels: Record<BCGClassification, string> = {
   'Alto valor - manutenção': 'Alto valor - manutenção',
@@ -147,15 +238,66 @@ const categories = computed(() => {
   return [...new Set(bcgResultStore.result.map(item => item.category))];
 });
 
-const filteredResults = computed(() => {
+// Formatador de números
+const formatNumber = new Intl.NumberFormat('pt-BR', {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0
+});
+
+// Função para ordenar os resultados
+const sortedResults = computed(() => {
   if (!bcgResultStore.result) return [];
-  
-  return bcgResultStore.result.filter(item => {
-    const categoryMatch = !selectedCategory.value || item.category === selectedCategory.value;
-    const classificationMatch = !selectedClassification.value || item.classification === selectedClassification.value;
-    return categoryMatch && classificationMatch;
+  return [...bcgResultStore.result].sort((a, b) => {
+    const aValue = a[sortConfig.value.key];
+    const bValue = b[sortConfig.value.key];
+
+    if (typeof aValue === 'string' && typeof bValue === 'string') {
+      return sortConfig.value.direction === 'asc'
+        ? aValue.localeCompare(bValue)
+        : bValue.localeCompare(aValue);
+    }
+
+    return sortConfig.value.direction === 'asc'
+      ? (aValue as number) - (bValue as number)
+      : (bValue as number) - (aValue as number);
   });
 });
+
+// Resultados filtrados
+const filteredResults = computed(() => {
+  return sortedResults.value.filter(item => {
+    // Filtro por categoria
+    const categoryMatch = !selectedCategory.value || selectedCategory.value === '' || item.category === selectedCategory.value;
+
+    // Filtro por classificação
+    const classificationMatch = !selectedClassification.value || selectedClassification.value === '' || item.classification === selectedClassification.value;
+
+    // Filtro por texto
+    const textMatch = !searchText.value ||
+      item.ean.toLowerCase().includes(searchText.value.toLowerCase()) ||
+      item.description.toLowerCase().includes(searchText.value.toLowerCase()) ||
+      item.category.toLowerCase().includes(searchText.value.toLowerCase());
+
+    return categoryMatch && classificationMatch && textMatch;
+  });
+});
+
+// Função para alternar ordenação
+function toggleSort(key: keyof BCGResult) {
+  if (sortConfig.value.key === key) {
+    sortConfig.value.direction = sortConfig.value.direction === 'asc' ? 'desc' : 'asc';
+  } else {
+    sortConfig.value.key = key;
+    sortConfig.value.direction = 'asc';
+  }
+}
+
+// Função para limpar todos os filtros
+function clearFilters() {
+  searchText.value = '';
+  selectedCategory.value = '';
+  selectedClassification.value = '';
+}
 
 const getClassificationClass = (classification: BCGClassification) => {
   const classes: Record<BCGClassification, string> = {
@@ -171,8 +313,139 @@ const getClassificationLabel = (classification: BCGClassification) => {
   return classificationLabels[classification] || classification;
 };
 
-const exportResults = () => {
-  // Implementar lógica de exportação
-  console.log('Exportando resultados...');
-};
-</script> 
+// Cálculos do resumo
+const summary = computed(() => {
+  if (!bcgResultStore.result?.length) return null;
+
+  const classificationCounts = {
+    'Alto valor - manutenção': 0,
+    'Incentivo - volume': 0,
+    'Incentivo - lucro': 0,
+    'Baixo valor - descontinuar': 0
+  };
+
+  bcgResultStore.result.forEach(item => {
+    classificationCounts[item.classification]++;
+  });
+
+  return {
+    totalItems: bcgResultStore.result.length,
+    classificationCounts
+  };
+});
+
+// Função para exportar para Excel
+function exportToExcel() {
+  // Preparar dados para exportação
+  const exportData = filteredResults.value.map(item => ({
+    'EAN': item.ean,
+    'Descrição': item.description,
+    'Categoria': item.category,
+    'EIXO Y (Vertical)': `${item.yValue}%`,
+    'EIXO X (Horizontal)': `${item.xValue}%`,
+    'Classificação BCG': getClassificationLabel(item.classification)
+  }));
+
+  // Criar worksheet
+  const ws = XLSX.utils.json_to_sheet(exportData);
+
+  // Ajustar largura das colunas
+  const wscols = [
+    { wch: 15 }, // EAN
+    { wch: 40 }, // Descrição
+    { wch: 20 }, // Categoria
+    { wch: 20 }, // EIXO Y
+    { wch: 20 }, // EIXO X
+    { wch: 25 }  // Classificação BCG
+  ];
+  ws['!cols'] = wscols;
+
+  // Criar workbook
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Matriz BCG');
+
+  // Gerar arquivo
+  const fileName = `matriz_bcg_${new Date().toISOString().split('T')[0]}.xlsx`;
+  XLSX.writeFile(wb, fileName);
+}
+
+// Função para executar análise BCG com parâmetros específicos
+async function executeBCGAnalysisWithParams() {
+  bcgResultStore.loading = true;
+  bcgResultStore.setResult(null); // Limpa resultados anteriores
+
+  const products: any[] = [];
+  editorStore.getCurrentGondola?.sections.forEach(section => {
+    section.shelves.forEach(shelf => {
+      shelf.segments.forEach(segment => {
+        const product = segment.layer.product as any;
+        if (product) {
+          products.push({
+            id: product.id,
+            ean: product.ean,
+            description: product.name,
+            category: product.category,
+            currentStock: product.current_stock || 0
+          });
+        }
+      });
+    });
+  });
+
+  try {
+    if (products.length > 0) {
+      const analysisData = await analysisService.getBCGAnalysisData(
+        products.map(p => p.id),
+        {
+          marketShare: 0.1, // Valor padrão, será ajustado conforme necessário
+          xAxis: bcgParams.value.xAxis,
+          yAxis: bcgParams.value.yAxis,
+          startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          endDate: new Date().toISOString().split('T')[0]
+        }
+      );
+
+            const { processData } = useBCGMatrix();
+      console.log('Dados do service BCG:', analysisData);
+      console.log('Produtos para mapeamento:', products);
+      
+      const processedResults = processData(analysisData as BCGServiceData[], products);
+      console.log('Resultados processados:', processedResults);
+
+      bcgResultStore.setResult(processedResults);
+    } else {
+      console.log('Nenhum produto encontrado na gôndola para análise BCG.');
+    }
+  } catch (error) {
+    console.error('Erro ao executar Análise BCG:', error);
+  } finally {
+    bcgResultStore.loading = false;
+  }
+}
+
+// Listener para executar análise quando solicitado pelo BCGParamsPopover
+window.addEventListener('execute-bcg-analysis', (event: any) => {
+  const { xAxis, yAxis } = event.detail;
+  bcgParams.value.xAxis = xAxis;
+  bcgParams.value.yAxis = yAxis;
+  executeBCGAnalysisWithParams();
+});
+
+// Listener para recálculo
+bcgResultStore.$onAction(({ name }) => {
+  if (name === 'requestRecalculation') {
+    executeBCGAnalysisWithParams();
+  }
+});
+</script>
+
+<style scoped>
+table {
+  border-collapse: collapse;
+}
+
+th,
+td {
+  white-space: nowrap;
+}
+</style>
