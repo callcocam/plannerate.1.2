@@ -59,7 +59,7 @@
           </div>
           <div class="flex gap-2">
             <Select v-model="selectedClassification" class="w-48">
-              <SelectTrigger>
+              <SelectTrigger >
                 <SelectValue placeholder="Filtrar por classificação" />
               </SelectTrigger>
               <SelectContent>
@@ -453,16 +453,14 @@ async function executeBCGAnalysisWithParams() {
   });
 
   try {
-    if (products.length > 0) {
-
+    if (products.length > 0) { 
       const analysisData = await analysisService.getBCGAnalysisData(
         products.map(p => p.id),
         {
           marketShare: 0.1, // Valor padrão, será ajustado conforme necessário
           xAxis: bcgParams.value.xAxis,
-          yAxis: bcgParams.value.yAxis,
-          startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          endDate: new Date().toISOString().split('T')[0]
+          yAxis: bcgParams.value.yAxis, 
+          planogram: editorStore.currentState?.id
         }
       );
 

@@ -9,6 +9,7 @@
 namespace Callcocam\Plannerate\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use Callcocam\Plannerate\Models\Planogram;
 use Callcocam\Plannerate\Services\Analysis\ABCAnalysisService;
 use Callcocam\Plannerate\Services\Analysis\TargetStockAnalysisService;
 use Callcocam\Plannerate\Services\Analysis\BCGAnalysisService;
@@ -42,17 +43,20 @@ class AnalysisController extends Controller
     {
         $request->validate([
             'products' => 'required|array', 
-            'startDate' => 'nullable|date',
-            'endDate' => 'nullable|date|after_or_equal:startDate',
+            'planogram' => 'required|string',
             'storeId' => 'nullable|integer|exists:stores,id',
             'weights' => 'nullable|array',
             'thresholds' => 'nullable|array'
         ]);
 
+        $planogram = Planogram::find($request->planogram);
+        $startDate = $planogram->start_date;
+        $endDate = $planogram->end_date;
+
         $result = $this->abcService->analyze(
             $request->products,
-            $request->startDate,
-            $request->endDate,
+            $startDate,
+            $endDate,
             $request->storeId,
             $request->weights,
             $request->thresholds
@@ -71,18 +75,19 @@ class AnalysisController extends Controller
     {
         $request->validate([
             'products' => 'required|array', 
-            'startDate' => 'nullable|date',
-            'endDate' => 'nullable|date|after_or_equal:startDate',
-            'storeId' => 'nullable|integer|exists:stores,id',
-            'period' => 'nullable|integer|min:1'
+            'planogram' => 'required|string',
+            'storeId' => 'nullable|integer|exists:stores,id', 
         ]);
+
+        $planogram = Planogram::find($request->planogram);
+        $startDate = $planogram->start_date;
+        $endDate = $planogram->end_date;
 
         $result = $this->targetStockService->analyze(
             $request->products,
-            $request->startDate,
-            $request->endDate,
-            $request->storeId,
-            $request->period
+            $startDate,
+            $endDate,
+            $request->storeId, 
         );
 
         return response()->json($result);
@@ -98,8 +103,7 @@ class AnalysisController extends Controller
     {
         $request->validate([
             'products' => 'required|array', 
-            'startDate' => 'nullable|date',
-            'endDate' => 'nullable|date|after_or_equal:startDate',
+            'planogram' => 'required|string',
             'storeId' => 'nullable|integer|exists:stores,id',
             'marketShare' => 'nullable|numeric|min:0|max:1',
             'xAxis' => 'nullable|string',
@@ -114,12 +118,14 @@ class AnalysisController extends Controller
             'products_count' => count($request->products)
         ]);
 
-
+        $planogram = Planogram::find($request->planogram);
+        $startDate = $planogram->start_date;
+        $endDate = $planogram->end_date;
 
         $result = $this->bcgService->analyze(
             $request->products,
-            $request->startDate,
-            $request->endDate,
+            $startDate,
+            $endDate,
             $request->storeId,
             $request->marketShare,
             $request->xAxis,

@@ -185,13 +185,7 @@ const targetStockParams = ref({
 
 // Estado para a linha selecionada
 const selectedItemId = ref<string | null>(null);
-
-// Computed para o item selecionado
-const selectedItem = computed(() => {
-  if (selectedItemId.value === null || !targetStockResultStore.result) return null;
-  return targetStockResultStore.result.find(item => item.ean === selectedItemId.value);
-});
-
+ 
 // Função para exportar para Excel
 function exportToExcel() {
   const exportData = filteredResults.value.map(item => ({
@@ -336,7 +330,7 @@ async function executeTargetStockAnalysisWithParams(serviceLevels: ServiceLevel[
             const sales = await analysisService.getTargetStockData(
                 products.map(p => p.id),
                 {
-                    period: 30 // período padrão de 30 dias
+                    planogram: editorStore.currentState?.id
                 }
             );
             

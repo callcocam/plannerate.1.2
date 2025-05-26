@@ -246,8 +246,7 @@ async function executeABCAnalysisWithParams(weights: any, thresholds: any) {
             const analysisData = await getABCAnalysisData(
                 products.map(p => p.id),
                 {
-                    startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                    endDate: new Date().toISOString().split('T')[0],
+                    planogram: editorStore.currentState?.id,
                     weights: weights,
                     thresholds: thresholds
                 }

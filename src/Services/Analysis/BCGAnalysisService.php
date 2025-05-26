@@ -4,6 +4,7 @@ namespace Callcocam\Plannerate\Services\Analysis;
 
 use App\Models\Product;
 use App\Models\Sale;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -67,7 +68,7 @@ class BCGAnalysisService
         ?string $startDate,
         ?string $endDate,
         ?int $storeId
-    ): Collection {
+    ): Collection | Builder {
         $query = Sale::whereIn('product_id', $productIds);
 
         if ($startDate) {
@@ -82,7 +83,7 @@ class BCGAnalysisService
             $query->where('store_id', $storeId);
         }
 
-        return $query->get();
+        return $query;
     }
 
     /**
@@ -90,8 +91,8 @@ class BCGAnalysisService
      */
     protected function calculateGrowthAndMarketShare(
         Collection $products,
-        Collection $currentSales,
-        Collection $previousSales,
+        Builder $currentSales,
+        Builder $previousSales,
         float $marketShare,
         ?string $xAxis = null,
         ?string $yAxis = null,
@@ -100,18 +101,19 @@ class BCGAnalysisService
         ?int $storeId = null
     ): array {
         $result = [];
-
-        // Calcular total do mercado uma vez para todos os produtos
-        $allProductIds = $products->pluck('id')->toArray();
-        $totalMarketXValue = $this->calculateTotalMarketValue($xAxis, $allProductIds, $startDate, $endDate, $storeId);
-
         foreach ($products as $product) {
-
+            // Calcular total do mercado uma vez para todos os produtos
+            $category = $product->category_level;
+            $categoryId = data_get($category, 'id');
+            $level = data_get($category, 'level');
+            $parent = data_get($category, 'parent');
+            $allProductIds = Product::query()->where($level, $categoryId)->whereNull($parent)->pluck('id')->toArray();
+            $totalMarketXValue = $this->calculateTotalMarketValue($xAxis, $allProductIds, $startDate, $endDate, $storeId);
             // Vendas do produto no período atual (filtradas)
             $currentProductSales = $currentSales->where('product_id', $product->id)->sum('sale_value');
             $currentProductQuantity = $currentSales->where('product_id', $product->id)->sum('sale_quantity');
             $currentProductMargin = $currentSales->where('product_id', $product->id)->sum('unit_profit_margin');
- 
+
             // Vendas do produto no período anterior
             $previousProductSales = $previousSales->where('product_id', $product->id)->sum('sale_value');
             $previousProductQuantity = $previousSales->where('product_id', $product->id)->sum('sale_quantity');
@@ -120,7 +122,7 @@ class BCGAnalysisService
             // Calcular valores para os eixos baseado na seleção do usuário
             $xValue = $this->calculateAxisValue($xAxis, $currentProductSales, $currentProductQuantity, $currentProductMargin);
             $yValue = $this->calculateAxisValue($yAxis, $currentProductSales, $currentProductQuantity, $currentProductMargin);
-            
+
             $previousXValue = $this->calculateAxisValue($xAxis, $previousProductSales, $previousProductQuantity, $previousProductMargin);
             $previousYValue = $this->calculateAxisValue($yAxis, $previousProductSales, $previousProductQuantity, $previousProductMargin);
 
@@ -228,11 +230,11 @@ class BCGAnalysisService
         // A classificação BCG é baseada em:
         // - EIXO Y (Vertical): Taxa de crescimento das métricas selecionadas
         // - EIXO X (Horizontal): Participação de mercado das métricas selecionadas
-        
+
         // Ajustar thresholds para serem mais realistas
         $growthThreshold = 0.05; // 5% de crescimento
         $adjustedMarketShareThreshold = max($marketShareThreshold, 0.01); // Mínimo 1%
-        
+
         if ($growthRate >= $growthThreshold && $marketShare >= $adjustedMarketShareThreshold) {
             return 'STAR'; // Alta participação, alto crescimento
         } elseif ($growthRate >= $growthThreshold && $marketShare < $adjustedMarketShareThreshold) {

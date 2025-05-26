@@ -16,16 +16,14 @@ class TargetStockAnalysisService
      * @param array $productIds
      * @param string|null $startDate
      * @param string|null $endDate
-     * @param int|null $storeId
-     * @param int|null $period
+     * @param int|null $storeId 
      * @return array
      */
     public function analyze(
         array $productIds,
         ?string $startDate = null,
         ?string $endDate = null,
-        ?int $storeId = null,
-        ?int $period = 30
+        ?int $storeId = null, 
     ): array {
         // Busca os produtos
         $products = Product::whereIn('id', $productIds)->get();
@@ -37,7 +35,7 @@ class TargetStockAnalysisService
         $dailySales = $this->groupDailySales($sales); 
 
         // Calcula as estatísticas
-        $statistics = $this->calculateStatistics($dailySales, $period);
+        $statistics = $this->calculateStatistics($dailySales);
 
         return $statistics;
     }
@@ -53,17 +51,17 @@ class TargetStockAnalysisService
     ): Collection {
         $query = Sale::whereIn('product_id', $productIds);
 
-        // if ($startDate) {
-        //     $query->where('date', '>=', $startDate);
-        // }
+            if ($startDate) {
+                $query->where('sale_date', '>=', $startDate);
+            }
 
-        // if ($endDate) {
-        //     $query->where('date', '<=', $endDate);
-        // }
+            if ($endDate) {
+                $query->where('sale_date', '<=', $endDate);
+            }
 
-        // if ($storeId) {
-        //     $query->where('store_id', $storeId);
-        // }
+            // if ($storeId) {
+            //     $query->where('store_id', $storeId);
+            // }
 
         return $query->get();
     }
@@ -119,7 +117,7 @@ class TargetStockAnalysisService
     /**
      * Calcula as estatísticas de vendas
      */
-    protected function calculateStatistics(array $dailySales, int $period): array
+    protected function calculateStatistics(array $dailySales): array
     {
         $result = [];
 

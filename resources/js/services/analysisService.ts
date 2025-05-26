@@ -1,8 +1,7 @@
 import { apiService } from './api';
 
 interface ABCAnalysisParams {
-    startDate?: string;
-    endDate?: string;
+    planogram?: any;
     storeId?: number;
     weights?: {
         quantity: number;
@@ -16,15 +15,13 @@ interface ABCAnalysisParams {
 }
 
 interface TargetStockParams {
-    startDate?: string;
-    endDate?: string;
+    planogram?: any;
     storeId?: number;
     period?: number; // período em dias para análise
 }
 
 interface BCGAnalysisParams {
-    startDate?: string;
-    endDate?: string;
+    planogram?: any;
     storeId?: number;
     marketShare?: number; // percentual mínimo de participação no mercado
     xAxis?: string;
@@ -40,8 +37,7 @@ export const useAnalysisService = () => {
         const response = await apiService.get('/analysis/abc', {
             params: {
                 products,
-                startDate: params.startDate,
-                endDate: params.endDate,
+                planogram: params.planogram,
                 storeId: params.storeId,
                 weights: params.weights,
                 thresholds: params.thresholds
@@ -58,8 +54,7 @@ export const useAnalysisService = () => {
         const response = await apiService.get('/analysis/target-stock', {
             params: {
                 products,
-                startDate: params.startDate,
-                endDate: params.endDate,
+                planogram: params.planogram,
                 storeId: params.storeId,
                 period: params.period
             }
@@ -75,8 +70,7 @@ export const useAnalysisService = () => {
         const response = await apiService.get('/analysis/bcg', {
             params: {
                 products,
-                startDate: params.startDate,
-                endDate: params.endDate,
+                planogram: params.planogram,
                 storeId: params.storeId,
                 marketShare: params.marketShare,
                 xAxis: params.xAxis,
