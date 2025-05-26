@@ -134,34 +134,72 @@
       </div>
 
       <DialogFooter class="mt-4 flex-shrink-0">
-        <Button variant="outline" size="sm" @click="bcgResultStore.requestRecalculation()"
-          class="flex items-center gap-2" :disabled="bcgResultStore.loading">
-          <span v-if="bcgResultStore.loading" class="flex items-center gap-1">
-            <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-              </path>
-            </svg>
-            Calculando...
-          </span>
-          <span v-else>Recalcular</span>
-          <RefreshCw class="h-4 w-4" />
-        </Button>
-        <Button variant="outline" @click="$emit('update:open', false)" size="sm">
-          Fechar
-        </Button>
-        <Button variant="outline" size="sm" @click="exportToExcel" class="flex items-center gap-2">
-          <Download class="h-4 w-4" />
-          Exportar Excel
-        </Button>
+        <!-- Controles de Parâmetros -->
+        <div class="flex flex-col sm:flex-row gap-4 w-full mb-4">
+          <div class="flex flex-col sm:flex-row gap-2 flex-1">
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-medium text-gray-600">EIXO X (Horizontal)</label>
+              <Select v-model="bcgParams.xAxis" class="w-48">
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem v-for="option in axisOptions" :key="option" :value="option">
+                    {{ option }}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-medium text-gray-600">EIXO Y (Vertical)</label>
+              <Select v-model="bcgParams.yAxis" class="w-48">
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem v-for="option in axisOptions" :key="option" :value="option">
+                    {{ option }}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Botões de Ação -->
+        <div class="flex flex-wrap gap-2 justify-end">
+          <Button variant="default" size="sm" @click="executeBCGAnalysisWithParams()"
+            class="flex items-center gap-2" :disabled="bcgResultStore.loading">
+            <span v-if="bcgResultStore.loading" class="flex items-center gap-1">
+              <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                </path>
+              </svg>
+              Calculando...
+            </span>
+            <span v-else>Recalcular</span>
+            <RefreshCw class="h-4 w-4" />
+          </Button>
+          
+          <Button variant="outline" size="sm" @click="exportToExcel" class="flex items-center gap-2">
+            <Download class="h-4 w-4" />
+            Exportar Excel
+          </Button>
+          
+          <Button variant="outline" @click="$emit('update:open', false)" size="sm">
+            Fechar
+          </Button>
+        </div>
       </DialogFooter>
     </DialogContent>
   </Dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import {
   Dialog,
   DialogContent,
@@ -232,9 +270,24 @@ const searchText = ref('');
 
 // Parâmetros para recálculo
 const bcgParams = ref({
-  xAxis: 'MARGEM DE CONTRIBUIÇÃO', // EIXO X (vertical)
-  yAxis: 'VALOR DE VENDA'          // EIXO Y (horizontal)
+  xAxis: 'VALOR DE VENDA',         // EIXO X (horizontal)
+  yAxis: 'MARGEM DE CONTRIBUIÇÃO'  // EIXO Y (vertical)
 });
+
+// Opções para os eixos
+const axisOptions = [
+  'VALOR DE VENDA',
+  'VENDA EM QUANTIDADE',
+  'MARGEM DE CONTRIBUIÇÃO'
+];
+
+// Watcher para atualizar labels quando parâmetros mudarem
+watch(() => [bcgParams.value.xAxis, bcgParams.value.yAxis], ([newXAxis, newYAxis]) => {
+  axisLabels.value = {
+    x: newXAxis,
+    y: newYAxis
+  };
+}, { immediate: true });
 
 const classificationLabels: Record<BCGClassification, string> = {
   'Alto valor - manutenção': 'Alto valor - manutenção',

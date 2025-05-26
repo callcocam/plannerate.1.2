@@ -50,7 +50,10 @@ class BCGAnalysisService
             $previousSales,
             $marketShare,
             $xAxis,
-            $yAxis
+            $yAxis,
+            $startDate,
+            $endDate,
+            $storeId
         );
 
         return $analysis;
@@ -91,26 +94,23 @@ class BCGAnalysisService
         Collection $previousSales,
         float $marketShare,
         ?string $xAxis = null,
-        ?string $yAxis = null
+        ?string $yAxis = null,
+        ?string $startDate = null,
+        ?string $endDate = null,
+        ?int $storeId = null
     ): array {
         $result = [];
 
+        // Calcular total do mercado uma vez para todos os produtos
+        $allProductIds = $products->pluck('id')->toArray();
+        $totalMarketXValue = $this->calculateTotalMarketValue($xAxis, $allProductIds, $startDate, $endDate, $storeId);
+
         foreach ($products as $product) {
 
-            $category = data_get($product->category_level, 'id');
-            $level = data_get($product->category_level, 'level');
-            $parent = data_get($product->category_level, 'parent');
-
-            $productIds = Product::where($level, $category)
-            ->whereNull($parent)
-            ->pluck('id');
-            
-            $totalMarketSales = Sale::query()->whereIn('product_id', $productIds)->sum('sale_value');
-            
-            // Vendas do produto no período atual
-            $currentProductSales = $product->sales->sum('sale_value');
-            $currentProductQuantity = $product->sales->sum('sale_quantity');
-            $currentProductMargin = $product->sales->sum('unit_profit_margin');
+            // Vendas do produto no período atual (filtradas)
+            $currentProductSales = $currentSales->where('product_id', $product->id)->sum('sale_value');
+            $currentProductQuantity = $currentSales->where('product_id', $product->id)->sum('sale_quantity');
+            $currentProductMargin = $currentSales->where('product_id', $product->id)->sum('unit_profit_margin');
  
             // Vendas do produto no período anterior
             $previousProductSales = $previousSales->where('product_id', $product->id)->sum('sale_value');
@@ -127,15 +127,31 @@ class BCGAnalysisService
             // Taxa de crescimento do eixo Y
             $growthRate = $previousYValue > 0
                 ? (($yValue - $previousYValue) / $previousYValue)
-                : 0;
+                : ($yValue > 0 ? 1.0 : 0); // Se não há dados anteriores mas há atuais, considera crescimento de 100%
 
             // Participação no mercado do eixo X
-            $marketSharePercent = $totalMarketSales > 0
-                ? ($xValue / $totalMarketSales)
+            $marketSharePercent = $totalMarketXValue > 0
+                ? ($xValue / $totalMarketXValue)
                 : 0;
 
             // Classificação BCG
             $classification = $this->classifyBCG($growthRate, $marketSharePercent, $marketShare);
+
+            // Log para debug (apenas para os primeiros produtos)
+            if (count($result) < 3) {
+                Log::info("BCG Debug - Produto {$product->ean}:", [
+                    'xAxis' => $xAxis,
+                    'yAxis' => $yAxis,
+                    'xValue' => $xValue,
+                    'yValue' => $yValue,
+                    'previousXValue' => $previousXValue,
+                    'previousYValue' => $previousYValue,
+                    'growthRate' => $growthRate,
+                    'marketSharePercent' => $marketSharePercent,
+                    'totalMarketXValue' => $totalMarketXValue,
+                    'classification' => $classification
+                ]);
+            }
 
             $result[] = [
                 'product_id' => $product->id,
@@ -174,6 +190,37 @@ class BCGAnalysisService
     }
 
     /**
+     * Calcula o valor total do mercado para uma métrica específica
+     */
+    protected function calculateTotalMarketValue(?string $axis, array $productIds, ?string $startDate, ?string $endDate, ?int $storeId): float
+    {
+        $query = Sale::whereIn('product_id', $productIds);
+
+        if ($startDate) {
+            $query->where('sale_date', '>=', $startDate);
+        }
+
+        if ($endDate) {
+            $query->where('sale_date', '<=', $endDate);
+        }
+
+        if ($storeId) {
+            $query->where('store_id', $storeId);
+        }
+
+        switch ($axis) {
+            case 'VENDA EM QUANTIDADE':
+                return $query->sum('sale_quantity');
+            case 'VALOR DE VENDA':
+                return $query->sum('sale_value');
+            case 'MARGEM DE CONTRIBUIÇÃO':
+                return $query->sum('unit_profit_margin');
+            default:
+                return $query->sum('sale_value'); // Valor padrão
+        }
+    }
+
+    /**
      * Classifica o produto na matriz BCG
      */
     protected function classifyBCG(float $growthRate, float $marketShare, float $marketShareThreshold): string
@@ -182,11 +229,15 @@ class BCGAnalysisService
         // - EIXO Y (Vertical): Taxa de crescimento das métricas selecionadas
         // - EIXO X (Horizontal): Participação de mercado das métricas selecionadas
         
-        if ($growthRate >= 0.1 && $marketShare >= $marketShareThreshold) {
+        // Ajustar thresholds para serem mais realistas
+        $growthThreshold = 0.05; // 5% de crescimento
+        $adjustedMarketShareThreshold = max($marketShareThreshold, 0.01); // Mínimo 1%
+        
+        if ($growthRate >= $growthThreshold && $marketShare >= $adjustedMarketShareThreshold) {
             return 'STAR'; // Alta participação, alto crescimento
-        } elseif ($growthRate >= 0.1 && $marketShare < $marketShareThreshold) {
+        } elseif ($growthRate >= $growthThreshold && $marketShare < $adjustedMarketShareThreshold) {
             return 'QUESTION_MARK'; // Baixa participação, alto crescimento
-        } elseif ($growthRate < 0.1 && $marketShare >= $marketShareThreshold) {
+        } elseif ($growthRate < $growthThreshold && $marketShare >= $adjustedMarketShareThreshold) {
             return 'CASH_COW'; // Alta participação, baixo crescimento
         } else {
             return 'DOG'; // Baixa participação, baixo crescimento
