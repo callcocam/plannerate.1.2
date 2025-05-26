@@ -13,7 +13,7 @@
         </div>
       </DialogHeader>
 
-            <div class="flex-1 overflow-hidden flex flex-col">
+      <div class="flex-1 overflow-hidden flex flex-col">
         <!-- Resumo -->
         <div v-if="summary" class="mb-4 py-2 px-4 bg-gray-50 rounded-lg flex-shrink-0">
           <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -62,14 +62,14 @@
               <SelectTrigger>
                 <SelectValue placeholder="Filtrar por classificação" />
               </SelectTrigger>
-              <SelectContent>  
+              <SelectContent>
                 <SelectItem value="Alto valor - manutenção">Alto valor - manutenção</SelectItem>
                 <SelectItem value="Incentivo - volume">Incentivo - volume</SelectItem>
                 <SelectItem value="Incentivo - lucro">Incentivo - lucro</SelectItem>
                 <SelectItem value="Baixo valor - descontinuar">Baixo valor - descontinuar</SelectItem>
               </SelectContent>
             </Select>
-            
+
             <Button variant="outline" @click="clearFilters">
               Limpar Filtros
             </Button>
@@ -84,7 +84,7 @@
                 <th v-for="(label, key) in {
                   ean: 'EAN',
                   description: 'Descrição',
-                  category: 'Categoria', 
+                  category: 'Categoria',
                   yValue: `EIXO Y (${axisLabels.y})`,
                   xValue: `EIXO X (${axisLabels.x})`,
                   classification: 'Classificação BCG'
@@ -107,7 +107,7 @@
                 :class="{ 'bg-blue-100 dark:bg-blue-900/50': selectedItemId === item.ean, 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50': true }">
                 <td class="px-2 py-1 border">{{ item.ean }}</td>
                 <td class="px-2 py-1 border">{{ item.description }}</td>
-                <td class="px-2 py-1 border">{{ item.category }}</td> 
+                <td class="px-2 py-1 border">{{ item.category }}</td>
                 <td class="px-2 py-1 border">{{ item.yValue }}%</td>
                 <td class="px-2 py-1 border">{{ item.xValue }}%</td>
                 <td class="px-2 py-1 border">
@@ -120,8 +120,9 @@
             </tbody>
           </table>
         </div>
-        
-        <div v-if="filteredResults.length === 0" class="text-gray-500 mt-4 text-center">Nenhum resultado encontrado.</div>
+
+        <div v-if="filteredResults.length === 0" class="text-gray-500 mt-4 text-center">Nenhum resultado encontrado.
+        </div>
 
         <!-- Legenda -->
         <div class="mt-4 flex flex-wrap gap-4 flex-shrink-0">
@@ -133,7 +134,7 @@
         </div>
       </div>
 
-      <DialogFooter class="mt-4 flex-shrink-0">
+      <DialogFooter class="mt-4 flex-shrink-0 items-center">
         <!-- Controles de Parâmetros -->
         <div class="flex flex-col sm:flex-row gap-4 w-full mb-4">
           <div class="flex flex-col sm:flex-row gap-2 flex-1">
@@ -150,7 +151,7 @@
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div class="flex flex-col gap-1">
               <label class="text-xs font-medium text-gray-600">EIXO Y (Vertical)</label>
               <Select v-model="bcgParams.yAxis" class="w-48">
@@ -168,9 +169,9 @@
         </div>
 
         <!-- Botões de Ação -->
-        <div class="flex flex-wrap gap-2 justify-end">
-          <Button variant="default" size="sm" @click="executeBCGAnalysisWithParams()"
-            class="flex items-center gap-2" :disabled="bcgResultStore.loading">
+        <div class="flex flex-nowrap gap-2 justify-end">
+          <Button variant="default" size="sm" @click="executeBCGAnalysisWithParams()" class="flex items-center gap-2"
+            :disabled="bcgResultStore.loading">
             <span v-if="bcgResultStore.loading" class="flex items-center gap-1">
               <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -183,12 +184,12 @@
             <span v-else>Recalcular</span>
             <RefreshCw class="h-4 w-4" />
           </Button>
-          
+
           <Button variant="outline" size="sm" @click="exportToExcel" class="flex items-center gap-2">
             <Download class="h-4 w-4" />
             Exportar Excel
           </Button>
-          
+
           <Button variant="outline" @click="$emit('update:open', false)" size="sm">
             Fechar
           </Button>
@@ -228,7 +229,7 @@ import * as XLSX from 'xlsx';
 defineProps<{
   open: boolean;
 }>();
- 
+
 defineEmits<{
   (e: 'update:open', value: boolean): void;
 }>();
@@ -266,7 +267,7 @@ const sortConfig = ref({
 
 // Estado dos filtros
 const searchText = ref('');
- 
+
 
 // Parâmetros para recálculo
 const bcgParams = ref({
@@ -296,10 +297,6 @@ const classificationLabels: Record<BCGClassification, string> = {
   'Baixo valor - descontinuar': 'Baixo valor - descontinuar'
 };
 
-const categories = computed(() => {
-  if (!bcgResultStore.result) return [];
-  return [...new Set(bcgResultStore.result.map(item => item.category))];
-});
 
 // Formatador de números
 const formatNumber = new Intl.NumberFormat('pt-BR', {
@@ -457,10 +454,6 @@ async function executeBCGAnalysisWithParams() {
 
   try {
     if (products.length > 0) {
-      console.log('Parâmetros enviados para o backend:', {
-        xAxis: bcgParams.value.xAxis,
-        yAxis: bcgParams.value.yAxis
-      });
 
       const analysisData = await analysisService.getBCGAnalysisData(
         products.map(p => p.id),
@@ -473,21 +466,16 @@ async function executeBCGAnalysisWithParams() {
         }
       );
 
-      console.log('Dados do service BCG:', analysisData);
-      console.log('Produtos para mapeamento:', products);
-
       // Atualizar labels dos eixos baseado nos dados recebidos
       if (analysisData && analysisData.length > 0) {
         axisLabels.value = {
           x: analysisData[0].x_axis_label || bcgParams.value.xAxis,
           y: analysisData[0].y_axis_label || bcgParams.value.yAxis
         };
-        console.log('Labels dos eixos atualizados:', axisLabels.value);
       }
 
       const { processData } = useBCGMatrix();
       const processedResults = processData(analysisData as BCGServiceData[], products);
-      console.log('Resultados processados:', processedResults);
 
       bcgResultStore.setResult(processedResults);
     } else {
