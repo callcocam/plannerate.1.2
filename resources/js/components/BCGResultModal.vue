@@ -85,6 +85,8 @@
                   ean: 'EAN',
                   description: 'Descrição',
                   category: 'Categoria', 
+                  yValue: `EIXO Y (${axisLabels.y})`,
+                  xValue: `EIXO X (${axisLabels.x})`,
                   classification: 'Classificação BCG'
                 }" :key="key" class="px-2 py-1 border cursor-pointer hover:bg-gray-200 text-left"
                   @click="toggleSort(key as keyof BCGResult)">
@@ -106,6 +108,8 @@
                 <td class="px-2 py-1 border">{{ item.ean }}</td>
                 <td class="px-2 py-1 border">{{ item.description }}</td>
                 <td class="px-2 py-1 border">{{ item.category }}</td> 
+                <td class="px-2 py-1 border">{{ item.yValue }}%</td>
+                <td class="px-2 py-1 border">{{ item.xValue }}%</td>
                 <td class="px-2 py-1 border">
                   <span class="px-2 py-1 rounded-full text-xs font-medium"
                     :class="getClassificationClass(item.classification)">
@@ -194,6 +198,12 @@ defineEmits<{
 const bcgResultStore = useBCGResultStore();
 const editorStore = useEditorStore();
 const analysisService = useAnalysisService();
+
+// Labels locais dos eixos que serão atualizados quando os dados chegarem
+const axisLabels = ref({
+  x: 'VALOR DE VENDA',
+  y: 'MARGEM DE CONTRIBUIÇÃO'
+});
 
 const selectedCategory = ref('');
 const selectedClassification = ref('');
@@ -341,8 +351,8 @@ function exportToExcel() {
     'EAN': item.ean,
     'Descrição': item.description,
     'Categoria': item.category,
-    'EIXO Y (Vertical)': `${item.yValue}%`,
-    'EIXO X (Horizontal)': `${item.xValue}%`,
+    [`EIXO Y (${axisLabels.value.y})`]: `${item.yValue}%`,
+    [`EIXO X (${axisLabels.value.x})`]: `${item.xValue}%`,
     'Classificação BCG': getClassificationLabel(item.classification)
   }));
 
@@ -394,6 +404,11 @@ async function executeBCGAnalysisWithParams() {
 
   try {
     if (products.length > 0) {
+      console.log('Parâmetros enviados para o backend:', {
+        xAxis: bcgParams.value.xAxis,
+        yAxis: bcgParams.value.yAxis
+      });
+
       const analysisData = await analysisService.getBCGAnalysisData(
         products.map(p => p.id),
         {
@@ -405,10 +420,19 @@ async function executeBCGAnalysisWithParams() {
         }
       );
 
-            const { processData } = useBCGMatrix();
       console.log('Dados do service BCG:', analysisData);
       console.log('Produtos para mapeamento:', products);
-      
+
+      // Atualizar labels dos eixos baseado nos dados recebidos
+      if (analysisData && analysisData.length > 0) {
+        axisLabels.value = {
+          x: analysisData[0].x_axis_label || bcgParams.value.xAxis,
+          y: analysisData[0].y_axis_label || bcgParams.value.yAxis
+        };
+        console.log('Labels dos eixos atualizados:', axisLabels.value);
+      }
+
+      const { processData } = useBCGMatrix();
       const processedResults = processData(analysisData as BCGServiceData[], products);
       console.log('Resultados processados:', processedResults);
 
@@ -426,8 +450,10 @@ async function executeBCGAnalysisWithParams() {
 // Listener para executar análise quando solicitado pelo BCGParamsPopover
 window.addEventListener('execute-bcg-analysis', (event: any) => {
   const { xAxis, yAxis } = event.detail;
+  console.log('Evento recebido do BCGParamsPopover:', { xAxis, yAxis });
   bcgParams.value.xAxis = xAxis;
   bcgParams.value.yAxis = yAxis;
+  console.log('bcgParams atualizados:', bcgParams.value);
   executeBCGAnalysisWithParams();
 });
 

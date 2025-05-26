@@ -6,6 +6,7 @@ use App\Models\Product;
 use App\Models\Sale;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class BCGAnalysisService
 {
@@ -17,6 +18,8 @@ class BCGAnalysisService
      * @param string|null $endDate
      * @param int|null $storeId
      * @param float|null $marketShare
+     * @param string|null $xAxis
+     * @param string|null $yAxis
      * @return array
      */
     public function analyze(
@@ -24,8 +27,11 @@ class BCGAnalysisService
         ?string $startDate = null,
         ?string $endDate = null,
         ?int $storeId = null,
-        ?float $marketShare = 0.1
+        ?float $marketShare = 0.1,
+        ?string $xAxis = null,
+        ?string $yAxis = null
     ): array {
+
         // Busca os produtos
         $products = Product::whereIn('id', $productIds)->get();
 
@@ -42,7 +48,9 @@ class BCGAnalysisService
             $products,
             $currentSales,
             $previousSales,
-            $marketShare
+            $marketShare,
+            $xAxis,
+            $yAxis
         );
 
         return $analysis;
@@ -81,18 +89,16 @@ class BCGAnalysisService
         Collection $products,
         Collection $currentSales,
         Collection $previousSales,
-        float $marketShare
+        float $marketShare,
+        ?string $xAxis = null,
+        ?string $yAxis = null
     ): array {
         $result = [];
-
-        // Calcula o total de vendas do mercado
 
         foreach ($products as $product) {
 
             $category = data_get($product->category_level, 'id');
-
             $level = data_get($product->category_level, 'level');
-
             $parent = data_get($product->category_level, 'parent');
 
             $productIds = Product::where($level, $category)
@@ -100,20 +106,32 @@ class BCGAnalysisService
             ->pluck('id');
             
             $totalMarketSales = Sale::query()->whereIn('product_id', $productIds)->sum('sale_value');
+            
             // Vendas do produto no período atual
             $currentProductSales = $product->sales->sum('sale_value');
+            $currentProductQuantity = $product->sales->sum('sale_quantity');
+            $currentProductMargin = $product->sales->sum('unit_profit_margin');
  
             // Vendas do produto no período anterior
-            $previousProductSales = $previousSales->where('product_id', $product->id)->avg('sale_value');
+            $previousProductSales = $previousSales->where('product_id', $product->id)->sum('sale_value');
+            $previousProductQuantity = $previousSales->where('product_id', $product->id)->sum('sale_quantity');
+            $previousProductMargin = $previousSales->where('product_id', $product->id)->sum('unit_profit_margin');
 
-            // Taxa de crescimento
-            $growthRate = $previousProductSales > 0
-                ? (($currentProductSales - $previousProductSales) / $previousProductSales)
+            // Calcular valores para os eixos baseado na seleção do usuário
+            $xValue = $this->calculateAxisValue($xAxis, $currentProductSales, $currentProductQuantity, $currentProductMargin);
+            $yValue = $this->calculateAxisValue($yAxis, $currentProductSales, $currentProductQuantity, $currentProductMargin);
+            
+            $previousXValue = $this->calculateAxisValue($xAxis, $previousProductSales, $previousProductQuantity, $previousProductMargin);
+            $previousYValue = $this->calculateAxisValue($yAxis, $previousProductSales, $previousProductQuantity, $previousProductMargin);
+
+            // Taxa de crescimento do eixo Y
+            $growthRate = $previousYValue > 0
+                ? (($yValue - $previousYValue) / $previousYValue)
                 : 0;
 
-            // Participação no mercado
+            // Participação no mercado do eixo X
             $marketSharePercent = $totalMarketSales > 0
-                ? ($currentProductSales / $totalMarketSales)
+                ? ($xValue / $totalMarketSales)
                 : 0;
 
             // Classificação BCG
@@ -127,6 +145,10 @@ class BCGAnalysisService
                 'previous_sales' => $previousProductSales,
                 'growth_rate' => round($growthRate * 100, 2),
                 'market_share' => round($marketSharePercent * 100, 2),
+                'x_axis_value' => round($xValue, 2),
+                'y_axis_value' => round($yValue, 2),
+                'x_axis_label' => $xAxis ?: 'VALOR DE VENDA',
+                'y_axis_label' => $yAxis ?: 'MARGEM DE CONTRIBUIÇÃO',
                 'classification' => $classification
             ];
         }
@@ -135,10 +157,31 @@ class BCGAnalysisService
     }
 
     /**
+     * Calcula o valor do eixo baseado na métrica selecionada
+     */
+    protected function calculateAxisValue(?string $axis, float $sales, float $quantity, float $margin): float
+    {
+        switch ($axis) {
+            case 'VENDA EM QUANTIDADE':
+                return $quantity;
+            case 'VALOR DE VENDA':
+                return $sales;
+            case 'MARGEM DE CONTRIBUIÇÃO':
+                return $margin;
+            default:
+                return $sales; // Valor padrão
+        }
+    }
+
+    /**
      * Classifica o produto na matriz BCG
      */
     protected function classifyBCG(float $growthRate, float $marketShare, float $marketShareThreshold): string
     {
+        // A classificação BCG é baseada em:
+        // - EIXO Y (Vertical): Taxa de crescimento das métricas selecionadas
+        // - EIXO X (Horizontal): Participação de mercado das métricas selecionadas
+        
         if ($growthRate >= 0.1 && $marketShare >= $marketShareThreshold) {
             return 'STAR'; // Alta participação, alto crescimento
         } elseif ($growthRate >= 0.1 && $marketShare < $marketShareThreshold) {

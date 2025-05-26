@@ -4,11 +4,16 @@ import { ref } from 'vue';
 // Tipos para dados vindos do service
 export interface BCGServiceData {
   product_id: number;
+  ean: string;
   category: string;
   current_sales: number;
   previous_sales: number;
   growth_rate: number;
   market_share: number;
+  x_axis_value: number;
+  y_axis_value: number;
+  x_axis_label: string;
+  y_axis_label: string;
   classification: 'STAR' | 'QUESTION_MARK' | 'CASH_COW' | 'DOG';
 }
 
@@ -22,7 +27,7 @@ export interface BCGData {
   xValue: number;
 }
 
-export type BCGClassification = 
+export type BCGClassification =
   | 'Alto valor - manutenção'
   | 'Incentivo - volume'
   | 'Incentivo - lucro'
@@ -30,7 +35,7 @@ export type BCGClassification =
 
 export interface BCGResult extends BCGData {
   classification: BCGClassification;
-  color: string; 
+  color: string;
 }
 
 interface CategoryStats {
@@ -50,8 +55,9 @@ interface ProductWithCategory extends Product {
 export function useBCGMatrix() {
   const results = ref<BCGResult[]>([]);
   const categories = ref<Map<string, CategoryStats>>(new Map());
+  const axisLabels = ref<{ x: string; y: string }>({ x: 'VALOR DE VENDA', y: 'MARGEM DE CONTRIBUIÇÃO' });
 
-  // Cores para cada classificação
+  // Cores para cada classificação (mapeadas para o frontend)
   const classificationColors = {
     'Alto valor - manutenção': '#00B050', // Verde
     'Incentivo - volume': '#00B0F0',      // Azul claro
@@ -73,13 +79,13 @@ export function useBCGMatrix() {
   // Calcular médias por categoria
   const calculateCategoryAverages = (data: BCGData[]) => {
     categories.value.clear();
-    
+
     // Primeira passagem: acumular somas e contagens
     data.forEach(item => {
       if (!categories.value.has(item.category)) {
         categories.value.set(item.category, { sumY: 0, sumX: 0, count: 0 });
       }
-      
+
       const stats = categories.value.get(item.category)!;
       stats.sumY += item.yValue;
       stats.sumX += item.xValue;
@@ -95,32 +101,40 @@ export function useBCGMatrix() {
       // Mapear dados do service para o formato esperado pelo frontend
       const mappedData: BCGData[] = serviceData.map((item: BCGServiceData) => {
         const product = products.find(p => p.id === item.product_id.toString());
-        
+
         return {
-          ean: product?.ean || '',
+          ean: item.ean || product?.ean || '',
           description: product?.name || product?.description || '',
           category: item.category,
           product_id: item.product_id.toString(),
-          yValue: item.growth_rate,      // Taxa de crescimento (EIXO Y - Vertical)
-          xValue: item.market_share      // Participação de mercado (EIXO X - Horizontal)
+          yValue: item.y_axis_value,     // Valor do eixo Y selecionado
+          xValue: item.x_axis_value      // Valor do eixo X selecionado
         };
       });
 
       // Calcular médias por categoria
       calculateCategoryAverages(mappedData);
 
+      // Atualizar labels dos eixos
+      if (serviceData.length > 0) {
+        axisLabels.value = {
+          x: serviceData[0].x_axis_label,
+          y: serviceData[0].y_axis_label
+        };
+      }
+
       // Processar cada item com classificação do service
       results.value = serviceData.map((serviceItem: BCGServiceData) => {
         const product = products.find(p => p.id === serviceItem.product_id.toString());
         const classification = mapServiceClassification(serviceItem.classification);
-        
+
         return {
-          ean: product?.ean || '',
+          ean: serviceItem.ean || product?.ean || '',
           description: product?.name || product?.description || '',
           category: serviceItem.category,
           product_id: serviceItem.product_id.toString(),
-          yValue: serviceItem.growth_rate,
-          xValue: serviceItem.market_share,
+          yValue: serviceItem.y_axis_value,
+          xValue: serviceItem.x_axis_value,
           classification,
           color: classificationColors[classification],
         };
@@ -148,6 +162,7 @@ export function useBCGMatrix() {
 
   return {
     results,
+    axisLabels,
     processData,
     getCategoryStats,
     getResultsByClassification,

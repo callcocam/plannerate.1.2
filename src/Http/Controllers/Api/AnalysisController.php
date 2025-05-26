@@ -14,6 +14,7 @@ use Callcocam\Plannerate\Services\Analysis\TargetStockAnalysisService;
 use Callcocam\Plannerate\Services\Analysis\BCGAnalysisService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 
 class AnalysisController extends Controller
 {
@@ -100,15 +101,29 @@ class AnalysisController extends Controller
             'startDate' => 'nullable|date',
             'endDate' => 'nullable|date|after_or_equal:startDate',
             'storeId' => 'nullable|integer|exists:stores,id',
-            'marketShare' => 'nullable|numeric|min:0|max:1'
+            'marketShare' => 'nullable|numeric|min:0|max:1',
+            'xAxis' => 'nullable|string',
+            'yAxis' => 'nullable|string'
         ]);
+
+        // Log dos parâmetros recebidos no controller
+        Log::info('BCG Controller - Parâmetros recebidos:', [
+            'xAxis' => $request->xAxis,
+            'yAxis' => $request->yAxis,
+            'marketShare' => $request->marketShare,
+            'products_count' => count($request->products)
+        ]);
+
+
 
         $result = $this->bcgService->analyze(
             $request->products,
             $request->startDate,
             $request->endDate,
             $request->storeId,
-            $request->marketShare
+            $request->marketShare,
+            $request->xAxis,
+            $request->yAxis
         );
 
         return response()->json($result);

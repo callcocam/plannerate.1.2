@@ -7,6 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@plannerate/components/ui/select';
+import Button from '@plannerate/components/ui/button/Button.vue';
 
 const props = defineProps({
     xAxis: {
@@ -28,16 +29,14 @@ const emit = defineEmits(['update:xAxis', 'update:yAxis', 'show-result-modal', '
 
 // Opções para os eixos
 const xAxisOptions = [
-    'MARGEM DE CONTRIBUIÇÃO',
-    'VENDA EM QUANTIDADE', 
     'VALOR DE VENDA',
+    'VENDA EM QUANTIDADE', 
     'MARGEM DE CONTRIBUIÇÃO'
 ];
 
 const yAxisOptions = [
     'VALOR DE VENDA',
     'VENDA EM QUANTIDADE',
-    'VALOR DE VENDA', 
     'MARGEM DE CONTRIBUIÇÃO'
 ];
 
