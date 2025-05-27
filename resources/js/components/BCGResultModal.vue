@@ -1,6 +1,6 @@
 <template>
   <Dialog :open="open" @update:open="$emit('update:open', $event)">
-    <DialogContent class="md:max-w-7xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+    <DialogContent class="md:max-w-[100%] w-full max-h-[90vh] overflow-hidden flex flex-col">
       <DialogHeader>
         <div class="flex justify-between items-center">
           <div>
@@ -108,8 +108,8 @@
                 <td class="px-2 py-1 border">{{ item.ean }}</td>
                 <td class="px-2 py-1 border">{{ item.description }}</td>
                 <td class="px-2 py-1 border">{{ item.category }}</td>
-                <td class="px-2 py-1 border">{{ item.yValue }}%</td>
-                <td class="px-2 py-1 border">{{ item.xValue }}%</td>
+                <td class="px-2 py-1 border">{{ item.yValue }}</td>
+                <td class="px-2 py-1 border">{{ item.xValue }}</td>
                 <td class="px-2 py-1 border">
                   <span class="px-2 py-1 rounded-full text-xs font-medium"
                     :class="getClassificationClass(item.classification)">
@@ -294,6 +294,7 @@ const classificationLabels: Record<BCGClassification, string> = {
   'Alto valor - manutenção': 'Alto valor - manutenção',
   'Incentivo - volume': 'Incentivo - volume',
   'Incentivo - lucro': 'Incentivo - lucro',
+  'Incentivo - valor': 'Incentivo - valor',
   'Baixo valor - descontinuar': 'Baixo valor - descontinuar'
 };
 
@@ -364,6 +365,7 @@ const getClassificationClass = (classification: BCGClassification) => {
     'Alto valor - manutenção': 'bg-green-100 text-green-800',
     'Incentivo - volume': 'bg-blue-100 text-blue-800',
     'Incentivo - lucro': 'bg-purple-100 text-purple-800',
+    'Incentivo - valor': 'bg-red-100 text-red-800',
     'Baixo valor - descontinuar': 'bg-red-100 text-red-800'
   };
   return classes[classification] || '';
@@ -381,6 +383,7 @@ const summary = computed(() => {
     'Alto valor - manutenção': 0,
     'Incentivo - volume': 0,
     'Incentivo - lucro': 0,
+    'Incentivo - valor': 0,
     'Baixo valor - descontinuar': 0
   };
 
@@ -401,8 +404,8 @@ function exportToExcel() {
     'EAN': item.ean,
     'Descrição': item.description,
     'Categoria': item.category,
-    [`EIXO Y (${axisLabels.value.y})`]: `${item.yValue}%`,
-    [`EIXO X (${axisLabels.value.x})`]: `${item.xValue}%`,
+    [`EIXO Y (${axisLabels.value.y})`]: item.yValue,
+    [`EIXO X (${axisLabels.value.x})`]: item.xValue,
     'Classificação BCG': getClassificationLabel(item.classification)
   }));
 

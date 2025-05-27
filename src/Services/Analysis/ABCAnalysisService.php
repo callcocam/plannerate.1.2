@@ -6,7 +6,6 @@ use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\Sale;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 
 class ABCAnalysisService
 {
@@ -17,76 +16,24 @@ class ABCAnalysisService
      * @param string|null $startDate
      * @param string|null $endDate
      * @param int|null $storeId 
-     * @param array|null $weights
-     * @param array|null $thresholds
      * @return array
      */
     public function analyze(
         array $productIds,
         ?string $startDate = null,
         ?string $endDate = null,
-        ?int $storeId = null,
-        ?array $weights = null,
-        ?array $thresholds = null
+        ?int $storeId = null
     ): array {
         // Busca os produtos
-        $products = Product::whereIn('id', $productIds)->get();
-
-
+        $products = Product::whereIn('id', $productIds)->get(); 
 
         // Classifica os produtos
-        $classified = $this->classifyProducts($products, $weights, $thresholds);
+        $classified = $this->classifyProducts($products, $startDate, $endDate, $storeId);
 
         return $classified;
     }
-
-    /**
-     * Busca as vendas dos produtos no período
-     */
-    protected function getSales(
-        array $productIds,
-        ?string $startDate,
-        ?string $endDate,
-        ?int $storeId
-    ): Collection {
-        $query = Sale::whereIn('product_id', $productIds);
-
-        if ($startDate) {
-            $query->where('sale_date', '>=', $startDate);
-        }
-
-        if ($endDate) {
-            $query->where('sale_date', '<=', $endDate);
-        }
-
-        if ($storeId) {
-            $query->where('store_id', $storeId);
-        }
-
-        return $query->get();
-    }
-
-    /** 
-     * Busca as compras dos produtos no período
-     */
-    protected function getPurchases(
-        array $productIds,
-        ?string $startDate,
-        ?string $endDate,
-        ?int $storeId
-    ): Collection {
-        $query = Purchase::whereIn('product_id', $productIds);
-
-        if ($startDate) {
-            $query->where('entry_date', '>=', $startDate);
-        }
-
-        if ($endDate) {
-            $query->where('entry_date', '<=', $endDate);
-        }
-
-        return $query->get();
-    }
+ 
+ 
 
     /**
      * Calcula os totais de quantidade, valor e margem
@@ -105,23 +52,33 @@ class ABCAnalysisService
      * Classifica os produtos em A, B ou C
      */
     protected function classifyProducts(
-        Collection $products,
-        array $weights,
-        array $thresholds
+        Collection $products, 
+        ?string $startDate = null,
+        ?string $endDate = null,
+        ?int $storeId = null
     ): array {
         $result = [];
 
-        foreach ($products as $product) {
-            // $productSales = Sale::where('product_id', $product->id) ;
-            $productSales = $product->sales;
+        foreach ($products as $product) { 
+            $productSales = $product->sales()->when($startDate, function ($query) use ($startDate) {
+                $query->where('sale_date', '>=', $startDate);
+            })->when($endDate, function ($query) use ($endDate) {
+                $query->where('sale_date', '<=', $endDate);
+            })->when($storeId, function ($query) use ($storeId) {
+                $query->where('store_id', $storeId);
+            });
             $quantity = $productSales->sum('sale_quantity');
             $value = $productSales->sum('sale_value');
             $margin = $productSales->sum('unit_contribution_margin');
-            $productPurchases = $product->purchases;
-            $currentPurchases = $productPurchases->first();
-            // $totals = $this->calculateTotals($productSales, $productPurchases);
-            $currentStock = 0;
-            // $margin = $marginPonderada + $valuePonderada + $quantityPonderada;
+            $productPurchases = $product->purchases()->when($startDate, function ($query) use ($startDate) {
+                $query->where('entry_date', '>=', $startDate);
+            })->when($endDate, function ($query) use ($endDate) {
+                $query->where('entry_date', '<=', $endDate);
+            })->when($storeId, function ($query) use ($storeId) {
+                $query->where('store_id', $storeId);
+            });
+            $currentPurchases = $productPurchases->first(); 
+            $currentStock = 0; 
             $lastPurchase = null;
             $lastSale = null;
             if ($currentPurchases) {

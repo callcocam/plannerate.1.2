@@ -246,9 +246,7 @@ async function executeABCAnalysisWithParams(weights: any, thresholds: any) {
             const analysisData = await getABCAnalysisData(
                 products.map(p => p.id),
                 {
-                    planogram: editorStore.currentState?.id,
-                    weights: weights,
-                    thresholds: thresholds
+                    planogram: editorStore.currentState?.id 
                 }
             );
 

@@ -14,7 +14,7 @@ export interface BCGServiceData {
   y_axis_value: number;
   x_axis_label: string;
   y_axis_label: string;
-  classification: 'STAR' | 'QUESTION_MARK' | 'CASH_COW' | 'DOG';
+  classification: string; // Dados brutos do service, classificação será feita no frontend
 }
 
 // Tipos para dados processados
@@ -31,6 +31,7 @@ export type BCGClassification =
   | 'Alto valor - manutenção'
   | 'Incentivo - volume'
   | 'Incentivo - lucro'
+  | 'Incentivo - valor'
   | 'Baixo valor - descontinuar';
 
 export interface BCGResult extends BCGData {
@@ -38,11 +39,7 @@ export interface BCGResult extends BCGData {
   color: string;
 }
 
-interface CategoryStats {
-  sumY: number;
-  sumX: number;
-  count: number;
-}
+
 
 interface ProductWithCategory extends Product {
   id: string;
@@ -54,7 +51,6 @@ interface ProductWithCategory extends Product {
 
 export function useBCGMatrix() {
   const results = ref<BCGResult[]>([]);
-  const categories = ref<Map<string, CategoryStats>>(new Map());
   const axisLabels = ref<{ x: string; y: string }>({ x: 'VALOR DE VENDA', y: 'MARGEM DE CONTRIBUIÇÃO' });
 
   // Cores para cada classificação (mapeadas para o frontend)
@@ -62,40 +58,90 @@ export function useBCGMatrix() {
     'Alto valor - manutenção': '#00B050', // Verde
     'Incentivo - volume': '#00B0F0',      // Azul claro
     'Incentivo - lucro': '#BF90FF',       // Roxo claro
+    'Incentivo - valor': '#FF6347',       // Vermelho claro
     'Baixo valor - descontinuar': '#FF6347' // Vermelho claro
   };
 
-  // Mapeamento das classificações do service para o frontend
-  const mapServiceClassification = (serviceClassification: string): BCGClassification => {
-    const mapping: Record<string, BCGClassification> = {
-      'STAR': 'Alto valor - manutenção',           // Alta participação, alto crescimento
-      'CASH_COW': 'Incentivo - volume',            // Alta participação, baixo crescimento
-      'QUESTION_MARK': 'Incentivo - lucro',        // Baixa participação, alto crescimento
-      'DOG': 'Baixo valor - descontinuar'          // Baixa participação, baixo crescimento
-    };
-    return mapping[serviceClassification] || 'Baixo valor - descontinuar';
+  // Classificar produto baseado nas médias da categoria (seguindo lógica do VBA)
+  const classifyProduct = (xValue: number, yValue: number, xAverage: number, yAverage: number): BCGClassification => {
+
+    const xLabel = axisLabels.value.x;
+    const yLabel = axisLabels.value.y;
+
+    console.log('xValue', xValue, 'yValue', yValue, 'xAverage', xAverage, 'yAverage', yAverage, 'xLabel', xLabel, 'yLabel', yLabel);
+
+    if (xValue > xAverage && yValue > yAverage) {
+      return 'Alto valor - manutenção'; // Verde
+    } 
+    
+    else if (yLabel === 'VENDA EM QUANTIDADE' && yValue <= yAverage && xLabel === 'MARGEM DE CONTRIBUIÇÃO' && xValue > xAverage) {
+      return 'Incentivo - volume'; // Azul claro
+    } else if (yLabel === 'MARGEM DE CONTRIBUIÇÃO' && yValue > yAverage && xLabel === 'VENDA EM QUANTIDADE' && xValue <= xAverage) {
+      return 'Incentivo - volume'; // Roxo claro
+    } else if (yLabel === 'VENDA EM QUANTIDADE' && yValue > yAverage && xLabel === 'MARGEM DE CONTRIBUIÇÃO' && xValue <= xAverage) {
+      return 'Incentivo - volume'; // Azul claro
+    } else if (yLabel === 'MARGEM DE CONTRIBUIÇÃO' && yValue <= yAverage && xLabel === 'VENDA EM QUANTIDADE' && xValue > xAverage) {
+      return 'Incentivo - volume'; // Roxo claro
+    } 
+    
+    else if (yLabel === 'VALOR DE VENDA' && yValue <= yAverage && xLabel === 'VENDA EM QUANTIDADE' && xValue > xAverage) {
+      return 'Incentivo - valor'; // Azul claro
+    } else if (yLabel === 'VENDA EM QUANTIDADE' && yValue > yAverage && xLabel === 'VALOR DE VENDA' && xValue <=  xAverage) {
+      return 'Incentivo - valor'; // Azul claro
+    } else if (yLabel === 'VALOR DE VENDA' && yValue > yAverage && xLabel === 'VENDA EM QUANTIDADE' && xValue <= xAverage) {
+      return 'Incentivo - valor'; // Azul claro
+    } else if (yLabel === 'VENDA EM QUANTIDADE' && yValue <= yAverage && xLabel === 'VALOR DE VENDA' && xValue >  xAverage) {
+      return 'Incentivo - valor'; // Azul claro
+    }
+    
+    else if (yLabel === 'MARGEM DE CONTRIBUIÇÃO' && yValue <= yAverage && xLabel === 'VALOR DE VENDA' && xValue > xAverage) {
+      return 'Incentivo - lucro'; // Azul claro
+    } else if (yLabel === 'VALOR DE VENDA' && yValue > yAverage && xLabel === 'MARGEM DE CONTRIBUIÇÃO' && xValue <= xAverage) {
+      return 'Incentivo - lucro'; // Azul claro
+    }  else if (yLabel === 'MARGEM DE CONTRIBUIÇÃO' && yValue > yAverage && xLabel === 'VALOR DE VENDA' && xValue <= xAverage) {
+      return 'Incentivo - lucro'; // Azul claro
+    } else if (yLabel === 'VALOR DE VENDA' && yValue <= yAverage && xLabel === 'MARGEM DE CONTRIBUIÇÃO' && xValue > xAverage) {
+      return 'Incentivo - lucro'; // Azul claro
+    } 
+    
+    else {
+      return 'Baixo valor - descontinuar'; // Vermelho claro
+    }
   };
 
-  // Calcular médias por categoria
-  const calculateCategoryAverages = (data: BCGData[]) => {
-    categories.value.clear();
+  // Calcular médias por categoria (seguindo lógica do VBA)
+  const calculateCategoryAverages = (data: BCGData[]): Map<string, { xAverage: number; yAverage: number }> => {
+    const categoryStats = new Map<string, { sumX: number; sumY: number; count: number }>();
 
-    // Primeira passagem: acumular somas e contagens
+    // Primeira passagem: acumular somas e contagens por categoria
     data.forEach(item => {
-      if (!categories.value.has(item.category)) {
-        categories.value.set(item.category, { sumY: 0, sumX: 0, count: 0 });
+      if (!categoryStats.has(item.category)) {
+        categoryStats.set(item.category, { sumX: 0, sumY: 0, count: 0 });
       }
 
-      const stats = categories.value.get(item.category)!;
-      stats.sumY += item.yValue;
-      stats.sumX += item.xValue;
-      stats.count += 1;
+      const stats = categoryStats.get(item.category)!;
+      if (typeof item.xValue === 'number' && typeof item.yValue === 'number') {
+        stats.sumX += item.xValue;
+        stats.sumY += item.yValue;
+        stats.count += 1;
+      }
     });
+
+    // Segunda passagem: calcular médias
+    const averages = new Map<string, { xAverage: number; yAverage: number }>();
+    categoryStats.forEach((stats, category) => {
+      averages.set(category, {
+        xAverage: stats.count > 0 ? stats.sumX / stats.count : 0,
+        yAverage: stats.count > 0 ? stats.sumY / stats.count : 0
+      });
+    });
+
+    return averages;
   };
 
   // Classificar um item baseado nas médias da categoria 
 
-  // Função principal para processar os dados vindos do service
+  // Função principal para processar os dados vindos do service (seguindo lógica do VBA)
   const processData = (serviceData: BCGServiceData[], products: ProductWithCategory[]) => {
     try {
       // Mapear dados do service para o formato esperado pelo frontend
@@ -112,8 +158,6 @@ export function useBCGMatrix() {
         };
       });
 
-      // Calcular médias por categoria
-      calculateCategoryAverages(mappedData);
 
       // Atualizar labels dos eixos
       if (serviceData.length > 0) {
@@ -122,19 +166,25 @@ export function useBCGMatrix() {
           y: serviceData[0].y_axis_label
         };
       }
+      // Calcular médias por categoria (seguindo lógica do VBA)
+      const categoryAverages = calculateCategoryAverages(mappedData);
 
-      // Processar cada item com classificação do service
-      results.value = serviceData.map((serviceItem: BCGServiceData) => {
-        const product = products.find(p => p.id === serviceItem.product_id.toString());
-        const classification = mapServiceClassification(serviceItem.classification);
+      // Processar cada item e classificar baseado nas médias da categoria
+      results.value = mappedData.map((item: BCGData) => {
+        const averages = categoryAverages.get(item.category);
+        const xAverage = averages?.xAverage || 0;
+        const yAverage = averages?.yAverage || 0;
+
+        // Classificar produto baseado nas médias da categoria
+        const classification = classifyProduct(item.xValue, item.yValue, xAverage, yAverage);
 
         return {
-          ean: serviceItem.ean || product?.ean || '',
-          description: product?.name || product?.description || '',
-          category: serviceItem.category,
-          product_id: serviceItem.product_id.toString(),
-          yValue: serviceItem.y_axis_value,
-          xValue: serviceItem.x_axis_value,
+          ean: item.ean,
+          description: item.description,
+          category: item.category,
+          product_id: item.product_id,
+          yValue: item.yValue,
+          xValue: item.xValue,
           classification,
           color: classificationColors[classification],
         };
@@ -148,10 +198,6 @@ export function useBCGMatrix() {
   };
 
   // Funções auxiliares para análise
-  const getCategoryStats = (category: string) => {
-    return categories.value.get(category);
-  };
-
   const getResultsByClassification = (classification: BCGClassification) => {
     return results.value.filter(result => result.classification === classification);
   };
@@ -164,7 +210,6 @@ export function useBCGMatrix() {
     results,
     axisLabels,
     processData,
-    getCategoryStats,
     getResultsByClassification,
     getResultsByCategory,
     classificationColors

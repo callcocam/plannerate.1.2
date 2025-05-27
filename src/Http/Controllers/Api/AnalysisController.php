@@ -45,8 +45,6 @@ class AnalysisController extends Controller
             'products' => 'required|array', 
             'planogram' => 'required|string',
             'storeId' => 'nullable|integer|exists:stores,id',
-            'weights' => 'nullable|array',
-            'thresholds' => 'nullable|array'
         ]);
 
         $planogram = Planogram::find($request->planogram);
@@ -57,9 +55,7 @@ class AnalysisController extends Controller
             $request->products,
             $startDate,
             $endDate,
-            $request->storeId,
-            $request->weights,
-            $request->thresholds
+            $request->storeId 
         );
 
         return response()->json($result);
@@ -104,8 +100,7 @@ class AnalysisController extends Controller
         $request->validate([
             'products' => 'required|array', 
             'planogram' => 'required|string',
-            'storeId' => 'nullable|integer|exists:stores,id',
-            'marketShare' => 'nullable|numeric|min:0|max:1',
+            'storeId' => 'nullable|integer|exists:stores,id', 
             'xAxis' => 'nullable|string',
             'yAxis' => 'nullable|string'
         ]);
@@ -113,8 +108,7 @@ class AnalysisController extends Controller
         // Log dos parâmetros recebidos no controller
         Log::info('BCG Controller - Parâmetros recebidos:', [
             'xAxis' => $request->xAxis,
-            'yAxis' => $request->yAxis,
-            'marketShare' => $request->marketShare,
+            'yAxis' => $request->yAxis, 
             'products_count' => count($request->products)
         ]);
 
@@ -126,10 +120,9 @@ class AnalysisController extends Controller
             $request->products,
             $startDate,
             $endDate,
-            $request->storeId,
-            $request->marketShare,
             $request->xAxis,
-            $request->yAxis
+            $request->yAxis,
+            $request->storeId
         );
 
         return response()->json($result);
