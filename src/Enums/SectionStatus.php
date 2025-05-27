@@ -59,4 +59,23 @@ enum SectionStatus: string
             self::Published => 'bg-green-200 text-green-800',
         };
     }
+
+    
+    // Adiciona o método estático options
+    public static function options(): array
+    {
+        return collect(self::cases())
+            ->map(fn($case) => ['value' => $case->value, 'label' => $case->label()])
+            ->values()
+            ->toArray();
+    }
+
+    // Adiciona o método estático toArray
+    public static function getOptions(): array
+    {
+        return [
+            'draft' => self::Draft->label(),
+            'published' => self::Published->label(),
+        ];
+    }
 }
