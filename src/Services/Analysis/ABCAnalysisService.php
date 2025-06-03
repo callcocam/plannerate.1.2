@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * Created by Claudio Campos.
+ * User: callcocam@gmail.com, contato@sigasmart.com.br
+ * https://www.sigasmart.com.br
+ */
 namespace Callcocam\Plannerate\Services\Analysis;
 
 use App\Models\Product;
@@ -41,9 +46,9 @@ class ABCAnalysisService
     protected function calculateTotals(Collection $sales, Collection $purchases): array
     {
         return [
-            'quantity' => $sales->sum('sale_quantity'),
-            'value' => $sales->sum('sale_value'),
-            'margin' => $sales->sum('unit_contribution_margin'),
+            'quantity' => $sales->sum('total_sale_quantity'),
+            'value' => $sales->sum('total_sale_value'),
+            'margin' => $sales->sum('total_profit_margin'),
             'current_stock' => $purchases->sum('current_stock')
         ];
     }
@@ -67,9 +72,9 @@ class ABCAnalysisService
             })->when($storeId, function ($query) use ($storeId) {
                 $query->where('store_id', $storeId);
             });
-            $quantity = $productSales->sum('sale_quantity');
-            $value = $productSales->sum('sale_value');
-            $margin = $productSales->sum('unit_contribution_margin');
+            $quantity = $productSales->sum('total_sale_quantity');
+            $value = $productSales->sum('total_sale_value');
+            $margin = $productSales->sum('total_profit_margin');
             $productPurchases = $product->purchases()->when($startDate, function ($query) use ($startDate) {
                 $query->where('entry_date', '>=', $startDate);
             })->when($endDate, function ($query) use ($endDate) {

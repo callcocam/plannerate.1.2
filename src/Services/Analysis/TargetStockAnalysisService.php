@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * Created by Claudio Campos.
+ * User: callcocam@gmail.com, contato@sigasmart.com.br
+ * https://www.sigasmart.com.br
+ */
 namespace Callcocam\Plannerate\Services\Analysis;
 
 use App\Models\Product;
@@ -85,7 +90,7 @@ class TargetStockAnalysisService
                 $grouped[$productId][$date] = 0;
             }
 
-            $grouped[$productId][$date] += $sale->sale_quantity;
+            $grouped[$productId][$date] += $sale->total_sale_quantity;
         }
 
         return $grouped;

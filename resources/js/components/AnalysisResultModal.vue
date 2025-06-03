@@ -242,14 +242,13 @@ async function executeABCAnalysisWithParams(weights: any, thresholds: any) {
 
     try {
         if (products.length > 0) {
-            const { getABCAnalysisData } = useAnalysisService();
-            const analysisData = await getABCAnalysisData(
+            const { getABCAnalysis } = useAnalysisService();
+            const analysisData = await getABCAnalysis(
                 products.map(p => p.id),
                 {
                     planogram: editorStore.currentState?.id 
                 }
             );
-
             const analyzed = useAssortmentStatus(analysisData, weights, thresholds);
             analysisResultStore.setResult(analyzed);
         } else {

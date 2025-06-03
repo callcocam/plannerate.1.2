@@ -23,18 +23,9 @@ import { useRouter } from 'vue-router';
 // Imports Internos 
 import { useEditorStore } from '@plannerate/store/editor';
 import Category from './Category.vue';
-import type { Gondola } from '@plannerate/types/gondola';
-import ABCParamsPopover from '@plannerate/components/ABCParamsPopover.vue';
-import AnalysisResultModal from '@plannerate/components/AnalysisResultModal.vue';
-import TargetStockParamsPopover from '@plannerate/components/TargetStockParamsPopover.vue';
-import BCGParamsPopover from '@plannerate/components/BCGParamsPopover.vue';
-import TargetStockResultModal from '@plannerate/components/TargetStockResultModal.vue';  
-import BCGResultModal from '@plannerate/components/BCGResultModal.vue';
-import { useAnalysisResultStore } from '@plannerate/store/editor/analysisResult'; 
-import Dialog from '@plannerate/components/ui/dialog/Dialog.vue';
-import DialogContent from '@plannerate/components/ui/dialog/DialogContent.vue';
-import DialogTitle from '@plannerate/components/ui/dialog/DialogTitle.vue';
-import DialogDescription from '@plannerate/components/ui/dialog/DialogDescription.vue';
+    import type { Gondola } from '@plannerate/types/gondola';
+    import { useAnalysisResultStore } from '@plannerate/store/editor/analysisResult';  
+    import AnalysisPopover from './AnalysisPopover.vue';
 // Definição das Props usando sintaxe padrão
 const props = defineProps({
     gondola: {
@@ -83,9 +74,7 @@ const shelfSelected = computed(() => {
 const hasChanges = computed(() => editorStore.hasChanges);
 const canUndo = computed(() => editorStore.canUndo);
 const canRedo = computed(() => editorStore.canRedo);
-
-const showResultModal = ref(false);
-const showBCGResultModal = ref(false);
+ 
 
 // *** NOVA Computed para a gôndola reativa do editorStore ***
 const alignment = computed(() => {
@@ -94,62 +83,7 @@ const alignment = computed(() => {
     let alignment = gondolaStore?.alignment;
     return alignment;
 });
-
-// Estado para o Popover e campos do cálculo ABC
-const showCalculos = ref(false);
-const showABCParams = ref(false); 
-watch(showABCParams, (newVal) => {
-    if (!newVal) {
-        showCalculos.value = false;
-    }
-});
-const abcParams = ref({
-    weights: {
-        quantity: 0.30,
-        value: 0.30,
-        margin: 0.40,
-    },
-    thresholds: {
-        a: 0.8,
-        b: 0.85,
-    },
-});
-
-// Estado para o Popover e campos do cálculo Estoque Alvo
-const showTargetStockParams = ref(false);
-watch(showTargetStockParams, (newVal) => {
-    if (!newVal) {
-        showCalculos.value = false;
-    }
-});
-const targetStockParams = ref({
-    serviceLevels: [
-        { classification: 'A', level: 0.7 },
-        { classification: 'B', level: 0.8 },
-        { classification: 'C', level: 0.9 }
-    ],
-    replenishmentParams: [
-        { classification: 'A', coverageDays: 2 },
-        { classification: 'B', coverageDays: 5 },
-        { classification: 'C', coverageDays: 7 }
-    ],
-});
-
-// Estado para o Popover e campos do cálculo BCG
-const showBCGParams = ref(false);
-watch(showBCGParams, (newVal) => {
-    if (!newVal) {
-        showCalculos.value = false;
-    }
-});
-const bcgParams = ref({
-    xAxis: 'MARGEM DE CONTRIBUIÇÃO',
-    yAxis: 'VALOR DE VENDA'
-});
-
-// Estado para o resultado do cálculo de Estoque Alvo
-const showTargetStockResultModal = ref(false); 
- 
+  
 const analysisResultStore = useAnalysisResultStore(); 
 
 // Métodos
@@ -304,62 +238,35 @@ const setGondolaAlignmentHandler = (alignment: string | null = null) => {
 const undo = () => editorStore.undo();
 const redo = () => editorStore.redo();
 const saveChanges = () => editorStore.saveChanges();
-  
-const closeResultModal = () => {
-    showResultModal.value = false;
-};
+   
 
-function openTargetStockResultModal() {
-    showTargetStockResultModal.value = true;
-    showTargetStockParams.value = false; // Fecha o diálogo
-}
-
-function removeFromGondola(selectedItemId: string | null) {
-    if (selectedItemId) {
-        const record = editorStore.getCurrentGondola?.sections.flatMap(section => section.shelves.flatMap(shelf => shelf.segments.flatMap(segment => segment.layer.product))).find(product => product?.ean === selectedItemId);
-        if (record) {
-            let sectionId = null;
-            let shelfId = null;
-            let segmentId = null;
-            if (editorStore.getCurrentGondola) {
-                editorStore.getCurrentGondola?.sections.forEach(section => {
-                    section.shelves.forEach(shelf => {
-                        shelf.segments.forEach(segment => {
-                            if (segment.layer.product?.ean === selectedItemId) {
-                                sectionId = section.id;
-                                shelfId = shelf.id;
-                                segmentId = segment.id;
-                            }
-                        });
-                    });
-                });
-                if (sectionId && shelfId && segmentId) {
-                    editorStore.removeSegmentFromShelf(editorStore.getCurrentGondola?.id, sectionId, shelfId, segmentId);
-                }
-            }
-        }
-    }
-}
-
-// Lógica para lidar com a exibição da modal de resultado BCG
-const handleShowBCGResultModal = () => {
-    showBCGResultModal.value = true;
-    showBCGParams.value = false; // Fechar o popover de parâmetros ao abrir a modal
-};
-
-// Funções para abrir popovers de parâmetros e fechar o popover principal de cálculos
-function handleOpenABCParams() {
-    showCalculos.value = false;
-    showABCParams.value = true;
-}
-function handleOpenTargetStockParams() {
-    showCalculos.value = false;
-    showTargetStockParams.value = true;
-}
-function handleOpenBCGParams() {
-    showCalculos.value = false;
-    showBCGParams.value = true;
-}
+// function removeFromGondola(selectedItemId: string | null) {
+//     if (selectedItemId) {
+//         const record = editorStore.getCurrentGondola?.sections.flatMap(section => section.shelves.flatMap(shelf => shelf.segments.flatMap(segment => segment.layer.product))).find(product => product?.ean === selectedItemId);
+//         if (record) {
+//             let sectionId = null;
+//             let shelfId = null;
+//             let segmentId = null;
+//             if (editorStore.getCurrentGondola) {
+//                 editorStore.getCurrentGondola?.sections.forEach(section => {
+//                     section.shelves.forEach(shelf => {
+//                         shelf.segments.forEach(segment => {
+//                             if (segment.layer.product?.ean === selectedItemId) {
+//                                 sectionId = section.id;
+//                                 shelfId = shelf.id;
+//                                 segmentId = segment.id;
+//                             }
+//                         });
+//                     });
+//                 });
+//                 if (sectionId && shelfId && segmentId) {
+//                     editorStore.removeSegmentFromShelf(editorStore.getCurrentGondola?.id, sectionId, shelfId, segmentId);
+//                 }
+//             }
+//         }
+//     }
+// }
+ 
   
 </script>
 
@@ -487,61 +394,11 @@ function handleOpenBCGParams() {
             </div>
             <div class="flex gap-2">
                 <Button v-if="analysisResultStore.result" @click="analysisResultStore.setResult(null);" variant="destructive">Limpar Resultado</Button>
-                <Popover v-model:open="showCalculos">
-                    <PopoverTrigger as-child>
-                        <Button variant="outline" size="sm" @click="showCalculos = true">
-                            <NutIcon class="h-4 w-4" />
-                            Calculos
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent class="w-auto max-w-lg z-[1000]">
-                        <div class="flex flex-col gap-2">
-                            <Button variant="outline" @click="handleOpenABCParams">Calculos ABC</Button>
-                            <Button variant="outline" @click="handleOpenTargetStockParams">Calculos Estoque Alvo Prateleira</Button>
-                            <Button variant="outline" @click="handleOpenBCGParams">Calculos Matriz BCG</Button>
-                        </div>
-                    </PopoverContent>
-                </Popover>
+                <AnalysisPopover />
                 <Button variant="outline" size="sm">
                     <PrinterIcon class="h-4 w-4" />
                     Imprimir
-                </Button>
-                <Dialog v-model:open="showABCParams">
-                    <DialogContent class="w-auto max-w-xl z-[1000]">
-                        <DialogTitle>Parâmetros ABC</DialogTitle>
-                        <DialogDescription>
-                            Ajuste os pesos e limites para a análise ABC conforme sua estratégia.
-                        </DialogDescription>
-                        <ABCParamsPopover
-                            v-model:weights="abcParams.weights"
-                            v-model:thresholds="abcParams.thresholds"
-                            @show-result-modal="showResultModal = true"
-                            @close="showABCParams = false"
-                        />
-                    </DialogContent>
-                </Dialog>
-                <Dialog v-model:open="showTargetStockParams">
-                    <DialogContent class="w-auto max-w-xl z-[1000]">
-                        <DialogTitle>Parâmetros de Estoque Alvo</DialogTitle>
-                        <DialogDescription>
-                            Configure os níveis de serviço e parâmetros de reposição para calcular o estoque ideal.
-                        </DialogDescription>
-                        <TargetStockParamsPopover :service-levels="targetStockParams.serviceLevels"
-                            :replenishment-params="targetStockParams.replenishmentParams"
-                            @show-result-modal="openTargetStockResultModal" />
-                    </DialogContent>
-                </Dialog>
-                <Dialog v-model:open="showBCGParams">
-                    <DialogContent class="w-auto max-w-xl z-[1000]">
-                        <DialogTitle>Parâmetros Matriz BCG</DialogTitle>
-                        <DialogDescription>
-                            Defina os parâmetros de participação de mercado e taxa de crescimento para análise BCG.
-                        </DialogDescription>
-                        <BCGParamsPopover :x-axis="bcgParams.xAxis" :y-axis="bcgParams.yAxis" 
-                            @show-result-modal="handleShowBCGResultModal"
-                            @close="showBCGParams = false" />
-                    </DialogContent>
-                </Dialog>
+                </Button>                
             </div>
         </div>
         <ConfirmModal :isOpen="showDeleteConfirm.some((item) => item.gondola)"
@@ -553,10 +410,6 @@ function handleOpenBCGParams() {
             @update:isOpen="(isOpen: boolean) => !isOpen && (showDeleteConfirm = [])" title="Excluir produto"
             message="Tem certeza que deseja excluir este produto? Esta ação não pode ser desfeita."
             confirmButtonText="Excluir" cancelButtonText="Cancelar" :isDangerous="true" @confirm="confirmDeleteShelf"
-            @cancel="cancelDelete" />
-        <AnalysisResultModal :open="showResultModal" @close="closeResultModal"
-            @remove-from-gondola="removeFromGondola" />
-        <TargetStockResultModal :open="showTargetStockResultModal" @close="showTargetStockResultModal = false" />
-        <BCGResultModal :open="showBCGResultModal" @update:open="showBCGResultModal = $event" />
+            @cancel="cancelDelete" /> 
     </div>
 </template>

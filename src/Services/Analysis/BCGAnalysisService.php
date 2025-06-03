@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * Created by Claudio Campos.
+ * User: callcocam@gmail.com, contato@sigasmart.com.br
+ * https://www.sigasmart.com.br
+ */
 namespace Callcocam\Plannerate\Services\Analysis;
 
 use App\Models\Product;
@@ -85,9 +90,9 @@ class BCGAnalysisService
         foreach ($products as $product) {
             $cloneCurrentSales = clone $currentSales;
             // Vendas do produto no período atual (filtradas)
-            $currentProductSales = $cloneCurrentSales->where('product_id', $product->id)->sum('sale_value');
-            $currentProductQuantity = $cloneCurrentSales->where('product_id', $product->id)->sum('sale_quantity');
-            $currentProductMargin = $cloneCurrentSales->where('product_id', $product->id)->sum('unit_profit_margin');
+            $currentProductSales = $cloneCurrentSales->where('product_id', $product->id)->sum('total_sale_value');
+            $currentProductQuantity = $cloneCurrentSales->where('product_id', $product->id)->sum('total_sale_quantity');
+            $currentProductMargin = $cloneCurrentSales->where('product_id', $product->id)->sum('total_profit_margin');
 
             // Calcular valores para os eixos baseado na seleção do usuário
             $xValue = $this->calculateAxisValue($xAxis, $currentProductSales, $currentProductQuantity, $currentProductMargin);

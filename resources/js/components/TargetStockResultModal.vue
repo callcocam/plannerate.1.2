@@ -332,7 +332,7 @@ async function executeTargetStockAnalysisWithParams(serviceLevels: ServiceLevel[
                 {
                     planogram: editorStore.currentState?.id
                 }
-            );
+            ) as any;
             
             // Transformar os dados de vendas no formato esperado
             const productsWithSales = products.map(product => {
