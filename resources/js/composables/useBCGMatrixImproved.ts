@@ -48,7 +48,7 @@ export type BCGClassification =
     | 'Incentivo - volume'
     | 'Incentivo - lucro'
     | 'Incentivo - valor'
-    | 'Baixo valor - descontinuar';
+    | 'Baixo valor - avaliar';
 
 export interface BCGResult extends BCGData {
     classification: BCGClassification;
@@ -84,7 +84,7 @@ export function useBCGMatrixImproved() {
         'Incentivo - volume': '#00B0F0',      // Azul claro
         'Incentivo - lucro': '#BF90FF',       // Roxo claro
         'Incentivo - valor': '#FF6347',       // Vermelho claro
-        'Baixo valor - descontinuar': '#FF6347' // Vermelho claro
+        'Baixo valor - avaliar': '#FF6347' // Vermelho claro
     };
 
     // Classificação otimizada
@@ -100,7 +100,7 @@ export function useBCGMatrixImproved() {
         // Determinar quadrante
         const highX = xValue > xAverage;
         const highY = yValue > yAverage;
-
+        console.log(xValue, xAverage, yValue, yAverage, highX, highY);
         // Alto valor (ambos acima da média)
         if (highX && highY) {
             return 'Alto valor - manutenção';
@@ -135,7 +135,7 @@ export function useBCGMatrixImproved() {
         }
 
         // Baixo valor (ambos abaixo da média)
-        return 'Baixo valor - descontinuar';
+        return 'Baixo valor - avaliar';
     };
 
     // Calcular médias por grupo de classificação
@@ -217,8 +217,7 @@ export function useBCGMatrixImproved() {
                 const groupKey = item.classifyGroup || item.category;
                 const averages = groupAverages.get(groupKey);
                 const xAverage = averages?.xAverage || 0;
-                const yAverage = averages?.yAverage || 0;
-
+                const yAverage = averages?.yAverage || 0; 
                 const classification = classifyProduct(item.xValue, item.yValue, xAverage, yAverage);
 
                 return {
@@ -252,7 +251,7 @@ export function useBCGMatrixImproved() {
             'Incentivo - volume': 0,
             'Incentivo - lucro': 0,
             'Incentivo - valor': 0,
-            'Baixo valor - descontinuar': 0
+            'Baixo valor - avaliar': 0
         };
 
         results.value.forEach(result => {

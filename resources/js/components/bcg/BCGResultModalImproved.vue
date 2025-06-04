@@ -125,7 +125,7 @@
                 <SelectItem value="Incentivo - volume">Incentivo - volume</SelectItem>
                 <SelectItem value="Incentivo - lucro">Incentivo - lucro</SelectItem>
                 <SelectItem value="Incentivo - valor">Incentivo - valor</SelectItem>
-                <SelectItem value="Baixo valor - descontinuar">Baixo valor - descontinuar</SelectItem>
+                <SelectItem value="Baixo valor - avaliar">Baixo valor - avaliar</SelectItem>
               </SelectContent>
             </Select>
 
@@ -327,7 +327,7 @@ const classificationLabels: Record<BCGClassification, string> = {
   'Incentivo - volume': 'Incentivo - volume',
   'Incentivo - lucro': 'Incentivo - lucro',
   'Incentivo - valor': 'Incentivo - valor',
-  'Baixo valor - descontinuar': 'Baixo valor - descontinuar'
+  'Baixo valor - avaliar': 'Baixo valor - avaliar'
 };
 
 // Formatador de números
@@ -473,7 +473,7 @@ const getClassificationShortLabel = (classification: string) => {
     'Incentivo - volume': 'Inc. Volume',
     'Incentivo - lucro': 'Inc. Lucro',
     'Incentivo - valor': 'Inc. Valor',
-    'Baixo valor - descontinuar': 'Baixo Valor'
+    'Baixo valor - avaliar': 'Baixo Valor'
   };
   return shortLabels[classification] || classification;
 };
@@ -484,7 +484,7 @@ const getClassificationColorClass = (classification: string) => {
     'Incentivo - volume': 'text-blue-600',
     'Incentivo - lucro': 'text-purple-600',
     'Incentivo - valor': 'text-orange-600',
-    'Baixo valor - descontinuar': 'text-red-600'
+    'Baixo valor - avaliar': 'text-red-600'
   };
   return classes[classification] || 'text-gray-600';
 };
@@ -495,7 +495,7 @@ const getClassificationClass = (classification: BCGClassification) => {
     'Incentivo - volume': 'bg-blue-100 text-blue-800',
     'Incentivo - lucro': 'bg-purple-100 text-purple-800',
     'Incentivo - valor': 'bg-orange-100 text-orange-800',
-    'Baixo valor - descontinuar': 'bg-red-100 text-red-800'
+    'Baixo valor - avaliar': 'bg-red-100 text-red-800'
   };
   return classes[classification] || '';
 };
@@ -506,12 +506,13 @@ const getClassificationColor = (classification: string) => {
     'Incentivo - volume': '#00B0F0',
     'Incentivo - lucro': '#BF90FF',
     'Incentivo - valor': '#FF8C00',
-    'Baixo valor - descontinuar': '#FF6347'
+    'Baixo valor - avaliar': '#FF6347'
   };
   return colors[classification] || '#666';
 };
 
 const getClassificationLabel = (classification: BCGClassification) => {
+  console.log(classification);
   return classificationLabels[classification] || classification;
 };
 
@@ -636,7 +637,7 @@ const exportToExcel = () => {
     { 'Classificação': 'Incentivo - volume', 'Quantidade': summaryData.value?.classificationCounts['Incentivo - volume'] || 0 },
     { 'Classificação': 'Incentivo - lucro', 'Quantidade': summaryData.value?.classificationCounts['Incentivo - lucro'] || 0 },
     { 'Classificação': 'Incentivo - valor', 'Quantidade': summaryData.value?.classificationCounts['Incentivo - valor'] || 0 },
-    { 'Classificação': 'Baixo valor - descontinuar', 'Quantidade': summaryData.value?.classificationCounts['Baixo valor - descontinuar'] || 0 }
+    { 'Classificação': 'Baixo valor - avaliar', 'Quantidade': summaryData.value?.classificationCounts['Baixo valor - avaliar'] || 0 }
   ]);
   XLSX.utils.book_append_sheet(wb, summarySheet, 'Resumo');
 

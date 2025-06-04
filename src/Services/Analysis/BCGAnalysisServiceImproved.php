@@ -172,7 +172,7 @@ class BCGAnalysisServiceImproved
                 'category' => $classifyValue, // Usado para calcular médias
                 'display_group' => $product->name,
                 'classify_group' => $classifyValue,
-                'current_sales' => $currentProductSales,
+                'current_sales' => round($currentProductSales, 2),
                 'x_axis_value' => round($xValue, 2),
                 'y_axis_value' => round($yValue, 2),
                 'x_axis_label' => $xAxis ?: 'VALOR DE VENDA',
@@ -260,17 +260,17 @@ class BCGAnalysisServiceImproved
     ): Builder {
         $query = Sale::query();
 
-        if ($startDate) {
-            $query->where('sale_date', '>=', $startDate);
-        }
+        // if ($startDate) {
+        //     $query->where('sale_date', '>=', $startDate);
+        // }
 
-        if ($endDate) {
-            $query->where('sale_date', '<=', $endDate);
-        }
+        // if ($endDate) {
+        //     $query->where('sale_date', '<=', $endDate);
+        // }
 
-        if ($storeId) {
-            $query->where('store_id', $storeId);
-        }
+        // if ($storeId) {
+        //     $query->where('store_id', $storeId);
+        // }
 
         return $query;
     }

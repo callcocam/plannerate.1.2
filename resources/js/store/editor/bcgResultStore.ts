@@ -18,7 +18,7 @@ export type BCGClassification =
   | 'Incentivo - volume'
   | 'Incentivo - lucro'
   | 'Incentivo - valor'
-  | 'Baixo valor - descontinuar';
+  | 'Baixo valor - avaliar';
 
 export interface BCGResult {
   ean: string;
@@ -73,7 +73,7 @@ export const useBCGResultStore = defineStore('bcgResult', () => {
       'Incentivo - volume': 0,
       'Incentivo - lucro': 0,
       'Incentivo - valor': 0,
-      'Baixo valor - descontinuar': 0
+      'Baixo valor - avaliar': 0
     };
 
     result.value.forEach(item => {
@@ -133,14 +133,14 @@ export const useBCGResultStore = defineStore('bcgResult', () => {
     'Incentivo - volume': '#00B0F0',      // Azul claro
     'Incentivo - lucro': '#BF90FF',       // Roxo claro
     'Incentivo - valor': '#FF8C00',       // Laranja
-    'Baixo valor - descontinuar': '#FF6347' // Vermelho
+    'Baixo valor - avaliar': '#FF6347' // Vermelho
   };
 
   // ===== CLASSIFICAÇÃO LOGIC =====
   const classifyProduct = (
-    xValue: number, 
-    yValue: number, 
-    xAverage: number, 
+    xValue: number,
+    yValue: number,
+    xAverage: number,
     yAverage: number,
     xLabel: string,
     yLabel: string
@@ -157,23 +157,62 @@ export const useBCGResultStore = defineStore('bcgResult', () => {
     // Mapear combinações específicas de métricas
     const getIncentiveType = (): BCGClassification => {
       // Combinações que indicam incentivo de volume
-      if ((xLabel.includes('QUANTIDADE') && yLabel.includes('MARGEM')) ||
-          (xLabel.includes('MARGEM') && yLabel.includes('QUANTIDADE'))) {
-        return 'Incentivo - volume';
+      if (xLabel.includes('QUANTIDADE') && yLabel.includes('MARGEM')) {
+        if (highX && !highY) {
+          return 'Incentivo - lucro';
+        }
+        if (!highX && highY) {
+          return 'Incentivo - volume';
+        }
       }
-      
+
+      if (xLabel.includes('MARGEM') && yLabel.includes('QUANTIDADE')) {
+        if (highX && !highY) {
+          return 'Incentivo - volume';
+        }
+        if (!highX && highY) {
+          return 'Incentivo - lucro';
+        }
+      }
+
       // Combinações que indicam incentivo de valor
-      if ((xLabel.includes('VALOR') && yLabel.includes('QUANTIDADE')) ||
-          (xLabel.includes('QUANTIDADE') && yLabel.includes('VALOR'))) {
-        return 'Incentivo - valor';
+      if (xLabel.includes('VALOR') && yLabel.includes('QUANTIDADE')) {
+        if (highX && !highY) {
+          return 'Incentivo - volume';
+        }
+        if (!highX && highY) {
+          return 'Incentivo - valor';
+        }
       }
-      
+
+      if (xLabel.includes('QUANTIDADE') && yLabel.includes('VALOR')) {
+        if (highX && !highY) {
+          return 'Incentivo - valor';
+        }
+        if (!highX && highY) {
+          return 'Incentivo - volume';
+        }
+      }
+
       // Combinações que indicam incentivo de lucro
-      if ((xLabel.includes('VALOR') && yLabel.includes('MARGEM')) ||
-          (xLabel.includes('MARGEM') && yLabel.includes('VALOR'))) {
-        return 'Incentivo - lucro';
+      if (xLabel.includes('VALOR') && yLabel.includes('MARGEM')) {
+        if (highX && !highY) {
+          return 'Incentivo - lucro';
+        }
+        if (!highX && highY) {
+          return 'Incentivo - valor';
+        }
       }
-      
+
+      if (xLabel.includes('MARGEM') && yLabel.includes('VALOR')) {
+        if (highX && !highY) {
+          return 'Incentivo - valor';
+        }
+        if (!highX && highY) {
+          return 'Incentivo - lucro';
+        }
+      }
+
       return 'Incentivo - valor'; // Padrão
     };
 
@@ -183,7 +222,7 @@ export const useBCGResultStore = defineStore('bcgResult', () => {
     }
 
     // Baixo valor (ambos abaixo da média)
-    return 'Baixo valor - descontinuar';
+    return 'Baixo valor - avaliar';
   };
 
   // ===== PROCESSAMENTO DE DADOS =====
@@ -195,7 +234,7 @@ export const useBCGResultStore = defineStore('bcgResult', () => {
 
     responseData.forEach(item => {
       const groupKey = item.classify_group || item.category;
-      
+
       if (!groupStats.has(groupKey)) {
         groupStats.set(groupKey, { sumX: 0, sumY: 0, count: 0 });
       }
@@ -250,7 +289,7 @@ export const useBCGResultStore = defineStore('bcgResult', () => {
   };
 
   // ===== ACTIONS =====
-  
+
   /**
    * Ação principal para executar análise BCG
    */
@@ -260,7 +299,6 @@ export const useBCGResultStore = defineStore('bcgResult', () => {
 
     try {
       const response = await analysisService.getBCGAnalysis(params);
-      console.log(response);
       // Atualizar configuração baseada na resposta
       setConfiguration({
         classifyBy: response.metadata.configuration.classify_by,
@@ -314,7 +352,7 @@ export const useBCGResultStore = defineStore('bcgResult', () => {
   };
 
   // ===== FILTROS E BUSCAS =====
-  
+
   const getResultsByClassification = (classification: BCGClassification) => {
     return result.value?.filter(item => item.classification === classification) || [];
   };
@@ -361,9 +399,9 @@ export const useBCGResultStore = defineStore('bcgResult', () => {
     }
 
     // Implementação básica - pode ser expandida
-    const csvContent = "data:text/csv;charset=utf-8," + 
+    const csvContent = "data:text/csv;charset=utf-8," +
       "EAN,Descrição,Categoria,Grupo Classificação,Grupo Exibição,Eixo X,Eixo Y,Classificação\n" +
-      result.value.map(item => 
+      result.value.map(item =>
         `${item.ean},"${item.description}","${item.category}","${item.classifyGroup}","${item.displayGroup}",${item.xValue},${item.yValue},"${item.classification}"`
       ).join("\n");
 
