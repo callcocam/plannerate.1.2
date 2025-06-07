@@ -40,7 +40,7 @@ const install = (app: App, options: PluginOptions = {}): void => {
 
     // Registro automático de componentes UI
     registerUIComponents(app);
-    console.log('plannerate');
+    // console.log('plannerate');
     // Configuração de plugins
     app.use(router);
     app.use(pinia);
