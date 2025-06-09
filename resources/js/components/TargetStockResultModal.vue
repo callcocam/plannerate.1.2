@@ -1,159 +1,217 @@
 <template>
-  <div v-if="open" class="fixed inset-0 z-[300] flex items-center justify-center bg-black/25">
-    <div class="bg-white rounded-lg shadow-lg   w-full p-6 relative z-[300] mx-12">
-      <div class="flex justify-between items-center mb-4">
-        <h2 class="text-lg font-bold">Resultado do Estoque Alvo</h2>
-        <div class="flex gap-2">
-          <Button variant="outline" size="sm" @click="closeModal" class="flex items-center gap-2">
-            Fechar
-            <X class="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="sm" @click="targetStockResultStore.requestRecalculation()"
-            class="flex items-center gap-2" :disabled="targetStockResultStore.loading">
-            <span v-if="targetStockResultStore.loading" class="flex items-center gap-1">
-              <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                </path>
-              </svg>
-              Calculando...
-            </span>
-            <span v-else>Recalcular</span>
-            <RefreshCw class="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="sm" @click="exportToExcel" class="flex items-center gap-2">
-            <Download class="h-4 w-4" />
-            Exportar Excel
-          </Button>
-        </div>
-      </div>
-
-      <!-- Resumo -->
-      <div v-if="summary" class="mb-6 py-2 px-4 bg-gray-50 rounded-lg">
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div>
-            <h3 class="text-sm font-medium text-gray-500">Total de Itens</h3>
-            <p class="text-lg font-semibold">{{ formatNumber.format(summary.totalItems) }}</p>
-          </div>
-          <div>
-            <h3 class="text-sm font-medium text-gray-500">Classificação</h3>
-            <div class="space-x-2 flex">
-              <p class="text-sm">
-                <span class="text-green-600">A:</span> {{ formatNumber.format(summary.classificationCounts.A) }}
-              </p>
-              <p class="text-sm">
-                <span class="text-yellow-600">B:</span> {{ formatNumber.format(summary.classificationCounts.B) }}
-              </p>
-              <p class="text-sm">
-                <span class="text-red-600">C:</span> {{ formatNumber.format(summary.classificationCounts.C) }}
-              </p>
+  <TooltipProvider>
+    <Dialog :open="open" @update:open="handleClose">
+      <DialogContent class="md:max-w-[70%] w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <div class="flex justify-between items-center">
+            <div>
+              <DialogTitle>Resultado do Estoque Alvo</DialogTitle>
+              <DialogDescription>
+                Análise de estoque alvo baseada em demanda média e parâmetros de reposição
+              </DialogDescription>
             </div>
           </div>
-        </div>
-      </div>
+        </DialogHeader>
 
-      <!-- Filtros -->
-      <div class="mb-4 flex flex-col sm:flex-row gap-4">
-        <div class="flex-1">
-          <div class="relative">
-            <Search class="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
-            <Input v-model="searchText" placeholder="Buscar por EAN ou nome..." class="pl-8" />
-            <button v-if="searchText" @click="searchText = ''"
-              class="absolute right-2 top-2.5 text-gray-500 hover:text-gray-700">
-              <X class="h-4 w-4" />
-            </button>
+        <div class="flex-1 overflow-hidden flex flex-col">
+          <!-- Resumo -->
+          <div v-if="summary" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 flex-shrink-0">
+            <!-- Card Total de Itens -->
+            <div class="bg-white p-4 rounded-lg border-l-4 border-gray-400 shadow-sm flex items-center">
+              <Package class="h-8 w-8 text-gray-400 mr-4 flex-shrink-0" />
+              <div>
+                <h3 class="text-sm font-medium text-gray-500">Total de Itens</h3>
+                <p class="text-2xl font-bold">{{ formatNumber.format(summary.totalItems) }}</p>
+              </div>
+            </div>
+
+            <!-- Card Classificação A -->
+            <div class="bg-white p-4 rounded-lg border-l-4 border-green-500 shadow-sm flex items-center">
+              <Star class="h-8 w-8 text-green-500 mr-4 flex-shrink-0" />
+              <div>
+                <h3 class="text-sm font-medium text-gray-500">Classificação A</h3>
+                <p class="text-2xl font-bold">
+                  {{ formatNumber.format(summary.classificationCounts.A) }}
+                  <span class="text-sm font-normal text-gray-500">({{ summary.percentageA }}%)</span>
+                </p>
+              </div>
+            </div>
+
+            <!-- Card Classificação B -->
+            <div class="bg-white p-4 rounded-lg border-l-4 border-yellow-500 shadow-sm flex items-center">
+              <Circle class="h-8 w-8 text-yellow-500 mr-4 flex-shrink-0" />
+              <div>
+                <h3 class="text-sm font-medium text-gray-500">Classificação B</h3>
+                <p class="text-2xl font-bold">
+                  {{ formatNumber.format(summary.classificationCounts.B) }}
+                  <span class="text-sm font-normal text-gray-500">({{ summary.percentageB }}%)</span>
+                </p>
+              </div>
+            </div>
+
+            <!-- Card Classificação C -->
+            <div class="bg-white p-4 rounded-lg border-l-4 border-red-500 shadow-sm flex items-center">
+              <Triangle class="h-8 w-8 text-red-500 mr-4 flex-shrink-0" />
+              <div>
+                <h3 class="text-sm font-medium text-gray-500">Classificação C</h3>
+                <p class="text-2xl font-bold">
+                  {{ formatNumber.format(summary.classificationCounts.C) }}
+                  <span class="text-sm font-normal text-gray-500">({{ summary.percentageC }}%)</span>
+                </p>
+              </div>
+            </div>
           </div>
-        </div>
-        <div class="flex gap-2">
-          <Button v-for="classification in ['A', 'B', 'C']" :key="classification"
-            :variant="activeClassificationFilters.has(classification) ? 'default' : 'outline'" :class="{
-              'bg-green-600 hover:bg-green-700': classification === 'A' && activeClassificationFilters.has(classification),
-              'bg-yellow-600 hover:bg-yellow-700': classification === 'B' && activeClassificationFilters.has(classification),
-              'bg-red-600 hover:bg-red-700': classification === 'C' && activeClassificationFilters.has(classification)
-            }" @click="toggleClassificationFilter(classification)">
-            {{ classification }}
-          </Button>
-          <Button variant="outline" @click="clearFilters">
-            Limpar Filtros
-          </Button>
-        </div>
-      </div>
 
-      <!-- Tabela -->
-      <div class="overflow-x-auto max-h-[60vh] z-[300]">
-        <table class="min-w-full text-xs border">
-          <thead class="sticky top-0 bg-white z-10">
-            <tr class="bg-gray-100">
-              <th v-for="(label, key) in {
-                ean: 'EAN',
-                name: 'Descrição Produto',
-                averageSales: 'Demanda média',
-                standardDeviation: 'Desvio Padrão',
-                coverage: 'Cobertura de estoque em dias (Reposição)',
-                serviceLevel: 'Nível de Serviço',
-                zScore: 'Constante Z-ns',
-                safetyStock: 'Estoque de Segurança',
-                minimumStock: 'Estoque mínimo prateleira',
-                targetStock: 'Estoque alvo prateleira',
-                allowsFacing: 'Estoque permite numero de frentes',
-                currentStock: 'Estoque Atual',
-              }" :key="key" class="px-2 py-1 border cursor-pointer hover:bg-gray-200"
-                @click="toggleSort(key as keyof StockAnalysis)">
-                <div class="flex items-center justify-between">
-                  {{ label }}
-                  <span class="ml-1">
-                    <ArrowUpDown v-if="sortConfig.key !== key" class="h-4 w-4" />
-                    <ArrowUp v-else-if="sortConfig.direction === 'asc'" class="h-4 w-4" />
-                    <ArrowDown v-else class="h-4 w-4" />
-                  </span>
-                </div>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="item in filteredResults" :key="item.ean" @click="selectedItemId = selectedItemId === item.ean ? null : item.ean"
-              :class="{'bg-blue-100 dark:bg-blue-900/50': selectedItemId === item.ean, 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50': true}">
-              <td class="px-2 py-1 border">{{ item.ean }}</td>
-              <td class="px-2 py-1 border">{{ item.name }}</td>
-              <td class="px-2 py-1 border text-right">{{ formatNumber.format(item.averageSales) }}</td>
-              <td class="px-2 py-1 border text-right">{{ formatNumber.format(item.standardDeviation) }}</td>
-              <td class="px-2 py-1 border text-right">{{ getCoverageDays(item.classification) }}</td>
-              <td class="px-2 py-1 border text-right">{{ item.serviceLevel }}</td>
-              <td class="px-2 py-1 border text-right">{{ item.zScore }}</td>
-              <td class="px-2 py-1 border text-right">{{ item.safetyStock }}</td>
-              <td class="px-2 py-1 border text-right">{{ item.minimumStock }}</td>
-              <td class="px-2 py-1 border text-right">{{ item.targetStock }}</td>
-              <td class="px-2 py-1 border">{{ item.allowsFacing ? 'Sim' : 'Não' }}</td>
-              <td class="px-2 py-1 border">{{ item.currentStock }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div v-if="filteredResults.length === 0" class="text-gray-500 mt-4">Nenhum resultado encontrado.</div>
-      <div class="flex justify-end mt-4">
-        <Button @click="closeModal" variant="outline">Fechar</Button>
-      </div>
-    </div>
-  </div>
+          <!-- Filtros -->
+          <div class="mb-4 flex flex-col sm:flex-row gap-4 flex-shrink-0">
+            <div class="flex-1">
+              <div class="relative">
+                <Search class="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
+                <Input v-model="searchText" placeholder="Buscar por EAN ou nome..." class="pl-8" />
+                <button v-if="searchText" @click="searchText = ''"
+                  class="absolute right-2 top-2.5 text-gray-500 hover:text-gray-700">
+                  <X class="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            <div class="flex gap-2">
+              <Button v-for="classification in ['A', 'B', 'C']" :key="classification"
+                :variant="activeClassificationFilters.has(classification) ? 'default' : 'outline'" :class="{
+                  'bg-green-600 hover:bg-green-700': classification === 'A' && activeClassificationFilters.has(classification),
+                  'bg-yellow-600 hover:bg-yellow-700': classification === 'B' && activeClassificationFilters.has(classification),
+                  'bg-red-600 hover:bg-red-700': classification === 'C' && activeClassificationFilters.has(classification)
+                }" @click="toggleClassificationFilter(classification)">
+                {{ classification }}
+              </Button>
+              <Button variant="outline" @click="clearFilters">
+                Limpar Filtros
+              </Button>
+            </div>
+          </div>
+
+          <!-- Tabela -->
+          <div class="flex-1 overflow-auto border rounded-lg">
+            <table class="text-sm border-collapse w-full">
+              <thead class="sticky top-0 bg-white z-10">
+                <tr class="bg-gray-100">
+                  <th v-for="(label, key) in headers" :key="key" class="px-2 py-1 border cursor-pointer hover:bg-gray-200 text-left"
+                    @click="toggleSort(key as keyof StockAnalysis)">
+                    <Tooltip :delay-duration="100">
+                      <TooltipTrigger class="w-full flex items-center justify-between">
+                        <span :class="{ 'truncate max-w-20': key !== 'name' }">{{ label }}</span>
+                        <span class="ml-1">
+                          <ArrowUpDown v-if="sortConfig.key !== key" class="h-4 w-4" />
+                          <ArrowUp v-else-if="sortConfig.direction === 'asc'" class="h-4 w-4" />
+                          <ArrowDown v-else class="h-4 w-4" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{{ label }}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in filteredResults" :key="item.ean" @click="selectedItemId = selectedItemId === item.ean ? null : item.ean"
+                  :class="{'bg-blue-100 dark:bg-blue-900/50': selectedItemId === item.ean, 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50': true}">
+                  <td class="px-2 py-1 border">{{ item.ean }}</td>
+                  <td class="px-2 py-1 border">{{ item.name }}</td>
+                  <td class="px-2 py-1 border text-right">{{ formatNumber.format(item.averageSales) }}</td>
+                  <td class="px-2 py-1 border text-right">{{ formatNumber.format(item.standardDeviation) }}</td>
+                  <td class="px-2 py-1 border text-right">{{ getCoverageDays(item.classification) }}</td>
+                  <td class="px-2 py-1 border text-right">{{ item.serviceLevel }}</td>
+                  <td class="px-2 py-1 border text-right">{{ item.zScore }}</td>
+                  <td class="px-2 py-1 border text-right">{{ item.safetyStock }}</td>
+                  <td class="px-2 py-1 border text-right">{{ item.minimumStock }}</td>
+                  <td class="px-2 py-1 border text-right">{{ item.targetStock }}</td>
+                  <td class="px-2 py-1 border">{{ item.allowsFacing ? 'Sim' : 'Não' }}</td>
+                  <td class="px-2 py-1 border">{{ item.currentStock }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div v-if="filteredResults.length === 0" class="text-gray-500 mt-4 text-center">Nenhum resultado encontrado.</div>
+        </div>
+
+        <DialogFooter class="mt-4 flex-shrink-0">
+          <div class="flex flex-nowrap gap-2 justify-end">
+            <Button variant="default" size="sm" @click="targetStockResultStore.requestRecalculation()"
+              class="flex items-center gap-2" :disabled="targetStockResultStore.loading">
+              <span v-if="targetStockResultStore.loading" class="flex items-center gap-1">
+                <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                  </path>
+                </svg>
+                Calculando...
+              </span>
+              <span v-else>Recalcular</span>
+              <RefreshCw class="h-4 w-4" />
+            </Button>
+
+            <Button variant="outline" size="sm" @click="exportToExcel" class="flex items-center gap-2">
+              <Download class="h-4 w-4" />
+              Exportar Excel
+            </Button>
+
+            <Button variant="outline" @click="handleClose" size="sm">
+              Fechar
+            </Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  </TooltipProvider>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { Button } from '@/components/ui/button';
-import { ArrowUpDown, ArrowUp, ArrowDown, Search, X, Download, RefreshCw } from 'lucide-vue-next';
+import { ArrowUpDown, ArrowUp, ArrowDown, Search, X, Download, RefreshCw, Package, Star, Circle, Triangle } from 'lucide-vue-next';
 import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import * as XLSX from 'xlsx';
 import type { StockAnalysis, Replenishment } from '@plannerate/composables/useTargetStock';
 import { useTargetStockResultStore } from '@plannerate/store/editor/targetStockResult';
 import { useEditorStore } from '@plannerate/store/editor';
 import { useAnalysisService } from '@plannerate/services/analysisService';
 import { useTargetStock, type ServiceLevel } from '@plannerate/composables/useTargetStock';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+
+const headers = {
+  ean: 'EAN',
+  name: 'Descrição Produto',
+  averageSales: 'Demanda média',
+  standardDeviation: 'Desvio Padrão',
+  coverage: 'Cobertura de estoque em dias (Reposição)',
+  serviceLevel: 'Nível de Serviço',
+  zScore: 'Constante Z-ns',
+  safetyStock: 'Estoque de Segurança',
+  minimumStock: 'Estoque mínimo prateleira',
+  targetStock: 'Estoque alvo prateleira',
+  allowsFacing: 'Estoque permite numero de frentes',
+  currentStock: 'Estoque Atual',
+};
 
 const props = defineProps<{
   open: boolean;
 }>();
-const emit = defineEmits(['close']);
+const emit = defineEmits(['close', 'update:open']);
 
 const targetStockResultStore = useTargetStockResultStore();
 const editorStore = useEditorStore();
@@ -272,8 +330,9 @@ function toggleSort(key: keyof StockAnalysis) {
   }
 }
 
-function closeModal() {
+function handleClose() {
   emit('close');
+  emit('update:open', false);
 }
 
 function getCoverageDays(classification: string) {
@@ -298,9 +357,16 @@ const summary = computed(() => {
     C: targetStockResultStore.result.filter(item => item.classification === 'C').length
   };
 
+  const percentageA = totalItems > 0 ? ((classificationCounts.A / totalItems) * 100).toFixed(1) : '0.0';
+  const percentageB = totalItems > 0 ? ((classificationCounts.B / totalItems) * 100).toFixed(1) : '0.0';
+  const percentageC = totalItems > 0 ? ((classificationCounts.C / totalItems) * 100).toFixed(1) : '0.0';
+
   return {
     totalItems,
-    classificationCounts
+    classificationCounts,
+    percentageA,
+    percentageB,
+    percentageC,
   };
 });
 

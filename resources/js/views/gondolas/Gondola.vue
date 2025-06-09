@@ -22,13 +22,15 @@
         </div>
         <!-- Conteúdo Principal -->
         <!-- Passa a gôndola correta encontrada pelo computed para os filhos -->
-        <div v-if="editorGondola" class="flex h-full w-full flex-col gap-6 overflow-hidden">
+        <div v-if="editorGondola" class="flex h-full w-full flex-col gap-4 overflow-hidden">
             <!-- Passar a gôndola reativa encontrada -->
             <Info :gondola="editorGondola" />
             <div class="flex flex-col overflow-auto relative">
                 <!-- Informar a direção do fluxo da gôndola -->
-                <div class="flex flex-col gap-2  px-10">
-                    <p class="flex items-center gap-1 text-lg text-gray-500 w-full"
+                <div class="flex flex-col gap-2  px-10 w-full  "
+                :class="{ 'items-start': editorGondola.flow === 'left_to_right', 'items-end': editorGondola.flow === 'right_to_left' }"
+                >
+                    <p class="flex items-center gap-1 text-lg text-gray-500 w-64 border border-gray-800 dark:border-gray-200 rounded-lg px-2"
                      :class="{ 'justify-start': editorGondola.flow === 'left_to_right', 'justify-end': editorGondola.flow === 'right_to_left' }"
                     >
                         <IconArrowLeft v-if="editorGondola.flow === 'right_to_left'" class="h-6 w-6" />

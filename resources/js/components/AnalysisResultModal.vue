@@ -1,13 +1,41 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { Button } from '@/components/ui/button';
-import { ArrowUpDown, ArrowUp, ArrowDown, Search, X, Download, RefreshCw } from 'lucide-vue-next';
+import { ArrowUpDown, ArrowUp, ArrowDown, Search, X, Download, RefreshCw, Package, CheckCircle2, Archive, Trash2 } from 'lucide-vue-next';
 import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import * as XLSX from 'xlsx';
 import { useAnalysisResultStore } from '@plannerate/store/editor/analysisResult';
 import { useEditorStore } from '@plannerate/store/editor';
 import { useAnalysisService } from '@plannerate/services/analysisService';
 import { useAssortmentStatus } from '@plannerate/composables/useSortimentoStatus';
+
+const headers = {
+  id: 'EAN',
+  category: 'Categoria',
+  name: 'Nome',
+  weightedAverage: 'Média Ponderada',
+  individualPercent: '% Individual',
+  accumulatedPercent: '% Acumulada',
+  abcClass: 'Classe ABC',
+  ranking: 'Ranking',
+  removeFromMix: 'Retirar?',
+  status: 'Status',
+  detailStatus: 'Detalhe do Status'
+};
 
 interface AssortmentResult {
   id: string;
@@ -23,7 +51,7 @@ interface AssortmentResult {
 }
 
 defineProps<{ open: boolean }>();
-const emit = defineEmits(['close', 'remove-from-gondola']);
+const emit = defineEmits(['close', 'remove-from-gondola', 'update:open']);
 
 const analysisResultStore = useAnalysisResultStore();
 const editorStore = useEditorStore();
@@ -176,8 +204,9 @@ function toggleSort(key: keyof AssortmentResult) {
   }
 }
 
-function closeModal() {
+function handleClose() {
   emit('close');
+  emit('update:open', false);
 }
 
 // Formatadores
@@ -190,24 +219,31 @@ const formatNumber = new Intl.NumberFormat('pt-BR', {
 // Cálculos do resumo
 const summary = computed(() => {
   if (!analysisResultStore.result?.length) return null;
-  const statusCounts = {
-    Ativo: 0,
-    Inativo: 0,
-    CRITICAL: 0
-  };
-  const totals = analysisResultStore.result.reduce((acc: any, item: AssortmentResult) => {
-    statusCounts[item.status]++;
-    return {
-      quantity: acc.quantity + Number(item.quantity),
-      value: acc.value + Number(item.value),
-      margin: acc.margin + (Number(item.margin) * Number(item.value) / 100),
-      currentStock: acc.currentStock + Number(item.currentStock)
-    };
-  }, { quantity: 0, value: 0, margin: 0, currentStock: 0 });
+
+  const totalItems = analysisResultStore.result.length;
+  const statusCounts = { Ativo: 0, Inativo: 0 };
+  let itemsToRemove = 0;
+
+  (analysisResultStore.result as AssortmentResult[]).forEach((item: AssortmentResult) => {
+    if (item.status === 'Ativo' || item.status === 'Inativo') {
+      statusCounts[item.status]++;
+    }
+    if (item.removeFromMix) {
+      itemsToRemove++;
+    }
+  });
+
+  const activePercentage = totalItems > 0 ? ((statusCounts.Ativo / totalItems) * 100).toFixed(1) : '0.0';
+  const inactivePercentage = totalItems > 0 ? ((statusCounts.Inativo / totalItems) * 100).toFixed(1) : '0.0';
+  const removePercentage = totalItems > 0 ? ((itemsToRemove / totalItems) * 100).toFixed(1) : '0.0';
+
   return {
-    totalItems: analysisResultStore.result.length,
+    totalItems,
     statusCounts,
-    totals
+    itemsToRemove,
+    activePercentage,
+    inactivePercentage,
+    removePercentage,
   };
 });
 
@@ -248,7 +284,7 @@ async function executeABCAnalysisWithParams(weights: any, thresholds: any) {
                 {
                     planogram: editorStore.currentState?.id 
                 }
-            );
+            ) as any;
             const analyzed = useAssortmentStatus(analysisData, weights, thresholds);
             analysisResultStore.setResult(analyzed);
         } else {
@@ -276,181 +312,184 @@ analysisResultStore.$onAction(({ name }) => {
 </script>
 
 <template>
-  <div v-if="open" class="fixed inset-0 z-[300] flex items-center justify-center bg-black/25">
-    <div class="bg-white rounded-lg shadow-lg   w-full p-6 relative   mx-12 overflow-auto z-[300]">
-      <div class="flex justify-between items-center mb-4">
-        <h2 class="text-lg font-bold">Resultado da Análise de Assortimento</h2>
-        <div class="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            @click="closeModal"
-            class="flex items-center gap-2"
-          >
-            Fechar
-            <X class="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            @click="analysisResultStore.requestRecalculation()"
-            class="flex items-center gap-2"
-            :disabled="analysisResultStore.loading"
-          >
-            <span v-if="analysisResultStore.loading" class="flex items-center gap-1">
-              <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-              Calculando...
-            </span>
-            <span v-else>Recalcular</span>
-            <RefreshCw class="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            @click="exportToExcel"
-            class="flex items-center gap-2"
-          >
-            <Download class="h-4 w-4" />
-            Exportar Excel
-          </Button>
-        </div>
-      </div>
-      
-      <!-- Resumo -->
-      <div v-if="summary" class="mb-6 py-2 px-4 bg-gray-50 rounded-lg">
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div>
-            <h3 class="text-sm font-medium text-gray-500">Total de Itens</h3>
-            <p class="text-lg font-semibold">{{ formatNumber.format(summary.totalItems) }}</p>
-          </div>
-          <div>
-            <h3 class="text-sm font-medium text-gray-500">Status</h3>
-            <div class="space-x-2 flex ">
-              <p class="text-sm">
-                <span class="text-green-600">Ativo:</span> {{ formatNumber.format(summary.statusCounts.Ativo) }}
-              </p>
-              <p class="text-sm">
-                <span class="text-yellow-600">Inativo:</span> {{ formatNumber.format(summary.statusCounts.Inativo) }}
-              </p> 
+  <TooltipProvider>
+    <Dialog :open="open" @update:open="handleClose">
+      <DialogContent class="md:max-w-[70%] w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <div class="flex justify-between items-center">
+            <div>
+              <DialogTitle>Resultado da Análise de Assortimento</DialogTitle>
+              <DialogDescription>
+                Análise ABC baseada em quantidade, valor e margem de contribuição
+              </DialogDescription>
             </div>
-          </div> 
-        </div>
-      </div>
-
-      <!-- Filtros -->
-      <div class="mb-4 flex flex-col sm:flex-row gap-4">
-        <div class="flex-1">
-          <div class="relative">
-            <Search class="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
-            <Input
-              v-model="searchText"
-              placeholder="Buscar por ID ou nome..."
-              class="pl-8"
-            />
-            <button
-              v-if="searchText"
-              @click="searchText = ''"
-              class="absolute right-2 top-2.5 text-gray-500 hover:text-gray-700"
-            >
-              <X class="h-4 w-4" />
-            </button>
           </div>
-        </div>
-        <div class="flex gap-2">
-          <Button
-            v-for="status in ['Ativo', 'Inativo']"
-            :key="status"
-            :variant="activeStatusFilters.has(status as 'Ativo' | 'Inativo'  ) ? 'default' : 'outline'"
-            :class="{
-              'bg-green-600 hover:bg-green-700': status === 'Ativo' && activeStatusFilters.has(status as 'Ativo' | 'Inativo' ),
-              'bg-yellow-600 hover:bg-yellow-700': status === 'Inativo' && activeStatusFilters.has(status as 'Ativo' | 'Inativo' ), 
-            }"
-            @click="toggleStatusFilter(status as 'Ativo' | 'Inativo' )"
-          >
-            {{ status }}
-          </Button>
-          <Button
-            variant="outline"
-            @click="clearFilters"
-          >
-            Limpar Filtros
-          </Button>
-        </div>
-      </div>
+        </DialogHeader>
 
-      <!-- Tabela com scroll -->
-      <div class="overflow-x-auto max-h-[60vh] z-[300]">
-        <table class="text-sm border">
-          <thead class="sticky top-0 bg-white z-10">
-            <tr class="bg-gray-100">
-              <th 
-                v-for="(label, key) in {
-                  id: 'EAN',
-                  category: 'Categoria', 
-                  name: 'Nome',
-                  weightedAverage: 'Média Ponderada',
-                  individualPercent: '% Individual',
-                  accumulatedPercent: '% Acumulada',
-                  abcClass: 'Classe ABC',
-                  ranking: 'Ranking',
-                  removeFromMix: 'Retirar?',
-                  status: 'Status',
-                  detailStatus: 'Detalhe do Status'
-                }" 
-                :key="key"
-                class="px-2 py-1 border cursor-pointer hover:bg-gray-200"
-                @click="toggleSort(key as keyof AssortmentResult)"
-              >
-                <div class="flex items-center justify-between">
-                  {{ label }}
-                  <span class="ml-1">
-                    <ArrowUpDown v-if="sortConfig.key !== key" class="h-4 w-4" />
-                    <ArrowUp v-else-if="sortConfig.direction === 'asc'" class="h-4 w-4" />
-                    <ArrowDown v-else class="h-4 w-4" />
-                  </span>
-                </div>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr 
-              v-for="item in filteredResults" 
-              :key="item.id"
-              @click="selectedItemId = selectedItemId === item.id ? null : item.id"
-              :class="{'bg-blue-100 dark:bg-blue-900/50': selectedItemId === item.id, 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50': true}"
-            >
-              <td class="px-2 py-1 border">{{ item.id }}</td>
-              <td class="px-2 py-1 border flex flex-col">
-                {{ item.category }}
-              </td> 
-              <td class="px-2 py-1 border">{{ item.name }}</td>
-              <td class="px-2 py-1 border">{{ item.weightedAverage }}</td>
-              <td class="px-2 py-1 border">{{ (item.individualPercent * 100).toFixed(2) }}%</td>
-              <td class="px-2 py-1 border">{{ (item.accumulatedPercent * 100).toFixed(2) }}%</td>
-              <td class="px-2 py-1 border"
-                :class="{
-                  'text-green-600': item.abcClass === 'A',
-                  'text-yellow-600': item.abcClass === 'B',
-                  'text-red-600': item.abcClass === 'C',
-                }"
-              >{{ item.abcClass }}</td>
-              <td class="px-2 py-1 border">{{ item.ranking }}</td>
-              <td class="border px-2">{{ item.removeFromMix ? 'Sim' : 'Não' }}</td>
-              <td class="px-2 py-1 border">{{ item.status }}</td>
-              <td class="px-2 py-1 border">{{ item.statusDetail }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div v-if="filteredResults.length === 0" class="text-gray-500 mt-4">Nenhum resultado encontrado.</div>
-      <div class="flex justify-end mt-4">
-        <Button v-if="showRemoveButton" variant="destructive" class="mr-2" @click="removeFromGondola(selectedItemId)">
-          Remover da Gôndola
-        </Button>
-        <Button @click="closeModal" variant="outline">Fechar</Button>
-      </div>
-    </div>
-  </div>
+        <div class="flex-1 overflow-hidden flex flex-col">
+          <!-- Resumo -->
+          <div v-if="summary" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 flex-shrink-0">
+            <!-- Card Total de Itens -->
+            <div class="bg-white p-4 rounded-lg border-l-4 border-gray-400 shadow-sm flex items-center">
+              <Package class="h-8 w-8 text-gray-400 mr-4 flex-shrink-0" />
+              <div>
+                <h3 class="text-sm font-medium text-gray-500">Total de Itens</h3>
+                <p class="text-2xl font-bold">{{ formatNumber.format(summary.totalItems) }}</p>
+              </div>
+            </div>
+
+            <!-- Card Itens Ativos -->
+            <div class="bg-white p-4 rounded-lg border-l-4 border-green-500 shadow-sm flex items-center">
+              <CheckCircle2 class="h-8 w-8 text-green-500 mr-4 flex-shrink-0" />
+              <div>
+                <h3 class="text-sm font-medium text-gray-500">Itens Ativos</h3>
+                <p class="text-2xl font-bold">
+                  {{ formatNumber.format(summary.statusCounts.Ativo) }}
+                  <span class="text-sm font-normal text-gray-500">({{ summary.activePercentage }}%)</span>
+                </p>
+              </div>
+            </div>
+
+            <!-- Card Itens Inativos -->
+            <div class="bg-white p-4 rounded-lg border-l-4 border-yellow-500 shadow-sm flex items-center">
+              <Archive class="h-8 w-8 text-yellow-500 mr-4 flex-shrink-0" />
+              <div>
+                <h3 class="text-sm font-medium text-gray-500">Itens Inativos</h3>
+                <p class="text-2xl font-bold">
+                  {{ formatNumber.format(summary.statusCounts.Inativo) }}
+                  <span class="text-sm font-normal text-gray-500">({{ summary.inactivePercentage }}%)</span>
+                </p>
+              </div>
+            </div>
+
+            <!-- Card A Retirar -->
+            <div class="bg-white p-4 rounded-lg border-l-4 border-red-500 shadow-sm flex items-center">
+              <Trash2 class="h-8 w-8 text-red-500 mr-4 flex-shrink-0" />
+              <div>
+                <h3 class="text-sm font-medium text-gray-500">A Retirar</h3>
+                <p class="text-2xl font-bold">
+                  {{ formatNumber.format(summary.itemsToRemove) }}
+                  <span class="text-sm font-normal text-gray-500">({{ summary.removePercentage }}%)</span>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Filtros -->
+          <div class="mb-4 flex flex-col sm:flex-row gap-4 flex-shrink-0">
+            <div class="flex-1">
+              <div class="relative">
+                <Search class="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
+                <Input v-model="searchText" placeholder="Buscar por ID ou nome..." class="pl-8" />
+                <button v-if="searchText" @click="searchText = ''"
+                  class="absolute right-2 top-2.5 text-gray-500 hover:text-gray-700">
+                  <X class="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            <div class="flex gap-2">
+              <Button v-for="status in ['Ativo', 'Inativo']" :key="status"
+                :variant="activeStatusFilters.has(status as 'Ativo' | 'Inativo') ? 'default' : 'outline'" :class="{
+                  'bg-green-600 hover:bg-green-700': status === 'Ativo' && activeStatusFilters.has(status as 'Ativo' | 'Inativo'),
+                  'bg-yellow-600 hover:bg-yellow-700': status === 'Inativo' && activeStatusFilters.has(status as 'Ativo' | 'Inativo'),
+                }" @click="toggleStatusFilter(status as 'Ativo' | 'Inativo')">
+                {{ status }}
+              </Button>
+              <Button variant="outline" @click="clearFilters">
+                Limpar Filtros
+              </Button>
+            </div>
+          </div>
+
+          <!-- Tabela -->
+          <div class="flex-1 overflow-auto border rounded-lg">
+            <table class="text-sm border-collapse w-full">
+              <thead class="sticky top-0 bg-white z-10">
+                <tr class="bg-gray-100">
+                  <th v-for="(label, key) in headers" :key="key"
+                    class="px-2 py-1 border cursor-pointer hover:bg-gray-200 text-left"
+                    @click="toggleSort(key as keyof AssortmentResult)">
+                    <Tooltip :delay-duration="100">
+                      <TooltipTrigger class="w-full flex items-center justify-between">
+                        <span :class="{ 'truncate max-w-20': key !== 'name' }">{{ label }}</span>
+                        <span class="ml-1">
+                          <ArrowUpDown v-if="sortConfig.key !== key" class="h-4 w-4" />
+                          <ArrowUp v-else-if="sortConfig.direction === 'asc'" class="h-4 w-4" />
+                          <ArrowDown v-else class="h-4 w-4" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{{ label }}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr 
+                  v-for="item in filteredResults" 
+                  :key="item.id"
+                  @click="selectedItemId = selectedItemId === item.id ? null : item.id"
+                  :class="{'bg-blue-100 dark:bg-blue-900/50': selectedItemId === item.id, 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50': true}"
+                >
+                  <td class="px-2 py-1 border">{{ item.id }}</td>
+                  <td class="px-2 py-1 border">{{ item.category }}</td>
+                  <td class="px-2 py-1 border">{{ item.name }}</td>
+                  <td class="px-2 py-1 border">{{ item.weightedAverage }}</td>
+                  <td class="px-2 py-1 border">{{ (item.individualPercent * 100).toFixed(2) }}%</td>
+                  <td class="px-2 py-1 border">{{ (item.accumulatedPercent * 100).toFixed(2) }}%</td>
+                  <td class="px-2 py-1 border" :class="{
+                    'text-green-600': item.abcClass === 'A',
+                    'text-yellow-600': item.abcClass === 'B',
+                    'text-red-600': item.abcClass === 'C',
+                  }">{{ item.abcClass }}</td>
+                  <td class="px-2 py-1 border">{{ item.ranking }}</td>
+                  <td class="px-2 py-1 border">{{ item.removeFromMix ? 'Sim' : 'Não' }}</td>
+                  <td class="px-2 py-1 border">{{ item.status }}</td>
+                  <td class="px-2 py-1 border">{{ item.statusDetail }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div v-if="filteredResults.length === 0" class="text-gray-500 mt-4 text-center">Nenhum resultado encontrado.</div>
+        </div>
+
+        <DialogFooter class="mt-4 flex-shrink-0">
+          <div class="flex flex-nowrap gap-2 justify-end">
+            <Button variant="default" size="sm" @click="analysisResultStore.requestRecalculation()"
+              class="flex items-center gap-2" :disabled="analysisResultStore.loading">
+              <span v-if="analysisResultStore.loading" class="flex items-center gap-1">
+                <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                  </path>
+                </svg>
+                Calculando...
+              </span>
+              <span v-else>Recalcular</span>
+              <RefreshCw class="h-4 w-4" />
+            </Button>
+
+            <Button variant="outline" size="sm" @click="exportToExcel" class="flex items-center gap-2">
+              <Download class="h-4 w-4" />
+              Exportar Excel
+            </Button>
+
+            <Button v-if="showRemoveButton" variant="destructive" size="sm" @click="removeFromGondola(selectedItemId)"
+              class="flex items-center gap-2">
+              Remover da Gôndola
+            </Button>
+
+            <Button variant="outline" @click="handleClose" size="sm">
+              Fechar
+            </Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  </TooltipProvider>
 </template> 
 
 

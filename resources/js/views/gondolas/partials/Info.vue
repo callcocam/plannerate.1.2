@@ -16,6 +16,7 @@ import {
     Redo2Icon,
     PrinterIcon,
     NutIcon,
+    Paintbrush,
 } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
@@ -23,9 +24,9 @@ import { useRouter } from 'vue-router';
 // Imports Internos 
 import { useEditorStore } from '@plannerate/store/editor';
 import Category from './Category.vue';
-    import type { Gondola } from '@plannerate/types/gondola';
-    import { useAnalysisResultStore } from '@plannerate/store/editor/analysisResult';  
-    import AnalysisPopover from './AnalysisPopover.vue';
+import type { Gondola } from '@plannerate/types/gondola';
+import { useAnalysisResultStore } from '@plannerate/store/editor/analysisResult';
+import AnalysisPopover from './AnalysisPopover.vue';
 // Definição das Props usando sintaxe padrão
 const props = defineProps({
     gondola: {
@@ -74,7 +75,7 @@ const shelfSelected = computed(() => {
 const hasChanges = computed(() => editorStore.hasChanges);
 const canUndo = computed(() => editorStore.canUndo);
 const canRedo = computed(() => editorStore.canRedo);
- 
+
 
 // *** NOVA Computed para a gôndola reativa do editorStore ***
 const alignment = computed(() => {
@@ -83,8 +84,8 @@ const alignment = computed(() => {
     let alignment = gondolaStore?.alignment;
     return alignment;
 });
-  
-const analysisResultStore = useAnalysisResultStore(); 
+
+const analysisResultStore = useAnalysisResultStore();
 
 // Métodos
 /**
@@ -238,7 +239,7 @@ const setGondolaAlignmentHandler = (alignment: string | null = null) => {
 const undo = () => editorStore.undo();
 const redo = () => editorStore.redo();
 const saveChanges = () => editorStore.saveChanges();
-   
+
 
 // function removeFromGondola(selectedItemId: string | null) {
 //     if (selectedItemId) {
@@ -266,47 +267,41 @@ const saveChanges = () => editorStore.saveChanges();
 //         }
 //     }
 // }
- 
-  
+
+
 </script>
 
 <template>
     <!-- Cabeçalho Fixo com Controles -->
     <div class="sticky top-0 z-50 border-b bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-        <div class="p-4">
-            <div class="flex items-center justify-between">
+        <div class="p-2">
+            <div class="flex items-center justify-between   gap-2 overflow-x-auto">
                 <!-- Grupo Esquerda: Controles de Visualização e Filtros -->
-                <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <div class="flex items-center gap-x-2 gap-y-2">
                     <!-- Label Gôndola -->
-                    <h3 class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300">
-                        <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                        </svg>
-                        {{ (props.gondola as Gondola | undefined)?.name || 'Gôndola' }}
-                    </h3>
+
                     <!-- Controle de Escala -->
                     <div class="flex items-center space-x-2">
-                        <label class="text-sm text-gray-600 dark:text-gray-400">Escala:</label>
+                        <label class="text-sm text-gray-600 dark:text-gray-400 hidden xl:block">Escala:</label>
                         <div class="flex items-center space-x-2">
                             <Button type="button" variant="outline" size="sm" :disabled="scaleFactor <= 2"
-                                @click="updateScale(scaleFactor - 1)">
+                                @click="updateScale(scaleFactor - 1)" title="Diminuir escala">
                                 <Minus class="h-4 w-4" />
                             </Button>
                             <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
                                 {{ scaleFactor }}x
                             </span>
                             <Button type="button" variant="outline" size="sm" :disabled="scaleFactor >= 10"
-                                @click="updateScale(scaleFactor + 1)">
+                                @click="updateScale(scaleFactor + 1)" title="Aumentar escala">
                                 <Plus class="h-4 w-4" />
                             </Button>
                         </div>
                     </div>
                     <!-- Botão de Grade -->
-                    <Button type="button" variant="outline" size="sm" @click="toggleGrid"
+                    <!-- <Button type="button" variant="outline" size="sm" @click="toggleGrid"
                         :class="{ 'bg-accent text-accent-foreground': showGrid }">
                         <Grid class="h-4 w-4" />
-                    </Button>
+                    </Button> -->
                     <!-- Botões de Justificação -->
                     <div class="flex items-center space-x-1">
                         <Button type="button" :variant="alignment === 'justify' ? 'default' : 'outline'" size="sm"
@@ -346,15 +341,15 @@ const saveChanges = () => editorStore.saveChanges();
                         </Button>
                         <Button type="button" variant="secondary" size="sm" v-if="sections.length > 1"
                             @click="invertSectionOrder" title="Inverter Ordem Seções">
-                            <ArrowLeftRight class="mr-1 h-4 w-4" /> <span class="hidden md:inline">Inverter</span>
+                            <ArrowLeftRight class="mr-1 h-4 w-4" /> <span class="hidden xl:inline">Inverter</span>
                         </Button>
                         <Button type="button" variant="secondary" size="sm" @click="navigateToAddSection"
                             title="Adicionar Seção">
-                            <Plus class="mr-1 h-4 w-4" /> <span class="hidden md:inline">Seção</span>
+                            <Plus class="mr-1 h-4 w-4" /> <span class="hidden xl:inline">Seção</span>
                         </Button>
                         <Button type="button" variant="destructive" size="sm" @click="confirmRemoveGondola"
                             title="Remover Gôndola">
-                            <Trash2 class="mr-1 h-4 w-4" /> <span class="hidden md:inline">Gôndola</span>
+                            <Trash2 class="mr-1 h-4 w-4" /> <span class="hidden xl:inline">Gôndola</span>
                         </Button>
                     </div>
 
@@ -366,12 +361,12 @@ const saveChanges = () => editorStore.saveChanges();
                         <Button variant="outline" size="sm" @click="undo" :disabled="!canUndo"
                             class="dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 disabled:opacity-50">
                             <Undo2Icon class="mr-2 h-4 w-4" />
-                            Desfazer
+                            <span class="hidden xl:block">Desfazer</span>
                         </Button>
                         <Button variant="outline" size="sm" @click="redo" :disabled="!canRedo"
                             class="dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 disabled:opacity-50">
                             <Redo2Icon class="mr-2 h-4 w-4" />
-                            Refazer
+                            <span class="hidden xl:block">Refazer</span>
                         </Button>
                         <div class="flex items-center gap-1">
 
@@ -379,28 +374,17 @@ const saveChanges = () => editorStore.saveChanges();
                                 class="dark:hover:bg-primary-800 disabled:opacity-50"
                                 :variant="hasChanges ? 'default' : 'outline'">
                                 <SaveIcon class="mr-2 h-4 w-4" />
-                                Salvar
+                                <span class="hidden xl:block">Salvar</span>
                             </Button>
+                        </div>
+                        <div class="flex gap-2"> 
+                            <AnalysisPopover />
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="flex gap-2 m-2 justify-between">
-            <div class="flex gap-2">
-
-
-
-            </div>
-            <div class="flex gap-2">
-                <Button v-if="analysisResultStore.result" @click="analysisResultStore.setResult(null);" variant="destructive">Limpar Resultado</Button>
-                <AnalysisPopover />
-                <Button variant="outline" size="sm">
-                    <PrinterIcon class="h-4 w-4" />
-                    Imprimir
-                </Button>                
-            </div>
-        </div>
+        
         <ConfirmModal :isOpen="showDeleteConfirm.some((item) => item.gondola)"
             @update:isOpen="(isOpen: boolean) => !isOpen && (showDeleteConfirm = [])" title="Excluir gondola"
             message="Tem certeza que deseja a gondola? Esta ação não pode ser desfeita." confirmButtonText="Excluir"
@@ -410,6 +394,6 @@ const saveChanges = () => editorStore.saveChanges();
             @update:isOpen="(isOpen: boolean) => !isOpen && (showDeleteConfirm = [])" title="Excluir produto"
             message="Tem certeza que deseja excluir este produto? Esta ação não pode ser desfeita."
             confirmButtonText="Excluir" cancelButtonText="Cancelar" :isDangerous="true" @confirm="confirmDeleteShelf"
-            @cancel="cancelDelete" /> 
+            @cancel="cancelDelete" />
     </div>
 </template>

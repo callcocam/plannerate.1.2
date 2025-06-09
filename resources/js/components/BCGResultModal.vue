@@ -1,202 +1,203 @@
 <template>
-  <Dialog :open="open" @update:open="$emit('update:open', $event)">
-    <DialogContent class="md:max-w-[100%] w-full max-h-[90vh] overflow-hidden flex flex-col">
-      <DialogHeader>
-        <div class="flex justify-between items-center">
-          <div>
-            <DialogTitle>Resultados da Matriz BCG</DialogTitle>
-            <DialogDescription>
-              Análise de produtos baseada na participação de mercado e taxa de crescimento
-            </DialogDescription>
-          </div>
-
-        </div>
-      </DialogHeader>
-
-      <div class="flex-1 overflow-hidden flex flex-col">
-        <!-- Resumo -->
-        <div v-if="summary" class="mb-4 py-2 px-4 bg-gray-50 rounded-lg flex-shrink-0">
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+  <TooltipProvider>
+    <Dialog :open="open" @update:open="$emit('update:open', $event)">
+      <DialogContent class="md:max-w-[70%] w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <div class="flex justify-between items-center">
             <div>
-              <h3 class="text-sm font-medium text-gray-500">Total de Itens</h3>
-              <p class="text-lg font-semibold">{{ formatNumber.format(summary.totalItems) }}</p>
+              <DialogTitle>Resultados da Matriz BCG</DialogTitle>
+              <DialogDescription>
+                Análise de produtos baseada na participação de mercado e taxa de crescimento
+              </DialogDescription>
             </div>
-            <div class="col-span-3">
-              <h3 class="text-sm font-medium text-gray-500">Classificações</h3>
-              <div class="flex flex-wrap gap-4">
-                <p class="text-xs">
-                  <span class="text-green-600">Alto valor:</span> {{
-                    formatNumber.format(summary.classificationCounts['Alto valor - manutenção']) }}
-                </p>
-                <p class="text-xs">
-                  <span class="text-blue-600">Incentivo vol.:</span> {{
-                    formatNumber.format(summary.classificationCounts['Incentivo - volume']) }}
-                </p>
-                <p class="text-xs">
-                  <span class="text-purple-600">Incentivo lucro:</span> {{
-                    formatNumber.format(summary.classificationCounts['Incentivo - lucro']) }}
-                </p>
-                <p class="text-xs">
-                  <span class="text-red-600">Baixo valor:</span> {{
-                    formatNumber.format(summary.classificationCounts['Baixo valor - descontinuar']) }}
-                </p>
+
+          </div>
+        </DialogHeader>
+
+        <div class="flex-1 overflow-hidden flex flex-col">
+          <!-- Resumo -->
+          <div v-if="summary" class="mb-4 py-2 px-4 bg-gray-50 rounded-lg flex-shrink-0">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <h3 class="text-sm font-medium text-gray-500">Total de Itens</h3>
+                <p class="text-lg font-semibold">{{ formatNumber.format(summary.totalItems) }}</p>
+              </div>
+              <div class="col-span-3">
+                <h3 class="text-sm font-medium text-gray-500">Classificações</h3>
+                <div class="flex flex-wrap gap-4">
+                  <p class="text-xs">
+                    <span class="text-green-600">Alto valor:</span> {{
+                      formatNumber.format(summary.classificationCounts['Alto valor - manutenção']) }}
+                  </p>
+                  <p class="text-xs">
+                    <span class="text-blue-600">Incentivo vol.:</span> {{
+                      formatNumber.format(summary.classificationCounts['Incentivo - volume']) }}
+                  </p>
+                  <p class="text-xs">
+                    <span class="text-purple-600">Incentivo lucro:</span> {{
+                      formatNumber.format(summary.classificationCounts['Incentivo - lucro']) }}
+                  </p>
+                  <p class="text-xs">
+                    <span class="text-red-600">Baixo valor:</span> {{
+                      formatNumber.format(summary.classificationCounts['Baixo valor - descontinuar']) }}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- Filtros -->
-        <div class="mb-4 flex flex-col sm:flex-row gap-4 flex-shrink-0">
-          <div class="flex-1">
-            <div class="relative">
-              <Search class="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
-              <Input v-model="searchText" placeholder="Buscar por EAN, descrição ou categoria..." class="pl-8" />
-              <button v-if="searchText" @click="searchText = ''"
-                class="absolute right-2 top-2.5 text-gray-500 hover:text-gray-700">
-                <X class="h-4 w-4" />
-              </button>
+          <!-- Filtros -->
+          <div class="mb-4 flex flex-col sm:flex-row gap-4 flex-shrink-0">
+            <div class="flex-1">
+              <div class="relative">
+                <Search class="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
+                <Input v-model="searchText" placeholder="Buscar por EAN, descrição ou categoria..." class="pl-8" />
+                <button v-if="searchText" @click="searchText = ''"
+                  class="absolute right-2 top-2.5 text-gray-500 hover:text-gray-700">
+                  <X class="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            <div class="flex gap-2">
+              <Select v-model="selectedClassification" class="w-48">
+                <SelectTrigger >
+                  <SelectValue placeholder="Filtrar por classificação" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Alto valor - manutenção">Alto valor - manutenção</SelectItem>
+                  <SelectItem value="Incentivo - volume">Incentivo - volume</SelectItem>
+                  <SelectItem value="Incentivo - lucro">Incentivo - lucro</SelectItem>
+                  <SelectItem value="Baixo valor - descontinuar">Baixo valor - descontinuar</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Button variant="outline" @click="clearFilters">
+                Limpar Filtros
+              </Button>
             </div>
           </div>
-          <div class="flex gap-2">
-            <Select v-model="selectedClassification" class="w-48">
-              <SelectTrigger >
-                <SelectValue placeholder="Filtrar por classificação" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Alto valor - manutenção">Alto valor - manutenção</SelectItem>
-                <SelectItem value="Incentivo - volume">Incentivo - volume</SelectItem>
-                <SelectItem value="Incentivo - lucro">Incentivo - lucro</SelectItem>
-                <SelectItem value="Baixo valor - descontinuar">Baixo valor - descontinuar</SelectItem>
-              </SelectContent>
-            </Select>
 
-            <Button variant="outline" @click="clearFilters">
-              Limpar Filtros
+          <!-- Tabela de Resultados -->
+          <div class="flex-1 overflow-auto border rounded-lg">
+            <table class="text-sm border-collapse w-full">
+              <thead class="sticky top-0 bg-white z-10">
+                <tr class="bg-gray-100">
+                  <th v-for="(label, key) in tableHeaders" :key="key"
+                    class="px-2 py-1 border cursor-pointer hover:bg-gray-200 text-left"
+                    @click="toggleSort(key as keyof BCGResult)">
+                    <Tooltip :delay-duration="100">
+                      <TooltipTrigger class="w-full flex items-center justify-between">
+                        <span :class="{ 'truncate max-w-20': key !== 'description' }">{{ label }}</span>
+                        <span class="ml-1">
+                          <ArrowUpDown v-if="sortConfig.key !== key" class="h-4 w-4" />
+                          <ArrowUp v-else-if="sortConfig.direction === 'asc'" class="h-4 w-4" />
+                          <ArrowDown v-else class="h-4 w-4" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{{ label }}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in filteredResults" :key="item.ean"
+                  @click="selectedItemId = selectedItemId === item.ean ? null : item.ean"
+                  :class="{ 'bg-blue-100 dark:bg-blue-900/50': selectedItemId === item.ean, 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50': true }">
+                  <td class="px-2 py-1 border">{{ item.ean }}</td>
+                  <td class="px-2 py-1 border">{{ item.description }}</td>
+                  <td class="px-2 py-1 border">{{ item.category }}</td>
+                  <td class="px-2 py-1 border">{{ item.yValue }}</td>
+                  <td class="px-2 py-1 border">{{ item.xValue }}</td>
+                  <td class="px-2 py-1 border">
+                    <span class="px-2 py-1 rounded-full text-xs font-medium"
+                      :class="getClassificationClass(item.classification)">
+                      {{ getClassificationLabel(item.classification) }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div v-if="filteredResults.length === 0" class="text-gray-500 mt-4 text-center">Nenhum resultado encontrado.
+          </div>
+
+          <!-- Legenda -->
+          <div class="mt-4 flex flex-wrap gap-4 flex-shrink-0">
+            <div v-for="(label, classification) in classificationLabels" :key="classification"
+              class="flex items-center gap-2">
+              <div class="w-3 h-3 rounded-full" :class="getClassificationClass(classification)"></div>
+              <span class="text-sm">{{ label }}</span>
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter class="mt-4 flex-shrink-0 items-center">
+          <!-- Controles de Parâmetros -->
+          <div class="flex flex-col sm:flex-row gap-4 w-full mb-4">
+            <div class="flex flex-col sm:flex-row gap-2 flex-1">
+              <div class="flex flex-col gap-1">
+                <label class="text-xs font-medium text-gray-600">EIXO X (Horizontal)</label>
+                <Select v-model="bcgParams.xAxis" class="w-48">
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem v-for="option in axisOptions" :key="option" :value="option">
+                      {{ option }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div class="flex flex-col gap-1">
+                <label class="text-xs font-medium text-gray-600">EIXO Y (Vertical)</label>
+                <Select v-model="bcgParams.yAxis" class="w-48">
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem v-for="option in axisOptions" :key="option" :value="option">
+                      {{ option }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Botões de Ação -->
+          <div class="flex flex-nowrap gap-2 justify-end">
+            <Button variant="default" size="sm" @click="executeBCGAnalysisWithParams()" class="flex items-center gap-2"
+              :disabled="bcgResultStore.loading">
+              <span v-if="bcgResultStore.loading" class="flex items-center gap-1">
+                <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                  </path>
+                </svg>
+                Calculando...
+              </span>
+              <span v-else>Recalcular</span>
+              <RefreshCw class="h-4 w-4" />
+            </Button>
+
+            <Button variant="outline" size="sm" @click="exportToExcel" class="flex items-center gap-2">
+              <Download class="h-4 w-4" />
+              Exportar Excel
+            </Button>
+
+            <Button variant="outline" @click="$emit('update:open', false)" size="sm">
+              Fechar
             </Button>
           </div>
-        </div>
-
-        <!-- Tabela de Resultados -->
-        <div class="flex-1 overflow-auto border rounded-lg">
-          <table class="text-sm border-collapse w-full">
-            <thead class="sticky top-0 bg-white z-10">
-              <tr class="bg-gray-100">
-                <th v-for="(label, key) in {
-                  ean: 'EAN',
-                  description: 'Descrição',
-                  category: 'Categoria',
-                  yValue: `EIXO Y (${axisLabels.y})`,
-                  xValue: `EIXO X (${axisLabels.x})`,
-                  classification: 'Classificação BCG'
-                }" :key="key" class="px-2 py-1 border cursor-pointer hover:bg-gray-200 text-left"
-                  @click="toggleSort(key as keyof BCGResult)">
-                  <div class="flex items-center justify-between">
-                    {{ label }}
-                    <span class="ml-1">
-                      <ArrowUpDown v-if="sortConfig.key !== key" class="h-4 w-4" />
-                      <ArrowUp v-else-if="sortConfig.direction === 'asc'" class="h-4 w-4" />
-                      <ArrowDown v-else class="h-4 w-4" />
-                    </span>
-                  </div>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="item in filteredResults" :key="item.ean"
-                @click="selectedItemId = selectedItemId === item.ean ? null : item.ean"
-                :class="{ 'bg-blue-100 dark:bg-blue-900/50': selectedItemId === item.ean, 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50': true }">
-                <td class="px-2 py-1 border">{{ item.ean }}</td>
-                <td class="px-2 py-1 border">{{ item.description }}</td>
-                <td class="px-2 py-1 border">{{ item.category }}</td>
-                <td class="px-2 py-1 border">{{ item.yValue }}</td>
-                <td class="px-2 py-1 border">{{ item.xValue }}</td>
-                <td class="px-2 py-1 border">
-                  <span class="px-2 py-1 rounded-full text-xs font-medium"
-                    :class="getClassificationClass(item.classification)">
-                    {{ getClassificationLabel(item.classification) }}
-                  </span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div v-if="filteredResults.length === 0" class="text-gray-500 mt-4 text-center">Nenhum resultado encontrado.
-        </div>
-
-        <!-- Legenda -->
-        <div class="mt-4 flex flex-wrap gap-4 flex-shrink-0">
-          <div v-for="(label, classification) in classificationLabels" :key="classification"
-            class="flex items-center gap-2">
-            <div class="w-3 h-3 rounded-full" :class="getClassificationClass(classification)"></div>
-            <span class="text-sm">{{ label }}</span>
-          </div>
-        </div>
-      </div>
-
-      <DialogFooter class="mt-4 flex-shrink-0 items-center">
-        <!-- Controles de Parâmetros -->
-        <div class="flex flex-col sm:flex-row gap-4 w-full mb-4">
-          <div class="flex flex-col sm:flex-row gap-2 flex-1">
-            <div class="flex flex-col gap-1">
-              <label class="text-xs font-medium text-gray-600">EIXO X (Horizontal)</label>
-              <Select v-model="bcgParams.xAxis" class="w-48">
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem v-for="option in axisOptions" :key="option" :value="option">
-                    {{ option }}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div class="flex flex-col gap-1">
-              <label class="text-xs font-medium text-gray-600">EIXO Y (Vertical)</label>
-              <Select v-model="bcgParams.yAxis" class="w-48">
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem v-for="option in axisOptions" :key="option" :value="option">
-                    {{ option }}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </div>
-
-        <!-- Botões de Ação -->
-        <div class="flex flex-nowrap gap-2 justify-end">
-          <Button variant="default" size="sm" @click="executeBCGAnalysisWithParams()" class="flex items-center gap-2"
-            :disabled="bcgResultStore.loading">
-            <span v-if="bcgResultStore.loading" class="flex items-center gap-1">
-              <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                </path>
-              </svg>
-              Calculando...
-            </span>
-            <span v-else>Recalcular</span>
-            <RefreshCw class="h-4 w-4" />
-          </Button>
-
-          <Button variant="outline" size="sm" @click="exportToExcel" class="flex items-center gap-2">
-            <Download class="h-4 w-4" />
-            Exportar Excel
-          </Button>
-
-          <Button variant="outline" @click="$emit('update:open', false)" size="sm">
-            Fechar
-          </Button>
-        </div>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  </TooltipProvider>
 </template>
 
 <script setup lang="ts">
@@ -218,11 +219,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useBCGResultStore } from '@plannerate/store/editor/bcgResult';
 import { useEditorStore } from '@plannerate/store/editor';
 import { useAnalysisService } from '@plannerate/services/analysisService';
 import { useBCGMatrix } from '@plannerate/composables/useBCGMatrix';
-import type { BCGClassification, BCGServiceData } from '@plannerate/composables/useBCGMatrix';
+import type { BCGClassification } from '@plannerate/composables/useBCGMatrix';
 import { ArrowUpDown, ArrowUp, ArrowDown, Search, X, Download, RefreshCw } from 'lucide-vue-next';
 import * as XLSX from 'xlsx';
 
@@ -243,6 +250,15 @@ const axisLabels = ref({
   x: 'VALOR DE VENDA',
   y: 'MARGEM DE CONTRIBUIÇÃO'
 });
+
+const tableHeaders = computed(() => ({
+  ean: 'EAN',
+  description: 'Descrição',
+  category: 'Categoria',
+  yValue: `EIXO Y (${axisLabels.value.y})`,
+  xValue: `EIXO X (${axisLabels.value.x})`,
+  classification: 'Classificação BCG'
+}));
 
 const selectedCategory = ref('');
 const selectedClassification = ref('');
@@ -463,20 +479,20 @@ async function executeBCGAnalysisWithParams() {
           marketShare: 0.1, // Valor padrão, será ajustado conforme necessário
           xAxis: bcgParams.value.xAxis,
           yAxis: bcgParams.value.yAxis, 
-          planogram: editorStore.currentState?.id
+          planogram: editorStore.currentState?.id || ''
         }
       );
 
       // Atualizar labels dos eixos baseado nos dados recebidos
-      if (analysisData && analysisData.length > 0) {
+      if (analysisData && (analysisData as any).length > 0) {
         axisLabels.value = {
-          x: analysisData[0].x_axis_label || bcgParams.value.xAxis,
-          y: analysisData[0].y_axis_label || bcgParams.value.yAxis
+          x: (analysisData as any)[0].x_axis_label || bcgParams.value.xAxis,
+          y: (analysisData as any)[0].y_axis_label || bcgParams.value.yAxis
         };
       }
 
       const { processData } = useBCGMatrix();
-      const processedResults = processData(analysisData as BCGServiceData[], products);
+      const processedResults = processData(analysisData as any, products);
 
       bcgResultStore.setResult(processedResults);
     } else {

@@ -3,7 +3,8 @@
     <div class="flex gap-2">
       <!-- Botão para limpar resultado se houver -->
       <Button v-if="analysisResultStore.result" @click="analysisResultStore.setResult(null);" variant="destructive">
-        Limpar Resultado
+        <Paintbrush class="mr-1 h-4 w-4" />
+        <span class="hidden xl:block">Limpar Resultado</span>
       </Button>
     </div>
     
@@ -11,9 +12,9 @@
       <!-- Popover principal de cálculos -->
       <Popover v-model:open="showCalculos">
         <PopoverTrigger as-child>
-          <Button variant="outline" size="sm" @click="showCalculos = true">
+          <Button variant="outline" size="sm" @click="showCalculos = true" title="Calculos">
             <NutIcon class="h-4 w-4" />
-            Calculos
+            <span class="hidden xl:block">Calculos</span>
           </Button>
         </PopoverTrigger>
         <PopoverContent class="w-auto max-w-lg z-[1000]">
@@ -26,9 +27,9 @@
       </Popover>
       
       <!-- Botão de imprimir -->
-      <Button variant="outline" size="sm">
+      <Button variant="outline" size="sm" title="Imprimir">
         <PrinterIcon class="h-4 w-4" />
-        Imprimir
+        <span class="hidden xl:block">Imprimir</span>
       </Button>
     </div>
   </div>
@@ -94,7 +95,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import { NutIcon, PrinterIcon } from 'lucide-vue-next';  
+import { NutIcon, PrinterIcon, Paintbrush } from 'lucide-vue-next';  
 
 // Imports dos componentes de análise
 import ABCParamsPopover from '@plannerate/components/ABCParamsPopover.vue';

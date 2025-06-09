@@ -6,11 +6,11 @@
                 :layer="segment.layer" :scale-factor="scaleFactor" :section-width="sectionWidth"
                 :shelf-depth="shelf.shelf_depth" @increase="onIncreaseQuantity" @decrease="onDecreaseQuantity"
                 @update-layer-quantity="updateLayerQuantity">
-                <template #depth-count>
+                <!-- <template #depth-count>
                     <Label :title="`Profundidade da prateleira: ${depthCount}`"
                         class="product-content-depth absolute -top-2 -left-2 z-10 flex h-3 w-3 cursor-help items-center justify-center rounded-full bg-gray-700 text-xs text-gray-100 dark:bg-gray-300 dark:text-gray-800">
                         {{ depthCount }}</Label>
-                </template>
+                </template> -->
             </LayerComponent>
         </div>
     </div>
@@ -79,7 +79,7 @@ const outerSegmentStyle = computed(() => {
     return {
         width: `${totalWidth}px`,
         height: `${layerHeight}px`, // Altura explícita
-        marginBottom: `${marginBottom}px`,
+        marginBottom: `${marginBottom+4}px`,
     } as CSSProperties;
 });
 const updateLayerQuantity = (layer: Layer) => {

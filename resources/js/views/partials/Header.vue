@@ -40,7 +40,7 @@
                     <span v-if="editorStore.hasChanges" class="ml-2 text-xs text-yellow-600 dark:text-yellow-400">(Não salvo)</span>
                 </div>
                 <p class="text-muted-foreground text-sm dark:text-gray-400">
-                    ID: {{ planogram.id }} | Criado em: {{ formatDate(planogram.created_at) }}
+                     Criado em: {{ formatDate(planogram.created_at) }}
                 </p>
             </div>
 
@@ -48,9 +48,11 @@
                 <div class="flex items-center gap-2 border-r pr-4">
                     <slot name="actions"></slot>
                 </div>
-                <a href="/admin/plannerate" class="dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 flex items-center rounded-md border px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
+                <a 
+                 title="Voltar para a lista"
+                href="/admin/plannerate" class="dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 flex items-center rounded-md border px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
                     <XIcon class="mr-2 h-4 w-4" />
-                    <span> Voltar para a lista</span>
+                    <span> Voltar</span>
                 </a>
                
                 <Button
@@ -58,11 +60,13 @@
                     size="sm"
                     @click="openAddGondolaModal"
                     class="dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                    title="Gôndola"
                 >
                     <PlusCircleIcon class="mr-2 h-4 w-4" />
-                    Adicionar Gôndola
+                    <span>Adicionar</span>
                 </Button>
-                <Button variant="outline" size="sm" class="dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
+                <Button variant="outline" size="sm" class="dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                title="Editar">
                     <PencilIcon class="mr-2 h-4 w-4" />
                     Editar
                 </Button>
