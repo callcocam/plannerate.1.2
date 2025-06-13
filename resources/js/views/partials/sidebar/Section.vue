@@ -486,7 +486,7 @@ const saveChanges = async () => {
     if (!selectedSection.value) return;
 
     const sectionId = selectedSection.value.id;
-    let correctGondolaId: string | null = editorGondola.value?.id || null;
+    const correctGondolaId: string | null = editorGondola.value?.id || null;
 
     if (!correctGondolaId) {
         console.error(`Erro ao salvar: Gôndola contendo a seção ${sectionId} não encontrada no estado do editor.`);

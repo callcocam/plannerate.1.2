@@ -81,7 +81,7 @@ const canRedo = computed(() => editorStore.canRedo);
 const alignment = computed(() => {
     // Busca a gôndola correspondente no estado atual do editor
     const gondolaStore = props.gondola;
-    let alignment = gondolaStore?.alignment;
+    const alignment = gondolaStore?.alignment;
     return alignment;
 });
 

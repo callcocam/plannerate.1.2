@@ -52,7 +52,7 @@ const analysisResult = computed(() => {
 });
 // Estilo do produto
 const productStyle = computed(() => {
-    let image_url = props.product.image_url;
+    const image_url = props.product.image_url;
     
     if (analysisResult.value) {
         productRef.value?.classList.add(analysisResult.value.abcClass);

@@ -66,7 +66,7 @@ const outerSegmentStyle = computed(() => {
     const productWidth = props.segment.layer.product.width;
     const productQuantity = props.segment.layer.quantity;
     let layerWidthFinal = 0;
-    let currentAlignment = alignment.value;
+    const currentAlignment = alignment.value;
 
     if (currentAlignment === 'justify') {
         layerWidthFinal = props.sectionWidth * props.scaleFactor;
@@ -92,7 +92,7 @@ const updateLayerQuantity = (layer: Layer) => {
         return;
     }
 
-    let newQuantity = layer.quantity;
+    const newQuantity = layer.quantity;
 
 
     const validation = validateShelfWidth(props.shelf, props.sectionWidth, props.segment.layer.product.id, newQuantity, null);
