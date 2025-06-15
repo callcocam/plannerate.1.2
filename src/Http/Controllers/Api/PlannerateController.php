@@ -50,8 +50,7 @@ class PlannerateController extends Controller
                 'gondolas.sections.shelves.segments.layer.product',
                 'gondolas.sections.shelves.segments.layer.product.sales',
                 'gondolas.sections.shelves.segments.layer.product.purchases'
-            ])->findOrFail($id);
-
+            ])->findOrFail($id); 
 
             return response()->json(new PlannerateResource($planogram));
         } catch (ModelNotFoundException $e) {

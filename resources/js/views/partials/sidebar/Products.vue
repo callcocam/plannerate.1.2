@@ -1,81 +1,99 @@
 <template>
     <div :class="sidebarClasses">
         <!-- Botão de fechar, visível apenas em telas pequenas -->
-        <button
-            class="absolute right-2 top-2 z-50 rounded-md bg-white p-1 shadow md:hidden"
-            @click="$emit('close')"
-            aria-label="Fechar menu de produtos"
-        >
-            <X class="h-5 w-5 text-gray-700" />
-        </button>
+        <Button variant="outline" size="icon" class="absolute right-2 top-2 z-50 md:hidden" @click="$emit('close')"
+            aria-label="Fechar menu de produtos">
+            <X class="h-4 w-4" />
+        </Button>
         <div class="border-b border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
             <h3 class="text-center text-lg font-medium text-gray-800 dark:text-gray-100">Produtos Disponíveis</h3>
 
             <!-- Campo de busca com design aprimorado -->
             <div class="relative mt-3">
-                <input v-model="filters.search" type="text" placeholder="Buscar produtos..."
-                    class="w-full rounded-md border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary focus:ring-1 focus:ring-primary dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400" />
-                <Search class="absolute right-3 top-2 h-4 w-4 text-gray-400 dark:text-gray-300" />
+                <Input v-model="filters.search" type="text" placeholder="Buscar produtos..." class="pr-10" />
+                <Search class="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             </div>
 
             <!-- Botão de filtros com design aprimorado -->
-            <button
-                class="mt-2 flex w-full items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-                @click="showFilters = !showFilters">
+            <Button variant="outline" class="mt-2 w-full justify-between" @click="showFilters = !showFilters">
                 <div class="flex items-center">
-                    <SlidersHorizontal class="mr-2 h-4 w-4 text-gray-500 dark:text-gray-300" />
-                    <span class="text-gray-700 dark:text-gray-100">Filtros</span>
+                    <SlidersHorizontal class="mr-2 h-4 w-4" />
+                    <span>Filtros</span>
                 </div>
-                <ChevronDown class="h-4 w-4 text-gray-500 dark:text-gray-300" :class="{ 'rotate-180': showFilters }" />
-            </button>
+                <ChevronDown class="h-4 w-4 transition-transform" :class="{ 'rotate-180': showFilters }" />
+            </Button>
 
             <!-- Painel de filtros colapsável -->
             <div v-if="showFilters"
                 class="mt-2 rounded-md border border-gray-200 bg-white p-3 text-sm dark:border-gray-600 dark:bg-gray-700">
                 <div class="mb-2">
-                    <label class="mb-1 block text-gray-700 dark:text-gray-200">Categoria</label>
-                    <select
-                        class="w-full rounded-md border-gray-300 bg-white py-1 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-                        v-model="filters.category">
-                        <option value="">Todas as categorias</option>
-                        <option v-for="cat in allCategories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
-                    </select>
+                    <Label class="mb-1 block">Mercadológico</Label>
+                    <Popover v-model:open="showMercadologicoPopover">
+                        <PopoverTrigger as-child>
+                            <Button variant="outline" class="w-full justify-between">
+                                <span>{{ filters.category ? 'Nível selecionado' : 'Selecionar nível mercadológico' }}</span>
+                                <ChevronDown class="h-4 w-4 opacity-50" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent class="w-2xl p-4" side="right" align="start">
+                            <div class="space-y-4">
+                                <h4 class="font-medium leading-none">Nível Mercadológico</h4>
+                                <MercadologicoSelector 
+                                    :field="{
+                                        name: 'mercadologico_nivel',
+                                        label: 'Mercadológico',
+                                        apiUrl: '/api/categories/mercadologico',
+                                        valueKey: 'id',
+                                        labelKey: 'name'
+                                    }" 
+                                    id="mercadologico_nivel" 
+                                    v-model="filters.category" 
+                                    @update:model-value="showMercadologicoPopover = false"
+                                />
+                            </div>
+                        </PopoverContent>
+                    </Popover>
                 </div>
 
                 <div class="mb-2">
-                    <label class="mb-1 block text-gray-700 dark:text-gray-200">Status de uso</label>
-                    <select
-                        class="w-full rounded-md border-gray-300 bg-white py-1 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-                        v-model="filters.usageStatus">
-                        <option value="all">Todos</option>
-                        <option value="unused">Não usados</option>
-                        <option value="used">Já usados</option>
-                    </select>
+                    <Label class="mb-1 block">Status de uso</Label>
+                    <div class="space-y-2">
+                        <div class="flex items-center space-x-2">
+                            <input id="all" type="radio" value="all" v-model="filters.usageStatus"
+                                class="h-4 w-4 border-gray-300 text-primary focus:ring-2 focus:ring-primary" />
+                            <Label for="all" class="text-sm font-normal">Todos</Label>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <input id="unused" type="radio" value="unused" v-model="filters.usageStatus"
+                                class="h-4 w-4 border-gray-300 text-primary focus:ring-2 focus:ring-primary" />
+                            <Label for="unused" class="text-sm font-normal">Não usados</Label>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <input id="used" type="radio" value="used" v-model="filters.usageStatus"
+                                class="h-4 w-4 border-gray-300 text-primary focus:ring-2 focus:ring-primary" />
+                            <Label for="used" class="text-sm font-normal">Já usados</Label>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="mb-2">
-                    <p class="mb-1 block text-gray-700 dark:text-gray-200">Atributos</p>
+                    <Label class="mb-1 block">Atributos</Label>
                     <div class="grid grid-cols-2 gap-2">
-                        <label class="flex items-center">
-                            <input type="checkbox"
-                                class="mr-1 rounded text-primary dark:border-gray-600 dark:bg-gray-700"
-                                v-model="filters.hangable" />
-                            <span class="dark:text-gray-200">Pendurável</span>
-                        </label>
-                        <label class="flex items-center">
-                            <input type="checkbox"
-                                class="mr-1 rounded text-primary dark:border-gray-600 dark:bg-gray-700"
-                                v-model="filters.stackable" />
-                            <span class="dark:text-gray-200">Empilhável</span>
-                        </label>
+                        <div class="flex items-center space-x-2">
+                            <Checkbox id="hangable" v-model:modelValue="filters.hangable" />
+                            <Label for="hangable" class="text-sm font-normal">Pendurável</Label>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <Checkbox id="stackable" v-model:modelValue="filters.stackable" />
+                            <Label for="stackable" class="text-sm font-normal">Empilhável</Label>
+                        </div>
                     </div>
                 </div>
 
                 <div class="flex justify-end">
-                    <button type="button" @click="clearFilters"
-                        class="rounded-md bg-gray-100 px-2 py-1 text-xs text-gray-700 hover:bg-gray-200 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">
+                    <Button variant="secondary" size="sm" @click="clearFilters">
                         Limpar filtros
-                    </button>
+                    </Button>
                 </div>
             </div>
         </div>
@@ -102,14 +120,14 @@
                             <p class="truncate text-sm font-medium text-gray-800 dark:text-gray-100">{{ product.name }}
                             </p>
                             <p class="text-xs text-gray-500 dark:text-gray-400">{{ product.width }}×{{ product.height
-                            }}×{{ product.depth }} cm</p>
+                                }}×{{ product.depth }} cm</p>
                         </div>
                     </div>
                     <div class="mt-1 flex justify-end">
-                        <button class="invisible text-xs text-blue-600 group-hover:visible dark:text-blue-400"
+                        <Button variant="ghost" size="sm" class="invisible text-xs group-hover:visible"
                             @click.stop="viewStats(product)">
                             Ver estatísticas
-                        </button>
+                        </Button>
                     </div>
                 </li>
             </ul>
@@ -131,10 +149,9 @@
 
             <!-- Load More button -->
             <div v-if="!loading && hasMorePages" class="flex justify-center py-4">
-                <button @click="loadMore"
-                    class="rounded-md bg-gray-100 px-4 py-2 text-sm text-gray-700 hover:bg-gray-200 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">
+                <Button variant="secondary" @click="loadMore">
                     Carregar mais produtos
-                </button>
+                </Button>
             </div>
         </div>
     </div>
@@ -147,6 +164,14 @@ import { onMounted, reactive, ref, watch, computed } from 'vue';
 import { apiService } from '@plannerate/services';
 import { useEditorStore } from '@plannerate/store/editor';
 import { Product } from '@plannerate/types/segment';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import MercadologicoSelector from '@/components/form/fields/MercadologicoSelector.vue';
+
 
 interface Category {
     id: number | string;
@@ -179,15 +204,33 @@ const { productIdsInCurrentGondola } = storeToRefs(editorStore);
 
 const emit = defineEmits(['select-product', 'drag-start', 'view-stats', 'close']);
 
+// Função para limpar valores null/undefined de um objeto
+const cleanMercadologicoNivel = (obj: any) => {
+    if (!obj || typeof obj !== 'object') return null;
+    
+    const cleaned: any = {};
+    Object.keys(obj).forEach(key => {
+        const value = obj[key];
+        // Remove valores null, 'null', undefined, ou strings vazias
+        if (value !== null && value !== 'null' && value !== undefined && value !== '') {
+            cleaned[key] = value;
+        }
+    });
+    
+    // Retorna null se o objeto estiver vazio após limpeza
+    return Object.keys(cleaned).length > 0 ? cleaned : null;
+};
+
 const showFilters = ref(false);
+const showMercadologicoPopover = ref(false);
+const mercadologicoNivel = ref(cleanMercadologicoNivel(editorStore.currentState?.mercadologico_nivel));
 const filters = reactive<FilterState>({
     search: '',
-    category: '',
+    category: mercadologicoNivel.value,
     hangable: false,
     stackable: false,
-    usageStatus: 'all',
-});
-
+    usageStatus: 'unused',
+}); 
 const loading = ref(false);
 const filteredProducts = ref<Product[]>([]);
 const currentPage = ref(1);
@@ -203,23 +246,23 @@ interface PaginatedProductsResponse {
 }
 
 const fetchCategories = async () => {
-    const response = await apiService.get<Category[]>('categories'); 
+    const response = await apiService.get<Category[]>('categories');
     allCategories.value = response;
 };
 
 const fetchProducts = async (page = 1, append = false) => {
     if (loading.value) return;
     loading.value = true;
-    console.log(`Fetching products: page=${page}, append=${append}`);
 
     try {
         const idsArray = Array.from(productIdsInCurrentGondola.value);
 
         const params: Record<string, any> = {
             search: filters.search || undefined,
-            category: filters.category || undefined,
+            category: cleanMercadologicoNivel(filters.category) || undefined,
             hangable: filters.hangable || undefined,
             stackable: filters.stackable || undefined,
+            planogram_id: editorStore.currentState?.id || undefined, 
             page: page,
             limit: LIST_LIMIT,
         };
@@ -318,7 +361,7 @@ function handleImageError(event: Event, product: Product) {
 }
 function clearFilters() {
     filters.search = '';
-    filters.category = '';
+    filters.category = cleanMercadologicoNivel(editorStore.currentState?.mercadologico_nivel);
     filters.hangable = false;
     filters.stackable = false;
     filters.usageStatus = 'all';

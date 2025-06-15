@@ -10,6 +10,24 @@ interface MercadologicoNivel {
     mercadologico_nivel_6: string;
 }
 
+interface Dimensions {
+    ean?: string;
+    height: number;
+    width: number;
+    depth: number;
+    weight: number; 
+}
+
+interface AdditionalData {
+    type?: string;
+    brand?: string;
+    subbrand?: string;
+    packaging_type?: string;
+    packaging_content?: string;
+    packaging_quantity?: number;
+    packaging_unit?: string;
+}
+
 interface Product {
     id: string;
     name: string;
@@ -27,6 +45,8 @@ interface Product {
     created_at?: string;
     updated_at?: string;
     mercadologico_nivel?: MercadologicoNivel;
+    dimensions?: Dimensions;
+    additional_data?: AdditionalData;
 }
 
 // Interface para o objeto Layer dentro do Segment

@@ -34,14 +34,15 @@ class PlannerateResource extends JsonResource
             'user' => $this->whenLoaded('user', function () {
                 return $this->user->name;
             }),
-            'start_date' => $this->start_date ? $this->start_date->format('Y-m-d') : null,
-            'end_date' => $this->end_date ? $this->end_date->format('Y-m-d') : null,
+            'start_date' => $this->start_date ? $this->start_date : null,
+            'end_date' => $this->end_date ? $this->end_date : null,
             'status' => $this->status,
             'gondolas' => GondolaResource::collection($this->whenLoaded('gondolas')),
             'status_label' => $this->status,
             'created_at' => $this->created_at ? $this->created_at->format('Y-m-d H:i:s') : null,
             'updated_at' => $this->updated_at ? $this->updated_at->format('Y-m-d H:i:s') : null,
             'tenant' => $this->whenLoaded('tenant'),
+            'mercadologico_nivel' => $this->mercadologico_nivel,
         ];
 
 

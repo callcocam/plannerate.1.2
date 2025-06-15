@@ -1,73 +1,98 @@
 <template>
-    <AlertDialog v-model:open="isDialogOpen">
-        <AlertDialogTrigger>
+    <Dialog v-model:open="isDialogOpen">
+        <DialogTrigger as-child>
             <slot />
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-            <AlertDialogHeader>
-                <AlertDialogTitle>Tem certeza que deseja aplicar estas alterações?</AlertDialogTitle>
-                <AlertDialogDescription>
-                    Esta alteração será aplicada diretamente ao produto na base de dados. Esta ação afeta todos os
-                    produtos que utilizam este produto.
-                </AlertDialogDescription>
-            </AlertDialogHeader>
-            <div class="grid grid-cols-3 gap-4">
-                <div class="grid gap-2 col-span-3">
-                    <ImageField v-model="record.image_url" label="Imagem" id="product-image"
-                        :alt="record.name || 'Produto'" :error="validationErrors.image_url" @crop="handleImageCrop" />
+        </DialogTrigger>
+        <DialogContent class="  md:max-w-6xl w-full   max-h-[90vh] overflow-y-auto p-0">
+            <div class="p-6 w-full">
+                <DialogHeader>
+                    <DialogTitle>Editar Produto</DialogTitle>
+                    <DialogDescription>
+                        Faça as alterações necessárias no produto. As mudanças serão aplicadas diretamente na base de
+                        dados.
+                    </DialogDescription>
+                </DialogHeader>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+                    <div class="grid gap-2 col-span-full">
+                        <ImageField v-model="record.image_url" label="Imagem" id="product-image"
+                            :alt="record.name || 'Produto'" :error="validationErrors.image_url"
+                            @crop="handleImageCrop" />
+                    </div>
+                    <div class="flex flex-col gap-2 col-span-full md:col-span-2">
+                        <Label>Nome</Label>
+                        <Input type="text" v-model="record.name" />
+                        <span v-if="validationErrors.name" class="text-red-500 text-xs">{{ validationErrors.name
+                            }}</span>
+                    </div>
+                    <div class="flex flex-col gap-2 col-span-full md:col-span-1">
+                        <Label>EAN</Label>
+                        <Input type="text" v-model="record.ean" readonly />
+                        <span v-if="validationErrors.ean" class="text-red-500 text-xs">{{ validationErrors.ean }}</span>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <Label>Largura</Label>
+                        <Input type="number" v-model="record.width" />
+                        <span v-if="validationErrors.width" class="text-red-500 text-xs">{{ validationErrors.width
+                            }}</span>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <Label>Altura</Label>
+                        <Input type="number" v-model="record.height" />
+                        <span v-if="validationErrors.height" class="text-red-500 text-xs">{{ validationErrors.height
+                            }}</span>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <Label>Profundidade</Label>
+                        <Input type="number" v-model="record.depth" />
+                        <span v-if="validationErrors.depth" class="text-red-500 text-xs">{{ validationErrors.depth
+                            }}</span>
+                    </div>
+
+                    <div class="flex flex-col gap-2 col-span-full">
+                        <ProductDimensions :field="{
+                            name: 'dimensions',
+                            label: 'Dimensões',
+                            description: 'Dimensões do produto',
+                            required: true,
+                            units: {
+                                dimensions: 'cm',
+                                weight: 'kg'
+                            }
+                        }" :id="record.id" v-model="record.dimensions" />
+                    </div>
+                    <div class="flex flex-col gap-2 col-span-full">
+                        <MercadologicoSelector :field="{
+                            name: 'mercadologico_nivel',
+                            label: 'Mercadológico',
+                            apiUrl: '/api/categories/mercadologico',
+                            valueKey: 'id',
+                            labelKey: 'name'
+                        }" :id="record.id" v-model="record.mercadologico_nivel" />
+                    </div>
+                    <div class="flex flex-col gap-2 col-span-full">
+                        <ProductAdditionalData :field="{
+                            name: 'additional_data',
+                            label: 'Dados Adicionais',
+                            description: 'Dados adicionais do produto',
+                            required: true
+                        }" :id="record.id" v-model="record.additional_data" />
+                    </div>
+                    <div class="flex flex-col gap-2 col-span-full">
+                        <Label>Descrição</Label>
+                        <Input type="text" v-model="record.description" />
+                        <span v-if="validationErrors.description" class="text-red-500 text-xs">{{
+                            validationErrors.description }}</span>
+                    </div>
                 </div>
-                <div class="flex flex-col gap-2 col-span-3">
-                    <Label>Nome</Label>
-                    <Input type="text" v-model="record.name" />
-                    <span v-if="validationErrors.name" class="text-red-500 text-xs">{{ validationErrors.name }}</span>
-                </div>
-                <div class="flex flex-col gap-2 col-span-3">
-                    <Label>EAN</Label>
-                    <Input type="text" v-model="record.ean" readonly />
-                    <span v-if="validationErrors.ean" class="text-red-500 text-xs">{{ validationErrors.ean }}</span>
-                </div>
-                <div class="flex flex-col gap-2">
-                    <Label>Largura</Label>
-                    <Input type="number" v-model="record.width" />
-                    <span v-if="validationErrors.width" class="text-red-500 text-xs">{{ validationErrors.width }}</span>
-                </div>
-                <div class="flex flex-col gap-2">
-                    <Label>Altura</Label>
-                    <Input type="number" v-model="record.height" />
-                    <span v-if="validationErrors.height" class="text-red-500 text-xs">{{ validationErrors.height
-                    }}</span>
-                </div>
-                <div class="flex flex-col gap-2">
-                    <Label>Profundidade</Label>
-                    <Input type="number" v-model="record.depth" />
-                    <span v-if="validationErrors.depth" class="text-red-500 text-xs">{{ validationErrors.depth
-                    }}</span>
-                </div>
-                <div class="flex flex-col gap-2 col-span-3">
-                    <Label>Mercadologico</Label>
-                    <MercadologicoSelector :field="{
-                        name: 'mercadologico_nivel',
-                        label: 'Mercadologico',
-                        apiUrl: '/api/categories/mercadologico',
-                        valueKey: 'id',
-                        labelKey: 'name'
-                    }" :id="record.id" v-model="record.mercadologico_nivel" />
-                </div>
-                <div class="flex flex-col gap-2 col-span-3">
-                    <Label>Descrição</Label>
-                    <Input type="text" v-model="record.description" />
-                    <span v-if="validationErrors.description" class="text-red-500 text-xs">{{
-                        validationErrors.description }}</span>
-                </div>
+                <DialogFooter class="mt-6">
+                    <Button variant="outline" @click="isDialogOpen = false">Cancelar</Button>
+                    <Button @click="applyChanges">
+                        Salvar alterações
+                    </Button>
+                </DialogFooter>
             </div>
-            <AlertDialogFooter>
-                <AlertDialogCancel @click="isDialogOpen = false">Cancelar</AlertDialogCancel>
-                <Button @click="applyChanges">
-                    Salvar alterações
-                </Button>
-            </AlertDialogFooter>
-        </AlertDialogContent>
-    </AlertDialog>
+        </DialogContent>
+    </Dialog>
 </template>
 
 <script setup lang="ts">
@@ -78,9 +103,16 @@ import { toast } from 'vue-sonner';
 import type { CropperResult } from 'vue-advanced-cropper';
 import ImageField from '@plannerate/components/fields/ImageField.vue';
 import MercadologicoSelector from '@/components/form/fields/MercadologicoSelector.vue';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import ProductDimensions from '@/components/form/fields/ProductDimensions.vue';
+import ProductAdditionalData from '@/components/form/fields/ProductAdditionalData.vue';
 const props = defineProps<{
     product: Product & { mercadologico_nivel: string }
 }>();
+console.log(props.product);
 const emit = defineEmits<{
     (e: 'update:product', product: Product): void
 }>();

@@ -1,8 +1,7 @@
 // /store/editor/types.ts
 import type { Gondola } from '@plannerate/types/gondola';
 import type { Section } from '@plannerate/types/sections';
-import type { Shelf } from '@plannerate/types/shelves';
-import type { Segment } from '@plannerate/types/segment';
+import type { Shelf } from '@plannerate/types/shelves'; 
 
 /**
  * Interface para representar o estado do planograma no editor
@@ -16,6 +15,7 @@ export interface PlanogramEditorState {
     showGrid: boolean;
     isLoading: boolean;
     error: string | null;
+    mercadologico_nivel: any;
 }
 
 /**
