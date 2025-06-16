@@ -1,10 +1,10 @@
-import { reactive, ref, readonly, type Ref, computed } from 'vue';
-import { useRouter } from 'vue-router';
+import { reactive, ref, readonly, type Ref } from 'vue';
 import { z } from 'zod'; // Importar Zod
 import { apiService } from '../services'; // Ajustar path se necessário
 import { useEditorStore } from '../store/editor'; // Ajustar path se necessário
 import { useToast } from '../components/ui/toast'; // Ajustar path se necessário
 import type { Gondola } from '../types/gondola';
+import { storeToRefs } from 'pinia';
 
 // --- Zod Schemas per Step ---
 const step0_BasicInfoSchema = z.object({
@@ -65,6 +65,7 @@ const step4_ShelvesSchema = z.object({
 const fullGondolaFormSchema = z.object({
     planogram_id: z.string().min(1, { message: "Planogram ID é obrigatório." }),
     status: z.string().min(1, { message: "Status é obrigatório." }), // Validar status aqui
+    storeData: z.any().optional()   ,
 }).merge(step0_BasicInfoSchema.omit({ status: true })) // Omitir status do passo 0, pois validamos aqui
   .merge(step1_ModulesSchema)
   .merge(step2_BaseSchema)
@@ -93,8 +94,7 @@ export interface UseGondolaCreateFormOptions {
     onError?: (error: any) => void; // Callback opcional em caso de erro
 }
 
-export function useGondolaCreateForm(options: UseGondolaCreateFormOptions) {
-    const router = useRouter();
+export function useGondolaCreateForm(options: UseGondolaCreateFormOptions) { 
     const editorStore = useEditorStore();
     const { toast } = useToast();
 
@@ -104,6 +104,7 @@ export function useGondolaCreateForm(options: UseGondolaCreateFormOptions) {
     // Agora errors pode armazenar Record<campo, string[] | undefined>
     const errors = ref<z.inferFlattenedErrors<typeof fullGondolaFormSchema>['fieldErrors']>({});
 
+    const { currentState } = storeToRefs(editorStore) as any; 
     // Define o estado inicial do formData
     const getInitialFormData = (): GondolaFormData => ({
         planogram_id: typeof planogramId.value === 'string' ? planogramId.value : '', // Garante que é string
@@ -128,6 +129,7 @@ export function useGondolaCreateForm(options: UseGondolaCreateFormOptions) {
         shelfDepth: 40,
         numShelves: 4,
         productType: 'normal',
+        storeData: currentState.value?.store_map_data || currentState.value?.store,
     });
 
     const formData = reactive<GondolaFormData>(getInitialFormData());
@@ -316,5 +318,6 @@ export function useGondolaCreateForm(options: UseGondolaCreateFormOptions) {
         validateStep, // Expor para uso no componente
         isSending: readonly(isSending),
         errors: readonly(errors),
+        editorStore,
     };
 } 

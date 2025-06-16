@@ -1,186 +1,55 @@
 <template>
-    <div>
-        <div class="mb-4 flex items-center">
-            <div class="rounded-full bg-gray-100 p-2 dark:bg-gray-700">
-                <CheckIcon class="h-5 w-5 dark:text-gray-200" />
-            </div>
-            <h3 class="ml-2 text-lg font-medium dark:text-gray-100">Revisão Final</h3>
-        </div>
-
-        <div class="space-y-6">
-            <!-- Informações Básicas -->
-            <div class="space-y-2">
-                <h4 class="border-b pb-1 font-medium dark:border-gray-700 dark:text-gray-200">Informações Básicas</h4>
-                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div>
-                        <dl class="space-y-1">
-                            <div class="flex">
-                                <dt class="w-32 font-medium dark:text-gray-300">Nome:</dt>
-                                <dd class="dark:text-gray-200">{{ formData.gondolaName }}</dd>
-                            </div>
-                            <div class="flex">
-                                <dt class="w-32 font-medium dark:text-gray-300">Localização:</dt>
-                                <dd class="dark:text-gray-200">{{ formData.location }}</dd>
-                            </div>
-                            <div class="flex">
-                                <dt class="w-32 font-medium dark:text-gray-300">Lado:</dt>
-                                <dd class="dark:text-gray-200">{{ formData.side || 'Não especificado' }}</dd>
-                            </div>
-                        </dl>
-                    </div>
-                    <div>
-                        <dl class="space-y-1">
-                            <div class="flex">
-                                <dt class="w-32 font-medium dark:text-gray-300">Status:</dt>
-                                <dd class="dark:text-gray-200">{{ formData.status === 'published' ? 'Publicado' : 'Rascunho' }}</dd>
-                            </div>
-                            <div class="flex">
-                                <dt class="w-32 font-medium dark:text-gray-300">Fluxo:</dt>
-                                <dd class="dark:text-gray-200">{{ formData.flow === 'left_to_right' ? 'Esquerda para Direita' : 'Direita para Esquerda' }}</dd>
-                            </div>
-                            <div class="flex">
-                                <dt class="w-32 font-medium dark:text-gray-300">Fator Escala:</dt>
-                                <dd class="dark:text-gray-200">{{ formData.scaleFactor }}</dd>
-                            </div>
-                        </dl>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Módulos -->
-            <div class="space-y-2">
-                <h4 class="border-b pb-1 font-medium dark:border-gray-700 dark:text-gray-200">Módulos</h4>
-                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div>
-                        <dl class="space-y-1">
-                            <div class="flex">
-                                <dt class="w-32 font-medium dark:text-gray-300">Nº Módulos:</dt>
-                                <dd class="dark:text-gray-200">{{ formData.numModules }}</dd>
-                            </div>
-                            <div class="flex">
-                                <dt class="w-32 font-medium dark:text-gray-300">Largura:</dt>
-                                <dd class="dark:text-gray-200">{{ formData.width }}cm</dd>
-                            </div>
-                            <div class="flex">
-                                <dt class="w-32 font-medium dark:text-gray-300">Altura:</dt>
-                                <dd class="dark:text-gray-200">{{ formData.height }}cm</dd>
-                            </div>
-                        </dl>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Base -->
-            <div class="space-y-2">
-                <h4 class="border-b pb-1 font-medium dark:border-gray-700 dark:text-gray-200">Base</h4>
-                <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-                    <div>
-                        <dl class="space-y-1">
-                            <div class="flex">
-                                <dt class="w-32 font-medium dark:text-gray-300">Altura:</dt>
-                                <dd class="dark:text-gray-200">{{ formData.baseHeight }}cm</dd>
-                            </div>
-                        </dl>
-                    </div>
-                    <div>
-                        <dl class="space-y-1">
-                            <div class="flex">
-                                <dt class="w-32 font-medium dark:text-gray-300">Largura:</dt>
-                                <dd class="dark:text-gray-200">{{ formData.baseWidth }}cm</dd>
-                            </div>
-                        </dl>
-                    </div>
-                    <div>
-                        <dl class="space-y-1">
-                            <div class="flex">
-                                <dt class="w-32 font-medium dark:text-gray-300">Profundidade:</dt>
-                                <dd class="dark:text-gray-200">{{ formData.baseDepth }}cm</dd>
-                            </div>
-                        </dl>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Cremalheira -->
-            <div class="space-y-2">
-                <h4 class="border-b pb-1 font-medium dark:border-gray-700 dark:text-gray-200">Cremalheira</h4>
-                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div>
-                        <dl class="space-y-1">
-                            <div class="flex">
-                                <dt class="w-48 font-medium dark:text-gray-300">Largura Cremalheira:</dt>
-                                <dd class="dark:text-gray-200">{{ formData.rackWidth }}cm</dd>
-                            </div>
-                            <div class="flex">
-                                <dt class="w-48 font-medium dark:text-gray-300">Altura Furo:</dt>
-                                <dd class="dark:text-gray-200">{{ formData.holeHeight }}cm</dd>
-                            </div>
-                        </dl>
-                    </div>
-                    <div>
-                        <dl class="space-y-1">
-                            <div class="flex">
-                                <dt class="w-48 font-medium dark:text-gray-300">Largura Furo:</dt>
-                                <dd class="dark:text-gray-200">{{ formData.holeWidth }}cm</dd>
-                            </div>
-                            <div class="flex">
-                                <dt class="w-48 font-medium dark:text-gray-300">Espaçamento Furos:</dt>
-                                <dd class="dark:text-gray-200">{{ formData.holeSpacing }}cm</dd>
-                            </div>
-                        </dl>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Prateleiras -->
-            <div class="space-y-2">
-                <h4 class="border-b pb-1 font-medium dark:border-gray-700 dark:text-gray-200">Prateleiras Padrão</h4>
-                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div>
-                        <dl class="space-y-1">
-                            <div class="flex">
-                                <dt class="w-32 font-medium dark:text-gray-300">Quantidade:</dt>
-                                <dd class="dark:text-gray-200">{{ formData.numShelves }}</dd>
-                            </div>
-                            <div class="flex">
-                                <dt class="w-32 font-medium dark:text-gray-300">Espessura:</dt>
-                                <dd class="dark:text-gray-200">{{ formData.shelfHeight }}cm</dd>
-                            </div>
-                        </dl>
-                    </div>
-                    <div>
-                        <dl class="space-y-1">
-                            <div class="flex">
-                                <dt class="w-32 font-medium dark:text-gray-300">Largura:</dt>
-                                <dd class="dark:text-gray-200">{{ formData.shelfWidth }}cm</dd>
-                            </div>
-                            <div class="flex">
-                                <dt class="w-32 font-medium dark:text-gray-300">Profundidade:</dt>
-                                <dd class="dark:text-gray-200">{{ formData.shelfDepth }}cm</dd>
-                            </div>
-                            <div class="flex">
-                                <dt class="w-32 font-medium dark:text-gray-300">Tipo Produto:</dt>
-                                <dd class="dark:text-gray-200">{{ formData.productType === 'normal' ? 'Normal' : 'Gancheira' }}</dd>
-                            </div>
-                        </dl>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Visualização (Simplificada) -->
-            <div class="space-y-2">
-                <h4 class="border-b pb-1 font-medium dark:border-gray-700 dark:text-gray-200">Preview</h4>
-                <div class="mt-4 flex justify-center rounded-lg border bg-gray-50 p-4 dark:bg-gray-800 dark:border-gray-700">
-                    <div class="flex space-x-4">
-                        <div v-for="moduleIndex in parseInt(formData.numModules || 1)" :key="moduleIndex" class="w-16 border border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-700" :style="{ height: `${formData.height / 5}px`}">
-                            <div class="absolute bottom-0 left-0 right-0 bg-gray-300 dark:bg-gray-600" :style="{ height: `${formData.baseHeight / 5}px`}"></div>
-                            <div
-                                v-for="i in parseInt(formData.numShelves || 1)"
-                                :key="i"
-                                class="mx-1 h-1 border-t border-gray-400 bg-gray-200 dark:border-gray-600 dark:bg-gray-400"
-                                :style="{ marginTop: `${(formData.height - formData.baseHeight) / (formData.numShelves || 1) / 5 - 1}px` }"
-                            ></div>
+    <div> 
+        <div class="space-y-2"> 
+            <!-- Mapeamento da Loja -->
+            <div v-if="mapData" class="space-y-2">
+                <StoreMapViewer
+                    :map-data="mapData"
+                    :allow-selection="true"
+                    :show-category-filter="false"
+                    :selected-gondola-id="selectedMapGondolaId" 
+                    @gondola-selected="onMapGondolaSelected"
+                    @gondola-clicked="onMapGondolaClicked"
+                    />
+                <!-- Informações da Gondola Selecionada -->
+                <div v-if="selectedMapGondola" class="bg-green-50 border border-green-200 rounded-lg p-3 dark:bg-green-900/20 dark:border-green-700 absolute">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h5 class="text-sm font-medium text-green-900 dark:text-green-100">
+                                Gondola Selecionada no Mapa
+                            </h5>
+                            <p class="text-xs text-green-700 dark:text-green-300">
+                                G{{ getMapGondolaIndex() }} - Categoria {{ selectedMapGondola.category.toUpperCase() }}
+                            </p>
                         </div>
+                        <button
+                            type="button"
+                            @click="linkGondolaToMap"
+                            class="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
+                        >
+                            Vincular Gondola
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Gondola Já Vinculada -->
+                <div v-if="formData.linkedMapGondolaId" class="bg-blue-50 border border-blue-200 rounded-lg p-3 dark:bg-blue-900/20 dark:border-blue-700">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h5 class="text-sm font-medium text-blue-900 dark:text-blue-100">
+                                Gondola Vinculada
+                            </h5>
+                            <p class="text-xs text-blue-700 dark:text-blue-300">
+                                Esta gondola está vinculada à gondola {{ getLinkedGondolaName() }} do mapa
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            @click="unlinkGondolaFromMap"
+                            class="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors"
+                        >
+                            Desvincular
+                        </button>
                     </div>
                 </div>
             </div>
@@ -188,18 +57,89 @@
     </div>
 </template>
 
-<script setup lang="ts">
-import { CheckIcon } from 'lucide-vue-next';
-import { defineProps } from 'vue';
+<script setup lang="ts"> 
+import { defineProps, ref, computed } from 'vue';
+import StoreMapViewer from '@/components/form/fields/StoreMapViewer.vue';
 
 // Define Props
 const props = defineProps({
     formData: {
         type: Object as () => Record<string, any>,
         required: true,
-    },
-});
+    } 
+});  
 
-// No local state or emits needed for review step
+// Tentar diferentes estruturas de dados
+const mapData = computed(() => {
+    const data = props.formData.storeData?.store_map_data;
+    if (!data) return null;
+    
+    return {
+        imageUrl: data.imageUrl || data.image_url || data.image_uri || null,
+        imageWidth: data.imageWidth || data.image_width || null,
+        imageHeight: data.imageHeight || data.image_height || null,
+        gondolas: data.gondolas || data.gondolas_data || []
+    };
+}); 
 
+// Define Emits
+const emit = defineEmits<{
+    'update:formData': [value: Record<string, any>]
+}>();
+
+// Refs
+const selectedMapGondolaId = ref<string | null>(props.formData.linkedMapGondolaId || null);
+const selectedMapGondola = ref<any>(null);
+ 
+
+// Computed
+const getMapGondolaIndex = () => {
+    if (!selectedMapGondola.value || !mapData.value?.gondolas) return 0;
+    return mapData.value.gondolas.findIndex((g: any) => g.id === selectedMapGondola.value.id) + 1;
+};
+
+const getLinkedGondolaName = () => {
+    if (!props.formData.linkedMapGondolaId || !mapData.value?.gondolas) return 'N/A';
+    const gondola = mapData.value.gondolas.find((g: any) => g.id === props.formData.linkedMapGondolaId);
+    if (!gondola) return 'N/A';
+    const index = mapData.value.gondolas.findIndex((g: any) => g.id === gondola.id) + 1;
+    return `G${index} - ${gondola.category.toUpperCase()}`;
+};
+
+// Methods
+const onMapGondolaSelected = (gondolaId: string | null) => {
+    selectedMapGondolaId.value = gondolaId;
+    if (gondolaId && mapData.value?.gondolas) {
+        selectedMapGondola.value = mapData.value.gondolas.find((g: any) => g.id === gondolaId);
+    } else {
+        selectedMapGondola.value = null;
+    }
+};
+
+const onMapGondolaClicked = (gondola: any) => { 
+    selectedMapGondola.value = gondola;
+    selectedMapGondolaId.value = gondola?.id || null;
+}; 
+
+const linkGondolaToMap = () => {
+    if (selectedMapGondola.value) {
+        const updatedFormData = {
+            ...props.formData,
+            linked_map_gondola_id: selectedMapGondola.value.id,
+            linkedMapGondolaCategory: selectedMapGondola.value.category,
+        };
+        emit('update:formData', updatedFormData);
+    }
+};
+
+const unlinkGondolaFromMap = () => {
+    const updatedFormData = {
+        ...props.formData,
+        linkedMapGondolaId: null,
+        linkedMapGondolaCategory: null,
+    };
+    emit('update:formData', updatedFormData);
+    selectedMapGondolaId.value = null;
+    selectedMapGondola.value = null;
+};
 </script>

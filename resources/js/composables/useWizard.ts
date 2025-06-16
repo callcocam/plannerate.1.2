@@ -1,4 +1,4 @@
-import { ref, readonly, type Ref } from 'vue';
+import { ref, readonly, computed, type Ref } from 'vue';
 
 /**
  * Composable para gerenciar o estado e a navegação de um formulário multi-etapas (wizard).
@@ -21,8 +21,11 @@ export function useWizard(totalSteps: number | Ref<number>, initialStep: number 
 
     const currentStep = ref(initialStep);
 
-    const isFirstStep = readonly(ref(currentStep.value === 0));
-    const isLastStep = readonly(ref(currentStep.value === totalStepsValue - 1));
+    const isFirstStep = computed(() => currentStep.value === 0);
+    const isLastStep = computed(() => {
+        const currentTotalSteps = typeof totalSteps === 'number' ? totalSteps : totalSteps.value;
+        return currentStep.value === currentTotalSteps - 1;
+    });
 
     /**
      * Avança para a próxima etapa, se não for a última.
@@ -31,7 +34,6 @@ export function useWizard(totalSteps: number | Ref<number>, initialStep: number 
         const currentTotalSteps = typeof totalSteps === 'number' ? totalSteps : totalSteps.value;
         if (currentStep.value < currentTotalSteps - 1) {
             currentStep.value++;
-            updateComputedRefs();
         }
     };
 
@@ -41,7 +43,6 @@ export function useWizard(totalSteps: number | Ref<number>, initialStep: number 
     const previousStep = () => {
         if (currentStep.value > 0) {
             currentStep.value--;
-            updateComputedRefs();
         }
     };
 
@@ -53,21 +54,10 @@ export function useWizard(totalSteps: number | Ref<number>, initialStep: number 
         const currentTotalSteps = typeof totalSteps === 'number' ? totalSteps : totalSteps.value;
          if (stepIndex >= 0 && stepIndex < currentTotalSteps) {
             currentStep.value = stepIndex;
-            updateComputedRefs();
         } else {
              console.warn(`useWizard: Tentativa de ir para etapa inválida (${stepIndex}). Limites são [0, ${currentTotalSteps - 1}].`);
         }
     };
-
-    // Função interna para atualizar refs computadas (readonly não funciona bem com refs simples aqui)
-    const updateComputedRefs = () => {
-        (isFirstStep as Ref<boolean>).value = currentStep.value === 0;
-        const currentTotalSteps = typeof totalSteps === 'number' ? totalSteps : totalSteps.value;
-        (isLastStep as Ref<boolean>).value = currentStep.value === currentTotalSteps - 1;
-    }
-
-    // Atualiza inicialmente
-    updateComputedRefs();
 
 
     return {

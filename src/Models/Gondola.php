@@ -8,6 +8,7 @@
 
 namespace Callcocam\Plannerate\Models;
 
+use App\Models\StoreMapGondola;
 use Callcocam\LaraGatekeeper\Core\Landlord\BelongsToTenants;
 use Callcocam\Plannerate\Enums\GondolaStatus;   
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
@@ -34,6 +35,7 @@ class Gondola extends Model
         'scale_factor',
         'alignment',
         'status',
+        'linked_map_gondola_id',
     ];
 
     protected $casts = [
@@ -55,6 +57,11 @@ class Gondola extends Model
     public function scopeDraft($query)
     {
         return $query->where('status', GondolaStatus::Draft);
+    }
+
+    public function linkedMapGondola()
+    {
+        return $this->belongsTo(StoreMapGondola::class, 'linked_map_gondola_id', 'id');
     }
 
     /**

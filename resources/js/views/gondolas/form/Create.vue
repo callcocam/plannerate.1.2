@@ -207,7 +207,7 @@ const {
     validateStep, // Importar a função de validação por etapa
     // validateFullForm, // Não precisamos chamar diretamente aqui
     isSending, 
-    errors     
+    errors
 } = useGondolaCreateForm({ 
     initialPlanogramId: planogramId, 
     onSuccess: (newGondola) => { 
@@ -227,8 +227,7 @@ const {
             });
         }
 });
-// --------------------------
-
+// -------------------------- 
 // Watchers
 /**
  * Watches the 'open' prop to update the internal 'isOpen' state.

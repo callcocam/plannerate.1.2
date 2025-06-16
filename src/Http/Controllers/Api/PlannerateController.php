@@ -39,7 +39,7 @@ class PlannerateController extends Controller
         try {
             $planogram = $this->getModel()::query()->with([
                 'tenant',
-                'store',
+                'store.store_map.gondolas',
                 'cluster',
                 'client',
                 'gondolas',
@@ -215,6 +215,7 @@ class PlannerateController extends Controller
             'scale_factor',
             'location',
             'alignment',
+            'linked_map_gondola_id',
             // 'status',
             // Adicione outros campos conforme necessário
         ];
