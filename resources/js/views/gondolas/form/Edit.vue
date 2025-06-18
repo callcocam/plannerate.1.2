@@ -1,34 +1,49 @@
 <template>
     <Dialog :open="isOpen">
         <DialogPersonaCloseContent
-            class="flex max-h-[90vh] w-full max-w-4xl flex-col p-0 dark:border-gray-700 dark:bg-gray-800">
+            class="flex max-h-[90vh] w-full max-w-4xl flex-col p-0 transition-colors duration-300"
+            :class="themeClasses.container">
             <DialogClose @click="closeModal"
                 class="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
                 <X class="h-4 w-4" />
                 <span class="sr-only">Fechar</span>
             </DialogClose>
             <!-- Cabeçalho Fixo -->
-            <div class="border-b p-4 dark:border-gray-700">
+            <div class="border-b p-4 transition-colors duration-300" :class="themeClasses.header">
                 <div class="flex items-center justify-between">
-                    <div>
+                    <div class="flex-1">
+                        <!-- Status da Vinculação com Ícone -->
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-lg">{{ linkageStatus.icon }}</span>
+                            <span class="text-sm font-medium px-2 py-1 rounded-full" 
+                                  :class="isGondolaLinked ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'">
+                                {{ linkageStatus.text }}
+                            </span>
+                        </div>
                         <!-- Título para Área do Mapa -->
-                        <DialogTitle class="text-xl font-semibold dark:text-gray-100">Área do Mapa</DialogTitle>
+                        <DialogTitle class="text-xl font-semibold transition-colors duration-300" :class="themeClasses.title">
+                            Área do Mapa
+                        </DialogTitle>
                         <!-- Descrição para Área do Mapa -->
-                        <DialogDescription class="dark:text-gray-300">Vincule a gôndola ao mapa da loja</DialogDescription>
+                        <DialogDescription class="transition-colors duration-300" :class="themeClasses.description">
+                            {{ linkageStatus.description }}
+                        </DialogDescription>
                     </div>
                 </div>
             </div> 
             <!-- Área de Conteúdo com Rolagem -->
-            <div class="flex-1 overflow-y-auto p-4 dark:bg-gray-800">
+            <div class="flex-1 overflow-y-auto p-4 transition-colors duration-300" 
+                 :class="isGondolaLinked ? 'bg-green-50/20 dark:bg-green-900/10' : 'bg-red-50/20 dark:bg-red-900/10'">
                 <!-- Componente StepReview -->
                 <StepReview :form-data="formData" :errors="errors" @update:form="updateForm" />
             </div>
 
             <!-- Rodapé Fixo -->
-            <div class="flex justify-end border-t bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+            <div class="flex justify-end border-t p-4 transition-colors duration-300" :class="themeClasses.footer">
                 <!-- Botão Salvar -->
                 <Button @click="submitForm" :disabled="isSending"
-                    class="dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90">
+                    class="text-white transition-colors duration-300"
+                    :class="themeClasses.button">
                     <SaveIcon v-if="!isSending" class="mr-2 h-4 w-4" />
                     <Loader2Icon v-else class="mr-2 h-4 w-4 animate-spin" />
                     Salvar Gôndola
@@ -127,6 +142,54 @@ const {
 const storeMapData = computed(() => {
     return formData.store?.store_map_data || null;
 });
+
+// Computed para verificar se a gôndola está vinculada ao mapa
+const isGondolaLinked = computed(() => {
+    return formData.linkedMapGondolaId && formData.linkedMapGondolaId.trim() !== '';
+});
+
+// Computed para as classes de tema baseado no status de vinculação
+const themeClasses = computed(() => {
+    if (isGondolaLinked.value) {
+        // Verde suave - Gôndola já vinculada
+        return {
+            container: 'border-green-100 bg-green-50/20 dark:border-green-800 dark:bg-green-950/30',
+            header: 'border-green-100 bg-green-50/40 dark:border-green-800 dark:bg-green-950/40',
+            title: 'text-green-800 dark:text-green-200',
+            description: 'text-green-600 dark:text-green-400',
+            footer: 'border-green-100 bg-green-50/40 dark:border-green-800 dark:bg-green-950/40',
+            button: 'bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700'
+        };
+    } else {
+        // Vermelho suave - Gôndola não vinculada
+        return {
+            container: 'border-red-100 bg-red-50/20 dark:border-red-800 dark:bg-red-950/30',
+            header: 'border-red-100 bg-red-50/40 dark:border-red-800 dark:bg-red-950/40',
+            title: 'text-red-800 dark:text-red-200',
+            description: 'text-red-600 dark:text-red-400',
+            footer: 'border-red-100 bg-red-50/40 dark:border-red-800 dark:bg-red-950/40',
+            button: 'bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700'
+        };
+    }
+});
+
+// Computed para o status da vinculação
+const linkageStatus = computed(() => {
+    if (isGondolaLinked.value) {
+        return {
+            text: 'Gôndola Vinculada ao Mapa',
+            description: 'Esta gôndola já está posicionada no mapa da loja',
+            icon: '🔗'
+        };
+    } else {
+        return {
+            text: 'Gôndola Não Vinculada',
+            description: 'Vincule esta gôndola a uma posição no mapa da loja',
+            icon: '📍'
+        };
+    }
+});
+
 // -------------------------- 
 // Watchers
 /**
@@ -156,8 +219,7 @@ const closeModal = () => {
 // submitForm é chamado diretamente pelo botão no template
 
 onMounted(() => {
-    // Lógica a ser executada quando o componente é montado
-    console.log('Modal de Edição da Gôndola montado', formData);
+    // Modal de edição montado - sistema de cores ativo baseado no status de vinculação
 });
 
 </script>
