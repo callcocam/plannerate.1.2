@@ -46,8 +46,7 @@ onMounted(async () => {
     sidebarOpen.value = getSidebarState();
     propertiesOpen.value = getPropertiesState();
     const response = await editorService.fetchPlanogram(route.params.id); 
-    editorStore.initialize(response);
-    console.log('view: response', response);
+    editorStore.initialize(response); 
 });
 
 // Watch para atualizar o localStorage quando sidebarOpen mudar

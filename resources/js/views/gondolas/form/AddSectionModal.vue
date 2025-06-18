@@ -5,7 +5,7 @@
             <DialogClose @click="fecharModal"
                 class="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
                 <X class="h-4 w-4" />
-                <span class="sr-only">Close</span>
+                <span class="sr-only">Fechar</span>
             </DialogClose>
             <!-- Cabeçalho Fixo -->
             <div class="border-b p-4 dark:border-gray-700">
@@ -217,7 +217,7 @@ const initialGondolaId = ref(route.params.gondolaId as string);
 
 const emit = defineEmits(['close', 'section-added', 'update:open']);
 
-// --- Form State & Logic --- (Usando o novo composable)
+// --- Estado e Lógica do Formulário --- (Usando o novo composable)
 const {
     formData,
     // updateForm, // Não precisamos expor updateForm diretamente se o template usa v-model em formData
@@ -246,8 +246,8 @@ const {
 
 const isOpen = ref(props.open);
 
-// REMOVED: enviando, errors, formData - Gerenciados pelo composable
-// REMOVED: gerarCodigoGondola - Lógica movida para dentro do composable
+// REMOVIDO: enviando, errors, formData - Gerenciados pelo composable
+// REMOVIDO: gerarCodigoGondola - Lógica movida para dentro do composable
 
 watch(
     () => props.open,
@@ -263,7 +263,7 @@ watch(
     },
 );
 
-// REMOVED: onMounted - Lógica de inicialização movida para getInitialFormData no composable
+// REMOVIDO: onMounted - Lógica de inicialização movida para getInitialFormData no composable
 
 // Função para fechar o modal (pode ser simplificada ou removida)
 const fecharModal = () => {

@@ -15,7 +15,7 @@
         <div class="text-black text-xs absolute bottom-5 left-1/2 -translate-x-1/2 p-2 dark:text-white uppercase font-bold" :style="{
             bottom: `${baseHeight / 2}px`
         }">
-            Módulo {{ sectionIndex+1 }}
+            Módulo {{ section.ordering+1 }}
         </div>
     </div>
 </template>

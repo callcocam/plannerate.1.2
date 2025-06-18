@@ -3,7 +3,7 @@
         <div class="space-y-2"> 
             <!-- Mapeamento da Loja -->
             <div v-if="mapData" class="space-y-2">
-                <StoreMapViewer
+                <StoreMapList
                     :map-data="mapData"
                     :allow-selection="true"
                     :show-category-filter="false"
@@ -11,12 +11,12 @@
                     @gondola-selected="onMapGondolaSelected"
                     @gondola-clicked="onMapGondolaClicked"
                     />
-                <!-- Informações da Gondola Selecionada -->
+                <!-- Informações da Gôndola Selecionada -->
                 <div v-if="selectedMapGondola" class="bg-green-50 border border-green-200 rounded-lg p-3 dark:bg-green-900/20 dark:border-green-700 absolute">
                     <div class="flex items-center justify-between">
                         <div>
                             <h5 class="text-sm font-medium text-green-900 dark:text-green-100">
-                                Gondola Selecionada no Mapa
+                                Gôndola Selecionada no Mapa
                             </h5>
                             <p class="text-xs text-green-700 dark:text-green-300">
                                 G{{ getMapGondolaIndex() }} - Categoria {{ selectedMapGondola.category.toUpperCase() }}
@@ -27,20 +27,20 @@
                             @click="linkGondolaToMap"
                             class="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
                         >
-                            Vincular Gondola
+                            Vincular Gôndola
                         </button>
                     </div>
                 </div>
 
-                <!-- Gondola Já Vinculada -->
+                <!-- Gôndola Já Vinculada -->
                 <div v-if="formData.linkedMapGondolaId" class="bg-blue-50 border border-blue-200 rounded-lg p-3 dark:bg-blue-900/20 dark:border-blue-700">
                     <div class="flex items-center justify-between">
                         <div>
                             <h5 class="text-sm font-medium text-blue-900 dark:text-blue-100">
-                                Gondola Vinculada
+                                Gôndola Vinculada
                             </h5>
                             <p class="text-xs text-blue-700 dark:text-blue-300">
-                                Esta gondola está vinculada à gondola {{ getLinkedGondolaName() }} do mapa
+                                Esta gôndola está vinculada à gôndola {{ getLinkedGondolaName() }} do mapa
                             </p>
                         </div>
                         <button
@@ -59,7 +59,7 @@
 
 <script setup lang="ts"> 
 import { defineProps, ref, computed } from 'vue';
-import StoreMapViewer from '@/components/form/fields/StoreMapViewer.vue';
+import StoreMapList from '@/components/form/fields/StoreMapList.vue';
 
 // Define Props
 const props = defineProps({

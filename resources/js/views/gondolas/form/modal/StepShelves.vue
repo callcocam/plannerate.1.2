@@ -166,7 +166,7 @@ const formLocal = reactive({
     baseHeight: props.formData.baseHeight,
 });
 
-// Initialize default values
+// Inicializar valores padrão
 onMounted(() => {
     const defaultsToEmit: Record<string, any> = {};
     // Garantir que os defaults sejam aplicados e emitidos

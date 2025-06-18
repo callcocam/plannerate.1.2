@@ -6,20 +6,20 @@
                 class="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
             >
                 <X class="h-4 w-4" />
-                <span class="sr-only">Close</span>
+                <span class="sr-only">Fechar</span>
             </DialogClose>
             <!-- Fixed Header -->
             <div class="border-b p-4 dark:border-gray-700">
                 <div class="flex items-center justify-between">
                     <div>
-                        <!-- Title updates based on current step -->
+                        <!-- Título atualiza baseado na etapa atual -->
                         <DialogTitle class="text-xl font-semibold dark:text-gray-100">{{ stepTitles[currentStep] }} </DialogTitle>
-                        <!-- Description updates based on current step -->
+                        <!-- Descrição atualiza baseada na etapa atual -->
                         <DialogDescription class="dark:text-gray-300">{{ stepDescriptions[currentStep] }} </DialogDescription>
                     </div>
                 </div>
 
-                <!-- Step Indicator -->
+                <!-- Indicador de Etapas -->
                 <div class="mb-2 mt-3 flex items-center">
                     <template v-for="(step, index) in stepTitles" :key="index">
                         <div
@@ -29,12 +29,12 @@
                                 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200': currentStep < index,
                             }"
                         >
-                            <!-- Check icon for completed steps -->
+                            <!-- Ícone de check para etapas concluídas -->
                             <CheckIcon v-if="currentStep > index" class="h-4 w-4" />
-                            <!-- Step number for current and future steps -->
+                            <!-- Número da etapa para etapas atuais e futuras -->
                             <span v-else>{{ index + 1 }}</span>
                         </div>
-                        <!-- Connecting line between steps -->
+                        <!-- Linha conectora entre etapas -->
                         <div
                             v-if="index < stepTitles.length - 1"
                             class="mx-2 h-1 flex-1"
@@ -46,56 +46,56 @@
 
             <!-- Error Messages Area -->
             <div v-if="Object.keys(errors).length > 0" class="border-b border-red-200 bg-red-50 p-4 dark:border-red-900/30 dark:bg-red-900/20">
-                <p class="mb-2 font-medium text-red-600 dark:text-red-400">Please correct the following errors:</p>
+                <p class="mb-2 font-medium text-red-600 dark:text-red-400">Por favor, corrija os seguintes erros:</p>
                 <ul class="list-inside list-disc space-y-1 text-sm text-red-500 dark:text-red-400">
-                    <!-- Display errors (handles arrays) -->
+                    <!-- Exibir erros (trata arrays) -->
                     <li v-for="(error, key) in errors" :key="key">
                         {{ Array.isArray(error) ? error.join(', ') : error }}
                     </li>
                 </ul>
             </div>
 
-            <!-- Scrollable Content Area -->
+            <!-- Área de Conteúdo com Rolagem -->
             <div class="flex-1 overflow-y-auto p-4 dark:bg-gray-800">
-                <!-- Dynamic Step Component Rendering -->
-                <!-- Use :is to render the component based on currentStep -->
+                <!-- Renderização Dinâmica do Componente da Etapa -->
+                <!-- Usa :is para renderizar o componente baseado na etapa atual -->
                 <KeepAlive>
                     <component :is="stepComponents[currentStep]" :form-data="formData" :errors="errors" @update:form="updateForm" />
                 </KeepAlive>
             </div>
 
-            <!-- Fixed Footer -->
+            <!-- Rodapé Fixo -->
             <div class="flex justify-between border-t bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-                <!-- Previous Button (visible from step 2 onwards) -->
+                <!-- Botão Anterior (visível a partir da etapa 2) -->
                 <Button
                     v-if="currentStep > 0"
                     variant="outline"
                     @click="previousStep"
                     class="dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
                 >
-                    <ChevronLeftIcon class="mr-2 h-4 w-4" /> Previous
+                    <ChevronLeftIcon class="mr-2 h-4 w-4" /> Anterior
                 </Button>
-                <!-- Cancel Button (visible only on the first step) -->
+                <!-- Botão Cancelar (visível apenas na primeira etapa) -->
                 <div v-else>
                     <Button
                         variant="outline"
                         @click="closeModal"
                         class="dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
                     >
-                        Cancel
+                        Cancelar
                     </Button>
                 </div>
 
-                <!-- Next Button (visible until the last step) -->
+                <!-- Botão Próximo (visível até a última etapa) -->
                 <Button
                     v-if="currentStep < stepTitles.length - 1"
                     @click="nextStep"
                     class="dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
                 >
-                    Next
+                    Próximo
                     <ChevronRightIcon class="ml-2 h-4 w-4" />
                 </Button>
-                <!-- Save Button (visible only on the last step) -->
+                <!-- Botão Salvar (visível apenas na última etapa) -->
                 <Button
                     v-else
                     @click="submitForm"
@@ -104,7 +104,7 @@
                 >
                     <SaveIcon v-if="!isSending" class="mr-2 h-4 w-4" />
                     <Loader2Icon v-else class="mr-2 h-4 w-4 animate-spin" />
-                    Save Gondola
+                    Salvar Gôndola
                 </Button>
             </div>
         </DialogPersonaCloseContent>
@@ -137,24 +137,24 @@ const StepCremalheira = defineAsyncComponent(() => import('@plannerate/views/gon
 const StepShelves = defineAsyncComponent(() => import('@plannerate/views/gondolas/form/modal/StepShelves.vue'));
 const StepReview = defineAsyncComponent(() => import('@plannerate/views/gondolas/form/modal/StepReview.vue'));
 
-// Component Props Definition
+// Definição das Props do Componente
 /**
- * Component props.
- * @property {boolean} open - Controls the dialog visibility. Received from the parent component.
+ * Props do componente.
+ * @property {boolean} open - Controla a visibilidade do diálogo. Recebido do componente pai.
  */
 const props = defineProps({
     open: {
         type: Boolean,
-        default: true, // Default to open as per user's last edit
+        default: true, // Padrão para aberto conforme última edição do usuário
     },
 });
 
-// Component Emits Definition
+// Definição dos Emits do Componente
 /**
- * Events emitted by the component.
- * @event close - Emitted when the modal requests closing (cancel or after save).
- * @event gondola-added - Emitted after successful gondola creation, payload is the new gondola data.
- * @event update:open - Emitted to support v-model:open on the parent component.
+ * Eventos emitidos pelo componente.
+ * @event close - Emitido quando o modal solicita fechamento (cancelar ou após salvar).
+ * @event gondola-added - Emitido após criação bem-sucedida da gôndola, payload são os dados da nova gôndola.
+ * @event update:open - Emitido para suportar v-model:open no componente pai.
  */
 const emit = defineEmits(['close', 'gondola-added', 'update:open']);
 
@@ -166,25 +166,25 @@ const router = useRouter();
 // Services
 const { toast } = useToast();
 
-// Component Reactive State
-/** Controls the internal visibility of the dialog. */
+// Estado Reativo do Componente
+/** Controla a visibilidade interna do diálogo. */
 const isOpen = ref(props.open);
-/** Current planogram ID from the route. */
-const planogramId = ref(route.params.id as string); // Assume id is always a string
+/** ID do planograma atual da rota. */
+const planogramId = ref(route.params.id as string); // Assume que id é sempre uma string
 
-// Steps Configuration
-/** Titles displayed for each step. */
-const stepTitles = ['Basic Information', 'Modules', 'Base', 'Rack', 'Shelves', 'Review'];
-/** Descriptions displayed for each step. */
+// Configuração das Etapas
+/** Títulos exibidos para cada etapa. */
+const stepTitles = ['Informações Básicas', 'Módulos', 'Base', 'Cremalheira', 'Prateleiras', 'Área do Mapa'];
+/** Descrições exibidas para cada etapa. */
 const stepDescriptions = [
-    'Fill in the basic information for the gondola',
-    'Configure the gondola modules',
-    'Configure the base dimensions',
-    'Configure the rack and holes',
-    'Configure shelves and hooks',
-    'Review all information before saving',
+    'Preencha as informações básicas da gôndola',
+    'Configure os módulos da gôndola',
+    'Configure as dimensões da base',
+    'Configure a cremalheira e furos',
+    'Configure prateleiras e ganchos',
+    'Vincule a gôndola ao mapa da loja',
 ];
-/** Mapping of components for each step (used with <component :is=...>) */
+/** Mapeamento de componentes para cada etapa (usado com <component :is=...>) */
 const stepComponents = [StepGondola, StepModule, StepBase, StepCremalheira, StepShelves, StepReview];
 
 // --- Wizard State --- 
@@ -209,6 +209,7 @@ const {
     isSending, 
     errors
 } = useGondolaCreateForm({ 
+    initialGondolaId: null, // ID da gôndola, opcional
     initialPlanogramId: planogramId, 
     onSuccess: (newGondola) => { 
         router.push({ 

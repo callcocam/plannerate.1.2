@@ -89,6 +89,7 @@ const stepSchemas = [
 
 // Interface para as opções que podem ser passadas para o composable
 export interface UseGondolaCreateFormOptions {
+    initialGondolaId?: string|null; // ID da gôndola inicial, opcional
     initialPlanogramId: string | Ref<string>;
     onSuccess?: (newGondola: Gondola) => void; // Callback opcional em caso de sucesso
     onError?: (error: any) => void; // Callback opcional em caso de erro
@@ -99,36 +100,55 @@ export function useGondolaCreateForm(options: UseGondolaCreateFormOptions) {
     const { toast } = useToast();
 
     const planogramId = ref(options.initialPlanogramId); // Usa ref para reatividade se o ID mudar
+    const gondolaId = ref(options.initialGondolaId || ''); // ID da gôndola, opcional
 
+    // Estado para armazenar a gôndola atual e sua primeira seção para preenchimento automático
+    const currentGondola  = ref<Gondola | null>(null); // Gôndola atual, se estiver editando
+    const firstSection = ref<any>(null); // Primeira seção encontrada para usar como base
+    
+    // Buscar dados da gôndola existente se um ID foi fornecido
+    if (gondolaId.value) {
+        // Se um ID de gôndola foi passado, buscar os dados da gôndola
+        currentGondola.value = editorStore.currentState?.gondolas.find(g => g.id === gondolaId.value) || null; 
+        if (currentGondola.value && currentGondola.value.sections && currentGondola.value.sections.length > 0) {
+            // Pega a primeira seção para usar como base para os dados do formulário
+            // Isso permite pré-preencher dimensões e configurações baseadas na estrutura existente
+            firstSection.value = currentGondola.value.sections[0];
+        }
+    } 
     const isSending = ref(false);
     // Agora errors pode armazenar Record<campo, string[] | undefined>
     const errors = ref<z.inferFlattenedErrors<typeof fullGondolaFormSchema>['fieldErrors']>({});
 
     const { currentState } = storeToRefs(editorStore) as any; 
     // Define o estado inicial do formData
+    // Se estiver editando uma gôndola existente, usa os dados da primeira seção como base
+    // para pré-preencher dimensões e configurações relevantes
     const getInitialFormData = (): GondolaFormData => ({
         planogram_id: typeof planogramId.value === 'string' ? planogramId.value : '', // Garante que é string
-        gondolaName: '',
-        location: 'Center',
+        gondolaName: currentGondola.value?.name || '', // Se estiver editando, usa o nome da gôndola atual
+        // Valores padrão para novos formulários ou dados da primeira seção se disponível
+        location: currentGondola.value?.location || 'Center', // Localização padrão
         side: 'A',
         flow: 'left_to_right',
         scaleFactor: 3,
         status: 'published', // Valor padrão
         numModules: 4,
-        width: 130,
-        height: 180,
+        // Dimensões baseadas na primeira seção encontrada, se disponível
+        width: firstSection.value?.width || 130,
+        height: firstSection.value?.height || 180,
         baseHeight: 17,
-        baseWidth: 130,
-        baseDepth: 40,
+        baseWidth: firstSection.value?.width || 130, // Usa a largura da seção como base
+        baseDepth: firstSection.value?.depth || 40, // Usa a profundidade da seção
         rackWidth: 4,
         holeHeight: 3,
         holeWidth: 2,
         holeSpacing: 2,
-        shelfWidth: 125,
+        shelfWidth: firstSection.value?.width ? firstSection.value.width - 5 : 125, // Largura da prateleira um pouco menor que a seção
         shelfHeight: 4,
-        shelfDepth: 40,
+        shelfDepth: firstSection.value?.depth || 40, // Usa a profundidade da seção
         numShelves: 4,
-        productType: 'normal',
+        productType: firstSection.value?.product_type || 'normal', // Usa o tipo de produto da seção
         storeData: currentState.value?.store_map_data || currentState.value?.store,
     });
 
@@ -318,6 +338,8 @@ export function useGondolaCreateForm(options: UseGondolaCreateFormOptions) {
         validateStep, // Expor para uso no componente
         isSending: readonly(isSending),
         errors: readonly(errors),
-        editorStore,
+        currentState: readonly(currentState),
+        currentGondola: readonly(currentGondola), // Expor a gôndola atual
+        firstSection: readonly(firstSection), // Expor a primeira seção para referência
     };
 } 

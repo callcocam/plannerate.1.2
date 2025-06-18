@@ -61,11 +61,15 @@
                     @click="openAddGondolaModal"
                     class="dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
                     title="Gôndola"
+                    type="button"
                 >
                     <PlusCircleIcon class="mr-2 h-4 w-4" />
                     <span>Adicionar</span>
                 </Button>
-                <Button variant="outline" size="sm" class="dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                <Button 
+                @click="openEditGondolaModal"
+                type="button"
+                variant="outline" size="sm" class="dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
                 title="Editar">
                     <PencilIcon class="mr-2 h-4 w-4" />
                     Editar
@@ -106,6 +110,14 @@ const openAddGondolaModal = () => {
     });
 };
 
+// Função para abrir o modal de editar gôndola
+const openEditGondolaModal = () => {
+    console.log('Abrindo modal de edição para gôndola:', route.params.gondolaId);
+    router.push({
+        name: 'plannerate.gondola.edit',
+        params: { id: planogramId.value, gondolaId: route.params.gondolaId },
+    });
+};
 // Função para formatar datas
 const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A';

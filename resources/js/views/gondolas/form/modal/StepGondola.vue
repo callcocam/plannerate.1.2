@@ -5,12 +5,12 @@
             <div class="rounded-full bg-gray-100 p-2 dark:bg-gray-700">
                 <InfoIcon class="h-5 w-5 dark:text-gray-200" />
             </div>
-            <h3 class="ml-2 text-lg font-medium dark:text-gray-100">Basic Information</h3>
+            <h3 class="ml-2 text-lg font-medium dark:text-gray-100">Informações Básicas</h3>
         </div>
 
         <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div class="space-y-2">
-                <Label for="gondolaName" class="dark:text-gray-200">Gondola Name *</Label>
+                <Label for="gondolaName" class="dark:text-gray-200">Nome da Gôndola *</Label>
                 <Input 
                     id="gondolaName" 
                     v-model="formLocal.gondolaName" 
@@ -23,37 +23,37 @@
             </div>
 
             <div class="space-y-2">
-                <Label for="location" class="dark:text-gray-200">Location *</Label>
+                <Label for="location" class="dark:text-gray-200">Localização *</Label>
                 <Input 
                     id="location" 
                     v-model="formLocal.location" 
-                    placeholder="E.g.: Beverage Aisle" 
+                    placeholder="Ex.: Corredor de Bebidas" 
                     @input="updateField('location', $event.target.value)" 
                     class="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400" 
                     :class="{ 'border-red-500': errors.location }"
                 />
                 <p v-if="errors.location" class="text-xs text-red-500 dark:text-red-400">{{ errors.location[0] }}</p>
-                <p v-else class="text-xs text-gray-500 dark:text-gray-400">Aisle where the gondola is located</p>
+                <p v-else class="text-xs text-gray-500 dark:text-gray-400">Corredor onde a gôndola está localizada</p>
             </div>
 
             <div class="space-y-2">
-                <Label for="side" class="dark:text-gray-200">Aisle Side *</Label>
+                <Label for="side" class="dark:text-gray-200">Lado do Corredor *</Label>
                 <Input 
                     id="side" 
                     v-model="formLocal.side" 
-                    placeholder="E.g.: A, B or 1, 2" 
+                    placeholder="Ex.: A, B ou 1, 2" 
                     @input="updateField('side', $event.target.value)" 
                     class="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400" 
                     :class="{ 'border-red-500': errors.side }"
                 />
                  <p v-if="errors.side" class="text-xs text-red-500 dark:text-red-400">{{ errors.side[0] }}</p>
-                <p v-else class="text-xs text-gray-500 dark:text-gray-400">Aisle side identification</p>
+                <p v-else class="text-xs text-gray-500 dark:text-gray-400">Identificação do lado do corredor</p>
             </div>
         </div>
 
         <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div class="space-y-2">
-                <Label for="scaleFactor" class="dark:text-gray-200">Scale Factor *</Label>
+                <Label for="scaleFactor" class="dark:text-gray-200">Fator de Escala *</Label>
                 <Input 
                     id="scaleFactor" 
                     type="number" 
@@ -64,11 +64,11 @@
                     :class="{ 'border-red-500': errors.scaleFactor }"
                 />
                 <p v-if="errors.scaleFactor" class="text-xs text-red-500 dark:text-red-400">{{ errors.scaleFactor[0] }}</p>
-                <p v-else class="text-xs text-gray-500 dark:text-gray-400">Factor to scale the visual gondola model</p>
+                <p v-else class="text-xs text-gray-500 dark:text-gray-400">Fator para escalonar o modelo visual da gôndola</p>
             </div>
 
             <div class="space-y-2 md:col-span-2">
-                <Label class="dark:text-gray-200">Flow Position *</Label>
+                <Label class="dark:text-gray-200">Posição do Fluxo *</Label>
                  <!-- Adicionar borda vermelha se houver erro no campo 'flow' -->
                  <div class="grid grid-cols-2 gap-2 rounded-md border" :class="{ 'border-red-500': errors.flow }">
                     <Button
@@ -77,7 +77,7 @@
                         class="justify-center rounded-r-none border-r dark:text-gray-100 dark:border-gray-600"
                         :class="{'dark:bg-primary dark:text-white': formLocal.flow === 'left_to_right', 'dark:bg-gray-700 dark:hover:bg-gray-600': formLocal.flow !== 'left_to_right'}"
                     >
-                        Left to Right
+                        Esquerda para Direita
                     </Button>
                     <Button
                         :variant="formLocal.flow === 'right_to_left' ? 'default' : 'outline'"
@@ -85,11 +85,11 @@
                         class="justify-center rounded-l-none dark:text-gray-100 dark:border-gray-600"
                         :class="{'dark:bg-primary dark:text-white': formLocal.flow === 'right_to_left', 'dark:bg-gray-700 dark:hover:bg-gray-600': formLocal.flow !== 'right_to_left'}"
                     >
-                        Right to Left
+                        Direita para Esquerda
                     </Button>
                 </div>
                  <p v-if="errors.flow" class="text-xs text-red-500 dark:text-red-400">{{ errors.flow[0] }}</p>
-                <p v-else class="text-xs text-gray-500 dark:text-gray-400">Defines the gondola flow direction</p>
+                <p v-else class="text-xs text-gray-500 dark:text-gray-400">Define a direção do fluxo da gôndola</p>
             </div>
         </div>
 
@@ -98,13 +98,13 @@
             <Label for="status" class="dark:text-gray-200">Status</Label>
             <Select v-model="formLocal.status" @update:modelValue="(value: string) => updateField('status', value)">
                 <SelectTrigger class="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
-                    <SelectValue placeholder="Select status" class="dark:text-gray-300" />
+                    <SelectValue placeholder="Selecione o status" class="dark:text-gray-300" />
                 </SelectTrigger>
                 <SelectContent class="dark:bg-gray-800 dark:border-gray-700">
                     <SelectGroup>
                         <SelectLabel class="dark:text-gray-300">Status</SelectLabel>
-                        <SelectItem value="published" class="dark:text-gray-200 dark:hover:bg-gray-700 dark:focus:bg-gray-700">Published</SelectItem>
-                        <SelectItem value="draft" class="dark:text-gray-200 dark:hover:bg-gray-700 dark:focus:bg-gray-700">Draft</SelectItem>
+                        <SelectItem value="published" class="dark:text-gray-200 dark:hover:bg-gray-700 dark:focus:bg-gray-700">Publicado</SelectItem>
+                        <SelectItem value="draft" class="dark:text-gray-200 dark:hover:bg-gray-700 dark:focus:bg-gray-700">Rascunho</SelectItem>
                     </SelectGroup>
                 </SelectContent>
             </Select>
@@ -114,8 +114,7 @@
 
 <script setup lang="ts">
 import { InfoIcon } from 'lucide-vue-next';
-import { onMounted, reactive, watch, defineProps, defineEmits } from 'vue'; 
-import { z } from 'zod'; // Importar Zod para tipagem, se necessário
+import { onMounted, reactive, watch, defineProps, defineEmits } from 'vue';  
 
 // Tipo esperado para o objeto de erros vindo do composable
 type ErrorObject = Record<string, string[] | undefined>;

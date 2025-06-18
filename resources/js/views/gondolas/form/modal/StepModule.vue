@@ -4,15 +4,15 @@
             <div class="rounded-full bg-gray-100 p-2 dark:bg-gray-700">
                 <LayoutGridIcon class="h-5 w-5 dark:text-gray-200" />
             </div>
-            <h3 class="ml-2 text-lg font-medium dark:text-gray-100">Configure Modules</h3>
+            <h3 class="ml-2 text-lg font-medium dark:text-gray-100">Configurar Módulos</h3>
         </div>
 
-        <!-- Module Configuration -->
+        <!-- Configuração de Módulos -->
         <div class="space-y-2">
-            <h4 class="text-sm font-medium dark:text-gray-200">Module Settings</h4>
+            <h4 class="text-sm font-medium dark:text-gray-200">Configurações do Módulo</h4>
             <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div class="space-y-2">
-                    <Label for="numModules" class="dark:text-gray-200">Number of Modules *</Label>
+                    <Label for="numModules" class="dark:text-gray-200">Número de Módulos *</Label>
                     <Input 
                         id="numModules" 
                         type="number" 
@@ -23,10 +23,10 @@
                         :class="{ 'border-red-500': errors.numModules }"
                     />
                     <p v-if="errors.numModules" class="text-xs text-red-500 dark:text-red-400">{{ errors.numModules[0] }}</p>
-                    <p v-else class="text-xs text-gray-500 dark:text-gray-400">Number of modules in the gondola</p>
+                    <p v-else class="text-xs text-gray-500 dark:text-gray-400">Número de módulos na gôndola</p>
                 </div>
                 <div class="space-y-2">
-                    <Label for="height" class="dark:text-gray-200">Module Height (cm) *</Label>
+                    <Label for="height" class="dark:text-gray-200">Altura do Módulo (cm) *</Label>
                     <Input 
                         id="height" 
                         type="number" 
@@ -37,10 +37,10 @@
                         :class="{ 'border-red-500': errors.height }"
                     />
                     <p v-if="errors.height" class="text-xs text-red-500 dark:text-red-400">{{ errors.height[0] }}</p>
-                    <p v-else class="text-xs text-gray-500 dark:text-gray-400">Height of each section module</p>
+                    <p v-else class="text-xs text-gray-500 dark:text-gray-400">Altura de cada módulo da seção</p>
                 </div>
                 <div class="space-y-2">
-                    <Label for="width" class="dark:text-gray-200">Module Width (cm) *</Label>
+                    <Label for="width" class="dark:text-gray-200">Largura do Módulo (cm) *</Label>
                     <Input 
                         id="width" 
                         type="number" 
@@ -51,22 +51,22 @@
                         :class="{ 'border-red-500': errors.width }"
                     />
                     <p v-if="errors.width" class="text-xs text-red-500 dark:text-red-400">{{ errors.width[0] }}</p>
-                    <p v-else class="text-xs text-gray-500 dark:text-gray-400">Width of each section module</p>
+                    <p v-else class="text-xs text-gray-500 dark:text-gray-400">Largura de cada módulo da seção</p>
                 </div>
             </div>
         </div>
-        <!-- Module Visualization -->
+        <!-- Visualização dos Módulos -->
         <div class="mt-5 flex justify-center rounded-lg border bg-gray-50 p-4 dark:bg-gray-800 dark:border-gray-700">
             <div class="flex space-x-4">
                 <div v-for="moduleIndex in Number(formLocal.numModules || 1)" :key="moduleIndex" class="w-16 border border-gray-300 bg-white dark:bg-gray-700 dark:border-gray-600">
-                    <div class="flex h-40 items-center justify-center text-xs text-gray-400 dark:text-gray-300">Module {{ moduleIndex }}</div>
+                    <div class="flex h-40 items-center justify-center text-xs text-gray-400 dark:text-gray-300">Módulo {{ moduleIndex }}</div>
                 </div>
             </div>
         </div>
 
         <div class="rounded-lg border border-blue-100 bg-blue-50 p-4 dark:bg-blue-900/20 dark:border-blue-800">
             <p class="text-sm text-blue-800 dark:text-blue-300">
-                <span class="font-medium">Tip:</span> Module configuration defines how many vertical divisions the gondola will have. Each module can have its own shelves.
+                <span class="font-medium">Dica:</span> A configuração de módulos define quantas divisões verticais a gôndola terá. Cada módulo pode ter suas próprias prateleiras.
             </p>
         </div>
     </div>

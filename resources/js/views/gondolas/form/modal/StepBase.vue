@@ -7,7 +7,7 @@
             <h3 class="ml-2 text-lg font-medium dark:text-gray-100">Configurar Base</h3>
         </div>
 
-        <!-- Base Dimensions -->
+        <!-- Dimensões da Base -->
         <div class="space-y-2">
             <h4 class="text-sm font-medium dark:text-gray-200">Dimensões da Base</h4>
             <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -58,11 +58,11 @@
             </div>
         </div>
 
-        <!-- Base Visualization -->
+        <!-- Visualização da Base -->
         <div class="mt-5 rounded-lg border bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
             <div class="flex justify-center">
                 <div class="relative">
-                    <!-- Gondola Base (visual representation) -->
+                    <!-- Base da Gôndola (representação visual) -->
                     <div
                         class="border border-gray-400 bg-gray-300 dark:border-gray-600 dark:bg-gray-600"
                         :style="{
@@ -71,7 +71,7 @@
                             maxWidth: '300px',
                         }"
                     ></div>
-                    <!-- Depth indicator -->
+                    <!-- Indicador de profundidade -->
                     <div class="absolute right-0 top-1/2 flex -translate-y-1/2 translate-x-full transform items-center">
                         <div class="h-px w-6 bg-gray-400 dark:bg-gray-500"></div>
                         <span class="ml-1 text-xs dark:text-gray-300">{{ formLocal.baseDepth }} cm</span>
@@ -112,7 +112,7 @@ const props = defineProps({
 // Define Emits
 const emit = defineEmits(['update:form']);
 
-// Local reactive copy for manipulation
+// Cópia reativa local para manipulação
 const formLocal = reactive({
     baseHeight: props.formData.baseHeight,
     baseWidth: props.formData.baseWidth,
@@ -121,7 +121,7 @@ const formLocal = reactive({
     width: props.formData.width, 
 });
 
-// Initialize default base values if they don't exist
+// Inicializar valores padrão da base se não existirem
 onMounted(() => {
     const defaultsToEmit: Record<string, any> = {};
     // Usar chaves do formLocal para consistência
@@ -144,7 +144,7 @@ onMounted(() => {
     }
 });
 
-// Watch for prop changes and update the local form
+// Observar mudanças nas props e atualizar o formulário local
 watch(
     () => props.formData,
     (newVal) => {

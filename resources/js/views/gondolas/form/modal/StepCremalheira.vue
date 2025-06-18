@@ -7,7 +7,7 @@
             <h3 class="ml-2 text-lg font-medium dark:text-gray-100">Configurar Cremalheira</h3>
         </div>
 
-        <!-- Rack Dimensions -->
+        <!-- Dimensões da Cremalheira -->
         <div class="space-y-2">
             <h4 class="text-sm font-medium dark:text-gray-200">Dimensões da Cremalheira</h4>
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -28,7 +28,7 @@
             </div>
         </div>
 
-        <!-- Hole Configuration -->
+        <!-- Configuração dos Furos -->
         <div class="space-y-2">
             <h4 class="text-sm font-medium dark:text-gray-200">Configuração dos Furos</h4>
             <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -77,11 +77,11 @@
             </div>
         </div>
 
-        <!-- Rack Visualization -->
+        <!-- Visualização da Cremalheira -->
         <div class="mt-5 rounded-lg border bg-gray-50 p-4 dark:bg-gray-800 dark:border-gray-700">
             <div class="flex justify-center">
                 <div class="relative">
-                    <!-- Rack (visual representation) -->
+                    <!-- Cremalheira (representação visual) -->
                     <div
                         class="relative bg-gray-400 dark:bg-gray-500"
                         :style="{
@@ -89,7 +89,7 @@
                             height: '200px',
                         }"
                     >
-                        <!-- Holes represented as circles -->
+                        <!-- Furos representados como círculos -->
                         <div
                             v-for="i in Math.floor(200 / ((Number(formLocal.holeHeight) || 0) * 2 + (Number(formLocal.holeSpacing) || 0) * 2))"
                             :key="i"
@@ -137,7 +137,7 @@ const props = defineProps({
 // Define Emits
 const emit = defineEmits(['update:form']);
 
-// Local reactive copy for manipulation
+// Cópia reativa local para manipulação
 const formLocal = reactive({
     rackWidth: props.formData.rackWidth,
     holeHeight: props.formData.holeHeight,
@@ -145,7 +145,7 @@ const formLocal = reactive({
     holeSpacing: props.formData.holeSpacing,
 });
 
-// Initialize default rack values if they don't exist
+// Inicializar valores padrão da cremalheira se não existirem
 onMounted(() => {
     const defaultsToEmit: Record<string, any> = {};
     // Usar chaves do formLocal para consistência
@@ -171,7 +171,7 @@ onMounted(() => {
     }
 });
 
-// Watch for prop changes and update the local form
+// Observar mudanças nas props e atualizar o formulário local
 watch(
     () => props.formData,
     (newVal) => {
