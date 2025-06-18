@@ -4,8 +4,8 @@
             <!-- Mapeamento da Loja -->
             <div v-if="mapData" class="space-y-2">
                 <StoreMapList :map-data="mapData" :allow-selection="true" :show-category-filter="false"
-                    :selected-gondola-id="selectedMapGondolaId" @gondola-selected="onMapGondolaSelected"
-                    @gondola-clicked="onMapGondolaClicked" />
+                    :selected-gondola-id="selectedMapGondolaId" :gondolas-linked-maps="gondolasLinkedMaps"
+                    @gondola-selected="onMapGondolaSelected" @gondola-clicked="onMapGondolaClicked" />
             </div>
         </div>
     </div>
@@ -27,6 +27,9 @@ const storeMapData = computed(() => {
     return props.formData.storeData?.store_map_data || null;
 });
 const gondolasLinkedMaps = computed(() => {
+    console.log('gondolasLinkedMaps', props.formData.gondolasLinkedMaps);
+    console.log('formData completo:', props.formData);
+    console.log('storeData:', props.formData.storeData);
     return props.formData.gondolasLinkedMaps || [];
 });
 // Tentar diferentes estruturas de dados
@@ -36,13 +39,16 @@ const mapData = computed(() => {
         return null;
     }
 
-    return {
+    const result = {
         imageUrl: data.imageUrl || data.image_url || data.image_uri || null,
         imageWidth: data.imageWidth || data.image_width || null,
         imageHeight: data.imageHeight || data.image_height || null,
         gondolas: data.gondolas || data.gondolas_data || [],
         gondolasLinkedMaps: gondolasLinkedMaps.value || []
     };
+    
+    console.log('StepReview - mapData final:', result);
+    return result;
 });
 
 // Define Emits
