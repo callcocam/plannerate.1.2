@@ -218,13 +218,13 @@ const {
             }
         });
      },
-    onError: (error) => { 
+        onError: (error) => { 
         console.error('Erro ao criar gôndola:', error);
-        toast({
+            toast({
             title: 'Erro ao criar gôndola',
-            description: error.message,
-        });
-    }
+                description: error.message,
+            });
+        }
 });
 // -------------------------- 
 // Watchers

@@ -56,8 +56,6 @@ export function useGondolaEditForm(options: UseGondolaEditFormOptions) {
     const gondolasLinkedMaps = (currentState.value as any)?.gondolas.filter((g: Gondola) => 
         g.linked_map_gondola_id && g.linked_map_gondola_id.trim() !== ''
     ) || [];
-    console.log('useGondolaEditForm - gondolasLinkedMaps:', gondolasLinkedMaps);
-    console.log('useGondolaEditForm - currentState gondolas:', (currentState.value as any)?.gondolas);
 
     // Estado inicial do formData baseado na gôndola existente
     const getInitialFormData = (): GondolaEditFormData => {

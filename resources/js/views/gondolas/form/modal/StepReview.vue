@@ -27,9 +27,6 @@ const storeMapData = computed(() => {
     return props.formData.storeData?.store_map_data || null;
 });
 const gondolasLinkedMaps = computed(() => {
-    console.log('gondolasLinkedMaps', props.formData.gondolasLinkedMaps);
-    console.log('formData completo:', props.formData);
-    console.log('storeData:', props.formData.storeData);
     return props.formData.gondolasLinkedMaps || [];
 });
 // Tentar diferentes estruturas de dados
@@ -47,7 +44,6 @@ const mapData = computed(() => {
         gondolasLinkedMaps: gondolasLinkedMaps.value || []
     };
     
-    console.log('StepReview - mapData final:', result);
     return result;
 });
 

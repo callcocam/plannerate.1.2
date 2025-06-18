@@ -129,8 +129,7 @@ export function useGondolaCreateForm(options: UseGondolaCreateFormOptions) {
     const gondolasLinkedMaps = (currentState.value as any)?.gondolas.filter((g: Gondola) => 
         g.linked_map_gondola_id && g.linked_map_gondola_id.trim() !== ''
     ) || [];
-    console.log('useGondolaCreateForm - gondolasLinkedMaps:', gondolasLinkedMaps);
-    console.log('useGondolaCreateForm - currentState gondolas:', (currentState.value as any)?.gondolas);
+
     // Define o estado inicial do formData
     // Se estiver editando uma gôndola existente, usa os dados da primeira seção como base
     // para pré-preencher dimensões e configurações relevantes
