@@ -1,7 +1,7 @@
 <template>
     <Dialog :open="isOpen">
         <DialogPersonaCloseContent
-            class="flex max-h-[90vh] w-full max-w-4xl flex-col p-0 transition-colors duration-300"
+            class="flex max-h-[90vh] w-full max-w-4xl flex-col p-0 transition-colors duration-300 dark:border-gray-700 dark:bg-gray-800"
             :class="themeClasses.container">
             <DialogClose @click="closeModal"
                 class="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
@@ -9,14 +9,14 @@
                 <span class="sr-only">Fechar</span>
             </DialogClose>
             <!-- Cabeçalho Fixo -->
-            <div class="border-b p-4 transition-colors duration-300" :class="themeClasses.header">
+            <div class="border-b p-4 transition-colors duration-300 dark:border-gray-700" :class="themeClasses.header">
                 <div class="flex items-center justify-between">
                     <div class="flex-1">
                         <!-- Status da Vinculação com Ícone -->
                         <div class="flex items-center gap-2 mb-2">
                             <span class="text-lg">{{ linkageStatus.icon }}</span>
-                            <span class="text-sm font-medium px-2 py-1 rounded-full" 
-                                  :class="isGondolaLinked ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'">
+                            <span class="text-sm font-medium px-2 py-1 rounded-full bg-gray-50 border dark:bg-gray-800" 
+                                  :class="isGondolaLinked ? 'text-green-700 border-green-300 dark:text-green-300 dark:border-green-600' : 'text-red-700 border-red-300 dark:text-red-300 dark:border-red-600'">
                                 {{ linkageStatus.text }}
                             </span>
                         </div>
@@ -32,14 +32,13 @@
                 </div>
             </div> 
             <!-- Área de Conteúdo com Rolagem -->
-            <div class="flex-1 overflow-y-auto p-4 transition-colors duration-300" 
-                 :class="isGondolaLinked ? 'bg-green-50/20 dark:bg-green-900/10' : 'bg-red-50/20 dark:bg-red-900/10'">
+            <div class="flex-1 overflow-y-auto p-4 dark:bg-gray-800">
                 <!-- Componente StepReview -->
                 <StepReview :form-data="formData" :errors="errors" @update:form="updateForm" />
             </div>
 
             <!-- Rodapé Fixo -->
-            <div class="flex justify-end border-t p-4 transition-colors duration-300" :class="themeClasses.footer">
+            <div class="flex justify-end border-t bg-white p-4 transition-colors duration-300 dark:border-gray-700 dark:bg-gray-800" :class="themeClasses.footer">
                 <!-- Botão Salvar -->
                 <Button @click="submitForm" :disabled="isSending"
                     class="text-white transition-colors duration-300"
@@ -151,24 +150,24 @@ const isGondolaLinked = computed(() => {
 // Computed para as classes de tema baseado no status de vinculação
 const themeClasses = computed(() => {
     if (isGondolaLinked.value) {
-        // Verde suave - Gôndola já vinculada
+        // Verde - apenas bordas
         return {
-            container: 'border-green-100 bg-green-50/20 dark:border-green-800 dark:bg-green-950/30',
-            header: 'border-green-100 bg-green-50/40 dark:border-green-800 dark:bg-green-950/40',
-            title: 'text-green-800 dark:text-green-200',
+            container: 'border-green-300 dark:border-green-600',
+            header: 'border-green-300 dark:border-green-600',
+            title: 'text-green-700 dark:text-green-300',
             description: 'text-green-600 dark:text-green-400',
-            footer: 'border-green-100 bg-green-50/40 dark:border-green-800 dark:bg-green-950/40',
-            button: 'bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700'
+            footer: 'border-green-300 dark:border-green-600',
+            button: 'bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700'
         };
     } else {
-        // Vermelho suave - Gôndola não vinculada
+        // Vermelho - apenas bordas
         return {
-            container: 'border-red-100 bg-red-50/20 dark:border-red-800 dark:bg-red-950/30',
-            header: 'border-red-100 bg-red-50/40 dark:border-red-800 dark:bg-red-950/40',
-            title: 'text-red-800 dark:text-red-200',
+            container: 'border-red-300 dark:border-red-600',
+            header: 'border-red-300 dark:border-red-600',
+            title: 'text-red-700 dark:text-red-300',
             description: 'text-red-600 dark:text-red-400',
-            footer: 'border-red-100 bg-red-50/40 dark:border-red-800 dark:bg-red-950/40',
-            button: 'bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700'
+            footer: 'border-red-300 dark:border-red-600',
+            button: 'bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700'
         };
     }
 });
