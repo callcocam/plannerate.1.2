@@ -13,64 +13,67 @@ const step0_BasicInfoSchema = z.object({
     side: z.string().trim().min(1, { message: "Lado é obrigatório." }),
     flow: z.enum(['left_to_right', 'right_to_left'], { required_error: "Fluxo é obrigatório." }),
     scaleFactor: z.number({ invalid_type_error: "Fator de escala deve ser um número." })
-                   .int({ message: "Fator de escala deve ser inteiro." })
-                   .positive({ message: "Fator de escala deve ser positivo." }),
+        .int({ message: "Fator de escala deve ser inteiro." })
+        .positive({ message: "Fator de escala deve ser positivo." }),
     status: z.string().optional(), // Status terá valor padrão, não validar aqui
 });
 
 const step1_ModulesSchema = z.object({
     numModules: z.number({ required_error: "Número de módulos é obrigatório.", invalid_type_error: "Número de módulos deve ser um número." })
-                  .int({ message: "Número de módulos deve ser inteiro." })
-                  .positive({ message: "Número de módulos deve ser positivo." }),
+        .int({ message: "Número de módulos deve ser inteiro." })
+        .positive({ message: "Número de módulos deve ser positivo." }),
     width: z.number({ required_error: "Largura da seção é obrigatória.", invalid_type_error: "Largura deve ser um número." })
-             .positive({ message: "Largura da seção deve ser positiva." }),
+        .positive({ message: "Largura da seção deve ser positiva." }),
     height: z.number({ required_error: "Altura da seção é obrigatória.", invalid_type_error: "Altura deve ser um número." })
-              .positive({ message: "Altura da seção deve ser positiva." }),
+        .positive({ message: "Altura da seção deve ser positiva." }),
 });
 
 const step2_BaseSchema = z.object({
     baseHeight: z.number({ required_error: "Altura da base é obrigatória.", invalid_type_error: "Altura da base deve ser um número." })
-                  .positive({ message: "Altura da base deve ser positiva." }),
+        .positive({ message: "Altura da base deve ser positiva." }),
     baseWidth: z.number({ required_error: "Largura da base é obrigatória.", invalid_type_error: "Largura da base deve ser um número." })
-                 .positive({ message: "Largura da base deve ser positiva." }),
+        .positive({ message: "Largura da base deve ser positiva." }),
     baseDepth: z.number({ required_error: "Profundidade da base é obrigatória.", invalid_type_error: "Profundidade da base deve ser um número." })
-                 .positive({ message: "Profundidade da base deve ser positiva." }),
+        .positive({ message: "Profundidade da base deve ser positiva." }),
 });
 
 const step3_RackSchema = z.object({
     rackWidth: z.number({ required_error: "Largura da cremalheira é obrigatória.", invalid_type_error: "Largura da cremalheira deve ser um número." })
-                 .positive({ message: "Largura da cremalheira deve ser positiva." }),
+        .positive({ message: "Largura da cremalheira deve ser positiva." }),
     holeHeight: z.number({ required_error: "Altura do furo é obrigatória.", invalid_type_error: "Altura do furo deve ser um número." })
-                  .positive({ message: "Altura do furo deve ser positiva." }),
+        .positive({ message: "Altura do furo deve ser positiva." }),
     holeWidth: z.number({ required_error: "Largura do furo é obrigatória.", invalid_type_error: "Largura do furo deve ser um número." })
-                 .positive({ message: "Largura do furo deve ser positiva." }),
+        .positive({ message: "Largura do furo deve ser positiva." }),
     holeSpacing: z.number({ required_error: "Espaçamento do furo é obrigatório.", invalid_type_error: "Espaçamento do furo deve ser um número." })
-                   .positive({ message: "Espaçamento do furo deve ser positivo." }),
+        .positive({ message: "Espaçamento do furo deve ser positivo." }),
 });
 
 const step4_ShelvesSchema = z.object({
     shelfWidth: z.number({ required_error: "Largura da prateleira é obrigatória.", invalid_type_error: "Largura da prateleira deve ser um número." })
-                  .positive({ message: "Largura da prateleira deve ser positiva." }),
+        .positive({ message: "Largura da prateleira deve ser positiva." }),
     shelfHeight: z.number({ required_error: "Altura da prateleira é obrigatória.", invalid_type_error: "Altura da prateleira deve ser um número." })
-                   .positive({ message: "Altura da prateleira deve ser positiva." }),
+        .positive({ message: "Altura da prateleira deve ser positiva." }),
     shelfDepth: z.number({ required_error: "Profundidade da prateleira é obrigatória.", invalid_type_error: "Profundidade da prateleira deve ser um número." })
-                  .positive({ message: "Profundidade da prateleira deve ser positiva." }),
+        .positive({ message: "Profundidade da prateleira deve ser positiva." }),
     numShelves: z.number({ required_error: "Número de prateleiras é obrigatório.", invalid_type_error: "Número de prateleiras deve ser um número." })
-                  .int({ message: "Número de prateleiras deve ser inteiro." })
-                  .min(0, { message: "Número de prateleiras não pode ser negativo." }),
+        .int({ message: "Número de prateleiras deve ser inteiro." })
+        .min(0, { message: "Número de prateleiras não pode ser negativo." }),
     productType: z.string().min(1, { message: "Tipo de produto é obrigatório." }),
 });
 
 // Schema completo para validação final (incluindo campos não presentes nos passos)
 const fullGondolaFormSchema = z.object({
+    gondolasLinkedMaps: z.any().optional(),
+    linkedMapGondolaId: z.string().optional(),
+    linkedMapGondolaCategory: z.string().optional(),
     planogram_id: z.string().min(1, { message: "Planogram ID é obrigatório." }),
     status: z.string().min(1, { message: "Status é obrigatório." }), // Validar status aqui
-    storeData: z.any().optional()   ,
+    storeData: z.any().optional(),
 }).merge(step0_BasicInfoSchema.omit({ status: true })) // Omitir status do passo 0, pois validamos aqui
-  .merge(step1_ModulesSchema)
-  .merge(step2_BaseSchema)
-  .merge(step3_RackSchema)
-  .merge(step4_ShelvesSchema);
+    .merge(step1_ModulesSchema)
+    .merge(step2_BaseSchema)
+    .merge(step3_RackSchema)
+    .merge(step4_ShelvesSchema);
 
 // Inferir o tipo do formData a partir do schema Zod completo
 type GondolaFormData = z.infer<typeof fullGondolaFormSchema>;
@@ -89,13 +92,13 @@ const stepSchemas = [
 
 // Interface para as opções que podem ser passadas para o composable
 export interface UseGondolaCreateFormOptions {
-    initialGondolaId?: string|null; // ID da gôndola inicial, opcional
+    initialGondolaId?: string | null; // ID da gôndola inicial, opcional
     initialPlanogramId: string | Ref<string>;
     onSuccess?: (newGondola: Gondola) => void; // Callback opcional em caso de sucesso
     onError?: (error: any) => void; // Callback opcional em caso de erro
 }
 
-export function useGondolaCreateForm(options: UseGondolaCreateFormOptions) { 
+export function useGondolaCreateForm(options: UseGondolaCreateFormOptions) {
     const editorStore = useEditorStore();
     const { toast } = useToast();
 
@@ -103,24 +106,27 @@ export function useGondolaCreateForm(options: UseGondolaCreateFormOptions) {
     const gondolaId = ref(options.initialGondolaId || ''); // ID da gôndola, opcional
 
     // Estado para armazenar a gôndola atual e sua primeira seção para preenchimento automático
-    const currentGondola  = ref<Gondola | null>(null); // Gôndola atual, se estiver editando
+    const currentGondola = ref<Gondola | null>(null); // Gôndola atual, se estiver editando
     const firstSection = ref<any>(null); // Primeira seção encontrada para usar como base
-    
+
     // Buscar dados da gôndola existente se um ID foi fornecido
     if (gondolaId.value) {
         // Se um ID de gôndola foi passado, buscar os dados da gôndola
-        currentGondola.value = editorStore.currentState?.gondolas.find(g => g.id === gondolaId.value) || null; 
+        currentGondola.value = editorStore.currentState?.gondolas.find(g => g.id === gondolaId.value) || null;
         if (currentGondola.value && currentGondola.value.sections && currentGondola.value.sections.length > 0) {
             // Pega a primeira seção para usar como base para os dados do formulário
             // Isso permite pré-preencher dimensões e configurações baseadas na estrutura existente
             firstSection.value = currentGondola.value.sections[0];
         }
-    } 
+    }
     const isSending = ref(false);
     // Agora errors pode armazenar Record<campo, string[] | undefined>
     const errors = ref<z.inferFlattenedErrors<typeof fullGondolaFormSchema>['fieldErrors']>({});
 
-    const { currentState } = storeToRefs(editorStore) as any; 
+    const { currentState } = storeToRefs(editorStore) as any;
+    
+    //verificar nas gondolas ja estão vinculadas ao mapa
+    const gondolasLinkedMaps = (currentState.value as any)?.gondolas.filter((g: Gondola) => g.linked_map_gondola_id);  
     // Define o estado inicial do formData
     // Se estiver editando uma gôndola existente, usa os dados da primeira seção como base
     // para pré-preencher dimensões e configurações relevantes
@@ -149,7 +155,8 @@ export function useGondolaCreateForm(options: UseGondolaCreateFormOptions) {
         shelfDepth: firstSection.value?.depth || 40, // Usa a profundidade da seção
         numShelves: 4,
         productType: firstSection.value?.product_type || 'normal', // Usa o tipo de produto da seção
-        storeData: currentState.value?.store_map_data || currentState.value?.store,
+        storeData: currentState.value?.store,
+        gondolasLinkedMaps: gondolasLinkedMaps || [],
     });
 
     const formData = reactive<GondolaFormData>(getInitialFormData());
@@ -223,11 +230,11 @@ export function useGondolaCreateForm(options: UseGondolaCreateFormOptions) {
         return true;
     };
 
-     /**
-     * Valida o formulário COMPLETO usando o schema Zod combinado.
-     * Usado antes da submissão final.
-     * @returns true se válido, false caso contrário. Atualiza o ref 'errors'.
-     */
+    /**
+    * Valida o formulário COMPLETO usando o schema Zod combinado.
+    * Usado antes da submissão final.
+    * @returns true se válido, false caso contrário. Atualiza o ref 'errors'.
+    */
     const validateFullForm = (): boolean => {
         const result = fullGondolaFormSchema.safeParse(formData);
         if (!result.success) {
@@ -251,7 +258,7 @@ export function useGondolaCreateForm(options: UseGondolaCreateFormOptions) {
     const submitForm = async () => {
         // 1. Atualizar o planogram_id caso ele tenha mudado (se for uma Ref)
         formData.planogram_id = typeof planogramId.value === 'string' ? planogramId.value : '';
-        
+
         // 2. Validar o formulário COMPLETO antes de enviar
         if (!validateFullForm()) {
             return; // Interrompe se a validação falhar
@@ -287,6 +294,8 @@ export function useGondolaCreateForm(options: UseGondolaCreateFormOptions) {
             profundidade_prateleira: formData.shelfDepth, // Renomear conforme API
             num_prateleiras: formData.numShelves, // Renomear conforme API
             tipo_produto_prateleira: formData.productType, // Renomear conforme API
+            linked_map_gondola_id: formData.linkedMapGondolaId,
+            linked_map_gondola_category: formData.linkedMapGondolaCategory,
         };
 
         try {
@@ -304,7 +313,7 @@ export function useGondolaCreateForm(options: UseGondolaCreateFormOptions) {
 
             // Chama o callback de sucesso, se fornecido
             options.onSuccess?.(newGondola);
-            
+
             // Redirecionar ou fechar modal (a lógica de fechar está no Create.vue)
             // router.push({ name: 'gondola.view', params: { id: formData.planogram_id, gondolaId: newGondola.id } });
 

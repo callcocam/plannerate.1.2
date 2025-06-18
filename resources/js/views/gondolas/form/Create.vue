@@ -204,12 +204,10 @@ const {
     updateForm, // Necessário para o @update:form do componente filho
     resetForm, 
     submitForm, 
-    validateStep, // Importar a função de validação por etapa
-    // validateFullForm, // Não precisamos chamar diretamente aqui
+    validateStep, // Função de validação por etapa
     isSending, 
     errors
 } = useGondolaCreateForm({ 
-    initialGondolaId: null, // ID da gôndola, opcional
     initialPlanogramId: planogramId, 
     onSuccess: (newGondola) => { 
         router.push({ 
@@ -220,13 +218,13 @@ const {
             }
         });
      },
-        onError: (error) => { 
-            console.error('Error creating gondola:', error);
-            toast({
-                title: 'Error creating gondola',
-                description: error.message,
-            });
-        }
+    onError: (error) => { 
+        console.error('Erro ao criar gôndola:', error);
+        toast({
+            title: 'Erro ao criar gôndola',
+            description: error.message,
+        });
+    }
 });
 // -------------------------- 
 // Watchers

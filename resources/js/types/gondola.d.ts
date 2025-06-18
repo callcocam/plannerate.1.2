@@ -16,6 +16,8 @@ interface Gondola {
     user_id?: string;            // ID do usuário que criou (opcional)
     created_at?: string;         // Timestamp de criação (opcional)
     updated_at?: string;         // Timestamp de atualização (opcional)
+    linked_map_gondola_id?: string; // ID da gôndola no mapa
+    linked_map_gondola_category?: string; // Categoria da gôndola no mapa
     // Outros campos conforme necessário
 }
 

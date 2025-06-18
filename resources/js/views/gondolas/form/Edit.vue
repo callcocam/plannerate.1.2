@@ -41,13 +41,13 @@
 <script setup lang="ts">
 // External Libraries Imports
 import { Loader2Icon, SaveIcon, X } from 'lucide-vue-next';
-import { defineAsyncComponent, ref, watch, onMounted } from 'vue';
+import { defineAsyncComponent, ref, watch, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 // Internal Services & Stores Imports 
 
 // Composables
-import { useGondolaCreateForm } from '@plannerate/composables/useGondolaCreateForm';
+import { useGondolaEditForm } from '@plannerate/composables/useGondolaEditForm';
 
 // Type Imports 
 
@@ -101,30 +101,31 @@ const {
     updateForm, // Necessário para o @update:form do componente filho
     resetForm,
     submitForm,
-    validateStep, // Importar a função de validação por etapa
-    // validateFullForm, // Não precisamos chamar diretamente aqui
     isSending,
-    errors,
-    currentState, // Estado atual do editor, usado para acessar os dados do gondola
-} = useGondolaCreateForm({
-    initialGondolaId: gondolaId.value, // ID da gôndola, opcional
+    errors, 
+} = useGondolaEditForm({
+    initialGondolaId: gondolaId.value, // ID da gôndola
     initialPlanogramId: planogramId,
-    onSuccess: (newGondola) => {
+    onSuccess: (updatedGondola: any) => {
         router.push({
             name: 'gondola.view',
             params: {
-                gondolaId: newGondola.id,
+                gondolaId: updatedGondola.id,
                 id: planogramId.value
             }
         });
     },
-    onError: (error) => {
-        console.error('Error creating gondola:', error);
+    onError: (error: any) => {
+        console.error('Erro ao atualizar gôndola:', error);
         toast({
-            title: 'Error creating gondola',
+            title: 'Erro ao atualizar gôndola',
             description: error.message,
         });
     }
+});
+
+const storeMapData = computed(() => {
+    return formData.store?.store_map_data || null;
 });
 // -------------------------- 
 // Watchers

@@ -31,8 +31,7 @@ export function setError(newError: string | null) {
  * Inicializa o store com os dados do planograma e estado inicial do editor
  * @param initialPlanogramData Dados iniciais do planograma (sem estado do editor)
  */
-export function initialize(initialPlanogramData: Omit<PlanogramEditorState, 'scaleFactor' | 'showGrid'>) {
-    console.log('Inicializando editor store...', initialPlanogramData);
+export function initialize(initialPlanogramData: Omit<PlanogramEditorState, 'scaleFactor' | 'showGrid'>) { 
 
     // Cria uma cópia profunda dos dados iniciais e adiciona valores padrão
     const initialState: PlanogramEditorState = {

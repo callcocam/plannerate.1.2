@@ -36,6 +36,7 @@ class Gondola extends Model
         'alignment',
         'status',
         'linked_map_gondola_id',
+        'linked_map_gondola_category',
     ];
 
     protected $casts = [

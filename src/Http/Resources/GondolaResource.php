@@ -35,6 +35,8 @@ class GondolaResource extends JsonResource
             ],
             'planogram' => new PlanogramResource($this->whenLoaded('planogram')),
             'sections' => SectionResource::collection($this->whenLoaded('sections')),
+            'linked_map_gondola_id' => $this->linked_map_gondola_id,
+            'linked_map_gondola_category' => $this->linked_map_gondola_category,
         ];
     }
 }

@@ -53,6 +53,8 @@ class UpdateGondolaRequest extends FormRequest
             'section.num_modulos' => ['nullable', 'integer', 'min:1'],
             'section.product_type' => ['nullable', 'string'],
             'section.settings' => ['nullable', 'array'],
+            'linked_map_gondola_id' => ['nullable', 'string'],
+            'linked_map_gondola_category' => ['nullable', 'string'],
         ];
     }
 

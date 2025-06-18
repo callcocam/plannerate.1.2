@@ -216,6 +216,7 @@ class PlannerateController extends Controller
             'location',
             'alignment',
             'linked_map_gondola_id',
+            'linked_map_gondola_category',
             // 'status',
             // Adicione outros campos conforme necessário
         ];

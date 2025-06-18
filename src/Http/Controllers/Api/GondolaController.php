@@ -184,27 +184,25 @@ class GondolaController extends Controller
      * @param string $id
      * @return GondolaResource|JsonResponse
      */
-    public function update(UpdateGondolaRequest $request, string $planogramId, string $id)
+    public function update(UpdateGondolaRequest $request, string $id)
     {
         try {
             DB::beginTransaction();
 
-            $planogram = Planogram::findOrFail($planogramId);
-
-            
-            $gondola = Gondola::where('planogram_id', $planogramId)->findOrFail($id);
+            $gondola = Gondola::findOrFail($id); 
 
             // Limpar seções e prateleiras existentes
-            $this->deleteSectionsAndShelves($gondola->sections);
+            // $this->deleteSectionsAndShelves($gondola->sections);
 
             // Validar dados
             $validatedData = $request->validated();
 
+            $gondola->update($validatedData);
             // Atualizar a gôndola
-            $this->updateGondola($gondola, $request);
+            // $this->updateGondola($gondola, $request);
 
             // Recriar seções e prateleiras
-            $this->createSectionsWithShelves($gondola, $request);
+            // $this->createSectionsWithShelves($gondola, $request);
 
             DB::commit();
 
@@ -220,7 +218,7 @@ class GondolaController extends Controller
             return $this->handleNotFoundException('Gôndola ou planograma não encontrado');
         } catch (Throwable $e) {
             return $this->handleException($e, 'Erro ao atualizar gôndola', [
-                'planogram_id' => $planogramId,
+                'planogram_id' => $gondola->planogram_id,
                 'gondola_id' => $id,
                 'data' => $request->all()
             ]);
