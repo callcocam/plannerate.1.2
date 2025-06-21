@@ -9,11 +9,10 @@
 </template>
 
 <script setup lang="ts">
-import { defineEmits, defineProps, ref, watch, computed, CSSProperties, onMounted } from 'vue';
+import { defineEmits, defineProps, ref, watch, computed, CSSProperties } from 'vue';
 import { type Shelf } from '@plannerate/types/shelves';
 import { Section } from '@/types/sections';
-import type { Product, Layer } from '@plannerate/types/segment';
-import { useEditorStore } from '@plannerate/store/editor';
+import type { Product, Layer } from '@plannerate/types/segment'; 
 // Definir Props
 const props = defineProps<{
     shelf: Shelf;

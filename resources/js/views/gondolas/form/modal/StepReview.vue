@@ -1,11 +1,19 @@
 <template>
     <div>
-        <div class="space-y-2 ">
+        <div class="space-y-2">
             <!-- Mapeamento da Loja -->
             <div v-if="mapData" class="space-y-2">
-                <StoreMapList :map-data="mapData" :allow-selection="true" :show-category-filter="false"
-                    :selected-gondola-id="selectedMapGondolaId" :gondolas-linked-maps="gondolasLinkedMaps"
-                    @gondola-selected="onMapGondolaSelected" @gondola-clicked="onMapGondolaClicked" />
+                <StoreMapLinkSelector 
+                    :map-data="mapData" 
+                    :allow-edit="allowEdit"
+                    :selected-gondola-id="selectedMapGondolaId" 
+                    :gondolas-linked-maps="gondolasLinkedMaps"
+                    :show-category-filter="false"
+                    :use-canvas="true"
+                    title="Vincular Gondola ao Mapa"
+                    @gondola-selected="onMapGondolaSelected" 
+                    @gondola-clicked="onMapGondolaClicked" 
+                />
             </div>
         </div>
     </div>
@@ -13,10 +21,14 @@
 
 <script setup lang="ts">
 import { defineProps, ref, computed } from 'vue';
-import StoreMapList from '@/components/form/fields/StoreMapList.vue';
+import StoreMapLinkSelector from '@/components/form/fields/components/StoreMapLinkSelector.vue';
 
 // Define Props
 const props = defineProps({
+    allowEdit: {
+        type: Boolean,
+        default: false,
+    },
     formData: {
         type: Object as () => Record<string, any>,
         required: true,

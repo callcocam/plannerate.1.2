@@ -60,7 +60,7 @@
                 <!-- Renderização Dinâmica do Componente da Etapa -->
                 <!-- Usa :is para renderizar o componente baseado na etapa atual -->
                 <KeepAlive>
-                    <component :is="stepComponents[currentStep]" :form-data="formData" :errors="errors" @update:form="updateForm" />
+                    <component :is="stepComponents[currentStep]" :form-data="formData" :errors="errors" @update:form="localUpdateForm" />
                 </KeepAlive>
             </div>
 
@@ -270,6 +270,11 @@ const previousStep = () => {
     // Poderia opcionalmente limpar erros da etapa atual ao voltar
     // clearStepErrors(currentStep.value); // Precisaria implementar no composable
     wizardPreviousStep();
+};
+
+const localUpdateForm = (newFormData: any) => {
+    console.log('newFormData', newFormData);
+    updateForm(newFormData);
 };
 
 // submitForm é chamado diretamente pelo botão no template

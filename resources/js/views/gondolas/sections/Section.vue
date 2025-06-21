@@ -8,14 +8,14 @@
             <ShelfComponent :shelf="shelf" :gondola="gondola" :sorted-shelves="sortedShelves" :index="index"
                 :section="section" :scale-factor="scaleFactor" :section-width="section.width"
                 :section-height="section.height" :base-height="baseHeight" :sections-container="sectionsContainer"
-                :section-index="sectionIndex" :holes="holes" @drop-product="handleProductDropOnShelf"
+                :section-index="sectionIndex" :holes="holes" :invert-index="invertIndex" @drop-product="handleProductDropOnShelf"
                 @drop-segment-copy="handleSegmentCopy" @drop-segment="updateSegment"
                 @drag-shelf="handleShelfDragStart" />
         </template>
         <div class="text-black text-xs absolute bottom-5 left-1/2 -translate-x-1/2 p-2 dark:text-white uppercase font-bold" :style="{
             bottom: `${baseHeight / 2}px`
         }">
-            Módulo {{ section.ordering+1 }}
+            Módulo {{ invertIndex + 1 }}
         </div>
     </div>
 </template>
@@ -54,7 +54,15 @@ const holes = computed(() => {
     if (!section.settings) return [];
     return section.settings.holes;
 });
-
+const invertIndex = computed(() =>{ 
+    if (props.gondola.flow === 'left_to_right') {   
+        const inverted = props.sectionIndex;
+        return inverted;
+    } else {
+        const inverted = props.gondola.sections.length - 1 - props.sectionIndex;
+        return inverted;
+    }  
+});
 // Ordena as prateleiras por posição para garantir o cálculo correto
 const sortedShelves = computed(() => {
     if (!props.section.shelves || props.section.shelves.length === 0) {

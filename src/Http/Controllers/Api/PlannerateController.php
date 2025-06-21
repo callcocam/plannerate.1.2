@@ -217,6 +217,8 @@ class PlannerateController extends Controller
             'alignment',
             'linked_map_gondola_id',
             'linked_map_gondola_category',
+            'flow',
+            'ordering',
             // 'status',
             // Adicione outros campos conforme necessário
         ];

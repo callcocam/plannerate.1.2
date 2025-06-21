@@ -55,7 +55,7 @@ export function invertGondolaSectionOrder(gondolaId: string) {
 
     if (gondola.sections.length > 1) {
         gondola.sections.reverse();
-
+        gondola.flow = gondola.flow === 'left_to_right' ? 'right_to_left' : 'left_to_right';
         // Atualiza o campo 'ordering' de cada seção com base no novo índice
         gondola.sections.forEach((section, index) => {
             section.ordering = index;

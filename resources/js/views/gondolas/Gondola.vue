@@ -25,13 +25,14 @@
         <div v-if="editorGondola" class="flex h-full w-full flex-col gap-4 overflow-hidden">
             <!-- Passar a gôndola reativa encontrada -->
             <Info :gondola="editorGondola" />
-            <div class="flex flex-col overflow-auto relative">
+            <div class="flex flex-col overflow-auto relative w-full">
                 <!-- Informar a direção do fluxo da gôndola -->
-                <div class="flex flex-col gap-2  px-10 w-full  "
-                :class="{ 'items-start': editorGondola.flow === 'left_to_right', 'items-end': editorGondola.flow === 'right_to_left' }"
+                <div class="flex relative"
+                :class="{ 'items-start': editorGondola.flow === 'left_to_right', 'items-end justify-end': editorGondola.flow === 'right_to_left' }"
+                :style="{ width: gondolaWidth + 'px' }"
                 >
-                    <p class="flex items-center gap-1 text-lg text-gray-500 w-64 border border-gray-800 dark:border-gray-200 rounded-lg px-2"
-                     :class="{ 'justify-start': editorGondola.flow === 'left_to_right', 'justify-end': editorGondola.flow === 'right_to_left' }"
+                    <p class="flex items-center gap-1 text-lg text-gray-500   border border-gray-800 dark:border-gray-200 rounded-lg px-2 absolute top-0"
+                     :class="{ 'left-12': editorGondola.flow === 'left_to_right', '-right-12 items-end': editorGondola.flow === 'right_to_left' }"
                     >
                         <IconArrowLeft v-if="editorGondola.flow === 'right_to_left'" class="h-6 w-6" />
                         <span>Fluxo da gôndola: </span>
@@ -102,6 +103,15 @@ watchEffect(() => {
 
 // Computed para obter a gôndola correspondente à rota atual para usar no template
 const editorGondola = computed(() => editorStore.getCurrentGondola);
+
+const gondolaWidth = computed(() => {
+    const gondola = editorGondola.value;
+    if (!gondola) return 0;
+    return gondola.sections.reduce((acc, section) => {
+        console.log('section', section, section.base_width * scaleFactor.value);
+        return acc + (section.width  * scaleFactor.value) + (section.cremalheira_width * scaleFactor.value);
+    }, 0);
+});
 </script>
 
 <style scoped>
