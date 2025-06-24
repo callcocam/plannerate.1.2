@@ -11,8 +11,12 @@
                 <ChevronLeftIcon class="h-4 w-4 text-white" />
             </div>
         </transition>
-        <span class="flex z-20 items-center justify-center -translate-y-full" :style="{ fontSize: scaleFactor * 3.5 + 'px' }">
-           {{ invertIndex }}
+        <span class="flex z-20 items-center justify-center font-bold" 
+        :class="[
+            isEmpty ? '-translate-y-1' : '-translate-y-full'
+        ]"
+        :style="{ fontSize: scaleFactor * 3.5 + 'px' }">
+           {{ invertIndex }}   
         </span>
         <transition name="fade">
             <!-- Botão para mover horizontalmente para a direita -->
@@ -45,6 +49,8 @@ const props = defineProps<{
     index: number;
     totalItems: number;
 }>();
+
+const isEmpty = computed(() => props.shelf.segments.length === 0);
 
 const invertIndex = computed(() =>{
     const inverted = props.totalItems - 1 - props.index;
