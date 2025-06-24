@@ -107,8 +107,7 @@ const editorGondola = computed(() => editorStore.getCurrentGondola);
 const gondolaWidth = computed(() => {
     const gondola = editorGondola.value;
     if (!gondola) return 0;
-    return gondola.sections.reduce((acc, section) => {
-        console.log('section', section, section.base_width * scaleFactor.value);
+    return gondola.sections.reduce((acc, section) => { 
         return acc + (section.width  * scaleFactor.value) + (section.cremalheira_width * scaleFactor.value);
     }, 0);
 });

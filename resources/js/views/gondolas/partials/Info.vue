@@ -106,8 +106,7 @@ const toggleGrid = () => {
 /** Emite evento para inverter a ordem das seções da gôndola pai. */
 const invertSectionOrder = () => {
     const currentGondola = props.gondola as Gondola | undefined;
-    if (currentGondola?.id) {
-        console.log('invertSectionOrder', currentGondola.id);
+    if (currentGondola?.id) { 
         editorStore.invertGondolaSectionOrder(currentGondola.id);
     } else {
         console.warn('Não é possível inverter a ordem: Gôndola atual não definida.');

@@ -11,7 +11,7 @@
                 <ChevronLeftIcon class="h-4 w-4 text-white" />
             </div>
         </transition>
-        <span class="absolute text-xs -top-1 z-20 flex items-center justify-center">
+        <span class="flex z-20 items-center justify-center -translate-y-full" :style="{ fontSize: scaleFactor * 3.5 + 'px' }">
            {{ invertIndex }}
         </span>
         <transition name="fade">

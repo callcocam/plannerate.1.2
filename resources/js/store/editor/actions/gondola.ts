@@ -59,9 +59,7 @@ export function invertGondolaSectionOrder(gondolaId: string) {
         // Atualiza o campo 'ordering' de cada seção com base no novo índice
         gondola.sections.forEach((section, index) => {
             section.ordering = index;
-        });
-
-        console.log(`Ordem das seções invertida e campo 'ordering' atualizado para a gôndola ${gondolaId}`);
+        }); 
 
         recordChange();
     } else {
