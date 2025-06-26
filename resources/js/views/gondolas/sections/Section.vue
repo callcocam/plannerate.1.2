@@ -13,9 +13,9 @@
                 @drag-shelf="handleShelfDragStart" />
         </template>
         <div class="text-black text-xs absolute bottom-5 left-1/2 -translate-x-1/2 p-2 dark:text-white uppercase font-bold" :style="{
-            bottom: `${baseHeight / 2}px`
+            bottom: `${baseHeight / 3}px`
         }">
-            Módulo {{ invertIndex + 1 }}
+          <span :style="{ fontSize: scaleFactor * 3.5 + 'px' }" class="text-xs">Módulo {{ invertIndex + 1 }}</span>
         </div>
     </div>
 </template>
