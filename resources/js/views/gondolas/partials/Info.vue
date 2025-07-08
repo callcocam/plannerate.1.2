@@ -345,7 +345,7 @@ const saveChanges = () => editorStore.saveChanges();
                         </Button>
                         <Button type="button" variant="secondary" size="sm" @click="navigateToAddSection"
                             title="Adicionar Seção">
-                            <Plus class="mr-1 h-4 w-4" /> <span class="hidden xl:inline">Seção</span>
+                            <Plus class="mr-1 h-4 w-4" /> <span class="hidden xl:inline">Adicionar novo Modulo</span>
                         </Button>
                         <Button type="button" variant="destructive" size="sm" @click="confirmRemoveGondola"
                             title="Remover Gôndola">

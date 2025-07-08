@@ -14,7 +14,7 @@
         <PopoverTrigger as-child>
           <Button variant="outline" size="sm" @click="showCalculos = true" title="Calculos">
             <NutIcon class="h-4 w-4" />
-            <span class="hidden xl:block">Calculos</span>
+            <span class="hidden xl:block">Performance</span>
           </Button>
         </PopoverTrigger>
         <PopoverContent class="w-auto max-w-lg z-[1000]">

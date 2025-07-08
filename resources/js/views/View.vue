@@ -7,6 +7,7 @@ import Properties from '@plannerate/views/partials/sidebar/Properties.vue';
 import PlannerateHeader from '@plannerate/views/partials/Header.vue';
 import { useEditorStore } from '@plannerate/store/editor';
 import { useEditorService } from '@plannerate/services/editorService'; 
+import { Menu, X, Settings, Package } from 'lucide-vue-next';
 const route = useRoute() as any; 
 const editorService = useEditorService();
 const editorStore = useEditorStore(); 
@@ -71,20 +72,16 @@ watch(propertiesOpen, (newValue) => {
                 size="sm"
                 variant="outline"
                 @click="sidebarOpen = !sidebarOpen"
-                :aria-label="sidebarOpen ? 'Fechar menu de produtos' : 'Abrir menu de produtos'"
-                title="Menu de produtos"
+                :aria-label="sidebarOpen ? 'Fechar menu de produtos' : 'Abrir produtos'"
+                title="Produtos"
                 class="mr-2"
             >
                 <transition name="fade" mode="out-in">
-                    <svg v-if="!sidebarOpen" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
-                    <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    <Package v-if="!sidebarOpen" class="h-5 w-5 text-gray-100" />
+                    <X v-else class="h-5 w-5 text-gray-100" />
                 </transition>
-                <span v-if="sidebarOpen">Fechar</span>
-                <span v-else>Abrir</span>
+                <span v-if="sidebarOpen">Fechar produtos</span>
+                <span v-else>Abrir produtos</span>
             </Button>
             <Button
                 size="sm"
@@ -94,28 +91,24 @@ watch(propertiesOpen, (newValue) => {
                 title="Propriedades"
             >
                 <transition name="fade" mode="out-in">
-                    <svg v-if="!propertiesOpen" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
-                    <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    <Settings v-if="!propertiesOpen" class="h-5 w-5 text-gray-100" />
+                    <X v-else class="h-5 w-5 text-gray-100" />
                 </transition>
-                <span v-if="propertiesOpen">Fechar</span>
-                <span v-else>Abrir</span>
+                <span v-if="propertiesOpen">Fechar propriedades</span>
+                <span v-else>Abrir propriedades</span>
             </Button>
             </template>
         </PlannerateHeader>
         <div class="relative">            
             <div class="flex h-full w-full gap-6 overflow-hidden">
                 <transition name="sidebar-slide-left">
-                    <Products v-if="sidebarOpen" :open="sidebarOpen" @close="sidebarOpen = false" />
+                    <Products :open="sidebarOpen" @close="sidebarOpen = false" @toggle="sidebarOpen = !sidebarOpen" />
                 </transition>
                 <div class="flex h-full w-full flex-col gap-6 overflow-x-auto overflow-y-auto"> 
                     <Gondolas :record="planogramData" />
                 </div>
                 <transition name="sidebar-slide">
-                    <Properties v-if="propertiesOpen" :open="propertiesOpen" @close="propertiesOpen = false" />
+                    <Properties :open="propertiesOpen" @close="propertiesOpen = false" @toggle="propertiesOpen = !propertiesOpen" />
                 </transition>
             </div>
         </div>

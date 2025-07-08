@@ -1,5 +1,5 @@
 <template>
-    <div class="mb-6 border-b pb-4 dark:border-gray-700" v-if="planogram">
+    <div class="mb-6 border-b pb-4 dark:border-gray-700 p-4" v-if="planogram">
         <!-- Modal para adicionar gôndola -->
         <!-- <div class="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
             <Card class="dark:border-gray-700 dark:bg-gray-800">
@@ -64,7 +64,7 @@
                     type="button"
                 >
                     <PlusCircleIcon class="mr-2 h-4 w-4" />
-                    <span>Adicionar</span>
+                    <span>Adicionar Gôndola</span>
                 </Button>
                 <Button 
                 @click="openEditGondolaModal"
@@ -72,7 +72,7 @@
                 variant="outline" size="sm" class="dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
                 title="Editar">
                     <PencilIcon class="mr-2 h-4 w-4" />
-                    Editar
+                    Editar Gôndola
                 </Button>
             </div>
         </div>

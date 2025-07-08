@@ -1,164 +1,182 @@
 <template>
     <div :class="sidebarClasses">
-        <!-- Botão de fechar, visível apenas em telas pequenas -->
-        <Button variant="outline" size="icon" class="absolute right-2 top-2 z-50 md:hidden" @click="$emit('close')"
-            aria-label="Fechar menu de produtos">
-            <X class="h-4 w-4" />
-        </Button>
-        <div class="border-b border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
-            <h3 class="text-center text-lg font-medium text-gray-800 dark:text-gray-100">Produtos Disponíveis</h3>
-
-            <!-- Campo de busca com design aprimorado -->
-            <div class="relative mt-3">
-                <Input v-model="filters.search" type="text" placeholder="Buscar produtos..." class="pr-10" />
-                <Search class="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            </div>
-
-            <!-- Botão de filtros com design aprimorado -->
-            <Button variant="outline" class="mt-2 w-full justify-between" @click="showFilters = !showFilters">
-                <div class="flex items-center">
-                    <SlidersHorizontal class="mr-2 h-4 w-4" />
-                    <span>Filtros</span>
-                </div>
-                <ChevronDown class="h-4 w-4 transition-transform" :class="{ 'rotate-180': showFilters }" />
+        <!-- Colapsado: só o ícone -->
+        <template v-if="showIconOnly">
+            <button
+                @click="$emit('toggle')"
+                aria-label="Expandir menu de produtos"
+                title="Produtos"
+                class="absolute left-0 top-4 flex items-center justify-center w-12 h-12 bg-transparent border-none shadow-none p-0 m-0"
+                style="outline: none;"
+            >
+                <Package class="h-6 w-6" />
+            </button>
+        </template>
+        <!-- Expandido: conteúdo normal -->
+        <div v-if="showContent" class="flex h-full flex-col">
+            <!-- Botão de fechar, visível apenas em telas pequenas -->
+            <Button variant="outline" size="icon" class="absolute right-2 top-2 z-50 md:hidden" @click="$emit('close')"
+                aria-label="Fechar menu de produtos">
+                <X class="h-4 w-4" />
             </Button>
-
-            <!-- Painel de filtros colapsável -->
-            <div v-if="showFilters"
-                class="mt-2 rounded-md border border-gray-200 bg-white p-3 text-sm dark:border-gray-600 dark:bg-gray-700">
-                <div class="mb-2">
-                    <Label class="mb-1 block">Mercadológico</Label>
-                    <Popover v-model:open="showMercadologicoPopover">
-                        <PopoverTrigger as-child>
-                            <Button variant="outline" class="w-full justify-between">
-                                <span>{{ filters.category ? 'Nível selecionado' : 'Selecionar nível mercadológico' }}</span>
-                                <ChevronDown class="h-4 w-4 opacity-50" />
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent class="w-2xl p-4" side="right" align="start">
-                            <div class="space-y-4">
-                                <h4 class="font-medium leading-none">Nível Mercadológico</h4>
-                                <MercadologicoSelector 
-                                    :field="{
-                                        name: 'mercadologico_nivel',
-                                        label: 'Mercadológico',
-                                        apiUrl: '/api/categories/mercadologico',
-                                        valueKey: 'id',
-                                        labelKey: 'name'
-                                    }" 
-                                    id="mercadologico_nivel" 
-                                    v-model="filters.category" 
-                                    @update:model-value="showMercadologicoPopover = false"
-                                />
-                            </div>
-                        </PopoverContent>
-                    </Popover>
-                </div>
-
-                <div class="mb-2">
-                    <Label class="mb-1 block">Status de uso</Label>
-                    <div class="space-y-2">
-                        <div class="flex items-center space-x-2">
-                            <input id="all" type="radio" value="all" v-model="filters.usageStatus"
-                                class="h-4 w-4 border-gray-300 text-primary focus:ring-2 focus:ring-primary" />
-                            <Label for="all" class="text-sm font-normal">Todos</Label>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <input id="unused" type="radio" value="unused" v-model="filters.usageStatus"
-                                class="h-4 w-4 border-gray-300 text-primary focus:ring-2 focus:ring-primary" />
-                            <Label for="unused" class="text-sm font-normal">Não usados</Label>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <input id="used" type="radio" value="used" v-model="filters.usageStatus"
-                                class="h-4 w-4 border-gray-300 text-primary focus:ring-2 focus:ring-primary" />
-                            <Label for="used" class="text-sm font-normal">Já usados</Label>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mb-2">
-                    <Label class="mb-1 block">Atributos</Label>
-                    <div class="grid grid-cols-2 gap-2">
-                        <div class="flex items-center space-x-2">
-                            <Checkbox id="hangable" v-model:modelValue="filters.hangable" />
-                            <Label for="hangable" class="text-sm font-normal">Pendurável</Label>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <Checkbox id="stackable" v-model:modelValue="filters.stackable" />
-                            <Label for="stackable" class="text-sm font-normal">Empilhável</Label>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="flex justify-end">
-                    <Button variant="secondary" size="sm" @click="clearFilters">
-                        Limpar filtros
+            <div class="border-b border-gray-200 p-3 dark:border-gray-700 flex flex-col bg-transparent">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-medium text-gray-800 dark:text-gray-100">Produtos Disponíveis</h3>
+                    <Button variant="ghost" size="icon" @click="$emit('toggle')" 
+                        aria-label="Colapsar menu de produtos" title="Colapsar">
+                        <ChevronLeft class="h-4 w-4" />
                     </Button>
                 </div>
-            </div>
-        </div>
+                <!-- Campo de busca com design aprimorado -->
+                <div class="relative mt-3">
+                    <Input v-model="filters.search" type="text" placeholder="Buscar produtos..." class="pr-10" />
+                    <Search class="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                </div>
+                <!-- Botão de filtros com design aprimorado -->
+                <Button variant="outline" class="mt-2 w-full justify-between" @click="showFilters = !showFilters">
+                    <div class="flex items-center">
+                        <SlidersHorizontal class="mr-2 h-4 w-4" />
+                        <span>Filtros</span>
+                    </div>
+                    <ChevronDown class="h-4 w-4 transition-transform" :class="{ 'rotate-180': showFilters }" />
+                </Button>
+                <!-- Painel de filtros colapsável -->
+                <div v-if="showFilters"
+                    class="mt-2 rounded-md border border-gray-200 p-3 text-sm dark:border-gray-600 dark:bg-gray-700 bg-transparent">
+                    <div class="mb-2">
+                        <Label class="mb-1 block">Mercadológico</Label>
+                        <Popover v-model:open="showMercadologicoPopover">
+                            <PopoverTrigger as-child>
+                                <Button variant="outline" class="w-full justify-between">
+                                    <span>{{ filters.category ? 'Nível selecionado' : 'Selecionar nível mercadológico' }}</span>
+                                    <ChevronDown class="h-4 w-4 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent class="w-2xl p-4" side="right" align="start">
+                                <div class="space-y-4">
+                                    <h4 class="font-medium leading-none">Nível Mercadológico</h4>
+                                    <MercadologicoSelector 
+                                        :field="{
+                                            name: 'mercadologico_nivel',
+                                            label: 'Mercadológico',
+                                            apiUrl: '/api/categories/mercadologico',
+                                            valueKey: 'id',
+                                            labelKey: 'name'
+                                        }" 
+                                        id="mercadologico_nivel" 
+                                        v-model="filters.category" 
+                                        @update:model-value="showMercadologicoPopover = false"
+                                    />
+                                </div>
+                            </PopoverContent>
+                        </Popover>
+                    </div>
 
-        <!-- Lista de produtos com design limpo -->
-        <div class="flex-1 overflow-y-auto p-2 dark:bg-gray-800">
-            <div v-if="!editorStore.isLoading && filteredProducts.length > 0"
-                class="mb-2 px-2 py-1 text-sm text-gray-500 dark:text-gray-400">
-                <span>{{ filteredProducts.length }} produtos encontrados</span>
-            </div>
-
-            <ul v-if="!editorStore.isLoading && filteredProducts.length > 0" class="space-y-1">
-                <li v-for="product in filteredProducts" :key="product.id"
-                    class="group cursor-pointer rounded-md bg-white p-2 shadow-sm transition hover:bg-blue-50 dark:bg-gray-700 dark:hover:bg-gray-600"
-                    @click="handleProductSelect(product)" draggable="true"
-                    @dragstart="handleDragStart($event, product)">
-                    <div class="flex items-center space-x-3">
-                        <div
-                            class="flex-shrink-0 overflow-hidden rounded border bg-white p-1 dark:border-gray-600 dark:bg-gray-800">
-                            <img :src="product.image_url" :alt="product.name" class="h-12 w-12 object-contain"
-                                @error="(e) => handleImageError(e, product)" />
-                        </div>
-                        <div class="min-w-0 flex-1">
-                            <p class="truncate text-sm font-medium text-gray-800 dark:text-gray-100">{{ product.name }}
-                            </p>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ product.width }}×{{ product.height
-                                }}×{{ product.depth }} cm</p>
+                    <div class="mb-2">
+                        <Label class="mb-1 block">Status de uso</Label>
+                        <div class="space-y-2">
+                            <div class="flex items-center space-x-2">
+                                <input id="all" type="radio" value="all" v-model="filters.usageStatus"
+                                    class="h-4 w-4 border-gray-300 text-primary focus:ring-2 focus:ring-primary" />
+                                <Label for="all" class="text-sm font-normal">Todos</Label>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <input id="unused" type="radio" value="unused" v-model="filters.usageStatus"
+                                    class="h-4 w-4 border-gray-300 text-primary focus:ring-2 focus:ring-primary" />
+                                <Label for="unused" class="text-sm font-normal">Não usados</Label>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <input id="used" type="radio" value="used" v-model="filters.usageStatus"
+                                    class="h-4 w-4 border-gray-300 text-primary focus:ring-2 focus:ring-primary" />
+                                <Label for="used" class="text-sm font-normal">Já usados</Label>
+                            </div>
                         </div>
                     </div>
-                    <div class="mt-1 flex justify-end">
-                        <Button variant="ghost" size="sm" class="invisible text-xs group-hover:visible"
-                            @click.stop="viewStats(product)">
-                            Ver estatísticas
+
+                    <div class="mb-2">
+                        <Label class="mb-1 block">Atributos</Label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="flex items-center space-x-2">
+                                <Checkbox id="hangable" v-model:modelValue="filters.hangable" />
+                                <Label for="hangable" class="text-sm font-normal">Pendurável</Label>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <Checkbox id="stackable" v-model:modelValue="filters.stackable" />
+                                <Label for="stackable" class="text-sm font-normal">Empilhável</Label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <Button variant="secondary" size="sm" @click="clearFilters">
+                            Limpar filtros
                         </Button>
                     </div>
-                </li>
-            </ul>
-
-            <!-- Loading state -->
-            <div v-if="editorStore.isLoading" class="flex items-center justify-center py-10">
-                <Loader class="h-6 w-6 animate-spin text-primary" />
-                <span class="ml-2 text-sm text-gray-500 dark:text-gray-400">Carregando...</span>
+                </div>
             </div>
 
-            <!-- Empty state -->
-            <div v-if="!editorStore.isLoading && filteredProducts.length === 0"
-                class="flex flex-col items-center justify-center py-10 text-center">
-                <Package class="h-10 w-10 text-gray-300 dark:text-gray-600" />
-                <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Nenhum produto disponível encontrado</p>
-                <p v-if="Object.values(filters).some((f) => f)" class="mt-1 text-xs text-gray-400 dark:text-gray-500">
-                    Tente ajustar os filtros.</p>
-            </div>
+            <!-- Lista de produtos com design limpo -->
+            <div class="flex-1 overflow-y-auto p-2 dark:bg-gray-800 bg-transparent">
+                <div v-if="!editorStore.isLoading && filteredProducts.length > 0"
+                    class="mb-2 px-2 py-1 text-sm text-gray-500 dark:text-gray-400">
+                    <span>{{ filteredProducts.length }} produtos encontrados</span>
+                </div>
 
-            <!-- Load More button -->
-            <div v-if="!loading && hasMorePages" class="flex justify-center py-4">
-                <Button variant="secondary" @click="loadMore">
-                    Carregar mais produtos
-                </Button>
+                <ul v-if="!editorStore.isLoading && filteredProducts.length > 0" class="space-y-1">
+                    <li v-for="product in filteredProducts" :key="product.id"
+                        class="group cursor-pointer rounded-md bg-white p-2 shadow-sm transition hover:bg-blue-50 dark:bg-gray-700 dark:hover:bg-gray-600"
+                        @click="handleProductSelect(product)" draggable="true"
+                        @dragstart="handleDragStart($event, product)">
+                        <div class="flex items-center space-x-3">
+                            <div
+                                class="flex-shrink-0 overflow-hidden rounded border bg-white p-1 dark:border-gray-600 dark:bg-gray-800">
+                                <img :src="product.image_url" :alt="product.name" class="h-12 w-12 object-contain"
+                                    @error="(e) => handleImageError(e, product)" />
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <p class="truncate text-sm font-medium text-gray-800 dark:text-gray-100">{{ product.name }}
+                                </p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ product.width }}×{{ product.height
+                                    }}×{{ product.depth }} cm</p>
+                            </div>
+                        </div>
+                        <div class="mt-1 flex justify-end">
+                            <Button variant="ghost" size="sm" class="invisible text-xs group-hover:visible"
+                                @click.stop="viewStats(product)">
+                                Ver estatísticas
+                            </Button>
+                        </div>
+                    </li>
+                </ul>
+
+                <!-- Loading state -->
+                <div v-if="editorStore.isLoading" class="flex items-center justify-center py-10">
+                    <Loader class="h-6 w-6 animate-spin text-primary" />
+                    <span class="ml-2 text-sm text-gray-500 dark:text-gray-400">Carregando...</span>
+                </div>
+
+                <!-- Empty state -->
+                <div v-if="!editorStore.isLoading && filteredProducts.length === 0"
+                    class="flex flex-col items-center justify-center py-10 text-center">
+                    <Package class="h-10 w-10 text-gray-300 dark:text-gray-600" />
+                    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Nenhum produto disponível encontrado</p>
+                    <p v-if="Object.values(filters).some((f) => f)" class="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                        Tente ajustar os filtros.</p>
+                </div>
+
+                <!-- Load More button -->
+                <div v-if="!loading && hasMorePages" class="flex justify-center py-4">
+                    <Button variant="secondary" @click="loadMore">
+                        Carregar mais produtos
+                    </Button>
+                </div>
             </div>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ChevronDown, Loader, Package, Search, SlidersHorizontal, X } from 'lucide-vue-next';
+import { ChevronDown, Loader, Package, Search, SlidersHorizontal, X, ChevronLeft } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
 import { onMounted, reactive, ref, watch, computed } from 'vue';
 import { apiService } from '@plannerate/services';
@@ -202,7 +220,7 @@ const allCategories = ref<Category[]>(props.categories || []);
 
 const { productIdsInCurrentGondola } = storeToRefs(editorStore);
 
-const emit = defineEmits(['select-product', 'drag-start', 'view-stats', 'close']);
+const emit = defineEmits(['select-product', 'drag-start', 'view-stats', 'close', 'toggle']);
 
 // Função para limpar valores null/undefined de um objeto
 const cleanMercadologicoNivel = (obj: any) => {
@@ -376,12 +394,19 @@ onMounted(() => {
 
 // Computed para classes responsivas do sidebar
 const sidebarClasses = computed(() => {
-    return [
-        'sticky top-0 flex h-screen w-72 flex-shrink-0 flex-col overflow-hidden rounded-lg border bg-gray-50 dark:border-gray-700 dark:bg-gray-800 z-40 transition-transform duration-300',
-        props.open ? 'translate-x-0' : '-translate-x-full',
-        'fixed left-0',
-    ].join(' ')
-})
+    return showIconOnly.value
+        ? 'w-12 h-screen relative z-40'
+        : 'sticky top-0 flex h-screen flex-shrink-0 flex-col overflow-hidden rounded-lg bg-gray-50 dark:bg-gray-800 z-40 transition-all duration-300 ease-in-out w-72 relative';
+});
+
+// Computed properties for collapsing/expanding
+const showIconOnly = computed(() => {
+    return !props.open;
+});
+
+const showContent = computed(() => {
+    return props.open;
+});
 </script>
 
 <style scoped>
