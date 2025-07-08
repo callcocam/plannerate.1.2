@@ -1,5 +1,5 @@
 <template>
-    <div class="mb-6 border-b pb-4 dark:border-gray-700 p-4" v-if="planogram">
+    <div class="mb-6 border-b border-gray-200 pb-4 dark:border-gray-700 p-4" v-if="planogram">
         <!-- Modal para adicionar gôndola -->
         <!-- <div class="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
             <Card class="dark:border-gray-700 dark:bg-gray-800">

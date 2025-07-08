@@ -1,6 +1,6 @@
 <template>
     <!-- Área central rolável (vertical e horizontal) -->
-    <div class="flex h-full w-full flex-col gap-6 overflow-x-auto overflow-y-auto border">
+    <div class="flex h-full w-full flex-col gap-6 overflow-x-auto overflow-y-auto border border-gray-200 rounded-md dark:border-gray-700">
         <NavigationMenu>
             <NavigationMenuList>
                 <NavigationMenuItem class="flex items-center" v-for="gondola in gondolas" :key="gondola.id">

@@ -273,7 +273,7 @@ const saveChanges = () => editorStore.saveChanges();
 
 <template>
     <!-- Cabeçalho Fixo com Controles -->
-    <div class="sticky top-0 z-50 border-b bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+    <div class="sticky top-0 z-50 border-b border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
         <div class="p-2">
             <div class="flex items-center justify-between   gap-2 overflow-x-auto">
                 <!-- Grupo Esquerda: Controles de Visualização e Filtros -->
