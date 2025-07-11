@@ -116,7 +116,23 @@ console.log(props.product);
 const emit = defineEmits<{
     (e: 'update:product', product: Product): void
 }>();
-const record = reactive(props.product || {});
+
+// Inicializa o record com valores seguros
+const record = reactive({
+    ...props.product,
+    // Garante que mercadologico_nivel seja sempre um objeto válido
+    mercadologico_nivel: props.product?.mercadologico_nivel && typeof props.product.mercadologico_nivel === 'object' 
+        ? props.product.mercadologico_nivel 
+        : {
+            mercadologico_nivel_1: null,
+            mercadologico_nivel_2: null,
+            mercadologico_nivel_3: null,
+            mercadologico_nivel_4: null,
+            mercadologico_nivel_5: null,
+            mercadologico_nivel_6: null,
+        }
+});
+
 const originalImageUrl = ref<string>('');
 const { uploadProductImage, updateProduct } = useProductService();
 const isDialogOpen = ref(false);
