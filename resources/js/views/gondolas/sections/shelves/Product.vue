@@ -6,7 +6,7 @@
             :src="imageUrl"
             @error="handleImageError"
             alt="Imagem do Produto"
-            style="width: 100%; height: 100%;"
+            :style="imageStyle"
         />
         <slot name="depth-count"></slot>
     </div>
@@ -40,7 +40,7 @@ const placeholderUrl = computed(() => {
     // Garante um tamanho mínimo para o placeholder não quebrar
     const w = Math.max(width, 10); 
     const h = Math.max(height, 10);
-    return `/img/fall3.png`;
+    return `/img/fall4.jpg`;
 });
 
 /**
@@ -55,6 +55,29 @@ const imageUrl = computed(() => {
 });
 
 /**
+ * Estilo da imagem - aplica object-fit: contain apenas para placeholder
+ */
+const imageStyle = computed(() => {
+    // Verifica se não há imagem do produto (vai usar placeholder)
+    const hasProductImage = props.product?.image_url && typeof props.product.image_url === 'string';
+    
+    if (!hasProductImage) {
+        return {
+            width: '100%',
+            height: '100%',
+            objectFit: 'contain' as const,
+            backgroundColor: '#f5f5f5',
+            border: '1px solid #ddd'
+        };
+    }
+    
+    return {
+        width: '100%',
+        height: '100%'
+    };
+});
+
+/**
  * Manipula erros de carregamento de imagem
  */
 const handleImageError = (event: Event) => {
@@ -64,10 +87,17 @@ const handleImageError = (event: Event) => {
     if (target.src !== placeholderUrl.value) {
         console.warn(`Erro ao carregar imagem do produto: ${target.src}`);
         target.src = placeholderUrl.value;
+        // Aplica estilos do placeholder quando há erro
+        target.style.objectFit = 'contain';
+        target.style.backgroundColor = '#f5f5f5';
+        target.style.border = '1px solid #ddd';
     } else {
         console.error('Erro ao carregar placeholder, usando imagem padrão');
         // Fallback final: imagem inline base64 simples
         target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTAiIGhlaWdodD0iNTAiIHZpZXdCb3g9IjAgMCA1MCA1MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjUwIiBoZWlnaHQ9IjUwIiBmaWxsPSIjRkY4MDgwIi8+Cjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSJ3aGl0ZSIgZm9udC1zaXplPSIxNCI+WDwvdGV4dD4KPC9zdmc+';
+        target.style.objectFit = 'contain';
+        target.style.backgroundColor = '#f5f5f5';
+        target.style.border = '1px solid #ddd';
     }
 };
 
