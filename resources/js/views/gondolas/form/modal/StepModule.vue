@@ -9,7 +9,7 @@
 
         <!-- Configuração de Módulos -->
         <div class="space-y-2">
-            <h4 class="text-sm font-medium dark:text-gray-200">Configurações do Módulo</h4>
+            <!-- <h4 class="text-sm font-medium dark:text-gray-200">Configurações do Módulo</h4> -->
             <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div class="space-y-2">
                     <Label for="numModules" class="dark:text-gray-200">Número de Módulos *</Label>
@@ -23,7 +23,7 @@
                         :class="{ 'border-red-500': errors.numModules }"
                     />
                     <p v-if="errors.numModules" class="text-xs text-red-500 dark:text-red-400">{{ errors.numModules[0] }}</p>
-                    <p v-else class="text-xs text-gray-500 dark:text-gray-400">Número de módulos na gôndola</p>
+                    <!-- <p v-else class="text-xs text-gray-500 dark:text-gray-400">Número de módulos na gôndola</p> -->
                 </div>
                 <div class="space-y-2">
                     <Label for="height" class="dark:text-gray-200">Altura do Módulo (cm) *</Label>
@@ -37,7 +37,7 @@
                         :class="{ 'border-red-500': errors.height }"
                     />
                     <p v-if="errors.height" class="text-xs text-red-500 dark:text-red-400">{{ errors.height[0] }}</p>
-                    <p v-else class="text-xs text-gray-500 dark:text-gray-400">Altura de cada módulo da seção</p>
+                    <!-- <p v-else class="text-xs text-gray-500 dark:text-gray-400">Altura de cada módulo da seção</p> -->
                 </div>
                 <div class="space-y-2">
                     <Label for="width" class="dark:text-gray-200">Largura do Módulo (cm) *</Label>
@@ -51,7 +51,7 @@
                         :class="{ 'border-red-500': errors.width }"
                     />
                     <p v-if="errors.width" class="text-xs text-red-500 dark:text-red-400">{{ errors.width[0] }}</p>
-                    <p v-else class="text-xs text-gray-500 dark:text-gray-400">Largura de cada módulo da seção</p>
+                    <!-- <p v-else class="text-xs text-gray-500 dark:text-gray-400">Largura de cada módulo da seção</p> -->
                 </div>
             </div>
         </div>

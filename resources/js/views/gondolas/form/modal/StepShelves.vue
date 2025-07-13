@@ -12,7 +12,7 @@
             <div class="space-y-4">
                 <!-- Dimensões e Especificações -->
                 <div class="space-y-2">
-                    <h4 class="text-sm font-medium dark:text-gray-200">Dimensões e Especificações</h4>
+                    <!-- <h4 class="text-sm font-medium dark:text-gray-200">Dimensões e Especificações</h4> -->
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div class="space-y-2">
                             <Label for="shelfHeight" class="dark:text-gray-200">Espessura (cm) *</Label>

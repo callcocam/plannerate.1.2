@@ -9,7 +9,7 @@
 
         <!-- Dimensões da Base -->
         <div class="space-y-2">
-            <h4 class="text-sm font-medium dark:text-gray-200">Dimensões da Base</h4>
+            <!-- <h4 class="text-sm font-medium dark:text-gray-200">Dimensões da Base</h4> -->
             <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div class="space-y-2">
                     <Label for="baseHeight" class="dark:text-gray-200">Altura da Base (cm) *</Label>
@@ -23,7 +23,7 @@
                         :class="{ 'border-red-500': errors.baseHeight }"
                     />
                     <p v-if="errors.baseHeight" class="text-xs text-red-500 dark:text-red-400">{{ errors.baseHeight[0] }}</p>
-                    <p v-else class="text-xs text-gray-500 dark:text-gray-400">Altura da base da gôndola</p>
+                    <!-- <p v-else class="text-xs text-gray-500 dark:text-gray-400">Altura da base da gôndola</p> -->
                 </div>
 
                 <div class="space-y-2">
@@ -38,7 +38,7 @@
                         :class="{ 'border-red-500': errors.baseWidth }"
                     />
                      <p v-if="errors.baseWidth" class="text-xs text-red-500 dark:text-red-400">{{ errors.baseWidth[0] }}</p>
-                    <p v-else class="text-xs text-gray-500 dark:text-gray-400">Largura da base da gôndola</p>
+                    <!-- <p v-else class="text-xs text-gray-500 dark:text-gray-400">Largura da base da gôndola</p> -->
                 </div>
 
                 <div class="space-y-2">
@@ -53,7 +53,7 @@
                         :class="{ 'border-red-500': errors.baseDepth }"
                     />
                     <p v-if="errors.baseDepth" class="text-xs text-red-500 dark:text-red-400">{{ errors.baseDepth[0] }}</p>
-                    <p v-else class="text-xs text-gray-500 dark:text-gray-400">Profundidade da base da gôndola</p>
+                    <!-- <p v-else class="text-xs text-gray-500 dark:text-gray-400">Profundidade da base da gôndola</p> -->
                 </div>
             </div>
         </div>

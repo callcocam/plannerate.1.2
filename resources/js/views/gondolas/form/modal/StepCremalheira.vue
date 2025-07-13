@@ -9,7 +9,7 @@
 
         <!-- Dimensões da Cremalheira -->
         <div class="space-y-2">
-            <h4 class="text-sm font-medium dark:text-gray-200">Dimensões da Cremalheira</h4>
+            <!-- <h4 class="text-sm font-medium dark:text-gray-200">Dimensões da Cremalheira</h4> -->
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div class="space-y-2">
                     <Label for="rackWidth" class="dark:text-gray-200">Largura da Cremalheira (cm) *</Label>
@@ -30,7 +30,7 @@
 
         <!-- Configuração dos Furos -->
         <div class="space-y-2">
-            <h4 class="text-sm font-medium dark:text-gray-200">Configuração dos Furos</h4>
+            <!-- <h4 class="text-sm font-medium dark:text-gray-200">Configuração dos Furos</h4> -->
             <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div class="space-y-2">
                     <Label for="holeHeight" class="dark:text-gray-200">Altura do Furo (cm) *</Label>

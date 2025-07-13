@@ -23,7 +23,7 @@
             </div>
 
             <div class="space-y-2">
-                <Label for="location" class="dark:text-gray-200">Localização *</Label>
+                <Label for="location" class="dark:text-gray-200">Localização Da Gôndola *</Label>
                 <Input 
                     id="location" 
                     v-model="formLocal.location" 
