@@ -33,10 +33,14 @@ export function setError(newError: string | null) {
  */
 export function initialize(initialPlanogramData: Omit<PlanogramEditorState, 'scaleFactor' | 'showGrid'>) { 
 
+    // Carrega a escala salva do localStorage ou usa o padrão
+    const savedScale = loadScaleFromLocalStorage();
+    const scaleFactor = savedScale !== null ? savedScale : 3;
+
     // Cria uma cópia profunda dos dados iniciais e adiciona valores padrão
     const initialState: PlanogramEditorState = {
         ...JSON.parse(JSON.stringify(initialPlanogramData)),
-        scaleFactor: 3,
+        scaleFactor: scaleFactor,
         showGrid: false,
     };
 
@@ -133,11 +137,43 @@ export function getGondola(gondolaId: string): Gondola | undefined {
  * Define o fator de escala no estado do editor
  * @param newScale Novo fator de escala
  */
+/**
+ * Salva a escala no localStorage
+ */
+function saveScaleToLocalStorage(scale: number) {
+    try {
+        localStorage.setItem('plannerate-scale-factor', scale.toString());
+    } catch (error) {
+        console.warn('Erro ao salvar escala no localStorage:', error);
+    }
+}
+
+/**
+ * Carrega a escala do localStorage
+ */
+function loadScaleFromLocalStorage(): number | null {
+    try {
+        const savedScale = localStorage.getItem('plannerate-scale-factor');
+        if (savedScale) {
+            const scale = parseFloat(savedScale);
+            // Validar se é um número válido e está dentro dos limites
+            if (!isNaN(scale) && scale >= 2 && scale <= 10) {
+                return scale;
+            }
+        }
+    } catch (error) {
+        console.warn('Erro ao carregar escala do localStorage:', error);
+    }
+    return null;
+}
+
 export function setScaleFactor(newScale: number) {
     if (currentState.value && currentState.value.scaleFactor !== newScale) {
         // Aplica limites para segurança
         const clampedScale = Math.max(2, Math.min(10, newScale));
         currentState.value.scaleFactor = clampedScale;
+        // Salva no localStorage
+        saveScaleToLocalStorage(clampedScale);
         recordChange();
     }
 }
