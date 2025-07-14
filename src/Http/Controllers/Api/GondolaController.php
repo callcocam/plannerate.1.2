@@ -261,7 +261,7 @@ class GondolaController extends Controller
         $gondolaData = [
             'planogram_id' => $request->input('planogram_id', $planogram->id),
             'name' => $request->input('name', 'GND-' . now()->format('ymd') . '-' . rand(1000, 9999)),
-            'location' => $request->input('location', 'Center'),
+            'location' => $request->input('location'),
             'side' => $request->input('side', 'A'),
             'flow' => $request->input('flow', 'left_to_right'),
             'scale_factor' => $request->input('scale_factor', 3),

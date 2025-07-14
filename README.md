@@ -203,6 +203,13 @@ return [
   - AnalysisResultModal: Resumo otimizado com cards separados para itens ativos/inativos e porcentagens
   - Todas as funcionalidades mantidas (filtros, ordenação, exportação, recálculo)
 
+- ✅ **Correção de Validação de Gôndola**: Campo "Localização" corrigido para ser opcional
+  - Alinhamento entre validação frontend (Zod) e backend (Laravel)
+  - Campo location removido da validação obrigatória no useGondolaCreateForm.ts
+  - Campo location removido da validação obrigatória no useGondolaEditForm.ts
+  - Interface atualizada para indicar que o campo é opcional
+  - Consistência com as regras de validação do backend (nullable)
+
 ### Próximas Melhorias ⏳
 
 - ⏳ Implementação de novos recursos de análise

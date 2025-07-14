@@ -124,9 +124,7 @@ export function useGondolaEditForm(options: UseGondolaEditFormOptions) {
             newErrors.name = ['Nome da gôndola é obrigatório'];
         }
 
-        if (!formData.location?.trim()) {
-            newErrors.location = ['Localização é obrigatória'];
-        }
+        // Campo location é opcional - removida validação obrigatória
 
         if (!formData.side?.trim()) {
             newErrors.side = ['Lado é obrigatório'];

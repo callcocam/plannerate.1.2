@@ -9,7 +9,7 @@ import { storeToRefs } from 'pinia';
 // --- Zod Schemas per Step ---
 const step0_BasicInfoSchema = z.object({
     gondolaName: z.string().trim().min(1, { message: "Nome da gôndola é obrigatório." }),
-    location: z.string().trim().min(1, { message: "Localização é obrigatória." }),
+    location: z.string().trim().optional(), // Campo opcional - consistente com backend
     side: z.string().trim().min(1, { message: "Lado é obrigatório." }),
     flow: z.enum(['left_to_right', 'right_to_left'], { required_error: "Fluxo é obrigatório." }),
     scaleFactor: z.number({ invalid_type_error: "Fator de escala deve ser um número." })
@@ -136,7 +136,7 @@ export function useGondolaCreateForm(options: UseGondolaCreateFormOptions) {
         planogram_id: typeof planogramId.value === 'string' ? planogramId.value : '', // Garante que é string
         gondolaName: currentGondola.value?.name || '', // Se estiver editando, usa o nome da gôndola atual
         // Valores padrão para novos formulários ou dados da primeira seção se disponível
-        location: currentGondola.value?.location || 'Center', // Localização padrão
+        location: currentGondola.value?.location || '', // Localização padrão
         side: 'A',
         flow: 'left_to_right',
         scaleFactor: 3,

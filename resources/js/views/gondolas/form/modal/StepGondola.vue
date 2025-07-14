@@ -23,7 +23,7 @@
             </div>
 
             <div class="space-y-2">
-                <Label for="location" class="dark:text-gray-200">Localização Da Gôndola *</Label>
+                <Label for="location" class="dark:text-gray-200">Localização Da Gôndola</Label>
                 <Input 
                     id="location" 
                     v-model="formLocal.location" 
@@ -134,6 +134,30 @@ const props = defineProps({
 
 const emit = defineEmits(['update:form']);
 
+// Funções auxiliares para localStorage da escala
+const loadScaleFromLocalStorage = (): number | null => {
+    try {
+        const savedScale = localStorage.getItem('plannerate-scale-factor');
+        if (savedScale) {
+            const scale = parseFloat(savedScale);
+            if (!isNaN(scale) && scale >= 1) {
+                return scale;
+            }
+        }
+    } catch (error) {
+        console.warn('Erro ao carregar escala do localStorage:', error);
+    }
+    return null;
+};
+
+const saveScaleToLocalStorage = (scale: number) => {
+    try {
+        localStorage.setItem('plannerate-scale-factor', scale.toString());
+    } catch (error) {
+        console.warn('Erro ao salvar escala no localStorage:', error);
+    }
+};
+
 // Usar os dados do formData vindo das props
 const formLocal = reactive({ ...props.formData });
 
@@ -159,6 +183,14 @@ onMounted(() => {
         formLocal.flow = 'left_to_right';
         // Emitir atualização inicial do flow padrão
         emit('update:form', { flow: formLocal.flow });
+    }
+    // Carregar escala salva se não foi definida
+    if (!formLocal.scaleFactor) {
+        const savedScale = loadScaleFromLocalStorage();
+        if (savedScale) {
+            formLocal.scaleFactor = savedScale;
+            emit('update:form', { scaleFactor: savedScale });
+        }
     }
 });
 
@@ -187,6 +219,11 @@ const updateField = (fieldName: keyof typeof formLocal, value: any) => {
     // formLocal[fieldName] = value;
     // Emite o evento com a chave e valor corretos
     emit('update:form', { [fieldName]: value });
+    
+    // Salva escala no localStorage se for o campo scaleFactor
+    if (fieldName === 'scaleFactor' && typeof value === 'number' && value >= 1) {
+        saveScaleToLocalStorage(value);
+    }
 };
 
 </script>
