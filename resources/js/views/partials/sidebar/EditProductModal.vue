@@ -56,12 +56,12 @@
                 <!-- Dimensões do produto -->
                 <div class="grid grid-cols-2 gap-4">
                     <div class="grid gap-2">
-                        <Label for="width">Largura (cm)</Label>
-                        <Input type="number" id="width" v-model="formData.width" step="0.01" placeholder="Largura" />
-                    </div>
-                    <div class="grid gap-2">
                         <Label for="height">Altura (cm)</Label>
                         <Input type="number" id="height" v-model="formData.height" step="0.01" placeholder="Altura" />
+                    </div>
+                    <div class="grid gap-2">
+                        <Label for="width">Largura (cm)</Label>
+                        <Input type="number" id="width" v-model="formData.width" step="0.01" placeholder="Largura" />
                     </div>
                 </div>
             </div>

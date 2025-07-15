@@ -1,9 +1,9 @@
 <template>
-    <div class="shelves h-full w-full overflow-y-auto border-l border-gray-200 bg-white p-6">
+    <div class="shelves h-full w-full overflow-y-auto border-l border-gray-200 bg-white p-6 dark:bg-gray-700 dark:border-gray-600">
         <TooltipProvider>
             <div class="space-y-6" v-if="selectedShelf">
                 <div class="flex items-center justify-between">
-                    <h2 class="text-lg font-medium">Propriedades da Prateleira</h2>
+                    <h2 class="text-lg font-medium text-gray-800 dark:text-gray-200">Propriedades da Prateleira</h2>
                     <!-- Botão Editar (Modo Visualização) -->
                     <Button v-if="!isEditing" @click="startEditing" variant="outline" size="icon">
                         <PencilIcon class="h-4 w-4" />
@@ -21,36 +21,36 @@
                             <div class="space-y-1">
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label class="truncate block cursor-help text-xs text-gray-500">Código</Label>
+                                        <Label class="truncate block cursor-help text-xs text-gray-500 dark:text-gray-400">Código</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Código interno ou identificador da prateleira</p>
                                     </TooltipContent>
                                 </Tooltip>
-                                <p class="text-sm">{{ selectedShelf.code || '-' }}</p>
+                                <p class="text-sm text-gray-800 dark:text-gray-200">{{ selectedShelf.code || '-' }}</p>
                             </div>
                             <div class="space-y-1">
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label class="truncate block cursor-help text-xs text-gray-500">Tipo de
+                                        <Label class="truncate block cursor-help text-xs text-gray-500 dark:text-gray-400">Tipo de
                                             Produto</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Classificação do tipo de produto da prateleira</p>
                                     </TooltipContent>
                                 </Tooltip>
-                                <p class="text-sm capitalize">{{ selectedShelf.product_type || '-' }}</p>
+                                <p class="text-sm capitalize text-gray-800 dark:text-gray-200">{{ selectedShelf.product_type || '-' }}</p>
                             </div>
                             <div class="space-y-1">
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label class="truncate block cursor-help text-xs text-gray-500">Status</Label>
+                                        <Label class="truncate block cursor-help text-xs text-gray-500 dark:text-gray-400">Status</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Status atual da prateleira (Publicado/Rascunho)</p>
                                     </TooltipContent>
                                 </Tooltip>
-                                <p class="text-sm capitalize">{{ selectedShelf.status || '-' }}</p>
+                                <p class="text-sm capitalize text-gray-800 dark:text-gray-200">{{ selectedShelf.status || '-' }}</p>
                             </div>
                         </div>
                     </div>
@@ -63,50 +63,50 @@
                             <div class="space-y-1">
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label class="truncate block cursor-help text-xs text-gray-500">Largura
-                                            (cm)</Label>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>Largura da prateleira em centímetros</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                                <p class="text-sm">{{ selectedShelf.shelf_width }}cm</p>
-                            </div>
-                            <div class="space-y-1">
-                                <Tooltip>
-                                    <TooltipTrigger as-child>
-                                        <Label class="truncate block cursor-help text-xs text-gray-500">Altura
+                                        <Label class="truncate block cursor-help text-xs text-gray-500 dark:text-gray-400">Altura
                                             (cm)</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Altura da prateleira em centímetros</p>
                                     </TooltipContent>
                                 </Tooltip>
-                                <p class="text-sm">{{ selectedShelf.shelf_height }}cm</p>
+                                <p class="text-sm text-gray-800 dark:text-gray-200">{{ selectedShelf.shelf_height }}cm</p>
                             </div>
                             <div class="space-y-1">
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label class="truncate block cursor-help text-xs text-gray-500">Profundidade
+                                        <Label class="truncate block cursor-help text-xs text-gray-500 dark:text-gray-400">Largura
+                                            (cm)</Label>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Largura da prateleira em centímetros</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                                <p class="text-sm text-gray-800 dark:text-gray-200">{{ selectedShelf.shelf_width }}cm</p>
+                            </div>
+                            <div class="space-y-1">
+                                <Tooltip>
+                                    <TooltipTrigger as-child>
+                                        <Label class="truncate block cursor-help text-xs text-gray-500 dark:text-gray-400">Profundidade
                                             (cm)</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Profundidade da prateleira em centímetros</p>
                                     </TooltipContent>
                                 </Tooltip>
-                                <p class="text-sm">{{ selectedShelf.shelf_depth }}cm</p>
+                                <p class="text-sm text-gray-800 dark:text-gray-200">{{ selectedShelf.shelf_depth }}cm</p>
                             </div>
                             <div class="space-y-1">
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label class="truncate block cursor-help text-xs text-gray-500">Posição Vertical
+                                        <Label class="truncate block cursor-help text-xs text-gray-500 dark:text-gray-400">Posição Vertical
                                             (cm)</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Posição vertical da prateleira na seção (a partir da base)</p>
                                     </TooltipContent>
                                 </Tooltip>
-                                <p class="text-sm">{{ selectedShelf.shelf_position }}cm</p>
+                                <p class="text-sm text-gray-800 dark:text-gray-200">{{ selectedShelf.shelf_position }}cm</p>
                             </div>
                         </div>
                     </div>
@@ -119,7 +119,7 @@
                             <div class="space-y-1">
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label class="truncate block cursor-help text-xs text-gray-500">Ordem na
+                                        <Label class="truncate block cursor-help text-xs text-gray-500 dark:text-gray-400">Ordem na
                                             Seção</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
@@ -127,7 +127,7 @@
                                         </p>
                                     </TooltipContent>
                                 </Tooltip>
-                                <p class="text-sm">{{ selectedShelf.ordering }}</p>
+                                <p class="text-sm text-gray-800 dark:text-gray-200">{{ selectedShelf.ordering }}</p>
                             </div>
                         </div>
                     </div>
@@ -136,12 +136,12 @@
                 <!-- Modo de Edição -->
                 <form v-else @submit.prevent="saveChanges" class="space-y-4">
                     <div>
-                        <h3 class="text-sm font-medium text-gray-500 pt-4">Informações Básicas</h3>
+                        <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 pt-4">Informações Básicas</h3>
                         <div class="mt-2 space-y-3">
                             <div class="space-y-1">
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label for="code" class="truncate block cursor-help">Código</Label>
+                                        <Label for="code" class="truncate block cursor-help text-gray-500 dark:text-gray-400">Código</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Código interno ou identificador da prateleira</p>
@@ -152,7 +152,7 @@
                             <div class="space-y-1">
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label for="product_type" class="truncate block cursor-help">Tipo de
+                                        <Label for="product_type" class="truncate block cursor-help text-gray-500 dark:text-gray-400">Tipo de
                                             Produto</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
@@ -176,7 +176,7 @@
                             <div class="space-y-1">
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label for="status" class="truncate block cursor-help">Status</Label>
+                                        <Label for="status" class="truncate block cursor-help text-gray-500 dark:text-gray-400">Status</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Status atual da prateleira (Publicado/Rascunho)</p>
@@ -187,8 +187,8 @@
                                         <SelectValue placeholder="Selecionar" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="published">Publicado</SelectItem>
-                                        <SelectItem value="draft">Rascunho</SelectItem>
+                                        <SelectItem value="published" class="dark:text-gray-200 dark:hover:bg-gray-600">Publicado</SelectItem>
+                                        <SelectItem value="draft" class="dark:text-gray-200 dark:hover:bg-gray-600">Rascunho</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -198,24 +198,12 @@
                     <Separator />
 
                     <div>
-                        <h3 class="text-sm font-medium text-gray-500">Dimensões</h3>
+                        <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Dimensões</h3>
                         <div class="mt-2 grid grid-cols-2 gap-3">
                             <div class="space-y-1">
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label for="shelf_width" class="truncate block cursor-help">Largura (cm)</Label>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>Largura da prateleira em centímetros</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                                <Input id="shelf_width" v-model.number="formData.shelf_width" type="text" readonly
-                                    class="h-8" />
-                            </div>
-                            <div class="space-y-1">
-                                <Tooltip>
-                                    <TooltipTrigger as-child>
-                                        <Label for="shelf_height" class="truncate block cursor-help">Altura (cm)</Label>
+                                        <Label for="shelf_height" class="truncate block cursor-help text-gray-500 dark:text-gray-400">Altura (cm)</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Altura da prateleira em centímetros</p>
@@ -227,7 +215,19 @@
                             <div class="space-y-1">
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label for="shelf_depth" class="truncate block cursor-help">Profundidade
+                                        <Label for="shelf_width" class="truncate block cursor-help text-gray-500 dark:text-gray-400">Largura (cm)</Label>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Largura da prateleira em centímetros</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                                <Input id="shelf_width" v-model.number="formData.shelf_width" type="text" readonly
+                                    class="h-8" />
+                            </div>
+                            <div class="space-y-1">
+                                <Tooltip>
+                                    <TooltipTrigger as-child>
+                                        <Label for="shelf_depth" class="truncate block cursor-help text-gray-500 dark:text-gray-400">Profundidade
                                             (cm)</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
@@ -240,7 +240,7 @@
                             <div class="space-y-1">
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label for="shelf_position" class="truncate block cursor-help">Posição Vertical
+                                        <Label for="shelf_position" class="truncate block cursor-help text-gray-500 dark:text-gray-400">Posição Vertical
                                             (cm)</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
@@ -256,12 +256,12 @@
                     <Separator />
 
                     <div>
-                        <h3 class="text-sm font-medium text-gray-500">Ordenação</h3>
+                        <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Ordenação</h3>
                         <div class="mt-2 space-y-3">
                             <div class="space-y-1">
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label for="ordering" class="truncate block cursor-help">Ordem na Seção</Label>
+                                        <Label for="ordering" class="truncate block cursor-help text-gray-500 dark:text-gray-400">Ordem na Seção</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Ordem numérica desta prateleira dentro da seção (não afeta posição visual)
@@ -282,7 +282,7 @@
                     </div>
                 </form>
             </div>
-            <div v-else class="text-center text-gray-500">
+            <div v-else class="text-center text-gray-500 dark:text-gray-400">
                 <p>Selecione uma prateleira para ver suas propriedades.</p>
             </div>
         </TooltipProvider>

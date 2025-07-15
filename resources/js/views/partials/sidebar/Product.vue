@@ -15,10 +15,11 @@
                                         layer.product.name }}
                                     </h4>
                                     <p class="text-xs text-gray-500 dark:text-gray-400">SKU: {{ layer.product.sku }}</p>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400">Largura: {{ layer.product.width
-                                        }}</p>
                                     <p class="text-xs text-gray-500 dark:text-gray-400">Altura: {{ layer.product.height
                                         }}</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">Largura: {{ layer.product.width
+                                        }}</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">Profundidade: {{ layer.product.depth}}</p>
                                     <p class="text-xs text-gray-500 dark:text-gray-400">Quantidade: {{ layer.quantity ||
                                         0 }}
                                     </p>

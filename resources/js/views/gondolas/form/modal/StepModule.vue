@@ -12,20 +12,6 @@
             <!-- <h4 class="text-sm font-medium dark:text-gray-200">Configurações do Módulo</h4> -->
             <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div class="space-y-2">
-                    <Label for="numModules" class="dark:text-gray-200">Número de Módulos *</Label>
-                    <Input 
-                        id="numModules" 
-                        type="number" 
-                        v-model.number="formLocal.numModules" 
-                        min="1" 
-                        @input="updateField('numModules', $event.target.valueAsNumber)" 
-                        class="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" 
-                        :class="{ 'border-red-500': errors.numModules }"
-                    />
-                    <p v-if="errors.numModules" class="text-xs text-red-500 dark:text-red-400">{{ errors.numModules[0] }}</p>
-                    <!-- <p v-else class="text-xs text-gray-500 dark:text-gray-400">Número de módulos na gôndola</p> -->
-                </div>
-                <div class="space-y-2">
                     <Label for="height" class="dark:text-gray-200">Altura do Módulo (cm) *</Label>
                     <Input 
                         id="height" 
@@ -52,6 +38,20 @@
                     />
                     <p v-if="errors.width" class="text-xs text-red-500 dark:text-red-400">{{ errors.width[0] }}</p>
                     <!-- <p v-else class="text-xs text-gray-500 dark:text-gray-400">Largura de cada módulo da seção</p> -->
+                </div>
+                <div class="space-y-2">
+                    <Label for="numModules" class="dark:text-gray-200">Número de Módulos *</Label>
+                    <Input 
+                        id="numModules" 
+                        type="number" 
+                        v-model.number="formLocal.numModules" 
+                        min="1" 
+                        @input="updateField('numModules', $event.target.valueAsNumber)" 
+                        class="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" 
+                        :class="{ 'border-red-500': errors.numModules }"
+                    />
+                    <p v-if="errors.numModules" class="text-xs text-red-500 dark:text-red-400">{{ errors.numModules[0] }}</p>
+                    <!-- <p v-else class="text-xs text-gray-500 dark:text-gray-400">Número de módulos na gôndola</p> -->
                 </div>
             </div>
         </div>

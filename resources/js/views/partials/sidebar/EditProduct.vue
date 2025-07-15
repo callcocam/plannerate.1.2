@@ -30,15 +30,15 @@
                         <span v-if="validationErrors.ean" class="text-red-500 text-xs">{{ validationErrors.ean }}</span>
                     </div>
                     <div class="flex flex-col gap-2">
-                        <Label>Largura</Label>
-                        <Input type="number" v-model="record.width" />
-                        <span v-if="validationErrors.width" class="text-red-500 text-xs">{{ validationErrors.width
-                            }}</span>
-                    </div>
-                    <div class="flex flex-col gap-2">
                         <Label>Altura</Label>
                         <Input type="number" v-model="record.height" />
                         <span v-if="validationErrors.height" class="text-red-500 text-xs">{{ validationErrors.height
+                            }}</span>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <Label>Largura</Label>
+                        <Input type="number" v-model="record.width" />
+                        <span v-if="validationErrors.width" class="text-red-500 text-xs">{{ validationErrors.width
                             }}</span>
                     </div>
                     <div class="flex flex-col gap-2">
