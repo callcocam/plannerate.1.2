@@ -116,7 +116,7 @@ const handleImageError = (event: Event) => {
 const productActiveTrigger = (): CSSProperties => {
     if (isSelected.value) {
         return {
-            border: '1px solid red',
+            // border: '1px solid',
         };
     }
     return {

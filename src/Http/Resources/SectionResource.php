@@ -28,11 +28,11 @@ class SectionResource extends JsonResource
             'base_height' => (int)$this->base_height,
             'base_depth' => (int)$this->base_depth,
             'base_width' => (int)$this->base_width,
-            'hole_height' => (int)$this->hole_height,
-            'hole_width' => (int)$this->hole_width,
-            'hole_spacing' => (int)$this->hole_spacing, // espessura entre os furos
+            'hole_height' => (float)$this->hole_height,
+            'hole_width' => (float)$this->hole_width,
+            'hole_spacing' => (float)$this->hole_spacing, // espessura entre os furos
             'shelf_height' => (int)$this->shelf_height, // espessura da prateleira
-            'cremalheira_width' => (int)$this->cremalheira_width,
+            'cremalheira_width' => (float)$this->cremalheira_width,
             'ordering' => (int)$this->ordering,
             'alignment' => $this->alignment,
             'settings' => $this->settings,

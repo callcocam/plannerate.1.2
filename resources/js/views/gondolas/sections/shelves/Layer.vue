@@ -1,5 +1,5 @@
 <template>
-    <div class="layer group flex cursor-pointer justify-between" :style="layerStyle" @click="handleLayerClick"
+    <div v-if="layer.product" class="layer group flex cursor-pointer justify-between" :style="layerStyle" @click="handleLayerClick"
         @keydown="handleKeyDown" :class="{ 'layer--selected': isSelected, 'layer--focused': !isSelected }">
 
         <ProductNormal v-for="index in layer.quantity" :key="index" :product="layer.product" :scale-factor="scaleFactor"
@@ -51,8 +51,18 @@ const currentSectionId = computed(() => props.shelf.section_id);
  * Computed style para o layer baseado em alinhamento e dimensões
  */
 const layerStyle = computed(() => {
-    const layerHeight = props.layer.product.height;
-    const productWidth = props.layer.product.width * props.scaleFactor;
+    // Verificações de segurança para evitar erros de null/undefined
+    if (!props.layer?.product) {
+        console.warn('Layer.vue: layer.product está null/undefined', props.layer);
+        return {
+            width: '0px',
+            height: '0px',
+            zIndex: '2',
+        };
+    }
+
+    const layerHeight = props.layer.product.height || 0;
+    const productWidth = (props.layer.product.width || 0) * props.scaleFactor;
     const quantity = props.layer.quantity || 1;
     let layerWidthFinal = `100%`; // Default para justify ou se não houver gôndola/alinhamento
 

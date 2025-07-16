@@ -35,12 +35,12 @@ interface Status {
     base_depth: number;          // Profundidade da base, ex: 40
     base_height: number;         // Altura da base, ex: 17
     base_width: number;          // Largura da base, ex: 130
-    cremalheira_width: number;   // Largura da cremalheira, ex: 4
+    cremalheira_width: number;   // Largura da cremalheira, ex: 4.2
     gondola_id: string;          // ID da gôndola, ex: "01jry465k5769kzy98andhxqe9"
     height: number;              // Altura da seção, ex: 180
-    hole_height: number;         // Altura do buraco, ex: 3
-    hole_spacing: number;        // Espaçamento entre buracos, ex: 2
-    hole_width: number;          // Largura do buraco, ex: 2
+    hole_height: number;         // Altura do buraco, ex: 3.5
+    hole_spacing: number;        // Espaçamento entre buracos, ex: 2.1
+    hole_width: number;          // Largura do buraco, ex: 2.0
     id: string;                  // ID da seção, ex: "01jry465kajwrnvrv6dq2hswc7"
     name: string;                // Nome da seção, ex: "0# Main Section"
     num_shelves: number;         // Número de prateleiras, ex: 4

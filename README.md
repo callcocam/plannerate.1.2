@@ -194,6 +194,16 @@ return [
 
 ### Melhorias de Interface ✅
 
+- ✅ **Suporte a Números Decimais**: Campos de cremalheira e furos agora aceitam valores decimais
+  - Campos `cremalheira_width`, `hole_height`, `hole_width` e `hole_spacing` migrados de `integer` para `decimal(8,2)`
+  - Migração atualizada para suportar números decimais (ex: 4.2, 3.5, 2.1)
+  - Modelo Section atualizado com casts `decimal:2` para os campos específicos
+  - Validações nos Requests alteradas de `integer` para `numeric`
+  - SectionResource retorna valores como `float` ao invés de `int`
+  - Tipos TypeScript atualizados com exemplos de valores decimais
+  - Composables e formulários frontend atualizados com `step="any"` para aceitar decimais
+  - Compatibilidade mantida com o frontend existente
+
 - ✅ **Padronização de Modais**: TargetStockResultModal.vue e AnalysisResultModal.vue atualizados para usar o mesmo padrão de estilo do BCGResultModal.vue
   - Migração para componentes Dialog do shadcn/ui
   - Melhor estrutura de layout com DialogContent, DialogHeader e DialogFooter
@@ -209,6 +219,14 @@ return [
   - Campo location removido da validação obrigatória no useGondolaEditForm.ts
   - Interface atualizada para indicar que o campo é opcional
   - Consistência com as regras de validação do backend (nullable)
+
+- ✅ **Correção de Erros de Null/Undefined**: Componentes Segment.vue e Layer.vue corrigidos para evitar erros de renderização
+  - Adicionadas verificações de segurança para `props.segment.layer.product` e `props.layer.product`
+  - Computed properties `outerSegmentStyle`, `innerSegmentStyle`, `depthCount` e `layerStyle` protegidas contra valores null/undefined
+  - Templates atualizados com `v-if` para evitar renderização quando dados não estão disponíveis
+  - Logs de warning adicionados para facilitar debugging quando dados estão faltando
+  - Valores padrão (0px, 0) aplicados quando propriedades não estão disponíveis
+  - Estabilidade da aplicação melhorada, eliminando crashes por tentativa de acesso a propriedades de objetos null
 
 ### Próximas Melhorias ⏳
 

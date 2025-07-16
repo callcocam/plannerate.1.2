@@ -23,6 +23,8 @@
                                     <p class="text-xs text-gray-500 dark:text-gray-400">Quantidade: {{ layer.quantity ||
                                         0 }}
                                     </p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">EAN: {{ layer.product.ean
+                                        }}</p>
                                 </div>
                                 <div
                                     class="absolute bottom-0 right-0 flex items-center justify-end rounded-md p-2 flex-row gap-2">

@@ -1,6 +1,6 @@
 <template>
     <div class="segment drag-segment-handle group relative flex flex-col items-start" :style="outerSegmentStyle"
-        @dragstart="onDragStart" draggable="true" :tabindex="segment.tabindex" v-if="segment.layer">
+        @dragstart="onDragStart" draggable="true" :tabindex="segment.tabindex" v-if="segment.layer && segment.layer.product">
         <div :style="innerSegmentStyle">
             <LayerComponent v-for="(_, index) in segmentQuantity" :key="index" :shelf="shelf" :segment="segment"
                 :layer="segment.layer" :scale-factor="scaleFactor" :section-width="sectionWidth"
@@ -39,9 +39,16 @@ const editorStore = useEditorStore();
 const currentSectionId = computed(() => props.shelf.section_id);
 
 const depthCount = computed(() => {
+    // Verificações de segurança para evitar erros de null/undefined
+    if (!props.segment?.layer?.product) {
+        return 0;
+    }
+    
     const depth = props.segment.layer.product.depth;
     if (!depth) return 0;
-    return Math.round(props.shelf.shelf_depth / depth);
+    
+    const shelfDepth = props.shelf.shelf_depth || 0;
+    return Math.round(shelfDepth / depth);
 });
 
 /** Segment quantity (number of layers) */
@@ -52,7 +59,15 @@ const alignment = computed(() => editorStore.getCurrentGondola?.alignment);
 
 // Estilo para o container interno (conteúdo visual - Normal Shelf)
 const innerSegmentStyle = computed(() => {
-    const layerHeight = props.segment.layer.product.height * props.segment.quantity * props.scaleFactor;
+    // Verificações de segurança para evitar erros de null/undefined
+    if (!props.segment?.layer?.product) {
+        return {
+            height: '0px',
+            width: '100%',
+        } as CSSProperties;
+    }
+
+    const layerHeight = (props.segment.layer.product.height || 0) * (props.segment.quantity || 0) * props.scaleFactor;
     const selectedStyle = {};
     return {
         height: `${layerHeight}px`,
@@ -63,8 +78,18 @@ const innerSegmentStyle = computed(() => {
 
 // Estilo para o container externo (manipulado pelo draggable - Normal Shelf)
 const outerSegmentStyle = computed(() => {
-    const productWidth = props.segment.layer.product.width;
-    const productQuantity = props.segment.layer.quantity;
+    // Verificações de segurança para evitar erros de null/undefined
+    if (!props.segment?.layer?.product) {
+        console.warn('Segment.vue: layer.product está null/undefined', props.segment);
+        return {
+            width: '0px',
+            height: '0px',
+            marginBottom: '0px',
+        } as CSSProperties;
+    }
+
+    const productWidth = props.segment.layer.product.width || 0;
+    const productQuantity = props.segment.layer.quantity || 0;
     let layerWidthFinal = 0;
     const currentAlignment = alignment.value;
 
@@ -74,8 +99,8 @@ const outerSegmentStyle = computed(() => {
         layerWidthFinal = productWidth * productQuantity * props.scaleFactor;
     }
     const totalWidth = layerWidthFinal;
-    const layerHeight = props.segment.layer.product.height * props.segment.quantity * props.scaleFactor;
-    const marginBottom = props.shelf.shelf_height * props.scaleFactor;
+    const layerHeight = (props.segment.layer.product.height || 0) * (props.segment.quantity || 0) * props.scaleFactor;
+    const marginBottom = (props.shelf.shelf_height || 0) * props.scaleFactor;
     return {
         width: `${totalWidth}px`,
         height: `${layerHeight}px`, // Altura explícita

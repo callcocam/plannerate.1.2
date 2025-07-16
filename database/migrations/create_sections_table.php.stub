@@ -28,10 +28,10 @@ return new class extends Migration
             $table->integer('base_depth')->nullable()->default(40); // Profundidade da base em centímetros
             $table->integer('base_width')->nullable()->default(130); // Largura da base em centímetros
             //Configurar Cremalheira 
-            $table->integer('cremalheira_width')->default(4)->nullable(); // Largura da cremalheira em centímetros
-            $table->integer('hole_height')->default(2)->nullable(); // Altura do furo em centímetros
-            $table->integer('hole_width')->default(2)->nullable(); // Largura do furo em centímetros
-            $table->integer('hole_spacing')->default(2)->nullable(); // Espaçamento entre furos em centímetros  
+            $table->decimal('cremalheira_width', 8, 2)->default(4.00)->nullable(); // Largura da cremalheira em centímetros
+            $table->decimal('hole_height', 8, 2)->default(2.00)->nullable(); // Altura do furo em centímetros
+            $table->decimal('hole_width', 8, 2)->default(2.00)->nullable(); // Largura do furo em centímetros
+            $table->decimal('hole_spacing', 8, 2)->default(2.00)->nullable(); // Espaçamento entre furos em centímetros  
             
             $table->integer('ordering')->default(0)->nullable(); // Ordem de exibição/posição 
             $table->enum('alignment', ['left', 'right', 'center', 'justify'])->nullable();

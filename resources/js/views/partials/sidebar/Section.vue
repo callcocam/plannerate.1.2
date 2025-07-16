@@ -1,9 +1,9 @@
 <template>
-    <div id="section-properties-sidebar" class="h-full w-full overflow-y-auto border-l border-gray-200 bg-white p-6">
+    <div id="section-properties-sidebar" class="h-full w-full overflow-y-auto border-l border-gray-200 bg-white p-6 dark:bg-gray-800 dark:border-gray-700">
         <TooltipProvider>
             <div class="space-y-6" v-if="selectedSection">
                 <div class="flex w-full items-center justify-between">
-                    <h2 class="flex-1 text-lg font-medium">Propriedades da Seção</h2>
+                    <h2 class="flex-1 text-lg font-medium text-gray-900 dark:text-gray-100">Propriedades da Seção</h2>
                     <div class="flex items-center justify-between space-x-2">
                         <Button type="button" v-if="isEditing" @click="cancelEditing" variant="outline" size="icon">
                             <ArrowLeftIcon class="h-4 w-4" />
@@ -18,34 +18,34 @@
                 <!-- Modo de visualização -->
                 <div v-if="!isEditing" class="space-y-4">
                     <div>
-                        <h3 class="text-sm font-medium text-gray-500">Informações Básicas</h3>
+                        <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Informações Básicas</h3>
                         <div class="mt-2 space-y-3">
                             <div>
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label for="name" class="block cursor-help truncate">Nome</Label>
+                                        <Label for="name" class="block cursor-help truncate text-gray-700 dark:text-gray-300">Nome</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Nome da Seção</p>
                                     </TooltipContent>
                                 </Tooltip>
-                                <p class="text-sm">{{ selectedSection.name }}</p>
+                                <p class="text-sm text-gray-900 dark:text-gray-200">{{ selectedSection.name }}</p>
                             </div>
                             <div>
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label for="id" class="block cursor-help truncate">ID</Label>
+                                        <Label for="id" class="block cursor-help truncate text-gray-700 dark:text-gray-300">ID</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Identificador único da seção</p>
                                     </TooltipContent>
                                 </Tooltip>
-                                <p class="font-mono text-sm">{{ selectedSection.id }}</p>
+                                <p class="font-mono text-sm text-gray-900 dark:text-gray-200">{{ selectedSection.id }}</p>
                             </div>
                             <div>
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label for="status" class="block cursor-help truncate">Status</Label>
+                                        <Label for="status" class="block cursor-help truncate text-gray-700 dark:text-gray-300">Status</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Estado atual da seção</p>
@@ -68,17 +68,6 @@
                             <div>
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label for="width" class="block cursor-help truncate">Largura (cm)</Label>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>Largura total da seção em centímetros</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                                <p class="text-sm">{{ selectedSection.width }}cm</p>
-                            </div>
-                            <div>
-                                <Tooltip>
-                                    <TooltipTrigger as-child>
                                         <Label for="height" class="block cursor-help truncate">Altura (cm)</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
@@ -90,13 +79,13 @@
                             <div>
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label for="base_width" class="block cursor-help truncate">Base (L) (cm)</Label>
+                                        <Label for="width" class="block cursor-help truncate">Largura (cm)</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                        <p>Largura da base da seção em centímetros</p>
+                                        <p>Largura total da seção em centímetros</p>
                                     </TooltipContent>
                                 </Tooltip>
-                                <p class="text-sm">{{ selectedSection.base_width }}cm</p>
+                                <p class="text-sm">{{ selectedSection.width }}cm</p>
                             </div>
                             <div>
                                 <Tooltip>
@@ -108,6 +97,17 @@
                                     </TooltipContent>
                                 </Tooltip>
                                 <p class="text-sm">{{ selectedSection.base_height }}cm</p>
+                            </div>
+                            <div>
+                                <Tooltip>
+                                    <TooltipTrigger as-child>
+                                        <Label for="base_width" class="block cursor-help truncate">Base (L) (cm)</Label>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Largura da base da seção em centímetros</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                                <p class="text-sm">{{ selectedSection.base_width }}cm</p>
                             </div>
                             <div>
                                 <Tooltip>
@@ -178,7 +178,7 @@
                     <Separator />
 
                     <div>
-                        <h3 class="text-sm font-medium text-gray-500">Prateleiras</h3>
+                        <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Prateleiras</h3>
                         <div class="mt-2">
                             <div>
                                 <Tooltip>
@@ -201,7 +201,7 @@
                                     </TooltipContent>
                                 </Tooltip>
                                 <div class="mt-1 space-y-2">
-                                    <div v-for="shelf in selectedSection.shelves" :key="shelf.id" class="rounded-md bg-gray-50 px-3 py-2 text-xs">
+                                    <div v-for="shelf in selectedSection.shelves" :key="shelf.id" class="rounded-md bg-gray-50 px-3 py-2 text-xs dark:bg-gray-700 dark:text-gray-200">
                                         <div class="flex justify-between">
                                             <span class="font-medium">ID: {{ shelf.id.substring(0, 8) }}...</span>
                                             <span>Pos: {{ shelf.shelf_position }}cm</span>
@@ -216,7 +216,7 @@
                 <!-- Modo de edição -->
                 <form v-else @submit.prevent="saveChanges" class="space-y-4">
                     <div>
-                        <h3 class="text-sm font-medium text-gray-500">Informações Básicas</h3>
+                        <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Informações Básicas</h3>
                         <div class="mt-2 space-y-3">
                             <div class="space-y-1">
                                 <Tooltip>
@@ -240,17 +240,6 @@
                             <div class="space-y-1">
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label for="width" class="block cursor-help truncate">Largura (cm)</Label>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>Largura total da seção em centímetros</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                                <Input id="width" v-model.number="formData.width" type="number" class="h-8" />
-                            </div>
-                            <div class="space-y-1">
-                                <Tooltip>
-                                    <TooltipTrigger as-child>
                                         <Label for="height" class="block cursor-help truncate">Altura (cm)</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
@@ -262,13 +251,13 @@
                             <div class="space-y-1">
                                 <Tooltip>
                                     <TooltipTrigger as-child>
-                                        <Label for="base_width" class="block cursor-help truncate">Base (L) (cm)</Label>
+                                        <Label for="width" class="block cursor-help truncate">Largura (cm)</Label>
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                        <p>Largura da base da seção em centímetros</p>
+                                        <p>Largura total da seção em centímetros</p>
                                     </TooltipContent>
                                 </Tooltip>
-                                <Input id="base_width" v-model.number="formData.base_width" type="number" class="h-8" />
+                                <Input id="width" v-model.number="formData.width" type="number" class="h-8" />
                             </div>
                             <div class="space-y-1">
                                 <Tooltip>
@@ -280,6 +269,17 @@
                                     </TooltipContent>
                                 </Tooltip>
                                 <Input id="base_height" v-model.number="formData.base_height" type="number" class="h-8" />
+                            </div>
+                            <div class="space-y-1">
+                                <Tooltip>
+                                    <TooltipTrigger as-child>
+                                        <Label for="base_width" class="block cursor-help truncate">Base (L) (cm)</Label>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Largura da base da seção em centímetros</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                                <Input id="base_width" v-model.number="formData.base_width" type="number" class="h-8" />
                             </div>
                             <div class="space-y-1">
                                 <Tooltip>
@@ -309,18 +309,7 @@
                                         <p>Largura da cremalheira em centímetros</p>
                                     </TooltipContent>
                                 </Tooltip>
-                                <Input id="cremalheira_width" v-model.number="formData.cremalheira_width" type="number" class="h-8" />
-                            </div>
-                            <div class="space-y-1">
-                                <Tooltip>
-                                    <TooltipTrigger as-child>
-                                        <Label for="hole_width" class="block cursor-help truncate">Largura Buraco (cm)</Label>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>Largura de cada buraco da cremalheira em centímetros</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                                <Input id="hole_width" v-model.number="formData.hole_width" type="number" class="h-8" />
+                                <Input id="cremalheira_width" v-model.number="formData.cremalheira_width" type="number" step="any" class="h-8" />
                             </div>
                             <div class="space-y-1">
                                 <Tooltip>
@@ -331,7 +320,18 @@
                                         <p>Altura de cada buraco da cremalheira em centímetros</p>
                                     </TooltipContent>
                                 </Tooltip>
-                                <Input id="hole_height" v-model.number="formData.hole_height" type="number" class="h-8" />
+                                <Input id="hole_height" v-model.number="formData.hole_height" type="number" step="any" class="h-8" />
+                            </div>
+                            <div class="space-y-1">
+                                <Tooltip>
+                                    <TooltipTrigger as-child>
+                                        <Label for="hole_width" class="block cursor-help truncate">Largura Buraco (cm)</Label>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Largura de cada buraco da cremalheira em centímetros</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                                <Input id="hole_width" v-model.number="formData.hole_width" type="number" step="any" class="h-8" />
                             </div>
                             <div class="space-y-1">
                                 <Tooltip>
@@ -342,7 +342,7 @@
                                         <p>Espaçamento vertical entre os buracos da cremalheira em centímetros</p>
                                     </TooltipContent>
                                 </Tooltip>
-                                <Input id="hole_spacing" v-model.number="formData.hole_spacing" type="number" class="h-8" />
+                                <Input id="hole_spacing" v-model.number="formData.hole_spacing" type="number" step="any" class="h-8" />
                             </div>
                         </div>
                     </div>
