@@ -4,6 +4,7 @@
             <ShelfContent :shelf="shelf" :sorted-shelves="sortedShelves" :index="index" :scale-factor="scaleFactor"
                 :section="section"
                 @drop-product="(product: Product, shelf: Shelf) => $emit('drop-product', product, shelf)"
+                @drop-products-multiple="(products: Product[], shelf: Shelf) => $emit('drop-products-multiple', products, shelf)"
                 @drop-segment-copy="(segment: SegmentType, shelf: Shelf) => $emit('drop-segment-copy', segment, shelf)"
                 @drop-segment="(segment: SegmentType, oldShelf: Shelf) => $emit('drop-segment', segment, oldShelf)" />
             <div class="shelf relative flex flex-col items-center text-gray-50 shadow-md" 
@@ -95,7 +96,7 @@ const shelfElement = ref<HTMLElement | null>(null);
 const gondolaId = computed(() => props.gondola.id);
 const holeWidth = computed(() => props.section.hole_width); 
 // Definir Emits
-const emit = defineEmits(['drop-product', 'drop-segment-copy', 'drop-segment']);
+const emit = defineEmits(['drop-product', 'drop-products-multiple', 'drop-segment-copy', 'drop-segment']);
 const editorStore = useEditorStore();
 
 // Corrigido: Determina o alinhamento efetivo da prateleira seguindo a hierarquia

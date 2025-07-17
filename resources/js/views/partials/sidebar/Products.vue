@@ -21,11 +21,23 @@
             </Button>
             <div class="border-b border-gray-200 p-3 dark:border-gray-700 flex flex-col bg-transparent">
                 <div class="flex items-center justify-between">
-                    <h3 class="text-lg font-medium text-gray-800 dark:text-gray-100">Produtos Disponíveis</h3>
-                    <Button variant="ghost" size="icon" @click="$emit('toggle')" 
-                        aria-label="Colapsar menu de produtos" title="Colapsar">
-                        <ChevronLeft class="h-4 w-4" />
-                    </Button>
+                    <div class="flex items-center space-x-2">
+                        <h3 class="text-lg font-medium text-gray-800 dark:text-gray-100">Produtos Disponíveis</h3>
+                        <div v-if="selectedProductsCount > 0" 
+                             class="bg-blue-500 text-white text-xs rounded-full px-2 py-1 min-w-[1.5rem] text-center">
+                            {{ selectedProductsCount }}
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-1">
+                        <Button v-if="selectedProductsCount > 0" variant="ghost" size="sm" @click="clearSelection"
+                            aria-label="Limpar seleção" title="Limpar seleção" class="text-xs">
+                            Limpar
+                        </Button>
+                        <Button variant="ghost" size="icon" @click="$emit('toggle')" 
+                            aria-label="Colapsar menu de produtos" title="Colapsar">
+                            <ChevronLeft class="h-4 w-4" />
+                        </Button>
+                    </div>
                 </div>
                 <!-- Campo de busca com design aprimorado -->
                 <div class="relative mt-3">
@@ -124,8 +136,12 @@
 
                 <ul v-if="!editorStore.isLoading && filteredProducts.length > 0" class="space-y-1">
                     <li v-for="product in filteredProducts" :key="product.id"
-                        class="group cursor-pointer rounded-md bg-white p-2 shadow-sm transition hover:bg-blue-50 dark:bg-gray-700 dark:hover:bg-gray-600"
-                        @click="handleProductSelect(product)" draggable="true"
+                        class="group cursor-pointer rounded-md p-2 shadow-sm transition"
+                        :class="{
+                            'bg-blue-100 border-2 border-blue-400 dark:bg-blue-900 dark:border-blue-500': isProductSelected(product.id),
+                            'bg-white hover:bg-blue-50 dark:bg-gray-700 dark:hover:bg-gray-600': !isProductSelected(product.id)
+                        }"
+                        @click="handleProductSelect(product, $event)" draggable="true"
                         @dragstart="handleDragStart($event, product)">
                         <div class="flex items-center space-x-3">
                             <div
@@ -178,7 +194,7 @@
 <script setup lang="ts">
 import { ChevronDown, Loader, Package, Search, SlidersHorizontal, X, ChevronLeft } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
-import { onMounted, reactive, ref, watch, computed } from 'vue';
+import { onMounted, onUnmounted, reactive, ref, watch, computed } from 'vue';
 import { apiService } from '@plannerate/services';
 import { useEditorStore } from '@plannerate/store/editor';
 import { Product } from '@plannerate/types/segment';
@@ -219,6 +235,10 @@ const editorStore = useEditorStore();
 const allCategories = ref<Category[]>(props.categories || []);
 
 const { productIdsInCurrentGondola } = storeToRefs(editorStore);
+
+// Estado para seleção múltipla
+const selectedProducts = ref<Set<string>>(new Set());
+const isMultiSelectMode = ref(false);
 
 const emit = defineEmits(['select-product', 'drag-start', 'view-stats', 'close', 'toggle']);
 
@@ -262,6 +282,40 @@ interface PaginatedProductsResponse {
         last_page: number;
     };
 }
+
+// Computed para contar produtos selecionados
+const selectedProductsCount = computed(() => selectedProducts.value.size);
+
+// Função para verificar se um produto está selecionado
+const isProductSelected = (productId: string): boolean => {
+    return selectedProducts.value.has(productId);
+};
+
+// Função para limpar seleção
+const clearSelection = () => {
+    selectedProducts.value.clear();
+    isMultiSelectMode.value = false;
+};
+
+// Função para toggle de seleção de produto
+const toggleProductSelection = (product: Product) => {
+    if (selectedProducts.value.has(product.id)) {
+        selectedProducts.value.delete(product.id);
+    } else {
+        selectedProducts.value.add(product.id);
+    }
+    
+    // Atualiza o modo de seleção múltipla
+    isMultiSelectMode.value = selectedProducts.value.size > 0;
+};
+
+// Função para obter produtos selecionados
+const getSelectedProducts = (): Product[] => {
+    const selected = filteredProducts.value.filter(product => selectedProducts.value.has(product.id));
+    console.log('getSelectedProducts - IDs selecionados:', Array.from(selectedProducts.value));
+    console.log('getSelectedProducts - Produtos encontrados:', selected.map(p => `${p.name} (${p.id})`));
+    return selected;
+};
 
 const fetchCategories = async () => {
     const response = await apiService.get<Category[]>('categories');
@@ -348,14 +402,34 @@ function loadMore() {
     }
 }
 
-function handleProductSelect(product: Product) {
-    emit('select-product', product);
+function handleProductSelect(product: Product, event?: MouseEvent) {
+    // Se CTRL está pressionado ou já estamos em modo multi-seleção
+    if (event?.ctrlKey || event?.metaKey || isMultiSelectMode.value) {
+        toggleProductSelection(product);
+    } else {
+        // Limpa seleção anterior e seleciona apenas este produto
+        clearSelection();
+        emit('select-product', product);
+    }
 }
 
 function handleDragStart(event: DragEvent, product: Product) {
     if (event.dataTransfer) {
-        event.dataTransfer.setData('text/product', JSON.stringify(product));
-        event.dataTransfer.effectAllowed = 'copy';
+        // Se há produtos selecionados e o produto arrastado está entre eles
+        if (selectedProductsCount.value > 0 && isProductSelected(product.id)) {
+            // Arrastar todos os produtos selecionados
+            const selectedProductsList = getSelectedProducts();
+
+            event.dataTransfer.setData('text/products-multiple', JSON.stringify(selectedProductsList));
+            event.dataTransfer.effectAllowed = 'copy';
+            
+            // Limpar seleção após iniciar o drag
+            setTimeout(() => clearSelection(), 100);
+        } else {
+            // Arrastar apenas um produto (comportamento original)
+            event.dataTransfer.setData('text/product', JSON.stringify(product));
+            event.dataTransfer.effectAllowed = 'copy';
+        }
     }
     emit('drag-start', event, product);
 }
@@ -386,10 +460,25 @@ function clearFilters() {
     showFilters.value = false;
 }
 
+// Listener para tecla ESC
+const handleKeyDown = (event: KeyboardEvent) => {
+    if (event.key === 'Escape' && selectedProductsCount.value > 0) {
+        clearSelection();
+    }
+};
+
 onMounted(() => {
     // console.log('Component mounted, fetching initial products...');
     fetchProducts(1, false);
     fetchCategories();
+    
+    // Adicionar listener global para ESC
+    document.addEventListener('keydown', handleKeyDown);
+});
+
+// Cleanup no unmount
+onUnmounted(() => {
+    document.removeEventListener('keydown', handleKeyDown);
 });
 
 // Computed para classes responsivas do sidebar

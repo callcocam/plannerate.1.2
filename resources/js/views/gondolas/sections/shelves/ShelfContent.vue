@@ -26,7 +26,7 @@ const dragEnterCount = ref(0); // Garantir que está definido aqui
 const shelftext = ref(`Shelf (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`); // Texto da prateleira
 const shelfContentRef = ref<HTMLElement | null>(null);
 // Definir Emits
-const emit = defineEmits(['drop-product', 'drop-segment', 'drop-segment-copy']); // Para quando um produto é solto na prateleira
+const emit = defineEmits(['drop-product', 'drop-products-multiple', 'drop-segment', 'drop-segment-copy']); // Para quando um produto é solto na prateleira
 // const editorStore = useEditorStore();
 // import { type Shelf as ShelfType } from '@plannerate/types/shelves';
 
@@ -116,7 +116,10 @@ const isAcceptedDataType = (dataTransfer: DataTransfer | null): boolean => {
     if (!dataTransfer) return false;
     const types = dataTransfer.types;
     // console.log('isAcceptedDataType: Detected types:', types);
-    return types.includes('text/product') || types.includes('text/segment') || types.includes('text/segment/copy');
+    return types.includes('text/product') || 
+           types.includes('text/products-multiple') || 
+           types.includes('text/segment') || 
+           types.includes('text/segment/copy');
 };
 
 const handleDragEnter = (event: DragEvent) => {
@@ -173,7 +176,9 @@ const handleDragOver = (event: DragEvent) => {
     // Define dropEffect
     if (event.dataTransfer) {
         let effect: DataTransfer["dropEffect"] = 'move';
-        if (event.dataTransfer.types.includes('text/segment/copy') || event.dataTransfer.types.includes('text/product')) {
+        if (event.dataTransfer.types.includes('text/segment/copy') || 
+            event.dataTransfer.types.includes('text/product') ||
+            event.dataTransfer.types.includes('text/products-multiple')) {
             effect = 'copy';
         }
         event.dataTransfer.dropEffect = effect;
@@ -225,7 +230,16 @@ const handleDrop = (event: DragEvent) => {
         const types = event.dataTransfer.types;
         const position = { x: event.offsetX, y: event.offsetY };
 
-        if (types.includes('text/product')) {
+        if (types.includes('text/products-multiple')) {
+            // Processar múltiplos produtos
+            const productsData = event.dataTransfer.getData('text/products-multiple');
+            if (!productsData) { console.error('handleDrop: productsData is empty!'); return; }
+            const products = JSON.parse(productsData) as Product[];
+
+            emit('drop-products-multiple', products, props.shelf, position);
+
+        } else if (types.includes('text/product')) {
+            // Processar produto único (comportamento original)
             const productData = event.dataTransfer.getData('text/product');
             if (!productData) { console.error('handleDrop: productData is empty!'); return; }
             const product = JSON.parse(productData) as Product;

@@ -238,6 +238,18 @@ return [
 
 Para documentação completa, visite [a documentação oficial](https://github.com/callcocam/plannerate/docs).
 
+## Desenvolvimentos Recentes
+
+### ✅ Seleção Múltipla de Produtos (Concluído)
+- Implementada seleção múltipla com CTRL+click nos produtos
+- Indicadores visuais para produtos selecionados (borda azul)
+- Contador de produtos selecionados no cabeçalho
+- Drag and drop de múltiplos produtos simultaneamente
+- Botão "Limpar" e suporte à tecla ESC
+- Validação inteligente de largura para múltiplos produtos
+- Toast de feedback ao adicionar múltiplos produtos
+- Compatibilidade total com seleção única existente
+
 ## Contribuição
 
 Contribuições são bem-vindas! Por favor, veja [CONTRIBUTING](CONTRIBUTING.md) para detalhes.

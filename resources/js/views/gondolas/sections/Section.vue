@@ -9,7 +9,7 @@
                 :section="section" :scale-factor="scaleFactor" :section-width="section.width"
                 :section-height="section.height" :base-height="baseHeight" :sections-container="sectionsContainer"
                 :section-index="sectionIndex" :holes="holes" :invert-index="invertIndex" @drop-product="handleProductDropOnShelf"
-                @drop-segment-copy="handleSegmentCopy" @drop-segment="updateSegment"
+                @drop-products-multiple="handleMultipleProductsDropOnShelf" @drop-segment-copy="handleSegmentCopy" @drop-segment="updateSegment"
                 @drag-shelf="handleShelfDragStart" />
         </template>
         <div class="text-black text-xs absolute bottom-5 left-1/2 -translate-x-1/2 p-2 dark:text-white uppercase font-bold" :style="{
@@ -108,8 +108,9 @@ const sectionStyle = computed(() => {
  */
 const createSegmentFromProduct = (product: Product, shelf: ShelfType, layerQuantity: number): Segment => {
     const timestamp = Date.now();
-    const segmentId = `segment-${timestamp}-${shelf.segments?.length || 0}`;
-    const layerId = `layer-${timestamp}-${product.id}`;
+    const random = Math.random().toString(36).substr(2, 9); // Adiciona aleatoriedade
+    const segmentId = `segment-${timestamp}-${random}-${shelf.segments?.length || 0}`;
+    const layerId = `layer-${timestamp}-${random}-${product.id}`;
 
     return {
         id: segmentId,
@@ -274,6 +275,128 @@ const handleProductDropOnShelf = async (product: Product, shelf: ShelfType) => {
         toast.error('Erro Interno', {
             description: errorDesc,
         });
+    }
+};
+
+// Flag para evitar calls simultâneos
+const isProcessingMultipleProducts = ref(false);
+
+/**
+ * Gerencia o drop de múltiplos produtos em uma prateleira
+ * @param products Array de produtos sendo dropados
+ * @param shelf Prateleira alvo
+ */
+const handleMultipleProductsDropOnShelf = async (products: Product[], shelf: ShelfType) => {
+    // Evitar processamento simultâneo
+    if (isProcessingMultipleProducts.value) {
+        console.log('IGNORANDO - Já está processando múltiplos produtos');
+        return;
+    }
+    
+    isProcessingMultipleProducts.value = true;
+    if (!gondola.id) {
+        toast.error('Erro Interno', {
+            description: 'Contexto da gôndola não encontrado.',
+        });
+        return;
+    }
+
+    // Remover produtos duplicados por ID
+    const uniqueProducts = products.filter((product, index, array) => 
+        array.findIndex(p => p.id === product.id) === index
+    );
+
+    console.log(`PRODUTOS ORIGINAIS: ${products.length}, ÚNICOS: ${uniqueProducts.length}`);
+    if (products.length !== uniqueProducts.length) {
+        console.warn('Produtos duplicados removidos!', {
+            original: products.map(p => `${p.name} (${p.id})`),
+            unique: uniqueProducts.map(p => `${p.name} (${p.id})`)
+        });
+    }
+
+    // Validar todos os produtos antes de adicionar qualquer um
+    const tempLayers: Layer[] = [];
+    let totalWidth = 0;
+
+    for (const product of uniqueProducts) {
+        const tempLayer: Layer = {
+            id: `temp-layer-${Date.now()}-${product.id}`,
+            product_id: product.id,
+            product: product,
+            quantity: 1,
+            status: 'temp',
+            height: product.height,
+            segment_id: 'temp',
+            spacing: 0,
+            tabindex: 0,
+        };
+        tempLayers.push(tempLayer);
+        totalWidth += product.width || 0;
+    }
+
+    // Validação de largura total
+    const validation = validateShelfWidth(shelf, section.width, null, 0, ...tempLayers);
+
+    if (!validation.isValid) {
+        toast.error('Limite de Largura Excedido', {
+            description: `Adicionar estes ${uniqueProducts.length} produtos excederia a largura da seção (${section.width}cm). Largura resultante: ${validation.totalWidth.toFixed(1)}cm`,
+        });
+        return;
+    }
+
+    // Se válido, criar todos os segmentos primeiro
+    try {
+        console.log(`INÍCIO - Produtos únicos a processar:`, uniqueProducts.map(p => `${p.name} (${p.id})`));
+        
+        // Criar todos os segmentos com timestamps únicos
+        const newSegments = [];
+        for (let i = 0; i < uniqueProducts.length; i++) {
+            const product = uniqueProducts[i];
+            
+            // Pequeno delay para garantir timestamps únicos
+            if (i > 0) {
+                await new Promise(resolve => setTimeout(resolve, 10));
+            }
+            
+            const newSegment = createSegmentFromProduct(product, shelf, 1);
+            console.log(`SEGMENTO CRIADO:`, newSegment.id, 'para produto:', product.name);
+            newSegments.push(newSegment);
+        }
+        
+        // Adicionar todos os segmentos de uma vez usando uma única operação
+        console.log(`ADICIONANDO ${newSegments.length} segmentos ao store em uma operação...`);
+        
+        // Encontrar a prateleira diretamente no store e adicionar todos os segmentos
+        const currentGondola = editorStore.getCurrentGondola;
+        if (currentGondola) {
+            const targetSection = currentGondola.sections.find(s => s.id === section.id);
+            if (targetSection) {
+                const targetShelf = targetSection.shelves.find(sh => sh.id === shelf.id);
+                if (targetShelf) {
+                    // Adicionar todos os segmentos de uma vez (com conversão de tipo)
+                    targetShelf.segments.push(...newSegments as any);
+                    console.log(`${newSegments.length} segmentos adicionados diretamente à prateleira`);
+                    
+                    // Registrar a mudança uma única vez
+                    editorStore.recordChange(true);
+                }
+            }
+        }
+        
+        console.log(`FIM - Total de ${uniqueProducts.length} produtos processados`)
+        
+        toast.success('Produtos Adicionados', {
+            description: `${uniqueProducts.length} produtos foram adicionados com sucesso à prateleira.`,
+        });
+    } catch (error) {
+        console.error('Erro ao adicionar múltiplos produtos ao editorStore:', error);
+        const errorDesc = error instanceof Error ? error.message : 'Falha ao atualizar o estado do editor.';
+        toast.error('Erro Interno', {
+            description: errorDesc,
+        });
+    } finally {
+        // Sempre resetar a flag no final
+        isProcessingMultipleProducts.value = false;
     }
 };
 

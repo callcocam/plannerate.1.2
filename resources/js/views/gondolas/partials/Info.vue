@@ -305,7 +305,7 @@ const saveChanges = () => editorStore.saveChanges();
                     <!-- Botões de Justificação -->
                     <div class="flex items-center space-x-1">
                         <Button type="button" :variant="alignment === 'justify' ? 'default' : 'outline'" size="sm"
-                            @click="setGondolaAlignmentHandler('justify')">
+                            @click="setGondolaAlignmentHandler('justify')" title="Justificar">
                             <AlignJustify class="h-4 w-4" />
                         </Button>
                         <Button type="button" :variant="alignment === 'left' ? 'default' : 'outline'" size="sm"
