@@ -50,7 +50,7 @@ const props = defineProps<{
     totalItems: number;
 }>();
 
-const isEmpty = computed(() => props.shelf.segments.length === 0);
+const isEmpty = computed(() => !props.shelf.segments || props.shelf.segments.length === 0);
 
 const invertIndex = computed(() =>{
     const inverted = props.totalItems - 1 - props.index;
