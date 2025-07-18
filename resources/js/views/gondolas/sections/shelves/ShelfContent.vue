@@ -103,9 +103,10 @@ const shelfContentStyle = computed((): CSSProperties => {
         top: `${topPx}px`,
         left: '0',
         position: 'absolute',
+        zIndex: dragShelfActive.value ? 9999 : 0, // Z-index alto durante drag
         ...otherStyles,
         // Adicione outros estilos se necessário (background, borda para debug, etc.)
-        // Ex: backgroundColor: 'rgba(255, 0, 0, 0.3)',
+        backgroundColor: 'rgba(255, 0, 0, 0.3)',
     };
 });
 
@@ -321,6 +322,6 @@ const handleDrop = (event: DragEvent) => {
     /* Aumentar a area de drop */
     /* Adicionar um efeito de escala */
     cursor: grab;
-    z-index: 9999;
+    z-index: 9999 !important; /* Sempre por cima durante drag */
 }
 </style>

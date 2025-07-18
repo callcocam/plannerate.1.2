@@ -57,7 +57,7 @@ const layerStyle = computed(() => {
         return {
             width: '0px',
             height: '0px',
-            zIndex: '2',
+            zIndex: '0',
         };
     }
 
@@ -87,7 +87,7 @@ const layerStyle = computed(() => {
     return {
         width: layerWidthFinal,
         height: `${layerHeight * props.scaleFactor}px`,
-        zIndex: '2',
+        zIndex: '0',
     };
 });
 

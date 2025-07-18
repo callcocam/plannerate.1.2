@@ -33,7 +33,11 @@
                             :segment="segment" 
                             :scale-factor="scaleFactor"
                             :section-width="sectionWidth" 
-                            :gondola="gondola" />
+                            :gondola="gondola"
+                            @drop-product="(product: Product, shelf: Shelf) => { console.log('🟡 Shelf.vue: Recebeu drop-product do Segment'); $emit('drop-product', product, shelf); }"
+                            @drop-products-multiple="(products: Product[], shelf: Shelf) => { console.log('🟡 Shelf.vue: Recebeu drop-products-multiple do Segment'); $emit('drop-products-multiple', products, shelf); }"
+                            @drop-segment-copy="(segment: SegmentType, shelf: Shelf) => { console.log('🟡 Shelf.vue: Recebeu drop-segment-copy do Segment'); $emit('drop-segment-copy', segment, shelf); }"
+                            @drop-segment="(segment: SegmentType, oldShelf: Shelf) => { console.log('🟡 Shelf.vue: Recebeu drop-segment do Segment'); $emit('drop-segment', segment, oldShelf); }" />
                     </template>
                 </draggable>
                 <ShelfControls :shelf="shelf" :scale-factor="scaleFactor" :section-width="sectionWidth"
@@ -157,7 +161,7 @@ const shelfStyle = computed(() => {
         width: `${props.sectionWidth * props.scaleFactor + 4}px`,
         height: `${props.shelf.shelf_height * props.scaleFactor}px`,
         top: `${finalTopPosition}px`, // Usa a posição sem offset
-        zIndex: '1',
+        zIndex: '0',
         ...moveStyle,
     } as CSSProperties;
 });

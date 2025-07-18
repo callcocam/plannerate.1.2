@@ -212,7 +212,7 @@ onMounted(() => {
 
 .product:hover {
     transform: scale(1.02);
-    z-index: 5;
+    z-index: 0;
     box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
 }
 
