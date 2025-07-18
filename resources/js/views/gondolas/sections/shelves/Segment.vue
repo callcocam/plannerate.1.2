@@ -1,6 +1,6 @@
 <template>
     <div class="segment drag-segment-handle group relative flex flex-col items-start" :style="outerSegmentStyle"
-        @dragstart="onDragStart" draggable="true" :tabindex="segment.tabindex" 
+        @dragstart="onDragStart" @dragend="onDragEnd" draggable="true" :tabindex="segment.tabindex" 
         @dragenter.prevent="handleDragEnter" @dragover.prevent="handleDragOver"
         @dragleave="handleDragLeave" @drop.prevent="handleDrop"
         v-if="segment.layer && segment.layer.product">
@@ -24,7 +24,7 @@ import { Gondola } from '@plannerate/types/gondola';
 import type { Layer, Segment, Product } from '@plannerate/types/segment';
 import type { Shelf } from '@plannerate/types/shelves';
 import { validateShelfWidth } from '@plannerate/utils/validation';
-import { computed, defineProps, ref, type CSSProperties } from 'vue';
+import { computed, defineProps, ref, type CSSProperties, watch } from 'vue';
 import { toast } from 'vue-sonner';
 import LayerComponent from './Layer.vue';
 
@@ -35,16 +35,25 @@ const props = defineProps<{
     shelf: Shelf;
     scaleFactor: number;
     sectionWidth: number;
+    isSegmentDragging?: boolean;
 }>();
 
 // Definir Emits
-const emit = defineEmits(['drop-product', 'drop-products-multiple', 'drop-segment', 'drop-segment-copy']);
+const emit = defineEmits(['drop-product', 'drop-products-multiple', 'drop-segment', 'drop-segment-copy', 'segment-drag-start', 'segment-drag-end', 'segment-drag-over']);
 
 const editorStore = useEditorStore();
 
 // Variáveis para drag and drop
 const dragEnterCount = ref(0);
 const dragSegmentActive = ref(false);
+const segmentText = ref(`Arrastando Prateleira (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`);
+watch(dragSegmentActive, (newValue) => {
+  if (newValue) {
+    segmentText.value = `Arrastando Prateleira (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`;
+  } else {
+    segmentText.value = `Arrastando Prateleira (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`;
+  }
+});
 
 const currentSectionId = computed(() => props.shelf.section_id);
 
@@ -115,6 +124,7 @@ const outerSegmentStyle = computed(() => {
         width: `${totalWidth}px`,
         height: `${layerHeight}px`, // Altura explícita
         marginBottom: `${marginBottom+4}px`,
+        zIndex: props.isSegmentDragging ? -1 : 0, // Z-index baixo quando segment está sendo arrastado
     } as CSSProperties;
 });
 const updateLayerQuantity = (layer: Layer) => {
@@ -228,6 +238,13 @@ const isAcceptedDataType = (dataTransfer: DataTransfer | null): boolean => {
            types.includes('text/segment/copy');
 };
 
+// Verifica especificamente se é um segment sendo arrastado
+const isSegmentBeingDragged = (dataTransfer: DataTransfer | null): boolean => {
+    if (!dataTransfer) return false;
+    const types = dataTransfer.types;
+    return types.includes('text/segment') || types.includes('text/segment/copy');
+};
+
 const handleDragEnter = (event: DragEvent) => {
     if (!isAcceptedDataType(event.dataTransfer)) {
         return;
@@ -236,6 +253,13 @@ const handleDragEnter = (event: DragEvent) => {
     event.preventDefault();
     dragEnterCount.value++;
     dragSegmentActive.value = true;
+    segmentText.value = `Arrastando Prateleira (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`;
+    
+    // Verificar se é um segment sendo arrastado
+    if (isSegmentBeingDragged(event.dataTransfer)) {
+        console.log('Segment: detectou drag de segment sobre ele', props.segment.id);
+        emit('segment-drag-over', props.segment, props.shelf, true);
+    }
     
     if (event.currentTarget) {
         (event.currentTarget as HTMLElement).classList.add('drag-over-segment');
@@ -259,6 +283,7 @@ const handleDragOver = (event: DragEvent) => {
 
     if (!dragSegmentActive.value) {
         dragSegmentActive.value = true;
+        segmentText.value = `Arrastando Prateleira (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`;
         if (event.currentTarget) {
             (event.currentTarget as HTMLElement).classList.add('drag-over-segment');
         }
@@ -281,6 +306,11 @@ const handleDragLeave = (event: DragEvent) => {
         if (dragEnterCount.value === 0) {
             if (dragSegmentActive.value) {
                 dragSegmentActive.value = false;
+                // Emitir que o drag saiu do segment
+                if (event.dataTransfer && isSegmentBeingDragged(event.dataTransfer)) {
+                    console.log('Segment: drag de segment saiu dele', props.segment.id);
+                    emit('segment-drag-over', props.segment, props.shelf, false);
+                }
                 if (event.currentTarget) {
                     (event.currentTarget as HTMLElement).classList.remove('drag-over-segment');
                 }
@@ -291,7 +321,6 @@ const handleDragLeave = (event: DragEvent) => {
 
 const handleDrop = (event: DragEvent) => {
     event.preventDefault();
-    console.log('🔵 Segment.vue: handleDrop chamado!');
     
     const currentTargetElement = event.currentTarget as HTMLElement | null;
 
@@ -300,13 +329,13 @@ const handleDrop = (event: DragEvent) => {
         if (dragSegmentActive.value) {
             dragSegmentActive.value = false;
         }
+        segmentText.value = `Arrastando Prateleira (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`;
         if (currentTargetElement) {
             currentTargetElement.classList.remove('drag-over-segment');
         }
     };
 
     if (!isAcceptedDataType(event.dataTransfer) || !event.dataTransfer) {
-        console.log('❌ Segment.vue: Tipo de dados não aceito ou dataTransfer vazio');
         resetVisualState();
         return;
     }
@@ -314,22 +343,17 @@ const handleDrop = (event: DragEvent) => {
     try {
         const types = event.dataTransfer.types;
         const position = { x: event.offsetX, y: event.offsetY };
-        
-        console.log('🔵 Segment.vue: Tipos detectados:', types);
-        console.log('🔵 Segment.vue: Posição do drop:', position);
 
         if (types.includes('text/products-multiple')) {
             const productsData = event.dataTransfer.getData('text/products-multiple');
             if (!productsData) { console.error('handleDrop: productsData is empty!'); return; }
             const products = JSON.parse(productsData) as Product[];
-            console.log('🔵 Segment.vue: Emitindo drop-products-multiple com', products.length, 'produtos');
             emit('drop-products-multiple', products, props.shelf, position);
 
         } else if (types.includes('text/product')) {
             const productData = event.dataTransfer.getData('text/product');
             if (!productData) { console.error('handleDrop: productData is empty!'); return; }
             const product = JSON.parse(productData) as Product;
-            console.log('🔵 Segment.vue: Emitindo drop-product:', product.name || product.id);
             emit('drop-product', product, props.shelf, position);
 
         } else if (types.includes('text/segment')) {
@@ -338,20 +362,14 @@ const handleDrop = (event: DragEvent) => {
             const segmentData = JSON.parse(segmentDataString) as Segment;
             const originShelfId = segmentData?.shelf_id;
 
-            console.log('🔵 Segment.vue: Origin shelf ID:', originShelfId, 'Current shelf ID:', props.shelf.id);
-
             if (originShelfId && originShelfId !== props.shelf.id) {
-                console.log('🔵 Segment.vue: Emitindo drop-segment');
                 emit('drop-segment', segmentData, props.shelf, position);
-            } else {
-                console.log('🔵 Segment.vue: Mesma prateleira, ignorando drop');
             }
 
         } else if (types.includes('text/segment/copy')) {
             const segmentDataCopy = event.dataTransfer.getData('text/segment/copy');
             if (!segmentDataCopy) { console.error('handleDrop: segmentDataCopy is empty!'); return; }
             const segment = JSON.parse(segmentDataCopy) as Segment;
-            console.log('🔵 Segment.vue: Emitindo drop-segment-copy');
             emit('drop-segment-copy', segment, props.shelf, position);
         }
 
@@ -373,8 +391,6 @@ const onDragStart = (event: DragEvent) => {
         shelf_id: props.shelf.id, // Garantir que o shelf_id está incluído
     };
     
-    console.log('🔵 Segment.vue: onDragStart - segmentData:', segmentData);
-    
     if (isCtrlOrMetaPressed) {
         // Copiar (quando Ctrl/Meta está pressionado)
         event.dataTransfer.effectAllowed = 'copy';
@@ -385,7 +401,19 @@ const onDragStart = (event: DragEvent) => {
         event.dataTransfer.effectAllowed = 'move';
         event.dataTransfer.setData('text/segment', JSON.stringify(segmentData));
     }
+
+    // Emitir evento para informar que o segment está sendo arrastado
+    console.log('Segment: emitindo segment-drag-start', props.segment.id, props.shelf.id);
+    emit('segment-drag-start', props.segment, props.shelf);
 };
+
+const onDragEnd = (event: DragEvent) => {
+    // Emitir evento para informar que o drag do segment terminou
+    console.log('Segment: emitindo segment-drag-end', props.segment.id, props.shelf.id);
+    emit('segment-drag-end', props.segment, props.shelf);
+};
+
+
 </script>
 
 <style scoped>
@@ -409,17 +437,8 @@ const onDragStart = (event: DragEvent) => {
     outline-offset: 2px;
 }
 
-.drag-over-segment {
-    background-color: rgba(2, 16, 39, 0.1);
-    border-color: rgba(13, 65, 150, 0.5);
-    border-width: 2px;
-    border-style: dashed;
-    border-radius: 4px;
-    box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
-    transition:
-        border-color 0.2s ease-in-out,
-        background-color 0.2s ease-in-out;
-    cursor: grab;
-    z-index: 9999 !important;
-}
+
+
+
+
 </style>

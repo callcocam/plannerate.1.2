@@ -2,11 +2,29 @@
     <ContextMenu>
         <ContextMenuTrigger>
             <ShelfContent :shelf="shelf" :sorted-shelves="sortedShelves" :index="index" :scale-factor="scaleFactor"
-                :section="section"
+                :section="section" :segment-dragging="segmentDragging" :dragging-segment="draggingSegment"
                 @drop-product="(product: Product, shelf: Shelf) => $emit('drop-product', product, shelf)"
                 @drop-products-multiple="(products: Product[], shelf: Shelf) => $emit('drop-products-multiple', products, shelf)"
                 @drop-segment-copy="(segment: SegmentType, shelf: Shelf) => $emit('drop-segment-copy', segment, shelf)"
                 @drop-segment="(segment: SegmentType, oldShelf: Shelf) => $emit('drop-segment', segment, oldShelf)" />
+            
+            <!-- Overlay para quando um segment está sendo arrastado -->
+            <div
+              class="segment-drag-overlay absolute inset-0 pointer-events-none"
+              :class="{ 'active': segmentDragging }"
+              :style="segmentOverlayStyle"
+              v-if="segmentDragging"
+            ></div>
+            <!-- Texto para quando um segment está sendo arrastado -->
+            <span
+              class="text-center text-gray-800 dark:text-gray-200 pointer-events-none font-bold absolute inset-0 flex items-center justify-center z-20 text-xs segment-drag-text"
+              :class="{ 'active': segmentDragging }"
+              :style="segmentOverlayStyle"
+              v-if="segmentDragging"
+            >
+              {{ segmentDragText }}
+            </span>
+            
             <div class="shelf relative flex flex-col items-center text-gray-50 shadow-md" 
                  :class="{
                     'border-2 border-blue-800 border-dashed bg-gray-500': isSelected, // Selecionado
@@ -34,10 +52,14 @@
                             :scale-factor="scaleFactor"
                             :section-width="sectionWidth" 
                             :gondola="gondola"
-                            @drop-product="(product: Product, shelf: Shelf) => { console.log('🟡 Shelf.vue: Recebeu drop-product do Segment'); $emit('drop-product', product, shelf); }"
-                            @drop-products-multiple="(products: Product[], shelf: Shelf) => { console.log('🟡 Shelf.vue: Recebeu drop-products-multiple do Segment'); $emit('drop-products-multiple', products, shelf); }"
-                            @drop-segment-copy="(segment: SegmentType, shelf: Shelf) => { console.log('🟡 Shelf.vue: Recebeu drop-segment-copy do Segment'); $emit('drop-segment-copy', segment, shelf); }"
-                            @drop-segment="(segment: SegmentType, oldShelf: Shelf) => { console.log('🟡 Shelf.vue: Recebeu drop-segment do Segment'); $emit('drop-segment', segment, oldShelf); }" />
+                            :is-segment-dragging="segmentDragging && draggingSegment?.id === segment.id"
+                            @drop-product="(product: Product, shelf: Shelf) => $emit('drop-product', product, shelf)"
+                            @drop-products-multiple="(products: Product[], shelf: Shelf) => $emit('drop-products-multiple', products, shelf)"
+                            @drop-segment-copy="(segment: SegmentType, shelf: Shelf) => $emit('drop-segment-copy', segment, shelf)"
+                            @drop-segment="(segment: SegmentType, oldShelf: Shelf) => $emit('drop-segment', segment, oldShelf)"
+                            @segment-drag-start="handleSegmentDragStart"
+                            @segment-drag-end="handleSegmentDragEnd"
+                            @segment-drag-over="handleSegmentDragOver" />
                     </template>
                 </draggable>
                 <ShelfControls :shelf="shelf" :scale-factor="scaleFactor" :section-width="sectionWidth"
@@ -68,7 +90,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineEmits, defineProps, onMounted, onUnmounted, ref, type CSSProperties } from 'vue';
+import { computed, defineEmits, defineProps, onMounted, onUnmounted, ref, watch, nextTick, type CSSProperties } from 'vue';
 import draggable from 'vuedraggable';
 import { useEditorStore } from '@plannerate/store/editor';
 import { type Product, type Segment as SegmentType } from '@plannerate/types/segment';
@@ -96,6 +118,81 @@ const props = defineProps<{
 }>();
 
 const shelfElement = ref<HTMLElement | null>(null);
+
+// Variáveis para controlar o drag do segment
+const segmentDragging = ref(false);
+const draggingSegment = ref<SegmentType | null>(null);
+
+// Variáveis para o overlay do segment
+const segmentDragText = ref(`Arrastando Prateleira (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`);
+
+// Estilo para o overlay do segment
+const segmentOverlayStyle = computed(() => {
+    const currentShelf = props.shelf;
+    const currentIndex = props.index;
+    const sortedShelves = props.sortedShelves;
+    const scaleFactor = props.scaleFactor;
+    const sectionHeight = props.section.height;
+
+    // --- Definir Padding Visual (em pixels) ---
+    const verticalPaddingPx = 8; // Ex: 4px total (2px topo, 2px baixo)
+    const topPaddingPx = verticalPaddingPx / 2;
+    const bottomPaddingPx = verticalPaddingPx / 2;
+    const minTopHeightPx = 120; // Altura mínima para a primeira prateleira
+
+    // --- Calcular Posição e Altura em CM ---
+    let topPositionCm: number;
+    let rawHeightCm: number; // Altura bruta do espaço
+
+    if (currentIndex === 0) {
+        topPositionCm = 0;
+        rawHeightCm = Math.max(0, currentShelf.shelf_position);
+    } else {
+        const previousShelf = sortedShelves[currentIndex - 1];
+        topPositionCm = Math.max(0, previousShelf.shelf_position);
+        rawHeightCm = Math.max(0, currentShelf.shelf_position - previousShelf.shelf_position);
+    }
+
+    // Garante que não ultrapasse a altura da seção
+    if (topPositionCm + rawHeightCm > sectionHeight) {
+        rawHeightCm = Math.max(0, sectionHeight - topPositionCm);
+    }
+
+    // --- Converter para Pixels ---
+    let topPx = topPositionCm * scaleFactor + props.shelf.shelf_height * scaleFactor;
+    let heightPx = rawHeightCm * scaleFactor - props.shelf.shelf_height * scaleFactor;
+
+    // --- Aplicar Ajustes de Padding e Altura Mínima ---
+    let otherStyles = {}
+    // 1. Altura mínima para a primeira prateleira
+    if (currentIndex === 0) {
+        heightPx = Math.max(minTopHeightPx, heightPx);
+        // Para a primeira, o padding inferior é aplicado, mas o topo começa em 0
+        heightPx = Math.max(props.shelf.shelf_position, heightPx - bottomPaddingPx);
+        otherStyles = {
+            transform: `translateY(-${heightPx}px)`
+        }
+        topPx = props.shelf.shelf_position * scaleFactor;
+    } else {
+        // Para as demais, aplica padding no topo e embaixo
+        topPx += topPaddingPx; // Desce o topo um pouco
+        heightPx = Math.max(0, heightPx - topPaddingPx - bottomPaddingPx); // Reduz altura pelos dois paddings
+    }
+
+    // Garantir altura mínima quando segment está sendo arrastado
+    const finalHeightPx = segmentDragging.value ? Math.max(heightPx, 50) : heightPx;
+
+    return {
+        width: '100%',
+        height: `${finalHeightPx}px`,
+        top: `${topPx}px`,
+        left: '0',
+        position: 'absolute',
+        zIndex: 999999,
+        pointerEvents: 'none',
+        ...otherStyles,
+    } as CSSProperties;
+});
 
 const gondolaId = computed(() => props.gondola.id);
 const holeWidth = computed(() => props.section.hole_width); 
@@ -235,12 +332,88 @@ const invertSegments = () => {
     sortableSegments.value = invertedSegments;
 };
 
+// Handlers para eventos de drag do segment
+const handleSegmentDragStart = (segment: SegmentType, shelf: Shelf) => {
+    console.log('Shelf: handleSegmentDragStart', segment.id, shelf.id);
+    // NÃO ativar overlay na prateleira de origem
+    // O overlay só deve aparecer quando estiver sobre outras prateleiras
+    segmentDragging.value = false;
+    draggingSegment.value = segment;
+};
+
+const handleSegmentDragEnd = async (segment: SegmentType, shelf: Shelf) => {
+    console.log('Shelf: handleSegmentDragEnd', segment.id, shelf.id);
+    // Reset completo do estado de drag
+    segmentDragging.value = false;
+    draggingSegment.value = null;
+    
+    // Forçar atualização do DOM imediatamente
+    await nextTick();
+    console.log('Shelf: handleSegmentDragEnd - estado resetado na prateleira', props.shelf.id, 'segmentDragging:', segmentDragging.value);
+    
+    // Garantir que o estado seja resetado após um pequeno delay
+    // para evitar problemas de timing com outros eventos
+    setTimeout(async () => {
+        segmentDragging.value = false;
+        draggingSegment.value = null;
+        await nextTick();
+        console.log('Shelf: handleSegmentDragEnd - reset final na prateleira', props.shelf.id);
+    }, 50);
+};
+
+// Handler global para resetar o estado quando qualquer drag termina
+const handleGlobalDragEnd = async (event: DragEvent) => {
+    console.log('Shelf: handleGlobalDragEnd - resetando estado de drag na prateleira', props.shelf.id, 'estado antes:', segmentDragging.value);
+    // Resetar sempre que qualquer drag terminar
+    segmentDragging.value = false;
+    draggingSegment.value = null;
+    
+    // Forçar atualização do DOM
+    await nextTick();
+    console.log('Shelf: estado resetado e DOM atualizado na prateleira', props.shelf.id, 'estado depois:', segmentDragging.value);
+};
+
+// Handler global para resetar o estado quando qualquer drop ocorrer
+const handleGlobalDrop = async (event: DragEvent) => {
+    console.log('Shelf: handleGlobalDrop - resetando estado de drag na prateleira', props.shelf.id, 'estado antes:', segmentDragging.value);
+    // Resetar sempre que qualquer drop ocorrer
+    segmentDragging.value = false;
+    draggingSegment.value = null;
+    
+    // Forçar atualização do DOM
+    await nextTick();
+    console.log('Shelf: estado resetado após drop na prateleira', props.shelf.id, 'estado depois:', segmentDragging.value);
+};
+
+const handleSegmentDragOver = (segment: SegmentType, shelf: Shelf, isOver: boolean) => {
+    console.log('Shelf: handleSegmentDragOver', segment.id, shelf.id, isOver, 'prateleira atual:', props.shelf.id, 'estado atual:', segmentDragging.value);
+    if (isOver) {
+        // Só ativar se não estiver já ativo para evitar múltiplas ativações
+        if (!segmentDragging.value) {
+            console.log('Shelf: ativando overlay na prateleira', props.shelf.id);
+            segmentDragging.value = true;
+            draggingSegment.value = segment;
+        }
+    } else {
+        // Só resetar se estiver ativo para evitar múltiplos resets
+        if (segmentDragging.value) {
+            console.log('Shelf: desativando overlay na prateleira', props.shelf.id);
+            segmentDragging.value = false;
+            draggingSegment.value = null;
+        }
+    }
+};
+
 onMounted(() => {
     if (shelfElement.value) {
         shelfElement.value.addEventListener('click', selectShelfClick);
     }
 
     document.addEventListener('keydown', globalKeyHandler);
+    // Listener global para resetar estado de drag quando qualquer drag termina
+    document.addEventListener('dragend', handleGlobalDragEnd);
+    // Listener global para resetar estado de drag quando qualquer drop ocorrer
+    document.addEventListener('drop', handleGlobalDrop);
 });
 
 onUnmounted(() => {
@@ -249,6 +422,10 @@ onUnmounted(() => {
     }
 
     document.removeEventListener('keydown', globalKeyHandler);
+    // Remover listener global de dragend
+    document.removeEventListener('dragend', handleGlobalDragEnd);
+    // Remover listener global de drop
+    document.removeEventListener('drop', handleGlobalDrop);
 });
 </script>
 
@@ -272,5 +449,38 @@ onUnmounted(() => {
         border-color 0.2s ease-in-out,
         background-color 0.2s ease-in-out;
     padding: 0 0 30px 0;
+}
+
+/* Overlay para quando um segment está sendo arrastado */
+.segment-drag-overlay {
+    background-color: rgba(59, 130, 246, 0.1);
+    border-color: rgba(59, 130, 246, 0.5);
+    border-width: 2px;
+    border-style: dashed;
+    border-radius: 4px;
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+    transition: 
+        opacity 0.2s ease-in-out,
+        border-color 0.2s ease-in-out,
+        background-color 0.2s ease-in-out;
+    cursor: grab;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 999999 !important; /* Z-index extremamente alto */
+}
+
+.segment-drag-overlay.active {
+    opacity: 1;
+    pointer-events: none;
+}
+
+/* Texto durante drag do segment */
+.segment-drag-text {
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+}
+
+.segment-drag-text.active {
+    opacity: 1;
 }
 </style>

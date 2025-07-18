@@ -3,8 +3,11 @@
         :style="shelfContentStyle" @dragenter.prevent="handleDragEnter" @dragover.prevent="handleDragOver"
         @dragleave="handleDragLeave" @drop.prevent="handleDrop" ref="shelfContentRef">
         <!-- Quero alinhar o texto no centro da prateleira  -->
-        <span class="text-center text-gray-800 dark:text-gray-200 translate-y-1/2 pointer-events-none font-bold"
+        <span class="text-center text-gray-800 dark:text-gray-200 pointer-events-none font-bold absolute inset-0 flex items-center justify-center"
             v-if="dragShelfActive"> {{ shelftext }}</span>
+        
+        <!-- Overlay para quando um segment está sendo arrastado - REMOVIDO, agora está no Shelf.vue -->
+        <!-- Texto para quando um segment está sendo arrastado - REMOVIDO, agora está no Shelf.vue -->
     </div>
 </template>
 
@@ -20,10 +23,22 @@ const props = defineProps<{
     sortedShelves: Shelf[];
     index: number;
     section: Section;
+    segmentDragging?: boolean;
+    draggingSegment?: any;
 }>();
 const dragShelfActive = ref(false); // Estado para rastrear se a prateleira está sendo arrastada
 const dragEnterCount = ref(0); // Garantir que está definido aqui
 const shelftext = ref(`Shelf (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`); // Texto da prateleira
+// segmentDragText removido - agora está no Shelf.vue
+
+// Estado local para detectar quando um segment está sendo arrastado sobre esta prateleira
+const segmentDragOverActive = ref(false);
+const segmentDragOverCount = ref(0);
+
+// Debug: log quando segmentDragging muda
+watch(() => props.segmentDragging, (newValue) => {
+    console.log('ShelfContent: segmentDragging mudou para', newValue, 'shelf:', props.shelf.id);
+});
 const shelfContentRef = ref<HTMLElement | null>(null);
 // Definir Emits
 const emit = defineEmits(['drop-product', 'drop-products-multiple', 'drop-segment', 'drop-segment-copy']); // Para quando um produto é solto na prateleira
@@ -97,16 +112,19 @@ const shelfContentStyle = computed((): CSSProperties => {
     // // Debug logs
     // console.log(`Shelf ${currentIndex} (Pos ${currentShelf.shelf_position.toFixed(1)}): TopPx=${topPx.toFixed(1)}, HeightPx=${heightPx.toFixed(1)}`);
 
+    // Garantir altura mínima quando segment está sendo arrastado
+    const finalHeightPx = props.segmentDragging ? Math.max(heightPx, 50) : heightPx;
+
     return {
         width: '100%',
-        height: `${heightPx}px`,
+        height: `${finalHeightPx}px`,
         top: `${topPx}px`,
         left: '0',
         position: 'absolute',
         zIndex: dragShelfActive.value ? 9999 : 0, // Z-index alto durante drag
         ...otherStyles,
         // Adicione outros estilos se necessário (background, borda para debug, etc.)
-        backgroundColor: 'rgba(255, 0, 0, 0.3)',
+        // backgroundColor: 'rgba(255, 0, 0, 0.3)',
     };
 });
 
@@ -123,6 +141,13 @@ const isAcceptedDataType = (dataTransfer: DataTransfer | null): boolean => {
            types.includes('text/segment/copy');
 };
 
+// Verifica especificamente se é um segment sendo arrastado
+const isSegmentBeingDragged = (dataTransfer: DataTransfer | null): boolean => {
+    if (!dataTransfer) return false;
+    const types = dataTransfer.types;
+    return types.includes('text/segment') || types.includes('text/segment/copy');
+};
+
 const handleDragEnter = (event: DragEvent) => {
     // console.log('--- handleDragEnter called ---');
     // Verifica apenas o TIPO
@@ -133,6 +158,15 @@ const handleDragEnter = (event: DragEvent) => {
     event.preventDefault();
     dragEnterCount.value++;
     // console.log(`handleDragEnter: Incremented count to ${dragEnterCount.value}`);
+
+    // Verifica se é um segment sendo arrastado
+    if (isSegmentBeingDragged(event.dataTransfer)) {
+        segmentDragOverCount.value++;
+        if (!segmentDragOverActive.value) {
+            console.log('ShelfContent: Segment sendo arrastado sobre a prateleira', props.shelf.id);
+            segmentDragOverActive.value = true;
+        }
+    }
 
     // Ativa o visual se puder (baseado no tipo) e ainda não estiver ativo
     if (!dragShelfActive.value) {
@@ -200,6 +234,13 @@ const handleDragLeave = (event: DragEvent) => {
                     (event.currentTarget as HTMLElement).classList.remove('drag-over');
                 }
             }
+            
+            // Resetar estado do segment drag
+            if (segmentDragOverActive.value) {
+                segmentDragOverCount.value = 0;
+                segmentDragOverActive.value = false;
+                console.log('ShelfContent: Segment drag resetado na prateleira', props.shelf.id);
+            }
         }
     } /* else {
         // console.log('handleDragLeave: Called but count is already 0.');
@@ -218,6 +259,13 @@ const handleDrop = (event: DragEvent) => {
         }
         if (currentTargetElement) {
             currentTargetElement.classList.remove('drag-over');
+        }
+        
+        // Resetar estado do segment drag
+        segmentDragOverCount.value = 0;
+        if (segmentDragOverActive.value) {
+            segmentDragOverActive.value = false;
+            console.log('ShelfContent: Segment drag resetado no drop na prateleira', props.shelf.id);
         }
     };
 
@@ -252,17 +300,13 @@ const handleDrop = (event: DragEvent) => {
             const segmentData = JSON.parse(segmentDataString) as Layer & { segment?: { shelf_id?: string } }; // Tipagem para segment.shelf_id
             const originShelfId = segmentData?.segment?.shelf_id;
 
-            console.log(`handleDrop (segment): Origin=${originShelfId}, Current=${props.shelf.id}`); // LOG para confirmar IDs no drop
-
             // *** VERIFICAÇÃO DE ORIGEM MOVIDA PARA CÁ ***
             if (originShelfId && originShelfId !== props.shelf.id) {
-                console.log('handleDrop (segment): Origin is different, emitting drop-segment...');
                 emit('drop-segment', segmentData, props.shelf, position);
             } else if (!originShelfId) {
                 console.warn('handleDrop (segment): Origin Shelf ID not found in data. Allowing drop.');
                 emit('drop-segment', segmentData, props.shelf, position); // Comportamento leniente: permite se não achar origem
             } else {
-                console.log('handleDrop (segment): Origin is the same as current. Drop ignored.');
                 // Não faz nada se a origem for a mesma
             }
 
@@ -324,4 +368,14 @@ const handleDrop = (event: DragEvent) => {
     cursor: grab;
     z-index: 9999 !important; /* Sempre por cima durante drag */
 }
+
+/* Estilos do overlay do segment removidos - agora estão no Shelf.vue */
+
+/* Debug para o ShelfContent */
+.debug-shelf-content {
+    background-color: rgba(0, 255, 0, 0.3) !important;
+    border: 2px solid green !important;
+}
+
+/* Estilos do overlay do segment removidos - agora estão no Shelf.vue */
 </style>
