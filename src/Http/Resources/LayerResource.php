@@ -22,6 +22,7 @@ class LayerResource extends JsonResource
             'segment_id' => $this->segment_id,
             'product_id' => $this->product_id,
             'height' => $this->height,
+            'distributed_width' => $this->distributed_width,
             'quantity' => $this->quantity,
             'spacing' => $this->spacing,
             'settings' => $this->settings,

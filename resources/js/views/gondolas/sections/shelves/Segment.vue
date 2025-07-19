@@ -1,5 +1,5 @@
 <template>
-    <div class="segment drag-segment-handle group relative flex flex-col items-start" :style="outerSegmentStyle"
+    <div class="segment drag-segment-handle group relative flex flex-col items-center" :style="outerSegmentStyle"
         @dragstart="onDragStart" @dragend="onDragEnd" draggable="true" :tabindex="segment.tabindex" 
         @dragenter.prevent="handleDragEnter" @dragover.prevent="handleDragOver"
         @dragleave="handleDragLeave" @drop.prevent="handleDrop"
@@ -109,14 +109,17 @@ const outerSegmentStyle = computed(() => {
 
     const productWidth = props.segment.layer.product.width || 0;
     const productQuantity = props.segment.layer.quantity || 0;
-    let layerWidthFinal = 0;
     const currentAlignment = alignment.value;
 
-    if (currentAlignment === 'justify') {
-        layerWidthFinal = props.sectionWidth * props.scaleFactor;
+    // Usa distributed_width do backend se disponível (para justify)
+    let layerWidthFinal: number;
+    if (props.segment.distributed_width && currentAlignment === 'justify') {
+        layerWidthFinal = props.segment.distributed_width * props.scaleFactor;
     } else {
+        // Fallback para cálculo local
         layerWidthFinal = productWidth * productQuantity * props.scaleFactor;
     }
+    
     const totalWidth = layerWidthFinal;
     const layerHeight = (props.segment.layer.product.height || 0) * (props.segment.quantity || 0) * props.scaleFactor;
     const marginBottom = (props.shelf.shelf_height || 0) * props.scaleFactor;

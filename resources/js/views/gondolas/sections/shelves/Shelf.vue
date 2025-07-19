@@ -258,7 +258,7 @@ const shelfStyle = computed(() => {
         width: `${props.sectionWidth * props.scaleFactor + 4}px`,
         height: `${props.shelf.shelf_height * props.scaleFactor}px`,
         top: `${finalTopPosition}px`, // Usa a posição sem offset
-        zIndex: '0',
+        zIndex: '1',
         ...moveStyle,
     } as CSSProperties;
 });

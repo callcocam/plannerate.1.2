@@ -1,9 +1,17 @@
 <template>
-    <div v-if="layer.product" class="layer group flex cursor-pointer justify-between" :style="layerStyle" @click="handleLayerClick"
-        @keydown="handleKeyDown" :class="{ 'layer--selected': isSelected, 'layer--focused': !isSelected }">
+    <div v-if="layer.product" class="layer group flex cursor-pointer" 
+         :class="{
+             'justify-between': layer.quantity > 1,
+             'justify-center': layer.quantity === 1,
+             'layer--selected': isSelected, 
+             'layer--focused': !isSelected
+         }"
+         :style="layerStyle" @click="handleLayerClick"
+         @keydown="handleKeyDown">
 
         <ProductNormal v-for="index in layer.quantity" :key="index" :product="layer.product" :scale-factor="scaleFactor"
-            :index="index" :shelf-depth="props.shelfDepth" :layer="layer">
+            :index="index" :shelf-depth="props.shelfDepth" :layer="layer"
+            :style="isUsingDistributedWidth ? { flexShrink: 0 } : {}">
             <template #depth-count v-if="index === 1">
                 <slot name="depth-count"></slot>
 
@@ -48,6 +56,14 @@ const currentSectionId = computed(() => props.shelf.section_id);
 
 
 /**
+ * Verifica se está usando distributed_width do backend
+ */
+const isUsingDistributedWidth = computed(() => {
+    const alignment = editorStore.getCurrentGondola?.alignment;
+    return !!(props.layer.distributed_width && alignment === 'justify');
+});
+
+/**
  * Computed style para o layer baseado em alinhamento e dimensões
  */
 const layerStyle = computed(() => {
@@ -57,33 +73,39 @@ const layerStyle = computed(() => {
         return {
             width: '0px',
             height: '0px',
-            zIndex: '0',
+            zIndex: '1',
         };
     }
 
     const layerHeight = props.layer.product.height || 0;
     const productWidth = (props.layer.product.width || 0) * props.scaleFactor;
     const quantity = props.layer.quantity || 1;
-    let layerWidthFinal = `100%`; // Default para justify ou se não houver gôndola/alinhamento
-
+    
     // Obtém o alinhamento da gôndola atual do editorStore
     const alignment = editorStore.getCurrentGondola?.alignment;
 
-    // Define a largura final com base no alinhamento
-    if (alignment === 'left' || alignment === 'right') {
-        // Para alinhamento à esquerda ou direita, usa a largura calculada dos produtos
-        layerWidthFinal = `${productWidth * quantity}px`;
-    } else if (alignment === 'center') {
-        // Para centralizado, ocupa 100% (o CSS tratará a centralização interna)
-        layerWidthFinal = `${productWidth * quantity}px`;
-    } else if (alignment === 'justify' || !alignment) {
-        // Para justificado ou sem alinhamento definido, ocupa 100%
-        if (quantity > 1) {
-            layerWidthFinal = `100%`;
+    // Usa distributed_width do backend se disponível (para justify)
+    let layerWidthFinal: string;
+    if (props.layer.distributed_width && alignment === 'justify') {
+        layerWidthFinal = `${props.layer.distributed_width * props.scaleFactor}px`;
+    } else {
+        // Fallback para cálculo local para outros alinhamentos
+        if (alignment === 'left' || alignment === 'right') {
+            layerWidthFinal = `${productWidth * quantity}px`;
+        } else if (alignment === 'center') {
+            layerWidthFinal = `${productWidth * quantity}px`;
+        } else if (alignment === 'justify' || !alignment) {
+            // Para justify sem distributed_width, usa comportamento atual
+            if (quantity > 1) {
+                layerWidthFinal = `100%`;
+            } else {
+                layerWidthFinal = `${productWidth}px`;
+            }
         } else {
-            layerWidthFinal = `${productWidth}px`;
+            layerWidthFinal = `${productWidth * quantity}px`;
         }
     }
+    
     return {
         width: layerWidthFinal,
         height: `${layerHeight * props.scaleFactor}px`,

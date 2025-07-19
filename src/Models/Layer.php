@@ -24,6 +24,7 @@ class Layer extends Model
         'segment_id',
         'product_id',
         'height',
+        'distributed_width',
         'quantity',  
         'spacing',
         'status',
@@ -32,6 +33,8 @@ class Layer extends Model
     ];
 
     protected $casts = [
+        'height' => 'decimal:2',
+        'distributed_width' => 'decimal:2',
         'settings' => 'array',
     ];
 
@@ -64,6 +67,37 @@ class Layer extends Model
 
         $this->save();
 
+        // Recalcula automaticamente as larguras distribuídas da shelf
+        if ($this->segment && $this->segment->shelf) {
+            $this->segment->shelf->calculateDistributedWidths();
+        }
+
         return $this;
+    }
+
+    /**
+     * Boot method para recalcular larguras quando quantity mudar
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saved(function ($layer) {
+            // Recalcula larguras distribuídas quando quantity for alterada
+            if ($layer->isDirty('quantity')) {
+                // Carrega os relacionamentos necessários se não estiverem carregados
+                if (!$layer->relationLoaded('segment')) {
+                    $layer->load('segment');
+                }
+                if (!$layer->segment->relationLoaded('shelf')) {
+                    $layer->segment->load('shelf');
+                }
+                
+                // Recalcula se tiver os relacionamentos necessários
+                if ($layer->segment && $layer->segment->shelf) {
+                    $layer->segment->shelf->calculateDistributedWidths();
+                }
+            }
+        });
     }
 }

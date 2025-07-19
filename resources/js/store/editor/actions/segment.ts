@@ -164,6 +164,15 @@ export function updateLayerQuantity(
     if (segment.layer.product.id === layerId) {
         if (segment.layer.quantity !== newQuantity) {
             segment.layer.quantity = newQuantity;
+            
+            // LIMPA distributed_width temporariamente para forçar uso do cálculo local
+            if (segment.distributed_width) {
+                segment.distributed_width = undefined;
+            }
+            if (segment.layer.distributed_width) {
+                segment.layer.distributed_width = undefined;
+            }
+            
             console.log(`Quantidade da layer ${layerId} atualizada para ${newQuantity} no segmento ${segmentId}.`);
             recordChange();
         } else {

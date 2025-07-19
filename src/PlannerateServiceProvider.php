@@ -35,7 +35,8 @@ class PlannerateServiceProvider extends PackageServiceProvider
                 'create_sections_table',
                 'create_shelves_table',
                 'create_segments_table',
-                'create_layers_table'
+                'create_layers_table',
+                'add_distributed_width_to_segments_and_layers'
             )
             ->hasCommands([
                 PlannerateCommand::class,
@@ -51,5 +52,15 @@ class PlannerateServiceProvider extends PackageServiceProvider
                     ->copyAndRegisterServiceProviderInApp()
                     ->askToStarRepoOnGitHub('callcocam/plannerate');
             });
+    }
+
+    public function boot()
+    {
+        parent::boot();
+        
+        // Publicar apenas a migration específica
+        $this->publishes([
+            __DIR__ . '/../database/migrations/add_distributed_width_to_segments_and_layers.php.stub' => database_path('migrations/' . date('Y_m_d_His', time()) . '_add_distributed_width_to_segments_and_layers.php'),
+        ], 'plannerate-distributed-width-migration');
     }
 }

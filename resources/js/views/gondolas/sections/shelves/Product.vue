@@ -159,7 +159,8 @@ const productStyle = computed(() => {
         width: `${width * props.scaleFactor}px`,
         height: `${height * props.scaleFactor}px`,
         position: 'relative' as const,
-        boxSizing: 'border-box' as const, 
+        boxSizing: 'border-box' as const,
+        flexShrink: 0, // Impede que o produto seja comprimido pelo flexbox
         ...productActiveTrigger()
     };
 });
@@ -212,7 +213,7 @@ onMounted(() => {
 
 .product:hover {
     transform: scale(1.02);
-    z-index: 0;
+    z-index: 5;
     box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
 }
 

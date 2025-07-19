@@ -15,6 +15,11 @@ class ShelfResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        // Calcula automaticamente as larguras distribuídas se os segments estão carregados
+        if ($this->relationLoaded('segments')) {
+            $this->resource->calculateDistributedWidths();
+        }
+
         return [
             'id' => $this->id,
             'tenant_id' => $this->tenant_id,

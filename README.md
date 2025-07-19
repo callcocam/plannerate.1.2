@@ -228,6 +228,15 @@ return [
   - Valores padrão (0px, 0) aplicados quando propriedades não estão disponíveis
   - Estabilidade da aplicação melhorada, eliminando crashes por tentativa de acesso a propriedades de objetos null
 
+- ✅ **Correção de Justificação de Produtos**: Sistema de justificação corrigido para evitar alargamento indevido dos produtos
+  - Adicionado campo `distributed_width` nas tabelas `segments` e `layers` para armazenar larguras calculadas
+  - Implementado método `calculateDistributedWidths()` no modelo `Shelf` para cálculo automático das larguras
+  - Cálculo baseado no alinhamento da gôndola: para `justify`, distribui espaço proporcionalmente entre produtos
+  - Frontend atualizado para usar `distributed_width` do backend ao invés de cálculos locais inconsistentes
+  - Produtos mantêm tamanho natural, apenas o espaçamento é distribuído para ocupar a prateleira
+  - Suporte a múltiplos segmentos na mesma prateleira com distribuição correta
+  - Migration `add_distributed_width_to_segments_and_layers` adicionada ao package
+
 ### Próximas Melhorias ⏳
 
 - ⏳ Implementação de novos recursos de análise

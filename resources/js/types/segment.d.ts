@@ -62,6 +62,7 @@ interface Layer extends LayerType {
     quantity: number;
     spacing?: number;
     height?: number;
+    distributed_width?: number; // Largura calculada para justificação
     alignment?: 'left' | 'right' | 'center' | 'justify' | string | null;
     status?: 'published' | 'draft' | string;
     product: Product;
@@ -86,6 +87,7 @@ interface Segment {
     ordering: number;         // Ordem do segmento, ex: 1
     alignment?: 'left' | 'right' | 'center' | 'justify' | string | null;
     width: number;            // Largura do segmento em cm, ex: 130
+    distributed_width?: number; // Largura calculada para justificação
     settings: SegmentSetting[] | null; // Configurações do segmento
     status: 'published' | 'draft' | string; // Status do segmento, ex: "published"
     layer: Layer;             // Informações sobre a camada associada 

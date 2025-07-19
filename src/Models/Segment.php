@@ -22,6 +22,7 @@ class Segment extends Model
         'user_id',
         'shelf_id',
         'width',
+        'distributed_width',
         'ordering',
         'position',
         'quantity', 
@@ -32,6 +33,8 @@ class Segment extends Model
     ];
 
     protected $casts = [
+        'width' => 'decimal:2',
+        'distributed_width' => 'decimal:2',
         'settings' => 'array',
     ];
 
@@ -43,5 +46,28 @@ class Segment extends Model
     public function shelf()
     {
         return $this->belongsTo(Shelf::class);
+    }
+
+    /**
+     * Boot method para recalcular larguras quando quantity mudar
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saved(function ($segment) {
+            // Recalcula larguras distribuídas quando quantity for alterada
+            if ($segment->isDirty('quantity')) {
+                // Carrega o relacionamento shelf se não estiver carregado
+                if (!$segment->relationLoaded('shelf')) {
+                    $segment->load('shelf');
+                }
+                
+                // Recalcula se tiver o relacionamento necessário
+                if ($segment->shelf) {
+                    $segment->shelf->calculateDistributedWidths();
+                }
+            }
+        });
     }
 }

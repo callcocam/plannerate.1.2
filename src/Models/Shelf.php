@@ -54,4 +54,96 @@ class Shelf extends Model
     {
         return $this->hasMany(Segment::class)->orderBy('ordering');
     }
+
+    /**
+     * Calcula e atualiza as larguras distribuídas dos segments desta shelf
+     * baseado no alinhamento da gôndola
+     */
+    public function calculateDistributedWidths(): void
+    {
+        // Carrega a seção e gôndola para obter o alinhamento
+        $this->load(['section.gondola', 'segments.layer.product']);
+        
+        $gondola = $this->section->gondola ?? null;
+        $alignment = $gondola->alignment ?? 'left';
+        
+        // Se não for justify, usa largura natural dos produtos
+        if ($alignment !== 'justify') {
+            foreach ($this->segments as $segment) {
+                $segment->distributed_width = null;
+                $segment->save();
+                
+                if ($segment->layer) {
+                    $segment->layer->distributed_width = null;
+                    $segment->layer->save();
+                }
+            }
+            return;
+        }
+
+        // Para justify, calcula a distribuição
+        $sectionWidth = $this->section->width ?? 130; // largura padrão
+        $totalSegments = $this->segments->count();
+        
+        if ($totalSegments === 0) {
+            return;
+        }
+
+        // Calcula largura total natural de todos os produtos
+        $totalNaturalWidth = 0;
+        $totalProducts = 0;
+        
+        foreach ($this->segments as $segment) {
+            if ($segment->layer && $segment->layer->product) {
+                $productWidth = $segment->layer->product->width ?? 5; // largura padrão produto
+                $quantity = $segment->layer->quantity ?? 1;
+                $naturalWidth = $productWidth * $quantity;
+                
+                $totalNaturalWidth += $naturalWidth;
+                $totalProducts += $quantity;
+            }
+        }
+
+        // Se largura natural excede a seção, usa proporção
+        if ($totalNaturalWidth > $sectionWidth) {
+            $scaleFactor = $sectionWidth / $totalNaturalWidth;
+            
+            foreach ($this->segments as $segment) {
+                if ($segment->layer && $segment->layer->product) {
+                    $productWidth = $segment->layer->product->width ?? 5;
+                    $quantity = $segment->layer->quantity ?? 1;
+                    $naturalWidth = $productWidth * $quantity;
+                    
+                    $distributedWidth = $naturalWidth * $scaleFactor;
+                    
+                    $segment->distributed_width = round($distributedWidth, 2);
+                    $segment->save();
+                    
+                    $segment->layer->distributed_width = round($distributedWidth, 2);
+                    $segment->layer->save();
+                }
+            }
+        } else {
+            // Se cabe, distribui o espaço extra proporcionalmente
+            $extraSpace = $sectionWidth - $totalNaturalWidth;
+            $spacePerProduct = $totalProducts > 0 ? $extraSpace / $totalProducts : 0;
+            
+            foreach ($this->segments as $segment) {
+                if ($segment->layer && $segment->layer->product) {
+                    $productWidth = $segment->layer->product->width ?? 5;
+                    $quantity = $segment->layer->quantity ?? 1;
+                    $naturalWidth = $productWidth * $quantity;
+                    
+                    $extraForThisSegment = $spacePerProduct * $quantity;
+                    $distributedWidth = $naturalWidth + $extraForThisSegment;
+                    
+                    $segment->distributed_width = round($distributedWidth, 2);
+                    $segment->save();
+                    
+                    $segment->layer->distributed_width = round($distributedWidth, 2);
+                    $segment->layer->save();
+                }
+            }
+        }
+    }
 }
