@@ -41,7 +41,7 @@
                         'items-end': shelf.product_type !== 'hook',
                         'justify-center': alignment === 'center',
                         'justify-start': alignment === 'left',
-                        'justify-end': alignment === 'right',
+                        'justify-end': alignment === 'right,',
                         'justify-between': alignment === 'justify',
                     }" :style="segmentsContainerStyle">
                     <template #item="{ element: segment }"> 

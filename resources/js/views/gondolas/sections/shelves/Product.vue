@@ -121,6 +121,7 @@ const productActiveTrigger = (): CSSProperties => {
     }
     return {
         border: '1px solid transparent',
+        flexShrink: 0,
     };
 };
 /**
@@ -160,6 +161,7 @@ const productStyle = computed(() => {
         height: `${height * props.scaleFactor}px`,
         position: 'relative' as const,
         boxSizing: 'border-box' as const, 
+        flexShrink: 0,
         ...productActiveTrigger()
     };
 });
@@ -214,6 +216,9 @@ onMounted(() => {
     transform: scale(1.02);
     z-index: 0;
     box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+    border: 2px solid blue;
+    box-shadow: 0 0 5px rgba(0, 0, 255, 0.5);
+    box-sizing: border-box;
 }
 
 .product-image {

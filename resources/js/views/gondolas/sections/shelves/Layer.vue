@@ -288,7 +288,7 @@ onUnmounted(() => {
 .layer--selected {
     border: 2px solid blue;
     box-shadow: 0 0 5px rgba(0, 0, 255, 0.5);
-    box-sizing: border-box;
+    box-sizing: border-;
 }
 
 .layer--focused {
