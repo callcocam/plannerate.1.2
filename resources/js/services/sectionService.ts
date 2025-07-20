@@ -13,7 +13,11 @@ export const useSectionService = () => {
     /**
      * Atualiza os dados de uma seção
      */
-    const updateSection = async (sectionId: string, sectionData: any) => {
+    const updateSection = async (sectionId: string, sectionData: any, gondolaId?: string) => {
+        // Se gondolaId for fornecido, usar a rota nested, senão usar a rota direta
+        if (gondolaId) {
+            return apiService.put(`gondolas/${gondolaId}/sections/${sectionId}`, sectionData);
+        }
         return apiService.put(`sections/${sectionId}`, sectionData);
     };
 

@@ -228,6 +228,14 @@ return [
   - Valores padrão (0px, 0) aplicados quando propriedades não estão disponíveis
   - Estabilidade da aplicação melhorada, eliminando crashes por tentativa de acesso a propriedades de objetos null
 
+- ✅ **Correção de Edição de Seções**: Sistema de edição de seções agora salva corretamente os tamanhos dos furos da cremalheira
+  - Implementado recálculo automático dos furos quando campos relacionados à cremalheira são alterados no backend
+  - Frontend atualizado para chamar a API diretamente em vez de apenas atualizar o estado local
+  - Adicionadas rotas nested para seções (`gondolas/{gondolaId}/sections/{id}`) para melhor organização da API
+  - Furos da cremalheira são automaticamente recalculados quando `hole_height`, `hole_width`, `hole_spacing`, `height` ou `base_height` são modificados
+  - Alinhamento visual dos furos aprimorado para perfeita centralização na cremalheira
+  - Sincronização entre estado local e backend garantida após edições
+
 ### Próximas Melhorias ⏳
 
 - ⏳ Implementação de novos recursos de análise

@@ -99,4 +99,4 @@ interface Segment {
 //   ...
 // };
 
-export type { Segment, Layer, SegmentSetting, Product };
+export type { Segment, Layer, SegmentSetting, Product, MercadologicoNivel };
