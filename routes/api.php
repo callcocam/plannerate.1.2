@@ -21,6 +21,11 @@ Route::middleware(['api'])
 
         Route::resource('gondolas', GondolaController::class);
 
+        // Rotas nested para seções dentro de gôndolas
+        Route::put('gondolas/{gondolaId}/sections/{id}', [SectionController::class, 'update'])->name('gondolas.sections.update');
+        Route::get('gondolas/{gondolaId}/sections/{id}', [SectionController::class, 'show'])->name('gondolas.sections.show');
+        Route::get('gondolas/{gondolaId}/sections', [SectionController::class, 'index'])->name('gondolas.sections.index');
+
         Route::resource('sections', SectionController::class);
         Route::resource('shelves', ShelfController::class);
         Route::resource('segments', SegmentController::class);

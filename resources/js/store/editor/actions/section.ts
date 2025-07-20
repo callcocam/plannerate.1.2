@@ -97,39 +97,54 @@ export function updateSectionData(gondolaId: string, sectionId: string, sectionD
     }
 
     const originalSection = gondola.sections[sectionIndex];
-    let changed = false;
-
-    // Verifica se alguma propriedade realmente mudou antes de fazer qualquer coisa
+    
+    // Cria o objeto atualizado com mesclagem profunda para propriedades aninhadas
+    const updatedSection = { ...originalSection };
+    
+    // Mescla as propriedades, tratando especialmente objetos aninhados como 'settings'
     for (const key in sectionData) {
-        if (Object.prototype.hasOwnProperty.call(sectionData, key) && 
-            originalSection[key as keyof Section] !== sectionData[key as keyof Section]) {
-            changed = true;
-            break;
+        if (Object.prototype.hasOwnProperty.call(sectionData, key)) {
+            const newValue = sectionData[key as keyof Section];
+            
+            // Para propriedades de objeto aninhado como 'settings', fazer mesclagem profunda
+            if (key === 'settings' && typeof newValue === 'object' && newValue !== null) {
+                updatedSection.settings = {
+                    ...originalSection.settings,
+                    ...newValue
+                };
+            } else {
+                (updatedSection as any)[key] = newValue;
+            }
         }
     }
 
-    if (changed) {
-        // Cria o objeto atualizado para o histórico
-        const updatedSection = { ...originalSection, ...sectionData };
-
-        // Atualiza a seção dentro do array da gôndola (para histórico)
-        gondola.sections[sectionIndex] = updatedSection;
+    // Atualiza a seção dentro do array da gôndola
+    gondola.sections[sectionIndex] = updatedSection;
+    
+    // Se a seção atualizada for a mesma que está selecionada, atualiza as propriedades da ref
+    if (selectedSection.value && selectedSection.value.id === sectionId) {
+        console.log(`Atualizando propriedades da ref selectedSection para ${sectionId}`);
         
-        // Se a seção atualizada for a mesma que está selecionada, atualiza as propriedades da ref
-        if (selectedSection.value && selectedSection.value.id === sectionId) {
-            console.log(`Atualizando propriedades da ref selectedSection para ${sectionId}`);
-            // Mescla as novas propriedades no objeto existente da ref
-            Object.assign(selectedSection.value, sectionData);
-            // Para garantir reatividade em casos de propriedades aninhadas (se houver), 
-            // pode ser necessário forçar um gatilho, mas Object.assign geralmente basta.
-            // Exemplo (geralmente não necessário): selectedSection.value = { ...selectedSection.value }; 
+        // Para propriedades aninhadas como settings, fazer mesclagem profunda
+        for (const key in sectionData) {
+            if (Object.prototype.hasOwnProperty.call(sectionData, key)) {
+                const newValue = sectionData[key as keyof Section];
+                
+                if (key === 'settings' && typeof newValue === 'object' && newValue !== null) {
+                    selectedSection.value.settings = {
+                        ...selectedSection.value.settings,
+                        ...newValue
+                    };
+                } else {
+                    (selectedSection.value as any)[key] = newValue;
+                }
+            }
         }
-
-        console.log(`Dados da seção ${sectionId} atualizados.`);
-        recordChange(); // Registra após todas as mutações
-    } else {
-        console.log(`Dados da seção ${sectionId} não foram alterados.`);
     }
+
+    console.log(`Dados da seção ${sectionId} atualizados.`);
+    console.log('Settings atualizados:', updatedSection.settings);
+    recordChange(); // Registra após todas as mutações
 }
 
 export function setIsSectionEditing(value: boolean) {

@@ -143,10 +143,16 @@ const handleImageError = (event: Event, product: Product) => {
 }
  
 const getProductForEdit = (product: Product) => {
-    const { mercadologico_nivel, ...rest } = product;
     return {
-        ...rest,
-        mercadologico_nivel: product.mercadologico_nivel?.mercadologico_nivel_6 || ''
+        ...product,
+        mercadologico_nivel: product.mercadologico_nivel || {
+            mercadologico_nivel_1: null,
+            mercadologico_nivel_2: null,
+            mercadologico_nivel_3: null,
+            mercadologico_nivel_4: null,
+            mercadologico_nivel_5: null,
+            mercadologico_nivel_6: null,
+        }
     } as any;
 }
 

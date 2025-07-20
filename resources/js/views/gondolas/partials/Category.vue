@@ -81,20 +81,20 @@ const filteredCategories = computed<Category[]>(() => {
 });
 
 // Manipular mudança de valor
-const handleChange = (newValue) => {
+const handleChange = (newValue: any) => {
     value.value = newValue;
     emit('change', newValue);
 };
 
 // Resetar busca quando o dropdown é fechado
-const handleOpenChange = (isOpen) => {
+const handleOpenChange = (isOpen: any) => {
     if (!isOpen) {
         searchQuery.value = '';
     }
 };
 
 // Limpar a seleção atual
-const clearSelection = (event) => {
+const clearSelection = (event: any) => {
     if (event) {
         event.stopPropagation(); // Evita que o evento propague para o combobox
     }

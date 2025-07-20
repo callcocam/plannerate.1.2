@@ -16,7 +16,8 @@
             width: `${hole.width * scaleFactor}px`,
             height: `${hole.height * scaleFactor}px`,
             top: `${hole.position * scaleFactor}px`,
-            left: `${(gramalheiraWidth - hole.width * scaleFactor) / 2}px`,
+            left: `50%`,
+            transform: `translateX(-50%)`,
         }" @dblclick="addShelfToSection(hole)"> </div>
         <!-- Base section (without holes) at the bottom -->
         <div class="absolute bottom-0 left-0 w-full bg-gray-800 dark:bg-gray-600 border-t border-gray-600 dark:border-gray-500" :style="{

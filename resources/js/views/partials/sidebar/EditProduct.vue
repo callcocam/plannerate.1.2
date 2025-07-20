@@ -96,7 +96,7 @@
 </template>
 
 <script setup lang="ts">
-import { Product } from '@plannerate/types/segment';
+import { Product, MercadologicoNivel } from '@plannerate/types/segment';
 import { reactive, ref, onMounted } from 'vue';
 import { useProductService } from '@plannerate/services/productService';
 import { toast } from 'vue-sonner';
@@ -110,7 +110,7 @@ import { Label } from '@/components/ui/label';
 import ProductDimensions from '@/components/form/fields/ProductDimensions.vue';
 import ProductAdditionalData from '@/components/form/fields/ProductAdditionalData.vue';
 const props = defineProps<{
-    product: Product & { mercadologico_nivel: string }
+    product: Product & { mercadologico_nivel?: MercadologicoNivel | null }
 }>();
 console.log(props.product);
 const emit = defineEmits<{

@@ -165,6 +165,39 @@ class SectionController extends Controller
                 $validatedData['slug'] = Str::slug($validatedData['name']);
             }
 
+            // Verificar se algum campo relacionado aos furos da cremalheira foi alterado
+            $holesRelatedFields = ['hole_height', 'hole_width', 'hole_spacing', 'height', 'base_height'];
+            $shouldRecalculateHoles = false;
+            
+            foreach ($holesRelatedFields as $field) {
+                if (isset($validatedData[$field]) && $validatedData[$field] != $section->$field) {
+                    $shouldRecalculateHoles = true;
+                    break;
+                }
+            }
+
+            // Se campos relacionados aos furos foram alterados, recalcular os furos
+            if ($shouldRecalculateHoles) {
+                $shelfService = new ShelfPositioningService();
+                
+                // Preparar dados para o cálculo dos furos (mesclar dados existentes com novos)
+                $holeCalculationData = [
+                    'height' => $validatedData['height'] ?? $section->height,
+                    'hole_height' => $validatedData['hole_height'] ?? $section->hole_height,
+                    'hole_width' => $validatedData['hole_width'] ?? $section->hole_width,
+                    'hole_spacing' => $validatedData['hole_spacing'] ?? $section->hole_spacing,
+                    'base_height' => $validatedData['base_height'] ?? $section->base_height,
+                ];
+
+                // Recalcular os furos
+                $newHoles = $shelfService->calculateHoles($holeCalculationData);
+                
+                // Atualizar ou criar settings com os novos furos
+                $currentSettings = $section->settings ?? [];
+                $currentSettings['holes'] = $newHoles;
+                $validatedData['settings'] = $currentSettings;
+            }
+
             // Atualizar a seção
             $section->update($validatedData);
 
