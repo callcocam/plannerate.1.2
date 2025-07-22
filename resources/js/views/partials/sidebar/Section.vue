@@ -500,36 +500,14 @@ const saveChanges = async () => {
     }
 
     try {
-        // Importar e usar o service da seção para chamar a API
-        const { useSectionService } = await import('../../../services/sectionService');
-        const sectionService = useSectionService();
-        
-        // Chamar a API para atualizar a seção no backend
-        const response = await sectionService.updateSection(sectionId, dataToSave, correctGondolaId);
-        
-        if (response.data) {
-            // A API pode retornar os dados em response.data.data ou diretamente em response.data
-            const updatedSectionFromAPI = response.data.data || response.data;
-            
-            // Verificar se temos dados válidos da seção
-            if (updatedSectionFromAPI && updatedSectionFromAPI.id) {
-                // Atualizar o estado local com os dados completos da API
-                editorStore.updateSectionData(correctGondolaId, sectionId, updatedSectionFromAPI);
-                
-                console.log('Seção atualizada com sucesso na API e no estado local.');
-                console.log('Furos recalculados:', updatedSectionFromAPI.settings?.holes);
-                
-                toast.success('Seção atualizada com sucesso!', {
-                    description: 'As alterações foram salvas e a cremalheira foi recalculada.',
-                });
-                
-                editorStore.setIsSectionEditing(false);
-            } else {
-                throw new Error('Dados da seção não retornados pela API');
-            }
-        } else {
-            throw new Error(response.message || 'Erro ao atualizar seção');
-        }
+        editorStore.updateSectionData(correctGondolaId, sectionId, dataToSave); // Usa dataToSave
+        console.log('Alterações da seção enviadas para o editorStore.');
+
+        toast.success('Seção atualizada com sucesso!', {
+            description: 'As alterações foram salvas e a cremalheira foi recalculada.',
+        });
+
+        editorStore.setIsSectionEditing(false);
     } catch (error) {
         console.error('Erro ao salvar as alterações da seção:', error);
         toast.error('Erro ao salvar as alterações da seção.', {

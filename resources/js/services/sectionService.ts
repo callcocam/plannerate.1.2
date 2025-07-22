@@ -4,37 +4,38 @@ import apiService from "./api";
 
 export const useSectionService = () => {
     /**
-     * Busca uma gôndola específica pelo ID
+     * Busca uma seção específica pelo ID
+     * ATENÇÃO: Usando prefixo /plannerate/ para garantir que utiliza o controller local e evitar conflito com o pacote
      */
     const fetchSection = async (sectionId: string) => {
-        return apiService.get(`sections/${sectionId}`);
+        return apiService.get(`plannerate/sections/${sectionId}`);
     };
 
     /**
      * Atualiza os dados de uma seção
+     * ATENÇÃO: Usando prefixo /plannerate/ para garantir que utiliza o controller local e evitar conflito com o pacote
      */
-    const updateSection = async (sectionId: string, sectionData: any, gondolaId?: string) => {
-        // Se gondolaId for fornecido, usar a rota nested, senão usar a rota direta
-        if (gondolaId) {
-            return apiService.put(`gondolas/${gondolaId}/sections/${sectionId}`, sectionData);
-        }
-        return apiService.put(`sections/${sectionId}`, sectionData);
+    const updateSection = async (sectionId: string, sectionData: any) => {
+        
+        return apiService.put(`plannerate/sections/${sectionId}`, sectionData);
     };
 
     /**
      * Atualiza alinhamento de uma seção
+     * ATENÇÃO: Usando prefixo /plannerate/ para garantir que utiliza o controller local e evitar conflito com o pacote
      */
     const updateSectionAlignment = async (sectionId: string, alignment: string) => {
-        return apiService.post(`sections/${sectionId}/alignment`, {
+        return apiService.post(`plannerate/sections/${sectionId}/alignment`, {
             alignment
         });
     };
 
     /**
      * Atualiza a posição vertical de uma seção
+     * ATENÇÃO: Usando prefixo /plannerate/ para garantir que utiliza o controller local e evitar conflito com o pacote
      */
     const inverterShelves = async (sectionId: string) => {
-        return apiService.post(`sections/${sectionId}/inverterShelves`);
+        return apiService.post(`plannerate/sections/${sectionId}/inverterShelves`);
     };
 
 
