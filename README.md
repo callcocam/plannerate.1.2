@@ -242,6 +242,18 @@ return [
 - ⏳ Otimização de performance
 - ⏳ Melhorias de acessibilidade
 
+### Melhorias de Debug e Monitoramento ✅
+
+- ✅ **Sistema de Logs Detalhados para Recálculo de Furos**: Implementado sistema completo de logs para monitorar todo o fluxo de recálculo dos furos da cremalheira
+  - **Frontend (Section.vue)**: Logs para capturar mudanças no formulário e envio de dados
+  - **Serviço (sectionService.ts)**: Logs para monitorar chamadas da API
+  - **Controller (SectionController.php)**: Logs detalhados para processamento e verificação de campos
+  - **Serviço de Posicionamento (ShelfPositioningService.php)**: Logs para cálculos matemáticos dos furos
+  - **Modelo (Section.php)**: Logs para operações de banco de dados
+  - Rastreamento completo desde modificação no frontend até salvamento no banco
+  - Logs com timestamps e identificadores únicos para facilitar debugging
+  - Monitoramento de todos os passos: mudança → envio → processamento → cálculo → salvamento → resposta
+
 ## Documentação
 
 Para documentação completa, visite [a documentação oficial](https://github.com/callcocam/plannerate/docs).

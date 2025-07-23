@@ -18,11 +18,25 @@ class ShelfPositioningService
      */
     public function calculateHoles(array $section): array
     {
+        \Log::info('🔄 [SERVICE] Iniciando cálculo dos furos', [
+            'input_data' => $section,
+            'timestamp' => now()->toISOString()
+        ]);
+        
         $sectionHeight = $section['height'];
         $holeHeight = $section['hole_height'];
         $holeWidth = $section['hole_width'];
         $holeSpacing = $section['hole_spacing'];
         $baseHeight = $section['base_height'] ?? 0;
+        
+        \Log::info('📊 [SERVICE] Dados extraídos para cálculo', [
+            'section_height' => $sectionHeight,
+            'hole_height' => $holeHeight,
+            'hole_width' => $holeWidth,
+            'hole_spacing' => $holeSpacing,
+            'base_height' => $baseHeight,
+            'timestamp' => now()->toISOString()
+        ]);
 
         // Calculate available height for holes (excluding the base at the bottom)
         $availableHeight = $sectionHeight - $baseHeight;
@@ -35,15 +49,39 @@ class ShelfPositioningService
         $remainingSpace = $availableHeight - $holeCount * $holeHeight - ($holeCount - 1) * $holeSpacing;
         $marginTop = $remainingSpace / 2; // Start from the top with margin
 
+        \Log::info('🧮 [SERVICE] Cálculos intermediários', [
+            'available_height' => $availableHeight,
+            'total_space_needed' => $totalSpaceNeeded,
+            'hole_count' => $holeCount,
+            'remaining_space' => $remainingSpace,
+            'margin_top' => $marginTop,
+            'timestamp' => now()->toISOString()
+        ]);
+
         $holes = [];
         for ($i = 0; $i < $holeCount; $i++) {
+            $holePosition = $marginTop + $i * ($holeHeight + $holeSpacing);
             $holes[] = [
-                'width' => $holeWidth  ,
-                'height' => $holeHeight  ,
-                'spacing' => $holeSpacing  ,
-                'position' => ($marginTop + $i * ($holeHeight + $holeSpacing)),
+                'width' => $holeWidth,
+                'height' => $holeHeight,
+                'spacing' => $holeSpacing,
+                'position' => $holePosition,
             ];
+            
+            \Log::info("🕳️ [SERVICE] Furo {$i} calculado", [
+                'hole_index' => $i,
+                'hole_width' => $holeWidth,
+                'hole_height' => $holeHeight,
+                'hole_position' => $holePosition,
+                'timestamp' => now()->toISOString()
+            ]);
         }
+
+        \Log::info('✅ [SERVICE] Cálculo dos furos concluído', [
+            'total_holes' => count($holes),
+            'holes' => $holes,
+            'timestamp' => now()->toISOString()
+        ]);
 
         return $holes;
     }

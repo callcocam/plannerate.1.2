@@ -500,8 +500,22 @@ const saveChanges = async () => {
     }
 
     try {
-        editorStore.updateSectionData(correctGondolaId, sectionId, dataToSave); // Usa dataToSave
-        console.log('Alterações da seção enviadas para o editorStore.');
+        // Primeiro, atualizar no estado local para feedback imediato
+        editorStore.updateSectionData(correctGondolaId, sectionId, dataToSave);
+        
+        // Depois, sincronizar com o backend para recalcular os furos
+        const { useSectionService } = await import('../../../services/sectionService');
+        const sectionService = useSectionService();
+        
+        const response = await sectionService.updateSection(sectionId, dataToSave);
+        
+        if (response.data && response.data.data) {
+            // Atualizar o estado local com os dados retornados do backend (incluindo furos recalculados)
+            const updatedSection = response.data.data;
+            editorStore.updateSectionData(correctGondolaId, sectionId, updatedSection);
+            
+            console.log('Seção atualizada no backend com furos recalculados:', updatedSection);
+        }
 
         toast.success('Seção atualizada com sucesso!', {
             description: 'As alterações foram salvas e a cremalheira foi recalculada.',
