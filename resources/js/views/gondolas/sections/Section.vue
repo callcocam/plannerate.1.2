@@ -50,9 +50,47 @@ const { gondola, section } = props;
 // ------- STORES & SERVICES -------
 const editorStore = useEditorStore();
 
+// Função para calcular buracos localmente (mesmo algoritmo do backend)
+const calculateHoles = (sectionData: any) => {
+    const { height, hole_height, hole_width, hole_spacing, base_height } = sectionData;
+    
+    // Calcular altura disponível para furos (excluindo a base na parte inferior)
+    const availableHeight = height - base_height;
+    
+    // Calcular quantos furos cabem
+    const totalSpaceNeeded = hole_height + hole_spacing;
+    const holeCount = Math.floor(availableHeight / totalSpaceNeeded);
+    
+    // Calcular o espaço restante para distribuir uniformemente
+    const remainingSpace = availableHeight - holeCount * hole_height - (holeCount - 1) * hole_spacing;
+    const marginTop = remainingSpace / 2; // Começar do topo com margem
+    
+    const holes = [];
+    for (let i = 0; i < holeCount; i++) {
+        const holePosition = marginTop + i * (hole_height + hole_spacing);
+        holes.push({
+            width: hole_width,
+            height: hole_height,
+            spacing: hole_spacing,
+            position: holePosition,
+        });
+    }
+    
+    return holes;
+};
+
+// Computed para usar buracos recalculados localmente durante edição
 const holes = computed(() => {
-    if (!section.settings) return [];
-    return section.settings.holes;
+    // Sempre recalcular com base nos valores atuais da seção
+    const sectionData = {
+        height: section.height,
+        hole_height: section.hole_height,
+        hole_width: section.hole_width,
+        hole_spacing: section.hole_spacing,
+        base_height: section.base_height,
+    };
+    
+    return calculateHoles(sectionData);
 });
 const invertIndex = computed(() =>{ 
     if (props.gondola.flow === 'left_to_right') {   
