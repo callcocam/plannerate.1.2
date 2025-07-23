@@ -11,7 +11,7 @@
                         <PlusIcon class="h-4 w-4" />
                     </span>
                 </div>
-                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Nenhuma gôndola encontrada</h3>
+                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Nenhuma Gôndola encontrada</h3>
                 <p class="mt-2 max-w-md text-sm text-gray-500 dark:text-gray-400">
                     As gôndolas são essenciais para organizar seus produtos no planograma. Adicione sua primeira gôndola
                     para começar a criar o layout
