@@ -116,6 +116,14 @@
                                 <Checkbox id="stackable" v-model:modelValue="filters.stackable" />
                                 <Label for="stackable" class="text-sm font-normal">Empilhável</Label>
                             </div>
+                            <div class="flex items-center space-x-2 col-span-2">
+                                <Checkbox id="dimension" v-model:modelValue="filters.dimension" />
+                                <Label for="dimension" class="text-sm font-normal">Com Dimensões</Label>
+                            </div>
+                            <div class="flex items-center space-x-2 col-span-2">
+                                <Checkbox id="sales" v-model:modelValue="filters.sales" />
+                                <Label for="sales" class="text-sm font-normal">Com Vendas</Label>
+                            </div>
                         </div>
                     </div>
 
@@ -204,7 +212,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import MercadologicoSelector from '@/components/form/fields/MercadologicoSelector.vue';
+import MercadologicoSelector from '@/components/form/fields/MercadologicoSelector.vue';  
 
 
 interface Category {
@@ -218,6 +226,8 @@ interface FilterState {
     hangable: boolean;
     stackable: boolean;
     usageStatus: string;
+    dimension:  boolean ;
+    sales: boolean;
 }
 const props = defineProps({
     categories: {
@@ -268,6 +278,8 @@ const filters = reactive<FilterState>({
     hangable: false,
     stackable: false,
     usageStatus: 'unused',
+    dimension: true,
+    sales: true
 }); 
 const loading = ref(false);
 const filteredProducts = ref<Product[]>([]);
@@ -311,9 +323,7 @@ const toggleProductSelection = (product: Product) => {
 
 // Função para obter produtos selecionados
 const getSelectedProducts = (): Product[] => {
-    const selected = filteredProducts.value.filter(product => selectedProducts.value.has(product.id));
-    console.log('getSelectedProducts - IDs selecionados:', Array.from(selectedProducts.value));
-    console.log('getSelectedProducts - Produtos encontrados:', selected.map(p => `${p.name} (${p.id})`));
+    const selected = filteredProducts.value.filter(product => selectedProducts.value.has(product.id)); 
     return selected;
 };
 
@@ -334,6 +344,8 @@ const fetchProducts = async (page = 1, append = false) => {
             category: cleanMercadologicoNivel(filters.category) || undefined,
             hangable: filters.hangable || undefined,
             stackable: filters.stackable || undefined,
+            dimension: filters.dimension || undefined,
+            sales: filters.sales || undefined,
             planogram_id: editorStore.currentState?.id || undefined, 
             page: page,
             limit: LIST_LIMIT,
