@@ -112,6 +112,11 @@ export function updateSectionData(gondolaId: string, sectionId: string, sectionD
                     ...originalSection.settings,
                     ...newValue
                 };
+                
+                // Log específico para furos recalculados
+                if (newValue && typeof newValue === 'object' && 'holes' in newValue && Array.isArray((newValue as any).holes)) {
+                    console.log(`Furos recalculados para seção ${sectionId}:`, (newValue as any).holes);
+                }
             } else {
                 (updatedSection as any)[key] = newValue;
             }

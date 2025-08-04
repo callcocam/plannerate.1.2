@@ -148,7 +148,7 @@
                                         <p>Quantidade de buracos na cremalheira</p>
                                     </TooltipContent>
                                 </Tooltip>
-                                <p class="text-sm">{{ selectedSection.settings.holes.length }}</p>
+                                <p class="text-sm">{{ currentHolesCount }}</p>
                             </div>
                             <div>
                                 <Tooltip>
@@ -159,7 +159,7 @@
                                         <p>Largura de cada buraco da cremalheira em centímetros</p>
                                     </TooltipContent>
                                 </Tooltip>
-                                <p class="text-sm">{{ selectedSection.hole_width }}x{{ selectedSection.hole_height }}cm</p>
+                                <p class="text-sm">{{ isEditing ? (formData.hole_width || selectedSection.hole_width) : selectedSection.hole_width }}x{{ isEditing ? (formData.hole_height || selectedSection.hole_height) : selectedSection.hole_height }}cm</p>
                             </div>
                             <div>
                                 <Tooltip>
@@ -170,7 +170,7 @@
                                         <p>Espaçamento vertical entre os buracos da cremalheira em centímetros</p>
                                     </TooltipContent>
                                 </Tooltip>
-                                <p class="text-sm">{{ selectedSection.hole_spacing }}cm</p>
+                                <p class="text-sm">{{ isEditing ? (formData.hole_spacing || selectedSection.hole_spacing) : selectedSection.hole_spacing }}cm</p>
                             </div>
                         </div>
                     </div>
@@ -383,9 +383,63 @@ const selectedSection = computed(() => editorStore.getSelectedSection as Section
 const editorGondola = computed(() => editorStore.getCurrentGondola);
 const isEditing = computed(() => editorStore.isSectionEditing);
 
+// Função utilitária para calcular buracos da cremalheira (mesmo algoritmo do backend)
+const calculateHoles = (sectionData: {
+    height: number;
+    hole_height: number;
+    hole_width: number;
+    hole_spacing: number;
+    base_height: number;
+}) => {
+    const { height, hole_height, hole_width, hole_spacing, base_height } = sectionData;
+    
+    // Calcular altura disponível para furos (excluindo a base na parte inferior)
+    const availableHeight = height - base_height;
+    
+    // Calcular quantos furos cabem
+    const totalSpaceNeeded = hole_height + hole_spacing;
+    const holeCount = Math.floor(availableHeight / totalSpaceNeeded);
+    
+    // Calcular o espaço restante para distribuir uniformemente
+    const remainingSpace = availableHeight - holeCount * hole_height - (holeCount - 1) * hole_spacing;
+    const marginTop = remainingSpace / 2; // Começar do topo com margem
+    
+    const holes = [];
+    for (let i = 0; i < holeCount; i++) {
+        const holePosition = marginTop + i * (hole_height + hole_spacing);
+        holes.push({
+            width: hole_width,
+            height: hole_height,
+            spacing: hole_spacing,
+            position: holePosition,
+        });
+    }
+    
+    return holes;
+};
+
 // Calcula se é possível inverter as prateleiras
 const canInvertShelves = computed(() => {
     return selectedSection.value && selectedSection.value.shelves && selectedSection.value.shelves.length >= 2;
+});
+
+// Computed para recalcular buracos em tempo real durante edição
+const recalculatedHoles = computed(() => {
+    // Sempre recalcular com base nos valores atuais (formulário ou seção original)
+    const sectionData = {
+        height: formData.value.height || selectedSection.value?.height || 0,
+        hole_height: formData.value.hole_height || selectedSection.value?.hole_height || 0,
+        hole_width: formData.value.hole_width || selectedSection.value?.hole_width || 0,
+        hole_spacing: formData.value.hole_spacing || selectedSection.value?.hole_spacing || 0,
+        base_height: formData.value.base_height || selectedSection.value?.base_height || 0,
+    };
+    
+    return calculateHoles(sectionData);
+});
+
+// Computed para mostrar quantidade de buracos atualizada em tempo real
+const currentHolesCount = computed(() => {
+    return recalculatedHoles.value.length;
 });
 
 // Inicializa o formulário com valores padrão
@@ -500,36 +554,28 @@ const saveChanges = async () => {
     }
 
     try {
-        // Importar e usar o service da seção para chamar a API
+        // Primeiro, atualizar no estado local para feedback imediato
+        editorStore.updateSectionData(correctGondolaId, sectionId, dataToSave);
+        
+        // Depois, sincronizar com o backend para recalcular os furos
         const { useSectionService } = await import('../../../services/sectionService');
         const sectionService = useSectionService();
         
-        // Chamar a API para atualizar a seção no backend
-        const response = await sectionService.updateSection(sectionId, dataToSave, correctGondolaId);
+        const response = await sectionService.updateSection(sectionId, dataToSave);
         
-        if (response.data) {
-            // A API pode retornar os dados em response.data.data ou diretamente em response.data
-            const updatedSectionFromAPI = response.data.data || response.data;
+        if (response.data && response.data.data) {
+            // Atualizar o estado local com os dados retornados do backend (incluindo furos recalculados)
+            const updatedSection = response.data.data;
+            editorStore.updateSectionData(correctGondolaId, sectionId, updatedSection);
             
-            // Verificar se temos dados válidos da seção
-            if (updatedSectionFromAPI && updatedSectionFromAPI.id) {
-                // Atualizar o estado local com os dados completos da API
-                editorStore.updateSectionData(correctGondolaId, sectionId, updatedSectionFromAPI);
-                
-                console.log('Seção atualizada com sucesso na API e no estado local.');
-                console.log('Furos recalculados:', updatedSectionFromAPI.settings?.holes);
-                
-                toast.success('Seção atualizada com sucesso!', {
-                    description: 'As alterações foram salvas e a cremalheira foi recalculada.',
-                });
-                
-                editorStore.setIsSectionEditing(false);
-            } else {
-                throw new Error('Dados da seção não retornados pela API');
-            }
-        } else {
-            throw new Error(response.message || 'Erro ao atualizar seção');
+            console.log('Seção atualizada no backend com furos recalculados:', updatedSection);
         }
+
+        toast.success('Seção atualizada com sucesso!', {
+            description: 'As alterações foram salvas e a cremalheira foi recalculada.',
+        });
+
+        editorStore.setIsSectionEditing(false);
     } catch (error) {
         console.error('Erro ao salvar as alterações da seção:', error);
         toast.error('Erro ao salvar as alterações da seção.', {
