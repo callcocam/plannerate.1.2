@@ -1,14 +1,10 @@
 <template>
-    <div :class="sidebarClasses">
+    <div :class="sidebarClasses" @click="viewStatsStore.reset();">
         <!-- Colapsado: só o ícone -->
         <template v-if="showIconOnly">
-            <button
-                @click="$emit('toggle')"
-                aria-label="Expandir menu de produtos"
-                title="Produtos"
+            <button @click="$emit('toggle')" aria-label="Expandir menu de produtos" title="Produtos"
                 class="absolute left-0 top-4 flex items-center justify-center w-12 h-12 bg-transparent border-none shadow-none p-0 m-0"
-                style="outline: none;"
-            >
+                style="outline: none;">
                 <Package class="h-6 w-6" />
             </button>
         </template>
@@ -23,8 +19,8 @@
                 <div class="flex items-center justify-between">
                     <div class="flex items-center space-x-2">
                         <h3 class="text-lg font-medium text-gray-800 dark:text-gray-100">Produtos Disponíveis</h3>
-                        <div v-if="selectedProductsCount > 0" 
-                             class="bg-blue-500 text-white text-xs rounded-full px-2 py-1 min-w-[1.5rem] text-center">
+                        <div v-if="selectedProductsCount > 0"
+                            class="bg-blue-500 text-white text-xs rounded-full px-2 py-1 min-w-[1.5rem] text-center">
                             {{ selectedProductsCount }}
                         </div>
                     </div>
@@ -33,7 +29,7 @@
                             aria-label="Limpar seleção" title="Limpar seleção" class="text-xs">
                             Limpar
                         </Button>
-                        <Button variant="ghost" size="icon" @click="$emit('toggle')" 
+                        <Button variant="ghost" size="icon" @click="$emit('toggle')"
                             aria-label="Colapsar menu de produtos" title="Colapsar">
                             <ChevronLeft class="h-4 w-4" />
                         </Button>
@@ -60,25 +56,22 @@
                         <Popover v-model:open="showMercadologicoPopover">
                             <PopoverTrigger as-child>
                                 <Button variant="outline" class="w-full justify-between">
-                                    <span>{{ filters.category ? 'Nível selecionado' : 'Selecionar nível mercadológico' }}</span>
+                                    <span>{{ filters.category ? 'Nível selecionado' : 'Selecionar nível mercadológico'
+                                        }}</span>
                                     <ChevronDown class="h-4 w-4 opacity-50" />
                                 </Button>
                             </PopoverTrigger>
                             <PopoverContent class="w-2xl p-4" side="right" align="start">
                                 <div class="space-y-4">
                                     <h4 class="font-medium leading-none">Nível Mercadológico</h4>
-                                    <MercadologicoSelector 
-                                        :field="{
-                                            name: 'mercadologico_nivel',
-                                            label: 'Mercadológico',
-                                            apiUrl: '/api/categories/mercadologico',
-                                            valueKey: 'id',
-                                            labelKey: 'name'
-                                        }" 
-                                        id="mercadologico_nivel" 
-                                        v-model="filters.category" 
-                                        @update:model-value="showMercadologicoPopover = false"
-                                    />
+                                    <MercadologicoSelector :field="{
+                                        name: 'mercadologico_nivel',
+                                        label: 'Mercadológico',
+                                        apiUrl: '/api/categories/mercadologico',
+                                        valueKey: 'id',
+                                        labelKey: 'name'
+                                    }" id="mercadologico_nivel" v-model="filters.category"
+                                        @update:model-value="showMercadologicoPopover = false" />
                                 </div>
                             </PopoverContent>
                         </Popover>
@@ -144,12 +137,11 @@
 
                 <ul v-if="!editorStore.isLoading && filteredProducts.length > 0" class="space-y-1">
                     <li v-for="product in filteredProducts" :key="product.id"
-                        class="group cursor-pointer rounded-md p-2 shadow-sm transition"
-                        :class="{
+                        class="group  rounded-md p-2 shadow-sm transition" :class="{
+                            'cursor-pointer': product.dimensions ? true : false,
                             'bg-blue-100 border-2 border-blue-400 dark:bg-blue-900 dark:border-blue-500': isProductSelected(product.id),
                             'bg-white hover:bg-blue-50 dark:bg-gray-700 dark:hover:bg-gray-600': !isProductSelected(product.id)
-                        }"
-                        @click="handleProductSelect(product, $event)" draggable="true"
+                        }" @click="handleProductSelect(product, $event)" :draggable="product.dimensions ? true : false"
                         @dragstart="handleDragStart($event, product)">
                         <div class="flex items-center space-x-3">
                             <div
@@ -158,14 +150,17 @@
                                     @error="(e) => handleImageError(e, product)" />
                             </div>
                             <div class="min-w-0 flex-1">
-                                <p class="truncate text-sm font-medium text-gray-800 dark:text-gray-100">{{ product.name }}
+                                <p class="truncate text-sm font-medium text-gray-800 dark:text-gray-100">{{ product.name
+                                    }}
                                 </p>
-                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ product.width }}×{{ product.height
+                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ product.width }}×{{
+                                    product.height
                                     }}×{{ product.depth }} cm</p>
                             </div>
                         </div>
                         <div class="mt-1 flex justify-end">
-                            <Button variant="ghost" size="sm" class="invisible text-xs group-hover:visible"
+                            <Button variant="ghost" size="sm"
+                                class="invisible text-xs group-hover:visible cursor-pointer"
                                 @click.stop="viewStats(product)">
                                 Ver estatísticas
                             </Button>
@@ -184,7 +179,8 @@
                     class="flex flex-col items-center justify-center py-10 text-center">
                     <Package class="h-10 w-10 text-gray-300 dark:text-gray-600" />
                     <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Nenhum produto disponível encontrado</p>
-                    <p v-if="Object.values(filters).some((f) => f)" class="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                    <p v-if="Object.values(filters).some((f) => f)"
+                        class="mt-1 text-xs text-gray-400 dark:text-gray-500">
                         Tente ajustar os filtros.</p>
                 </div>
 
@@ -212,8 +208,10 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import MercadologicoSelector from '@/components/form/fields/MercadologicoSelector.vue';  
+import MercadologicoSelector from '@/components/form/fields/MercadologicoSelector.vue';
+import { useViewStatsStore } from '@plannerate/store/editor/viewStats';
 
+const viewStatsStore = useViewStatsStore();
 
 interface Category {
     id: number | string;
@@ -226,7 +224,7 @@ interface FilterState {
     hangable: boolean;
     stackable: boolean;
     usageStatus: string;
-    dimension:  boolean ;
+    dimension: boolean;
     sales: boolean;
 }
 const props = defineProps({
@@ -255,7 +253,7 @@ const emit = defineEmits(['select-product', 'drag-start', 'view-stats', 'close',
 // Função para limpar valores null/undefined de um objeto
 const cleanMercadologicoNivel = (obj: any) => {
     if (!obj || typeof obj !== 'object') return null;
-    
+
     const cleaned: any = {};
     Object.keys(obj).forEach(key => {
         const value = obj[key];
@@ -264,7 +262,7 @@ const cleanMercadologicoNivel = (obj: any) => {
             cleaned[key] = value;
         }
     });
-    
+
     // Retorna null se o objeto estiver vazio após limpeza
     return Object.keys(cleaned).length > 0 ? cleaned : null;
 };
@@ -280,7 +278,7 @@ const filters = reactive<FilterState>({
     usageStatus: 'unused',
     dimension: true,
     sales: true
-}); 
+});
 const loading = ref(false);
 const filteredProducts = ref<Product[]>([]);
 const currentPage = ref(1);
@@ -316,14 +314,14 @@ const toggleProductSelection = (product: Product) => {
     } else {
         selectedProducts.value.add(product.id);
     }
-    
+
     // Atualiza o modo de seleção múltipla
     isMultiSelectMode.value = selectedProducts.value.size > 0;
 };
 
 // Função para obter produtos selecionados
 const getSelectedProducts = (): Product[] => {
-    const selected = filteredProducts.value.filter(product => selectedProducts.value.has(product.id)); 
+    const selected = filteredProducts.value.filter(product => selectedProducts.value.has(product.id));
     return selected;
 };
 
@@ -346,7 +344,7 @@ const fetchProducts = async (page = 1, append = false) => {
             stackable: filters.stackable || undefined,
             dimension: filters.dimension || undefined,
             sales: filters.sales || undefined,
-            planogram_id: editorStore.currentState?.id || undefined, 
+            planogram_id: editorStore.currentState?.id || undefined,
             page: page,
             limit: LIST_LIMIT,
         };
@@ -402,7 +400,6 @@ watch(
 );
 
 watch(productIdsInCurrentGondola, () => {
-    console.log('Product IDs in current gondola changed (via editorStore), fetching page 1...');
     setTimeout(async () => {
         await fetchProducts(1, false);
     }, 300); // Pequeno delay
@@ -415,6 +412,7 @@ function loadMore() {
 }
 
 function handleProductSelect(product: Product, event?: MouseEvent) {
+    viewStatsStore.reset();
     // Se CTRL está pressionado ou já estamos em modo multi-seleção
     if (event?.ctrlKey || event?.metaKey || isMultiSelectMode.value) {
         toggleProductSelection(product);
@@ -426,6 +424,7 @@ function handleProductSelect(product: Product, event?: MouseEvent) {
 }
 
 function handleDragStart(event: DragEvent, product: Product) {
+    viewStatsStore.reset();
     if (event.dataTransfer) {
         // Se há produtos selecionados e o produto arrastado está entre eles
         if (selectedProductsCount.value > 0 && isProductSelected(product.id)) {
@@ -434,7 +433,7 @@ function handleDragStart(event: DragEvent, product: Product) {
 
             event.dataTransfer.setData('text/products-multiple', JSON.stringify(selectedProductsList));
             event.dataTransfer.effectAllowed = 'copy';
-            
+
             // Limpar seleção após iniciar o drag
             setTimeout(() => clearSelection(), 100);
         } else {
@@ -447,7 +446,8 @@ function handleDragStart(event: DragEvent, product: Product) {
 }
 
 function viewStats(product: Product) {
-    emit('view-stats', product);
+    viewStatsStore.setSelectedProduct(product);
+
 }
 
 function handleImageError(event: Event, product: Product) {
@@ -483,7 +483,7 @@ onMounted(() => {
     // console.log('Component mounted, fetching initial products...');
     fetchProducts(1, false);
     fetchCategories();
-    
+
     // Adicionar listener global para ESC
     document.addEventListener('keydown', handleKeyDown);
 });

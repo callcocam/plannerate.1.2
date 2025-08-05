@@ -1,15 +1,11 @@
-<template>
-    <div class="product relative mb-2" :style="productStyle" @click="handleProductClick" ref="productRef" 
-    >
+<template> 
         <!-- Imagem do produto, com fallback para placeholder dinâmico -->
         <img
             :src="imageUrl"
             @error="handleImageError"
             alt="Imagem do Produto"
-            :style="imageStyle"
-        />
-        <slot name="depth-count"></slot>
-    </div>
+            :style="{...imageStyle, ...productStyle}"
+        />  
 </template>
 
 
@@ -34,12 +30,8 @@ const productRef = ref<HTMLDivElement | null>(null);
 /**
  * URL do placeholder dinâmico baseado nas dimensões do produto
  */
-const placeholderUrl = computed(() => {
-    const width = Math.round((props.product?.width || 50) * props.scaleFactor);
-    const height = Math.round((props.product?.height || 50) * props.scaleFactor);
-    // Garante um tamanho mínimo para o placeholder não quebrar
-    const w = Math.max(width, 10); 
-    const h = Math.max(height, 10);
+const placeholderUrl = computed(() => { 
+    // Garante um tamanho mínimo para o placeholder não quebrar 
     return `/img/fall4.jpg`;
 });
 
@@ -120,8 +112,8 @@ const productActiveTrigger = (): CSSProperties => {
         };
     }
     return {
-        border: '1px solid transparent',
-        flexShrink: 0,
+        // border: '1px solid transparent',
+        // flexShrink: 0,
     };
 };
 /**
@@ -158,11 +150,8 @@ const productStyle = computed(() => {
     
     return {
         width: `${width * props.scaleFactor}px`,
-        height: `${height * props.scaleFactor}px`,
-        position: 'relative' as const,
-        boxSizing: 'border-box' as const, 
-        flexShrink: 0,
-        ...productActiveTrigger()
+        height: `${height * props.scaleFactor}px`, 
+        flexShrink: 0, 
     };
 });
 

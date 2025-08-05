@@ -29,24 +29,6 @@
                         <Input type="text" v-model="record.ean" readonly />
                         <span v-if="validationErrors.ean" class="text-red-500 text-xs">{{ validationErrors.ean }}</span>
                     </div>
-                    <div class="flex flex-col gap-2">
-                        <Label>Altura</Label>
-                        <Input type="number" v-model="record.height" />
-                        <span v-if="validationErrors.height" class="text-red-500 text-xs">{{ validationErrors.height
-                            }}</span>
-                    </div>
-                    <div class="flex flex-col gap-2">
-                        <Label>Largura</Label>
-                        <Input type="number" v-model="record.width" />
-                        <span v-if="validationErrors.width" class="text-red-500 text-xs">{{ validationErrors.width
-                            }}</span>
-                    </div>
-                    <div class="flex flex-col gap-2">
-                        <Label>Profundidade</Label>
-                        <Input type="number" v-model="record.depth" />
-                        <span v-if="validationErrors.depth" class="text-red-500 text-xs">{{ validationErrors.depth
-                            }}</span>
-                    </div>
 
                     <div class="flex flex-col gap-2 col-span-full">
                         <ProductDimensions :field="{
@@ -75,7 +57,7 @@
                             label: 'Dados Adicionais',
                             description: 'Dados adicionais do produto',
                             required: true
-                        }" :id="record.id" v-model="record.additional_data" />
+                        }" :id="record.id" v-model="record.product_additional_data" />
                     </div>
                     <div class="flex flex-col gap-2 col-span-full">
                         <Label>Descrição</Label>
@@ -110,9 +92,8 @@ import { Label } from '@/components/ui/label';
 import ProductDimensions from '@/components/form/fields/ProductDimensions.vue';
 import ProductAdditionalData from '@/components/form/fields/ProductAdditionalData.vue';
 const props = defineProps<{
-    product: Product & { mercadologico_nivel?: MercadologicoNivel | null }
+    product: Product & { mercadologico_nivel?: MercadologicoNivel | null, product_additional_data?: Record<string, any> }
 }>();
-console.log(props.product);
 const emit = defineEmits<{
     (e: 'update:product', product: Product): void
 }>();
@@ -120,9 +101,10 @@ const emit = defineEmits<{
 // Inicializa o record com valores seguros
 const record = reactive({
     ...props.product,
+    product_additional_data: props.product?.product_additional_data || {},
     // Garante que mercadologico_nivel seja sempre um objeto válido
-    mercadologico_nivel: props.product?.mercadologico_nivel && typeof props.product.mercadologico_nivel === 'object' 
-        ? props.product.mercadologico_nivel 
+    mercadologico_nivel: props.product?.mercadologico_nivel && typeof props.product.mercadologico_nivel === 'object'
+        ? props.product.mercadologico_nivel
         : {
             mercadologico_nivel_1: null,
             mercadologico_nivel_2: null,
@@ -151,7 +133,6 @@ const applyChanges = async (e: Event) => {
     Object.keys(validationErrors).forEach(key => validationErrors[key] = null);
     try {
         const response = await updateProduct(record.id, record);
-        toast.success('Produto atualizado com sucesso!');
         emit('update:product', response);
         isDialogOpen.value = false; // Fecha o modal só em caso de sucesso
     } catch (error: any) {

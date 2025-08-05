@@ -56,20 +56,7 @@ watch(dragSegmentActive, (newValue) => {
 });
 
 const currentSectionId = computed(() => props.shelf.section_id);
-
-const depthCount = computed(() => {
-    // Verificações de segurança para evitar erros de null/undefined
-    if (!props.segment?.layer?.product) {
-        return 0;
-    }
-    
-    const depth = props.segment.layer.product.depth;
-    if (!depth) return 0;
-    
-    const shelfDepth = props.shelf.shelf_depth || 0;
-    return Math.round(shelfDepth / depth);
-});
-
+ 
 /** Segment quantity (number of layers) */
 const segmentQuantity = computed(() => {
     return props.segment?.quantity ?? 0;
@@ -98,8 +85,7 @@ const innerSegmentStyle = computed(() => {
 // Estilo para o container externo (manipulado pelo draggable - Normal Shelf)
 const outerSegmentStyle = computed(() => {
     // Verificações de segurança para evitar erros de null/undefined
-    if (!props.segment?.layer?.product) {
-        console.warn('Segment.vue: layer.product está null/undefined', props.segment);
+    if (!props.segment?.layer?.product) { 
         return {
             width: '0px',
             height: '0px',
@@ -192,13 +178,11 @@ const onIncreaseQuantity = () => {
     );
 };
 const onDecreaseQuantity = () => {
-    if (!editorStore.getCurrentGondola?.id || !currentSectionId.value || !props.shelf?.id || !props.segment?.id || !props.segment?.layer?.product?.id) {
-        console.error('onDecreaseQuantity: IDs faltando para validação/atualização.');
+    if (!editorStore.getCurrentGondola?.id || !currentSectionId.value || !props.shelf?.id || !props.segment?.id || !props.segment?.layer?.product?.id) { 
         toast.error('Erro Interno', { description: 'Dados incompletos para diminuir quantidade.' });
         return;
     }
-    if (props.sectionWidth === undefined || props.sectionWidth <= 0) {
-        console.error('onDecreaseQuantity: Largura da seção (sectionWidth) inválida ou não fornecida.');
+    if (props.sectionWidth === undefined || props.sectionWidth <= 0) { 
         toast.error('Erro Interno', { description: 'Largura da seção inválida.' });
         return;
     }
@@ -256,8 +240,7 @@ const handleDragEnter = (event: DragEvent) => {
     segmentText.value = `Arrastando Prateleira (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`;
     
     // Verificar se é um segment sendo arrastado
-    if (isSegmentBeingDragged(event.dataTransfer)) {
-        console.log('Segment: detectou drag de segment sobre ele', props.segment.id);
+    if (isSegmentBeingDragged(event.dataTransfer)) { 
         emit('segment-drag-over', props.segment, props.shelf, true);
     }
     
@@ -307,8 +290,7 @@ const handleDragLeave = (event: DragEvent) => {
             if (dragSegmentActive.value) {
                 dragSegmentActive.value = false;
                 // Emitir que o drag saiu do segment
-                if (event.dataTransfer && isSegmentBeingDragged(event.dataTransfer)) {
-                    console.log('Segment: drag de segment saiu dele', props.segment.id);
+                if (event.dataTransfer && isSegmentBeingDragged(event.dataTransfer)) { 
                     emit('segment-drag-over', props.segment, props.shelf, false);
                 }
                 if (event.currentTarget) {
@@ -420,25 +402,7 @@ const onDragEnd = (event: DragEvent) => {
 .segment {
     position: relative;
 }
-
-.segment--selected {
-    border: 2px solid blue;
-    box-shadow: 0 0 5px rgba(0, 0, 255, 0.5);
-    box-sizing: border-box;
-}
-
-.segment--focused {
-    outline: 1px solid transparent;
-    outline-offset: 2px;
-}
-
-.segment--focused:focus {
-    outline: 1px solid blue;
-    outline-offset: 2px;
-}
-
-
-
+ 
 
 
 </style>

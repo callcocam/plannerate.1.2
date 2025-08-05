@@ -37,6 +37,7 @@
                 <Product v-if="selectionSize" @remove-layer="handleRemoveLayer" />
                 <Section v-else-if="isSectionEditing" />
                 <Shelf v-else-if="isShelfEditing" />
+                <ViewStats v-else-if="isViewStatsStore" />
                 <div v-else class="flex h-full flex-col items-center justify-center p-6 text-center">
                     <div class="rounded-full p-4 dark:bg-gray-700 bg-gray-100">
                         <InfoIcon class="h-12 w-12 text-gray-400 dark:text-gray-500" />
@@ -53,11 +54,13 @@
 import { InfoIcon, Settings, ChevronRight } from 'lucide-vue-next';
 import { computed } from 'vue'; 
 import { useEditorStore } from '@plannerate/store/editor';
+import { useViewStatsStore } from '@plannerate/store/editor/viewStats';
 import Product from '@plannerate/views/partials/sidebar/Product.vue';
 import Section from '@plannerate/views/partials/sidebar/Section.vue';
 import Shelf from '@plannerate/views/partials/sidebar/Shelf.vue';
 import { Button } from '@/components/ui/button';
 import { Layer } from '@plannerate/types/segment';
+import ViewStats from './ViewStats.vue';
 
 const props = defineProps<{
     open: boolean;
@@ -69,11 +72,14 @@ const emit = defineEmits<{
 }>();
 
 const editorStore = useEditorStore();
+const viewStatsStore = useViewStatsStore();
+
 const isSectionEditing = computed(() => editorStore.isSectionSelected());
 const isShelfEditing = computed(() => editorStore.isShelfSelected());
 const selectionSize = computed(() => editorStore.getSelectedLayerIds.size);
 const editorGondola = computed(() => editorStore.getCurrentGondola);
- 
+const isViewStatsStore = computed(() => viewStatsStore.isViewStatsSelected);
+
 const handleRemoveLayer = (layer: Layer) => {
     if (editorGondola.value) { 
         let sectionId = null;

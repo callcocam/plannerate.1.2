@@ -1,5 +1,5 @@
 <template>
-    <div v-if="layer.product" class="layer group flex cursor-pointer justify-between" :style="layerStyle" @click="handleLayerClick"
+    <div v-if="layer.product" class="layer group flex cursor-pointer" :style="layerStyle" @click="handleLayerClick"
         @keydown="handleKeyDown" :class="{ 'layer--selected': isSelected, 'layer--focused': !isSelected }">
 
         <ProductNormal v-for="index in layer.quantity" :key="index" :product="layer.product" :scale-factor="scaleFactor"
@@ -67,8 +67,7 @@ const layerStyle = computed(() => {
     let layerWidthFinal = `100%`; // Default para justify ou se não houver gôndola/alinhamento
 
     // Obtém o alinhamento da gôndola atual do editorStore
-    const alignment = editorStore.getCurrentGondola?.alignment;
-
+    const alignment = editorStore.getCurrentGondola?.alignment; 
     // Define a largura final com base no alinhamento
     if (alignment === 'left' || alignment === 'right') {
         // Para alinhamento à esquerda ou direita, usa a largura calculada dos produtos
@@ -227,9 +226,9 @@ const handleKeyDown = (event: KeyboardEvent) => {
     // Gerencia aumento/diminuição com setas quando selecionado
     if (isSelected.value) {
         const target = event?.target as HTMLElement;
-        const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+        const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA'; 
         // Vamos verificar se e um numero e passar o numero no incremant da quantity
-        if (/^[1-9]$/.test(event.key)) {
+        if (/^[1-9]$/.test(event.key) && !isInput) {
             event.preventDefault();
             onUpdateQuantity(parseInt(event.key))
         } else if (event.key === 'ArrowRight' && !isInput) {

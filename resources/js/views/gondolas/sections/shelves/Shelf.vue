@@ -41,7 +41,7 @@
                         'items-end': shelf.product_type !== 'hook',
                         'justify-center': alignment === 'center',
                         'justify-start': alignment === 'left',
-                        'justify-end': alignment === 'right,',
+                        'justify-end': alignment === 'right',
                         'justify-between': alignment === 'justify',
                     }" :style="segmentsContainerStyle">
                     <template #item="{ element: segment }"> 
@@ -203,6 +203,7 @@ const editorStore = useEditorStore();
 // Corrigido: Determina o alinhamento efetivo da prateleira seguindo a hierarquia
 const alignment = computed(() => {
     // 1. Prioridade: Alinhamento da própria prateleira  
+    console.log('Shelf: alignment - gondolaId:', gondolaId.value, 'shelf:', props.shelf.id, 'alignment:', editorStore.getCurrentGondola?.alignment);
     if (editorStore.getCurrentGondola?.alignment !== undefined && editorStore.getCurrentGondola?.alignment !== null) {
         return editorStore.getCurrentGondola?.alignment;
     }
@@ -333,71 +334,59 @@ const invertSegments = () => {
 };
 
 // Handlers para eventos de drag do segment
-const handleSegmentDragStart = (segment: SegmentType, shelf: Shelf) => {
-    console.log('Shelf: handleSegmentDragStart', segment.id, shelf.id);
+const handleSegmentDragStart = (segment: SegmentType, shelf: Shelf) => { 
     // NÃO ativar overlay na prateleira de origem
     // O overlay só deve aparecer quando estiver sobre outras prateleiras
     segmentDragging.value = false;
     draggingSegment.value = segment;
 };
 
-const handleSegmentDragEnd = async (segment: SegmentType, shelf: Shelf) => {
-    console.log('Shelf: handleSegmentDragEnd', segment.id, shelf.id);
+const handleSegmentDragEnd = async (segment: SegmentType, shelf: Shelf) => { 
     // Reset completo do estado de drag
     segmentDragging.value = false;
     draggingSegment.value = null;
     
     // Forçar atualização do DOM imediatamente
-    await nextTick();
-    console.log('Shelf: handleSegmentDragEnd - estado resetado na prateleira', props.shelf.id, 'segmentDragging:', segmentDragging.value);
-    
+    await nextTick(); 
     // Garantir que o estado seja resetado após um pequeno delay
     // para evitar problemas de timing com outros eventos
     setTimeout(async () => {
         segmentDragging.value = false;
         draggingSegment.value = null;
-        await nextTick();
-        console.log('Shelf: handleSegmentDragEnd - reset final na prateleira', props.shelf.id);
+        await nextTick(); 
     }, 50);
 };
 
 // Handler global para resetar o estado quando qualquer drag termina
-const handleGlobalDragEnd = async (event: DragEvent) => {
-    console.log('Shelf: handleGlobalDragEnd - resetando estado de drag na prateleira', props.shelf.id, 'estado antes:', segmentDragging.value);
+const handleGlobalDragEnd = async (event: DragEvent) => { 
     // Resetar sempre que qualquer drag terminar
     segmentDragging.value = false;
     draggingSegment.value = null;
     
     // Forçar atualização do DOM
-    await nextTick();
-    console.log('Shelf: estado resetado e DOM atualizado na prateleira', props.shelf.id, 'estado depois:', segmentDragging.value);
+    await nextTick(); 
 };
 
 // Handler global para resetar o estado quando qualquer drop ocorrer
-const handleGlobalDrop = async (event: DragEvent) => {
-    console.log('Shelf: handleGlobalDrop - resetando estado de drag na prateleira', props.shelf.id, 'estado antes:', segmentDragging.value);
+const handleGlobalDrop = async (event: DragEvent) => { 
     // Resetar sempre que qualquer drop ocorrer
     segmentDragging.value = false;
     draggingSegment.value = null;
     
     // Forçar atualização do DOM
-    await nextTick();
-    console.log('Shelf: estado resetado após drop na prateleira', props.shelf.id, 'estado depois:', segmentDragging.value);
+    await nextTick(); 
 };
 
-const handleSegmentDragOver = (segment: SegmentType, shelf: Shelf, isOver: boolean) => {
-    console.log('Shelf: handleSegmentDragOver', segment.id, shelf.id, isOver, 'prateleira atual:', props.shelf.id, 'estado atual:', segmentDragging.value);
+const handleSegmentDragOver = (segment: SegmentType, shelf: Shelf, isOver: boolean) => { 
     if (isOver) {
         // Só ativar se não estiver já ativo para evitar múltiplas ativações
-        if (!segmentDragging.value) {
-            console.log('Shelf: ativando overlay na prateleira', props.shelf.id);
+        if (!segmentDragging.value) { 
             segmentDragging.value = true;
             draggingSegment.value = segment;
         }
     } else {
         // Só resetar se estiver ativo para evitar múltiplos resets
-        if (segmentDragging.value) {
-            console.log('Shelf: desativando overlay na prateleira', props.shelf.id);
+        if (segmentDragging.value) { 
             segmentDragging.value = false;
             draggingSegment.value = null;
         }
