@@ -1,38 +1,48 @@
 <template>
-    <div class="bg-gray-800" :style="sectionStyle" :data-section-id="section.id"
-        @dragover.prevent="handleSectionDragOver" @drop.prevent="handleSectionDrop" @dragleave="handleSectionDragLeave"
-        @dragstart="editorStore.disableDragging" @dragend="editorStore.enableDragging" ref="sectionRef">
-        <!-- Conteúdo da Seção (Prateleiras) -->
-        <slot />
-        <template v-for="(shelf, index) in sortedShelves" :key="shelf.id">
-            <ShelfComponent :shelf="shelf" :gondola="gondola" :sorted-shelves="sortedShelves" :index="index"
-                :section="section" :scale-factor="scaleFactor" :section-width="section.width"
-                :section-height="section.height" :base-height="baseHeight" :sections-container="sectionsContainer"
-                :section-index="sectionIndex" :holes="holes" :invert-index="invertIndex" @drop-product="handleProductDropOnShelf"
-                @drop-products-multiple="handleMultipleProductsDropOnShelf" @drop-segment-copy="handleSegmentCopy" @drop-segment="updateSegment"
-                @drag-shelf="handleShelfDragStart" />
-        </template>
-        <div class="text-black text-xs absolute bottom-5 left-1/2 -translate-x-1/2 p-2 dark:text-white uppercase font-bold" :style="{
-            bottom: `${baseHeight / 3}px`
-        }">
-          <span :style="{ fontSize: scaleFactor * 3.5 + 'px' }" class="text-xs">Módulo {{ invertIndex + 1 }}</span>
-        </div>
+    <div ref="sectionRef" class="bg-gray-800 section-container" :style="sectionStyle" :data-section-id="section.id"
+        @dragover.prevent="handleDragOver" @drop.prevent="handleDrop" @dragleave="handleDragLeave">
+        <!-- Prateleiras -->
+        <ShelfComponent v-for="(shelf, index) in sortedShelves" :key="shelf.id" :shelf="shelf" :gondola="gondola"
+            :sorted-shelves="sortedShelves" :index="index" :section="section" :scale-factor="scaleFactor"
+            :section-width="section.width" :section-height="section.height" :base-height="baseHeightPx"
+            :sections-container="sectionsContainer" :section-index="sectionIndex" :holes="holes"
+            :invert-index="moduleNumber" @drop-product="handleProductDrop"
+            @drop-products-multiple="handleMultipleProductsDrop" @drop-segment-copy="handleSegmentCopy"
+            @drop-segment="handleSegmentMove" @drag-shelf="draggingShelf = $event" />
+
+        <!-- Label do Módulo -->
+        <ModuleLabel :module-number="moduleNumber" :base-height="baseHeightPx" :scale-factor="scaleFactor" />
     </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
-
 import { useEditorStore } from '@plannerate/store/editor';
 import { Section } from '@plannerate/types/sections';
-import { Layer, Product, Segment } from '@plannerate/types/segment';
+import { Product, Segment } from '@plannerate/types/segment';
 import { type Shelf as ShelfType } from '@plannerate/types/shelves';
 import { Gondola } from '@plannerate/types/gondola';
 import { validateShelfWidth } from '@plannerate/utils/validation';
 import { toast } from 'vue-sonner';
 import ShelfComponent from './shelves/Shelf.vue';
 
-// ------- PROPS & EMITS -------
+// ===== Componente Interno =====
+const ModuleLabel = {
+    props: ['moduleNumber', 'baseHeight', 'scaleFactor'],
+    template: `
+        <div 
+            class="module-label text-black text-xs absolute left-1/2 -translate-x-1/2 p-2 dark:text-white uppercase font-bold" 
+            :style="{ 
+                bottom: baseHeight / 3 + 'px', 
+                fontSize: scaleFactor * 3.5 + 'px' 
+            }"
+        >
+            Módulo {{ moduleNumber + 1 }}
+        </div>
+    `
+};
+
+// ===== Props & Emits =====
 const props = defineProps<{
     gondola: Gondola;
     section: Section;
@@ -43,119 +53,41 @@ const props = defineProps<{
 
 const emit = defineEmits(['update:segments']);
 
-// ------- DESTRUCTURED PROPS FOR BETTER PERFORMANCE -------
-// Previne acesso repetido às props nos computed
-const { gondola, section } = props;
-
-// ------- STORES & SERVICES -------
+// ===== Store & State =====
 const editorStore = useEditorStore();
+const sectionRef = ref<HTMLElement | null>(null);
+const isDragOver = ref(false);
+const draggingShelf = ref<ShelfType | null>(null);
+const isProcessingDrop = ref(false);
 
-// Função para calcular buracos localmente (mesmo algoritmo do backend)
-const calculateHoles = (sectionData: any) => {
-    const { height, hole_height, hole_width, hole_spacing, base_height } = sectionData;
-    
-    // Calcular altura disponível para furos (excluindo a base na parte inferior)
+// ===== Helpers =====
+const calculateHoles = (section: Section) => {
+    const { height, hole_height, hole_width, hole_spacing, base_height } = section;
     const availableHeight = height - base_height;
-    
-    // Calcular quantos furos cabem
     const totalSpaceNeeded = hole_height + hole_spacing;
     const holeCount = Math.floor(availableHeight / totalSpaceNeeded);
-    
-    // Calcular o espaço restante para distribuir uniformemente
     const remainingSpace = availableHeight - holeCount * hole_height - (holeCount - 1) * hole_spacing;
-    const marginTop = remainingSpace / 2; // Começar do topo com margem
-    
-    const holes = [];
-    for (let i = 0; i < holeCount; i++) {
-        const holePosition = marginTop + i * (hole_height + hole_spacing);
-        holes.push({
-            width: hole_width,
-            height: hole_height,
-            spacing: hole_spacing,
-            position: holePosition,
-        });
-    }
-    
-    return holes;
+    const marginTop = remainingSpace / 2;
+
+    return Array.from({ length: holeCount }, (_, i) => ({
+        width: hole_width,
+        height: hole_height,
+        spacing: hole_spacing,
+        position: marginTop + i * (hole_height + hole_spacing),
+    }));
 };
 
-// Computed para usar buracos recalculados localmente durante edição
-const holes = computed(() => {
-    // Sempre recalcular com base nos valores atuais da seção
-    const sectionData = {
-        height: section.height,
-        hole_height: section.hole_height,
-        hole_width: section.hole_width,
-        hole_spacing: section.hole_spacing,
-        base_height: section.base_height,
-    };
-    
-    return calculateHoles(sectionData);
-});
-const invertIndex = computed(() =>{ 
-    if (props.gondola.flow === 'left_to_right') {   
-        const inverted = props.sectionIndex;
-        return inverted;
-    } else {
-        const inverted = props.gondola.sections.length - 1 - props.sectionIndex;
-        return inverted;
-    }  
-});
-// Ordena as prateleiras por posição para garantir o cálculo correto
-const sortedShelves = computed(() => {
-    if (!props.section.shelves || props.section.shelves.length === 0) {
-        return [];
-    }
-    return [...props.section.shelves].sort((a, b) => a.shelf_position - b.shelf_position);
-});
-// ------- REFS -------
-const dropTargetActive = ref(false);
-const draggingShelf = ref<ShelfType | null>(null);
-const sectionRef = ref<HTMLElement | null>(null);
-
-// ------- COMPUTED -------
-const baseHeight = computed(() => {
-    const baseHeightCm = section.base_height || 0;
-    return baseHeightCm <= 0 ? 0 : baseHeightCm * props.scaleFactor;
-});
-
-// Estilo da seção com CSS transformado via computed para melhorar performance
-const sectionStyle = computed(() => {
-    const isActive = dropTargetActive.value;
-    return {
-        width: `${section.width * props.scaleFactor}px`,
-        height: `${section.height * props.scaleFactor}px`,
-        position: 'relative' as const,
-        borderWidth: '2px',
-        borderStyle: isActive ? 'dashed' : 'solid',
-        borderColor: isActive ? 'rgba(59, 130, 246, 0.5)' : 'transparent',
-        backgroundColor: isActive ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
-        overflow: 'visible' as const,
-        transition: 'border-color 0.2s ease-in-out, background-color 0.2s ease-in-out',
-        willChange: isActive ? 'border-color, background-color' : 'auto',
-    };
-});
-
-// ------- MÉTODOS - HELPERS -------
-/**
- * Cria um novo segmento a partir de um produto
- * @param product Produto para criar o segmento
- * @param shelf Prateleira onde o segmento será adicionado
- * @param layerQuantity Quantidade de camadas
- * @returns Novo objeto Segment
- */
-const createSegmentFromProduct = (product: Product, shelf: ShelfType, layerQuantity: number): Segment => {
+const createSegment = (product: Product, shelf: ShelfType, quantity = 1): Segment => {
     const timestamp = Date.now();
-    const random = Math.random().toString(36).substr(2, 9); // Adiciona aleatoriedade
-    const segmentId = `segment-${timestamp}-${random}-${shelf.segments?.length || 0}`;
-    const layerId = `layer-${timestamp}-${random}-${product.id}`;
+    const random = Math.random().toString(36).substr(2, 9);
+    const ordering = (shelf.segments?.length || 0) + 1;
 
     return {
-        id: segmentId,
+        id: `segment-${timestamp}-${random}-${ordering}`,
         user_id: null,
         tenant_id: '',
-        width: parseInt(section.width.toString()),
-        ordering: (shelf.segments?.length || 0) + 1,
+        width: props.section.width,
+        ordering,
         quantity: 1,
         shelf_id: shelf.id,
         spacing: 0,
@@ -163,500 +95,292 @@ const createSegmentFromProduct = (product: Product, shelf: ShelfType, layerQuant
         alignment: '',
         settings: null,
         status: 'published',
-        tabindex: (shelf.segments?.length || 0) + 1,
+        tabindex: ordering,
         layer: {
-            id: layerId,
+            id: `layer-${timestamp}-${random}`,
             product_id: product.id,
             product: product,
-            quantity: layerQuantity || 1,
+            quantity,
             status: 'published',
             height: product.height,
-            segment_id: segmentId,
+            segment_id: `segment-${timestamp}-${random}-${ordering}`,
             tabindex: 0,
         },
     };
 };
 
-// ------- MÉTODOS - DRAG & DROP PRATELEIRAS -------
-/**
- * Inicia o arrasto de uma prateleira
- * @param shelf Prateleira sendo arrastada
- */
-const handleShelfDragStart = (shelf: ShelfType) => {
-    draggingShelf.value = shelf;
+// ===== Computed Properties =====
+const baseHeightPx = computed(() =>
+    (props.section.base_height || 0) * props.scaleFactor
+);
+
+const holes = computed(() => calculateHoles(props.section));
+
+const moduleNumber = computed(() =>
+    props.gondola.flow === 'left_to_right'
+        ? props.sectionIndex
+        : props.gondola.sections.length - 1 - props.sectionIndex
+);
+
+const sortedShelves = computed(() =>
+    [...(props.section.shelves || [])]
+        .sort((a, b) => a.shelf_position - b.shelf_position)
+);
+
+const sectionStyle = computed(() => ({
+    width: `${props.section.width * props.scaleFactor}px`,
+    height: `${props.section.height * props.scaleFactor}px`,
+    position: 'relative' as const,
+    borderWidth: '2px',
+    borderStyle: isDragOver.value ? 'dashed' : 'solid',
+    borderColor: isDragOver.value ? 'rgba(59, 130, 246, 0.5)' : 'transparent',
+    backgroundColor: isDragOver.value ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+    transition: 'all 0.2s ease-in-out',
+}));
+
+// ===== Drag & Drop Methods =====
+const handleDragOver = (event: DragEvent) => {
+    if (!event.dataTransfer?.types.includes('text/shelf')) return;
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    isDragOver.value = true;
 };
 
-/**
- * Gerencia o evento dragover na seção
- * @param event Evento de arrasto
- */
-const handleSectionDragOver = (event: DragEvent) => {
-    if (!event.dataTransfer) return;
-
-    // Verifica se o que está sendo arrastado é uma prateleira
-    const isShelf = event.dataTransfer.types.includes('text/shelf');
-
-    if (isShelf) {
-        event.preventDefault();
-        event.dataTransfer.dropEffect = 'move';
-        dropTargetActive.value = true;
-    }
+const handleDragLeave = () => {
+    isDragOver.value = false;
 };
 
-/**
- * Gerencia a saída do cursor da área de drop
- */
-const handleSectionDragLeave = () => {
-    dropTargetActive.value = false;
-};
+const handleDrop = async (event: DragEvent) => {
+    isDragOver.value = false;
 
-/**
- * Gerencia o drop de uma prateleira na seção
- * @param event Evento de drop
- */
-const handleSectionDrop = async (event: DragEvent) => {
-    if (!event.dataTransfer) return;
-    const shelfData = event.dataTransfer.getData('text/shelf');
-
-    if (!shelfData) {
-        dropTargetActive.value = false;
-        return;
-    }
+    const shelfData = event.dataTransfer?.getData('text/shelf');
+    if (!shelfData || !props.gondola.id) return;
 
     try {
         const shelf = JSON.parse(shelfData) as ShelfType;
-        const mouseY = event.offsetY;
-        const newPosition = mouseY / props.scaleFactor;
-        const shelfHeight = draggingShelf.value?.shelf_height || 0;
+        const newPosition = Math.round(event.offsetY / props.scaleFactor);
+        const maxPosition = props.section.height - (shelf.shelf_height || 0);
 
-        // Verifica se a posição é válida
-        if (newPosition >= 0 && newPosition <= section.height - shelfHeight) {
-            if (!gondola.id) {
-                toast.error('Erro Interno', { description: 'Contexto da gôndola não encontrado.' });
-                draggingShelf.value = null;
-                dropTargetActive.value = false;
-                return;
-            }
-
-            // Atualiza a posição da prateleira
-            editorStore.setShelfPosition(gondola.id, section.id, shelf.id, {
-                shelf_position: newPosition,
-                shelf_x_position: -4,
+        if (newPosition < 0 || newPosition > maxPosition) {
+            toast.error('Posição inválida', {
+                description: `A posição deve estar entre 0 e ${maxPosition}cm.`,
             });
-        } else {
-            toast.error('Aviso', {
-                description: `Posição de prateleira inválida. A posição deve estar entre 0 e ${section.height - shelfHeight}cm.`,
-            });
+            return;
         }
-    } catch (e) {
-        console.error('Erro ao processar dados da prateleira no drop:', e);
-        toast.error('Erro', {
-            description: 'Falha ao mover prateleira.',
+
+        editorStore.setShelfPosition(props.gondola.id, props.section.id, shelf.id, {
+            shelf_position: newPosition,
+            shelf_x_position: -4,
         });
-    } finally {
-        draggingShelf.value = null;
-        dropTargetActive.value = false;
+    } catch (error) {
+        console.error('Erro ao processar drop da prateleira:', error);
+        toast.error('Erro ao mover prateleira');
     }
 };
 
-// ------- MÉTODOS - DRAG & DROP PRODUTOS/CAMADAS -------
-/**
- * Gerencia o drop de um produto em uma prateleira
- * @param product Produto sendo dropado
- * @param shelf Prateleira alvo
- * @param dropPosition Posição do drop (pode ser usado para calcular a posição X inicial)
- */
-const handleProductDropOnShelf = async (product: Product, shelf: ShelfType) => {
-    if (!gondola.id) {
-        toast.error('Erro Interno', {
-            description: 'Contexto da gôndola não encontrado.',
-        });
-        return;
-    }
-
-    // Criar camada temporária para validação
-    // Usar spacing padrão 0, pois spacing vem da Layer, não do Product.
-    const tempLayer: Layer = {
-        id: `temp-layer-${Date.now()}`,
+// ===== Product Drop Handlers =====
+const validateAndAddProduct = (product: Product, shelf: ShelfType, quantity = 1) => {
+    const tempLayer = {
+        id: `temp-${Date.now()}`,
         product_id: product.id,
         product: product,
-        quantity: 1, // Validando para quantidade 1
-        status: 'temp',
+        quantity,
+        status: 'temp' as const,
         height: product.height,
         segment_id: 'temp',
-        spacing: 0, // <-- Definir spacing padrão 0 aqui
+        spacing: 0,
         tabindex: 0,
     };
 
-    // *** Validação ***
-    const validation = validateShelfWidth(shelf, section.width, null, 0, tempLayer);
+    const validation = validateShelfWidth(shelf, props.section.width, null, 0, tempLayer);
 
     if (!validation.isValid) {
-        toast.error('Limite de Largura Excedido', {
-            description: `Adicionar este produto excederia a largura da seção (${section.width}cm). Largura resultante: ${validation.totalWidth.toFixed(1)}cm`,
+        toast.error('Limite de largura excedido', {
+            description: `Largura total: ${validation.totalWidth.toFixed(1)}cm (máximo: ${props.section.width}cm)`,
         });
-        return;
+        return null;
     }
-    // *** Fim Validação ***
 
-    // Prossegue se válido
-    const newSegment = createSegmentFromProduct(product, shelf, 1);
-    // TODO: Calcular newSegment.position baseado em dropPosition se necessário
-    // TODO: Permitir definir o SPACING da nova layer/segmento aqui?
-    //      (newSegment atualmente não define spacing na layer criada)
+    return createSegment(product, shelf, quantity);
+};
+
+const handleProductDrop = async (product: Product, shelf: ShelfType) => {
+    if (!props.gondola.id || isProcessingDrop.value) return;
+
+    isProcessingDrop.value = true;
 
     try {
-        editorStore.addSegmentToShelf(gondola.id, section.id, shelf.id, newSegment);
+        const newSegment = validateAndAddProduct(product, shelf);
+        if (newSegment) {
+            editorStore.addSegmentToShelf(
+                props.gondola.id,
+                props.section.id,
+                shelf.id,
+                newSegment
+            );
+        }
     } catch (error) {
-        console.error('Erro ao adicionar produto/segmento ao editorStore:', error);
-        const errorDesc = error instanceof Error ? error.message : 'Falha ao atualizar o estado do editor.';
-        toast.error('Erro Interno', {
-            description: errorDesc,
-        });
+        console.error('Erro ao adicionar produto:', error);
+        toast.error('Erro ao adicionar produto');
+    } finally {
+        isProcessingDrop.value = false;
     }
 };
 
-// Flag para evitar calls simultâneos
-const isProcessingMultipleProducts = ref(false);
+const handleMultipleProductsDrop = async (products: Product[], shelf: ShelfType) => {
+    if (!props.gondola.id || isProcessingDrop.value) return;
 
-/**
- * Gerencia o drop de múltiplos produtos em uma prateleira
- * @param products Array de produtos sendo dropados
- * @param shelf Prateleira alvo
- */
-const handleMultipleProductsDropOnShelf = async (products: Product[], shelf: ShelfType) => {
-    // Evitar processamento simultâneo
-    if (isProcessingMultipleProducts.value) {
-        console.log('IGNORANDO - Já está processando múltiplos produtos');
+    isProcessingDrop.value = true;
+
+    try {
+        // Remover duplicados
+        const uniqueProducts = Array.from(
+            new Map(products.map(p => [p.id, p])).values()
+        );
+
+        // Validar todos antes de adicionar
+        const segments: Segment[] = [];
+        for (const product of uniqueProducts) {
+            const segment = validateAndAddProduct(product, shelf);
+            if (!segment) {
+                isProcessingDrop.value = false;
+                return;
+            }
+            segments.push(segment);
+        }
+
+        // Adicionar todos de uma vez
+        const gondola = editorStore.getCurrentGondola;
+        const targetShelf = gondola?.sections
+            .find(s => s.id === props.section.id)?.shelves
+            .find(sh => sh.id === shelf.id);
+
+        if (targetShelf) {
+            targetShelf.segments.push(...segments as any);
+            editorStore.recordChange(true);
+
+            toast.success('Produtos adicionados', {
+                description: `${segments.length} produtos foram adicionados.`,
+            });
+        }
+    } catch (error) {
+        console.error('Erro ao adicionar múltiplos produtos:', error);
+        toast.error('Erro ao adicionar produtos');
+    } finally {
+        isProcessingDrop.value = false;
+    }
+};
+
+const handleSegmentCopy = async (segment: Segment, shelf: ShelfType) => {
+    if (!props.gondola.id || !segment.layer?.product) return;
+
+    handleProductDrop(segment.layer.product, shelf);
+};
+
+const handleSegmentMove = (segment: Segment, targetShelf: ShelfType) => {
+    console.log('handleSegmentMove: segment:', segment, 'targetShelf:', targetShelf);
+    if (!props.gondola.id || segment.shelf_id === targetShelf.id) return;
+
+    // Encontrar seção de destino
+    const targetSection = editorStore.currentState?.gondolas
+        .find(g => g.id === props.gondola.id)?.sections
+        .find(s => s.id === targetShelf.section_id);
+
+    if (!targetSection) {
+        toast.error('Seção de destino não encontrada');
         return;
     }
-    
-    isProcessingMultipleProducts.value = true;
-    if (!gondola.id) {
-        toast.error('Erro Interno', {
-            description: 'Contexto da gôndola não encontrado.',
-        });
-        return;
-    }
 
-    // Remover produtos duplicados por ID
-    const uniqueProducts = products.filter((product, index, array) => 
-        array.findIndex(p => p.id === product.id) === index
+    // Validar largura
+    const validation = validateShelfWidth(
+        targetShelf,
+        targetSection.width,
+        null,
+        0,
+        segment.layer
     );
 
-    console.log(`PRODUTOS ORIGINAIS: ${products.length}, ÚNICOS: ${uniqueProducts.length}`);
-    if (products.length !== uniqueProducts.length) {
-        console.warn('Produtos duplicados removidos!', {
-            original: products.map(p => `${p.name} (${p.id})`),
-            unique: uniqueProducts.map(p => `${p.name} (${p.id})`)
-        });
-    }
-
-    // Validar todos os produtos antes de adicionar qualquer um
-    const tempLayers: Layer[] = [];
-    let totalWidth = 0;
-
-    for (const product of uniqueProducts) {
-        const tempLayer: Layer = {
-            id: `temp-layer-${Date.now()}-${product.id}`,
-            product_id: product.id,
-            product: product,
-            quantity: 1,
-            status: 'temp',
-            height: product.height,
-            segment_id: 'temp',
-            spacing: 0,
-            tabindex: 0,
-        };
-        tempLayers.push(tempLayer);
-        totalWidth += product.width || 0;
-    }
-
-    // Validação de largura total
-    const validation = validateShelfWidth(shelf, section.width, null, 0, ...tempLayers);
-
     if (!validation.isValid) {
-        toast.error('Limite de Largura Excedido', {
-            description: `Adicionar estes ${uniqueProducts.length} produtos excederia a largura da seção (${section.width}cm). Largura resultante: ${validation.totalWidth.toFixed(1)}cm`,
-        });
+        toast.error('Limite de largura excedido no destino');
         return;
     }
 
-    // Se válido, criar todos os segmentos primeiro
-    try {
-        console.log(`INÍCIO - Produtos únicos a processar:`, uniqueProducts.map(p => `${p.name} (${p.id})`));
-        
-        // Criar todos os segmentos com timestamps únicos
-        const newSegments = [];
-        for (let i = 0; i < uniqueProducts.length; i++) {
-            const product = uniqueProducts[i];
-            
-            // Pequeno delay para garantir timestamps únicos
-            if (i > 0) {
-                await new Promise(resolve => setTimeout(resolve, 10));
-            }
-            
-            const newSegment = createSegmentFromProduct(product, shelf, 1);
-            console.log(`SEGMENTO CRIADO:`, newSegment.id, 'para produto:', product.name);
-            newSegments.push(newSegment);
-        }
-        
-        // Adicionar todos os segmentos de uma vez usando uma única operação
-        console.log(`ADICIONANDO ${newSegments.length} segmentos ao store em uma operação...`);
-        
-        // Encontrar a prateleira diretamente no store e adicionar todos os segmentos
-        const currentGondola = editorStore.getCurrentGondola;
-        if (currentGondola) {
-            const targetSection = currentGondola.sections.find(s => s.id === section.id);
-            if (targetSection) {
-                const targetShelf = targetSection.shelves.find(sh => sh.id === shelf.id);
-                if (targetShelf) {
-                    // Adicionar todos os segmentos de uma vez (com conversão de tipo)
-                    targetShelf.segments.push(...newSegments as any);
-                    console.log(`${newSegments.length} segmentos adicionados diretamente à prateleira`);
-                    
-                    // Registrar a mudança uma única vez
-                    editorStore.recordChange(true);
-                }
-            }
-        }
-        
-        console.log(`FIM - Total de ${uniqueProducts.length} produtos processados`)
-        
-        toast.success('Produtos Adicionados', {
-            description: `${uniqueProducts.length} produtos foram adicionados com sucesso à prateleira.`,
-        });
-    } catch (error) {
-        console.error('Erro ao adicionar múltiplos produtos ao editorStore:', error);
-        const errorDesc = error instanceof Error ? error.message : 'Falha ao atualizar o estado do editor.';
-        toast.error('Erro Interno', {
-            description: errorDesc,
-        });
-    } finally {
-        // Sempre resetar a flag no final
-        isProcessingMultipleProducts.value = false;
+    // Encontrar seção de origem
+    let sourceSection = props.section;
+    if (segment.shelf_id !== targetShelf.id) {
+        const gondola = editorStore.currentState?.gondolas.find(g => g.id === props.gondola.id);
+        sourceSection = gondola?.sections.find(s =>
+            s.shelves.some(sh => sh.id === segment.shelf_id)
+        ) || props.section;
     }
+
+    editorStore.transferSegmentBetweenShelves(
+        props.gondola.id,
+        sourceSection.id,
+        segment.shelf_id,
+        targetShelf.section_id,
+        targetShelf.id,
+        segment?.id  || ''
+    );
 };
 
-/**
- * Gerencia a cópia de uma camada para uma prateleira
- * @param segment Segmento sendo copiado
- * @param shelf Prateleira alvo
- */
-const handleSegmentCopy = async (segment: Segment, shelf: ShelfType) => {
-    if (!gondola.id) {
-        toast({
-            title: 'Erro Interno',
-            description: 'Contexto da gôndola não encontrado.',
-            variant: 'destructive',
-        });
-        return;
-    }
-
-    // *** Validação ***
-    const validation = validateShelfWidth(shelf, section.width, null, 0, segment.layer);
-
-    if (!validation.isValid) {
-        toast.error('Limite de Largura Excedido', {
-            description: `Copiar este segmento excederia a largura da seção (${section.width}cm). Largura resultante: ${validation.totalWidth.toFixed(1)}cm`,
-        });
-        return;
-    }
-    // *** Fim Validação ***
-
-    // Prossegue se válido
-    const newSegment = createSegmentFromProduct(segment.layer.product, shelf, segment.layer.quantity);
-    try {
-        editorStore.addSegmentToShelf(gondola.id, section.id, shelf.id, newSegment);
-    } catch (error) {
-        console.error('Erro ao copiar camada/segmento para o editorStore:', error);
-        const errorDesc = error instanceof Error ? error.message : 'Falha ao atualizar o estado do editor.';
-        toast.error('Erro Interno', {
-            description: errorDesc,
-        });
-    }
-};
-
-/**
- * Atualiza uma camada movendo-a para outra prateleira
- * @param Segment Camada sendo movida
- * @param targetShelf Prateleira alvo
- */
-const updateSegment = (segment: Segment, targetShelf: ShelfType) => {
-    const segmentToMove = segment;
-    if (!segmentToMove) {
-        console.error('updateLayer: Objeto segment não encontrado na layer.');
-        return;
-    }
-
-    const segmentId = segmentToMove.id;
-    const oldShelfId = segmentToMove.shelf_id;
-    const newShelfId = targetShelf.id;
-    const newSectionId = targetShelf.section_id;
-
-    // Encontrar oldSectionId ... (lógica existente)
-    let oldSectionId = targetShelf.section_id;
-    if (editorStore.currentState?.gondolas) {
-        for (const g of editorStore.currentState.gondolas) {
-            if (g.id === gondola.id) {
-                for (const s of g.sections) {
-                    if (s.shelves?.some((sh) => sh.id === oldShelfId)) {
-                        oldSectionId = s.id;
-                        break;
-                    }
-                }
-                break;
-            }
-        }
-    }
-    // Encontrar seção de destino para obter largura
-    const destinationSection = editorStore.currentState?.gondolas.find((g) => g.id === gondola.id)?.sections.find((s) => s.id === newSectionId);
-
-    if (!destinationSection) {
-        console.error('updateLayer: Seção de destino não encontrada no editorStore.');
-        toast.error('Erro Interno', { description: 'Seção de destino não encontrada.' });
-        return;
-    }
-
-    if (oldShelfId === newShelfId) return; // Evita auto-transferência
-
-    // *** Validação (na prateleira DESTINO) ***
-    const validation = validateShelfWidth(targetShelf, destinationSection.width, null, 0, segmentToMove.layer);
-
-    if (!validation.isValid) {
-        toast.error('Limite de Largura Excedido', {
-            description: `Mover este segmento excederia a largura da seção destino (${destinationSection.width}cm). Largura resultante: ${validation.totalWidth.toFixed(1)}cm`,
-        });
-        return;
-    }
-    // *** Fim Validação ***
-
-    if (!gondola.id || !oldSectionId || !oldShelfId || !newSectionId || !newShelfId || !segmentId) {
-        console.error('updateLayer: IDs faltando para realizar a transferência.', {
-            gondolaId: gondola.id,
-            oldSectionId,
-            oldShelfId,
-            newSectionId,
-            newShelfId,
-            segmentId,
-        });
-        toast({
-            title: 'Erro Interno',
-            description: 'Dados insuficientes para mover o segmento.',
-            variant: 'destructive',
-        });
-        return;
-    }
-
-    editorStore.transferSegmentBetweenShelves(gondola.id, oldSectionId, oldShelfId, newSectionId, newShelfId, segmentId);
-};
-
-// ------- MÉTODOS - EVENT HANDLERS GLOBAIS -------
-/**
- * Gerencia teclas pressionadas globalmente
- * @param event Evento de teclado
- */
+// ===== Event Handlers =====
 const handleKeydown = (event: KeyboardEvent) => {
     if (event.key === 'Escape') {
         editorStore.clearLayerSelection();
     }
 };
 
-/**
- * Gerencia cliques fora dos elementos selecionáveis
- * @param event Evento de clique
- */
 const handleClickOutside = (event: MouseEvent) => {
-    const clickedElement = event.target as HTMLElement;
+    const target = event.target as HTMLElement;
 
-    // Ignora cliques diretos no html/body (ex: scrollbar)
-    if (clickedElement === document.documentElement || clickedElement === document.body) {
+    const ignoredSelectors = [
+        'html', 'body',
+        '#section-properties-sidebar',
+        '[data-radix-popper-content-wrapper]',
+        '[role="listbox"]',
+        '[data-dismissable-layer]',
+        '[data-state="open"]',
+        '.border-destructive',
+        '.no-remove-properties'
+    ];
+
+    if (ignoredSelectors.some(selector =>
+        target.matches(selector) || target.closest(selector)
+    )) {
         return;
     }
 
-    // Ignora cliques dentro da sidebar de propriedades da seção
-    if (clickedElement.closest('#section-properties-sidebar')) {
-        return;
-    }
-
-    // Ignora cliques dentro do conteúdo teleportado de componentes Radix/Shadcn (ex: Select, Dropdown)
-    if (clickedElement.closest('[data-radix-popper-content-wrapper], [role="listbox"]')) {
-        return;
-    }
-
-    // Ignora cliques dentro do modal de edição de produto
-    if (clickedElement.closest('[data-dismissable-layer]')) {
-        return;
-    }  
-    // Ignora cliques dentro do modal de edição de produto
-    if (clickedElement.closest('[data-state="open"]')) {
-        return;
-    } 
-
-    // Ignora cliques em elementos específicos que não devem limpar seleções
-    if (clickedElement.closest('.border-destructive, .no-remove-properties')) {
-        return;
-    }
-
-    // Limpa seleções com base no elemento clicado
-    if (!clickedElement.closest('.layer')) {
-        editorStore.clearLayerSelection();
-    }
-
-    if (!clickedElement.closest('.shelves')) {
-        editorStore.clearSelectedShelf();
-    }
-
-    if (!clickedElement.closest('.sections')) {
-        editorStore.clearSelectedSection();
-    }
+    if (!target.closest('.layer')) editorStore.clearLayerSelection();
+    if (!target.closest('.shelf')) editorStore.clearSelectedShelf();
+    if (!target.closest('.section-container')) editorStore.clearSelectedSection();
 };
 
-/**
- * Gerencia duplo clique para adicionar prateleira
- * @param event Evento de duplo clique
- */
-// const handleDoubleClick = (event: MouseEvent) => {
-//     event.stopPropagation();
-//     editorStore.addShelfToSection(gondola.id, section.id, {
-//         id: `temp-shelf-${Date.now()}`,
-//         shelf_height: 4,
-//         shelf_position: event.offsetY / props.scaleFactor,
-//         section_id: section.id,
-//     } as ShelfType);
-// };
-
-// ------- LIFECYCLE HOOKS -------
+// ===== Lifecycle =====
 onMounted(() => {
-    // Adiciona event listeners globais
     window.addEventListener('keydown', handleKeydown, { passive: true });
     document.addEventListener('click', handleClickOutside, true);
-
-    // Adiciona evento de duplo clique ao elemento da seção
-    // if (sectionRef.value) {
-    //     sectionRef.value.addEventListener('dblclick', handleDoubleClick);
-    // }
 });
 
 onUnmounted(() => {
-    // Remove event listeners globais
     window.removeEventListener('keydown', handleKeydown);
     document.removeEventListener('click', handleClickOutside, true);
-
-    // Remove evento de duplo clique ao elemento da seção
-    // if (sectionRef.value) {
-    //     sectionRef.value.removeEventListener('dblclick', handleDoubleClick);
-    // }
 });
 </script>
 
 <style scoped>
-.section-container>.absolute.bottom-0 {
-    z-index: -1;
+.section-container {
+    will-change: border-color, background-color;
 }
 
 .section-drag-over {
     background-color: rgba(59, 130, 246, 0.05);
     border: 2px dashed rgba(59, 130, 246, 0.5);
+}
+
+.module-label {
+    pointer-events: none;
+    user-select: none;
 }
 </style>

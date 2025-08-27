@@ -71,28 +71,28 @@ class Section extends Model
         parent::boot();
 
         // Log antes de salvar
-        static::saving(function ($section) {
-            \Log::info('💾 [MODEL] Salvando seção no banco', [
-                'section_id' => $section->id,
-                'hole_width' => $section->hole_width,
-                'hole_height' => $section->hole_height,
-                'hole_spacing' => $section->hole_spacing,
-                'settings' => $section->settings,
-                'timestamp' => now()->toISOString()
-            ]);
-        });
+        // static::saving(function ($section) {
+        //     \Log::info('💾 [MODEL] Salvando seção no banco', [
+        //         'section_id' => $section->id,
+        //         'hole_width' => $section->hole_width,
+        //         'hole_height' => $section->hole_height,
+        //         'hole_spacing' => $section->hole_spacing,
+        //         'settings' => $section->settings,
+        //         'timestamp' => now()->toISOString()
+        //     ]);
+        // });
 
-        // Log após salvar
-        static::saved(function ($section) {
-            \Log::info('✅ [MODEL] Seção salva no banco com sucesso', [
-                'section_id' => $section->id,
-                'hole_width' => $section->hole_width,
-                'hole_height' => $section->hole_height,
-                'hole_spacing' => $section->hole_spacing,
-                'settings' => $section->settings,
-                'timestamp' => now()->toISOString()
-            ]);
-        });
+        // // Log após salvar
+        // static::saved(function ($section) {
+        //     \Log::info('✅ [MODEL] Seção salva no banco com sucesso', [
+        //         'section_id' => $section->id,
+        //         'hole_width' => $section->hole_width,
+        //         'hole_height' => $section->hole_height,
+        //         'hole_spacing' => $section->hole_spacing,
+        //         'settings' => $section->settings,
+        //         'timestamp' => now()->toISOString()
+        //     ]);
+        // });
     }
 
 

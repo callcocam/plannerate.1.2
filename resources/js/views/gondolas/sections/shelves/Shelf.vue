@@ -7,34 +7,24 @@
                 @drop-products-multiple="(products: Product[], shelf: Shelf) => $emit('drop-products-multiple', products, shelf)"
                 @drop-segment-copy="(segment: SegmentType, shelf: Shelf) => $emit('drop-segment-copy', segment, shelf)"
                 @drop-segment="(segment: SegmentType, oldShelf: Shelf) => $emit('drop-segment', segment, oldShelf)" />
-            
+
             <!-- Overlay para quando um segment está sendo arrastado -->
-            <div
-              class="segment-drag-overlay absolute inset-0 pointer-events-none"
-              :class="{ 'active': segmentDragging }"
-              :style="segmentOverlayStyle"
-              v-if="segmentDragging"
-            ></div>
+            <div class="segment-drag-overlay absolute inset-0 pointer-events-none"
+                :class="{ 'active': segmentDragging }" :style="segmentOverlayStyle" v-if="segmentDragging"></div>
             <!-- Texto para quando um segment está sendo arrastado -->
             <span
-              class="text-center text-gray-800 dark:text-gray-200 pointer-events-none font-bold absolute inset-0 flex items-center justify-center z-20 text-xs segment-drag-text"
-              :class="{ 'active': segmentDragging }"
-              :style="segmentOverlayStyle"
-              v-if="segmentDragging"
-            >
-              {{ segmentDragText }}
+                class="text-center text-gray-800 dark:text-gray-200 pointer-events-none font-bold absolute inset-0 flex items-center justify-center z-20 text-xs segment-drag-text"
+                :class="{ 'active': segmentDragging }" :style="segmentOverlayStyle" v-if="segmentDragging">
+                {{ segmentDragText }}
             </span>
-            
-            <div class="shelf relative flex flex-col items-center text-gray-50 shadow-md" 
-                 :class="{
-                    'border-2 border-blue-800 border-dashed bg-gray-500': isSelected, // Selecionado
-                    'border-2 border-transparent dark:border-gray-700 border-dashed': !isSelected, // Não selecionado - Borda transparente
-                    // Fundo para não selecionado (sempre normal neste componente):
-                    'bg-gray-400 dark:bg-gray-700': !isSelected && shelf.product_type === 'hook',
-                    'bg-gray-700 dark:bg-gray-800': !isSelected && shelf.product_type === 'normal'
-                 }" 
-                 :style="shelfStyle" 
-                 ref="shelfElement"> 
+
+            <div class="shelf relative flex flex-col items-center text-gray-50 shadow-md" :class="{
+                'border-2 border-blue-800 border-dashed bg-gray-500': isSelected, // Selecionado
+                'border-2 border-transparent dark:border-gray-700 border-dashed': !isSelected, // Não selecionado - Borda transparente
+                // Fundo para não selecionado (sempre normal neste componente):
+                'bg-gray-400 dark:bg-gray-700': !isSelected && shelf.product_type === 'hook',
+                'bg-gray-700 dark:bg-gray-800': !isSelected && shelf.product_type === 'normal'
+            }" :style="shelfStyle" ref="shelfElement">
                 <draggable v-model="sortableSegments" item-key="id" handle=".drag-segment-handle"
                     class="relative flex w-full" :class="{
                         'items-start': shelf.product_type === 'hook',
@@ -44,27 +34,22 @@
                         'justify-end': alignment === 'right',
                         'justify-between': alignment === 'justify',
                     }" :style="segmentsContainerStyle">
-                    <template #item="{ element: segment }"> 
-                         <Segment 
-                            :key="segment.id" 
-                            :shelf="shelf" 
-                            :segment="segment" 
-                            :scale-factor="scaleFactor"
-                            :section-width="sectionWidth" 
-                            :gondola="gondola"
+                    <template #item="{ element: segment }">
+                        <Segment :key="segment.id" :shelf="shelf" :segment="segment" :scale-factor="scaleFactor"
+                            :section-width="sectionWidth" :gondola="gondola"
                             :is-segment-dragging="segmentDragging && draggingSegment?.id === segment.id"
                             @drop-product="(product: Product, shelf: Shelf) => $emit('drop-product', product, shelf)"
                             @drop-products-multiple="(products: Product[], shelf: Shelf) => $emit('drop-products-multiple', products, shelf)"
                             @drop-segment-copy="(segment: SegmentType, shelf: Shelf) => $emit('drop-segment-copy', segment, shelf)"
                             @drop-segment="(segment: SegmentType, oldShelf: Shelf) => $emit('drop-segment', segment, oldShelf)"
-                            @segment-drag-start="handleSegmentDragStart"
-                            @segment-drag-end="handleSegmentDragEnd"
+                            @segment-drag-start="handleSegmentDragStart" @segment-drag-end="handleSegmentDragEnd"
                             @segment-drag-over="handleSegmentDragOver" />
                     </template>
                 </draggable>
                 <ShelfControls :shelf="shelf" :scale-factor="scaleFactor" :section-width="sectionWidth"
                     :section-height="sectionHeight" :shelf-element="shelfElement" :base-height="baseHeight"
-                    :sections-container="sectionsContainer" :section-index="sectionIndex" :hole-width="holeWidth"  :index="index" :totalItems="sortedShelves.length"/>
+                    :sections-container="sectionsContainer" :section-index="sectionIndex" :hole-width="holeWidth"
+                    :index="index" :totalItems="sortedShelves.length" />
             </div>
         </ContextMenuTrigger>
         <ContextMenuContent class="w-64">
@@ -195,15 +180,14 @@ const segmentOverlayStyle = computed(() => {
 });
 
 const gondolaId = computed(() => props.gondola.id);
-const holeWidth = computed(() => props.section.hole_width); 
+const holeWidth = computed(() => props.section.hole_width);
 // Definir Emits
 const emit = defineEmits(['drop-product', 'drop-products-multiple', 'drop-segment-copy', 'drop-segment']);
 const editorStore = useEditorStore();
 
 // Corrigido: Determina o alinhamento efetivo da prateleira seguindo a hierarquia
 const alignment = computed(() => {
-    // 1. Prioridade: Alinhamento da própria prateleira  
-    console.log('Shelf: alignment - gondolaId:', gondolaId.value, 'shelf:', props.shelf.id, 'alignment:', editorStore.getCurrentGondola?.alignment);
+    // 1. Prioridade: Alinhamento da própria prateleira   
     if (editorStore.getCurrentGondola?.alignment !== undefined && editorStore.getCurrentGondola?.alignment !== null) {
         return editorStore.getCurrentGondola?.alignment;
     }
@@ -243,7 +227,7 @@ const shelfStyle = computed(() => {
     // Calcular a posição TOP final usando a posição do furo mais próximo
     const snappedTopPosition = closestHolePosition * props.scaleFactor;
     // Não adiciona mais verticalOffset
-    const finalTopPosition = snappedTopPosition; 
+    const finalTopPosition = snappedTopPosition;
 
     // Calcular estilo de movimento horizontal (se existir)
     const moveStyle: Record<string, string> = {};
@@ -303,10 +287,17 @@ const segmentsContainerStyle = computed(() => {
     };
 });
 
-const selectShelfClick = (event: MouseEvent) => {
+const selectShelfClick = (event: any) => {
     event.stopPropagation(); // Impede que o clique se propague para elementos pais
-    editorStore.setSelectedShelf(props.shelf);
-    editorStore.setIsShelfEditing(true);
+    editorStore.clearSelectedSection(); // Limpa seleção de camadas ao selecionar prateleira 
+    if (event.target?.hasAttribute('src')) {
+        editorStore.clearSelectedShelf(); // Limpa seleção de prateleira ao selecionar produto   
+    } else {
+        editorStore.setSelectedShelf(props.shelf);
+        editorStore.setIsShelfEditing(true);
+        editorStore.clearLayerSelection(); // Limpa seleção de camadas ao selecionar prateleira     
+    }
+
 };
 
 const controlDeleteShelf = (event: KeyboardEvent) => {
@@ -334,59 +325,59 @@ const invertSegments = () => {
 };
 
 // Handlers para eventos de drag do segment
-const handleSegmentDragStart = (segment: SegmentType, shelf: Shelf) => { 
+const handleSegmentDragStart = (segment: SegmentType, shelf: Shelf) => {
     // NÃO ativar overlay na prateleira de origem
     // O overlay só deve aparecer quando estiver sobre outras prateleiras
     segmentDragging.value = false;
     draggingSegment.value = segment;
 };
 
-const handleSegmentDragEnd = async (segment: SegmentType, shelf: Shelf) => { 
+const handleSegmentDragEnd = async (segment: SegmentType, shelf: Shelf) => {
     // Reset completo do estado de drag
     segmentDragging.value = false;
     draggingSegment.value = null;
-    
+
     // Forçar atualização do DOM imediatamente
-    await nextTick(); 
+    await nextTick();
     // Garantir que o estado seja resetado após um pequeno delay
     // para evitar problemas de timing com outros eventos
     setTimeout(async () => {
         segmentDragging.value = false;
         draggingSegment.value = null;
-        await nextTick(); 
+        await nextTick();
     }, 50);
 };
 
 // Handler global para resetar o estado quando qualquer drag termina
-const handleGlobalDragEnd = async (event: DragEvent) => { 
+const handleGlobalDragEnd = async (event: DragEvent) => {
     // Resetar sempre que qualquer drag terminar
     segmentDragging.value = false;
     draggingSegment.value = null;
-    
+
     // Forçar atualização do DOM
-    await nextTick(); 
+    await nextTick();
 };
 
 // Handler global para resetar o estado quando qualquer drop ocorrer
-const handleGlobalDrop = async (event: DragEvent) => { 
+const handleGlobalDrop = async (event: DragEvent) => {
     // Resetar sempre que qualquer drop ocorrer
     segmentDragging.value = false;
     draggingSegment.value = null;
-    
+
     // Forçar atualização do DOM
-    await nextTick(); 
+    await nextTick();
 };
 
-const handleSegmentDragOver = (segment: SegmentType, shelf: Shelf, isOver: boolean) => { 
+const handleSegmentDragOver = (segment: SegmentType, shelf: Shelf, isOver: boolean) => {
     if (isOver) {
         // Só ativar se não estiver já ativo para evitar múltiplas ativações
-        if (!segmentDragging.value) { 
+        if (!segmentDragging.value) {
             segmentDragging.value = true;
             draggingSegment.value = segment;
         }
     } else {
         // Só resetar se estiver ativo para evitar múltiplos resets
-        if (segmentDragging.value) { 
+        if (segmentDragging.value) {
             segmentDragging.value = false;
             draggingSegment.value = null;
         }
@@ -424,7 +415,7 @@ onUnmounted(() => {
 }
 
 .shelf-container.drag-over {
-    border-color:  rgba(59, 130, 246, 0.5);
+    border-color: rgba(59, 130, 246, 0.5);
 }
 
 .drag-over {
@@ -448,14 +439,15 @@ onUnmounted(() => {
     border-style: dashed;
     border-radius: 4px;
     box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
-    transition: 
+    transition:
         opacity 0.2s ease-in-out,
         border-color 0.2s ease-in-out,
         background-color 0.2s ease-in-out;
     cursor: grab;
     opacity: 0;
     pointer-events: none;
-    z-index: 999999 !important; /* Z-index extremamente alto */
+    z-index: 999999 !important;
+    /* Z-index extremamente alto */
 }
 
 .segment-drag-overlay.active {

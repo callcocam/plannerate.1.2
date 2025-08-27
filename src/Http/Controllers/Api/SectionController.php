@@ -37,7 +37,7 @@ class SectionController extends Controller
         try {
             // Obter gondola_id do query parameter
             $gondolaId = $request->input('gondola_id');
-            
+
             if (!$gondolaId) {
                 return $this->handleBadRequestException('O parâmetro gondola_id é obrigatório');
             }
@@ -148,184 +148,133 @@ class SectionController extends Controller
      * @return SectionResource|JsonResponse
      */
     public function update(UpdateSectionRequest $request, string $id)
-{
-    \Log::info('🚀 [CONTROLLER] Iniciando atualização de seção', [
-        'section_id' => $id,
-        'request_data' => $request->all(),
-        'timestamp' => now()->toISOString()
-    ]);
-    
-    try {
-        DB::beginTransaction();
+    {
 
-        // Buscar a seção diretamente pelo ID
-        $section = Section::findOrFail($id);
-        
-        \Log::info('📋 [CONTROLLER] Seção encontrada', [
-            'section_id' => $section->id,
-            'section_name' => $section->name,
-            'current_hole_width' => $section->hole_width,
-            'current_hole_height' => $section->hole_height,
-            'current_hole_spacing' => $section->hole_spacing,
-            'current_height' => $section->height,
-            'current_base_height' => $section->base_height,
-            'timestamp' => now()->toISOString()
-        ]);
-        
-        // Se você quiser validar a gôndola (opcional), pode pegar do request ou da seção
-        // $gondolaId = $request->input('gondola_id') ?? $section->gondola_id;
-        // Gondola::findOrFail($gondolaId);
+        try {
+            DB::beginTransaction();
 
-        // Validar dados
-        $validatedData = $request->validated();
+            // Buscar a seção diretamente pelo ID
+            $section = Section::findOrFail($id);
 
-        // Atualizar slug se o nome foi alterado
-        if (isset($validatedData['name']) && $section->name !== $validatedData['name']) {
-            $validatedData['slug'] = Str::slug($validatedData['name']);
-        }
 
-        // Verificar se algum campo relacionado aos furos da cremalheira foi alterado
-        $holesRelatedFields = ['hole_height', 'hole_width', 'hole_spacing', 'height', 'base_height'];
-        $shouldRecalculateHoles = false;
-        
-        \Log::info('🔍 [CONTROLLER] Verificando campos relacionados aos furos', [
-            'holes_related_fields' => $holesRelatedFields,
-            'validated_data' => $validatedData,
-            'timestamp' => now()->toISOString()
-        ]);
-        
-        foreach ($holesRelatedFields as $field) {
-            if (isset($validatedData[$field]) && $validatedData[$field] != $section->$field) {
-                $shouldRecalculateHoles = true;
-                \Log::info('🔄 [CONTROLLER] Campo alterado detectado', [
-                    'field' => $field,
-                    'old_value' => $section->$field,
-                    'new_value' => $validatedData[$field],
-                    'timestamp' => now()->toISOString()
-                ]);
-                break;
+            // Se você quiser validar a gôndola (opcional), pode pegar do request ou da seção
+            // $gondolaId = $request->input('gondola_id') ?? $section->gondola_id;
+            // Gondola::findOrFail($gondolaId);
+
+            // Validar dados
+            $validatedData = $request->validated();
+
+            // Atualizar slug se o nome foi alterado
+            if (isset($validatedData['name']) && $section->name !== $validatedData['name']) {
+                $validatedData['slug'] = Str::slug($validatedData['name']);
             }
-        }
-        
-        \Log::info('📊 [CONTROLLER] Resultado da verificação de recálculo', [
-            'should_recalculate_holes' => $shouldRecalculateHoles,
-            'timestamp' => now()->toISOString()
-        ]);
 
-        // Se campos relacionados aos furos foram alterados, recalcular os furos
-        if ($shouldRecalculateHoles) {
-            \Log::info('🔄 [CONTROLLER] Iniciando recálculo dos furos', [
-                'timestamp' => now()->toISOString()
-            ]);
-            
-            $shelfService = new ShelfPositioningService();
-            
-            // Preparar dados para o cálculo dos furos (mesclar dados existentes com novos)
-            $holeCalculationData = [
-                'height' => $validatedData['height'] ?? $section->height,
-                'hole_height' => $validatedData['hole_height'] ?? $section->hole_height,
-                'hole_width' => $validatedData['hole_width'] ?? $section->hole_width,
-                'hole_spacing' => $validatedData['hole_spacing'] ?? $section->hole_spacing,
-                'base_height' => $validatedData['base_height'] ?? $section->base_height,
-            ];
+            // Verificar se algum campo relacionado aos furos da cremalheira foi alterado
+            $holesRelatedFields = ['hole_height', 'hole_width', 'hole_spacing', 'height', 'base_height'];
+            $shouldRecalculateHoles = false;
 
-            \Log::info('📊 [CONTROLLER] Dados para cálculo dos furos', [
-                'hole_calculation_data' => $holeCalculationData,
-                'timestamp' => now()->toISOString()
-            ]);
 
-            // Recalcular os furos
-            $newHoles = $shelfService->calculateHoles($holeCalculationData);
-            
-            \Log::info('✅ [CONTROLLER] Furos recalculados', [
-                'new_holes_count' => count($newHoles),
-                'new_holes' => $newHoles,
-                'timestamp' => now()->toISOString()
-            ]);
-            
-            // Atualizar ou criar settings com os novos furos
-            $currentSettings = $section->settings ?? [];
-            $currentSettings['holes'] = $newHoles;
-            $validatedData['settings'] = $currentSettings;
-            
-            \Log::info('💾 [CONTROLLER] Settings atualizados com novos furos', [
-                'updated_settings' => $currentSettings,
-                'timestamp' => now()->toISOString()
-            ]);
-        }
+            foreach ($holesRelatedFields as $field) {
+                if (isset($validatedData[$field]) && $validatedData[$field] != $section->$field) {
+                    $shouldRecalculateHoles = true;
 
-        // Atualizar a seção
-        $section->update($validatedData);
+                    break;
+                }
+            }
 
-        // Atualizar prateleiras se necessário
-        if (isset($validatedData['num_shelves'])) {
-            // Obter o número atual de prateleiras
-            $currentShelves = $section->shelves()->count();
-            $numShelves = $validatedData['num_shelves'];
 
-            if ($numShelves > $currentShelves) {
-                // Adicionar novas prateleiras
-                $shelfHeight = $validatedData['shelf_height'] ?? $section->shelf_height ?? 4;
-                $shelves = [];
-                for ($i = $currentShelves; $i < $numShelves; $i++) {
-                    $shelves[] = [
-                        'id' => (string) Str::ulid(),
-                        'section_id' => $section->id,
-                        'name' => "Prateleira " . ($i + 1),
-                        'position' => $i,
-                        'height' => $shelfHeight,
+            // Se campos relacionados aos furos foram alterados, recalcular os furos
+            if ($shouldRecalculateHoles) {
+
+
+                $shelfService = new ShelfPositioningService();
+
+                // Preparar dados para o cálculo dos furos (mesclar dados existentes com novos)
+                $holeCalculationData = [
+                    'height' => $validatedData['height'] ?? $section->height,
+                    'hole_height' => $validatedData['hole_height'] ?? $section->hole_height,
+                    'hole_width' => $validatedData['hole_width'] ?? $section->hole_width,
+                    'hole_spacing' => $validatedData['hole_spacing'] ?? $section->hole_spacing,
+                    'base_height' => $validatedData['base_height'] ?? $section->base_height,
+                ];
+
+
+
+                // Recalcular os furos
+                $newHoles = $shelfService->calculateHoles($holeCalculationData);
+
+
+
+                // Atualizar ou criar settings com os novos furos
+                $currentSettings = $section->settings ?? [];
+                $currentSettings['holes'] = $newHoles;
+                $validatedData['settings'] = $currentSettings;
+            }
+
+            // Atualizar a seção
+            $section->update($validatedData);
+
+            // Atualizar prateleiras se necessário
+            if (isset($validatedData['num_shelves'])) {
+                // Obter o número atual de prateleiras
+                $currentShelves = $section->shelves()->count();
+                $numShelves = $validatedData['num_shelves'];
+
+                if ($numShelves > $currentShelves) {
+                    // Adicionar novas prateleiras
+                    $shelfHeight = $validatedData['shelf_height'] ?? $section->shelf_height ?? 4;
+                    $shelves = [];
+                    for ($i = $currentShelves; $i < $numShelves; $i++) {
+                        $shelves[] = [
+                            'id' => (string) Str::ulid(),
+                            'section_id' => $section->id,
+                            'name' => "Prateleira " . ($i + 1),
+                            'position' => $i,
+                            'height' => $shelfHeight,
+                            'width' => $validatedData['width'] ?? $section->width ?? 130,
+                            'depth' => $validatedData['shelf_depth'] ?? 40,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ];
+                    }
+
+                    if (!empty($shelves)) {
+                        $section->shelves()->insert($shelves);
+                    }
+                } elseif ($numShelves < $currentShelves) {
+                    // Remover prateleiras excedentes
+                    $section->shelves()->where('position', '>=', $numShelves)->delete();
+                }
+
+                // Atualizar dimensões das prateleiras existentes
+                if (isset($validatedData['width']) || isset($validatedData['shelf_height'])) {
+                    $section->shelves()->update([
+                        'height' => $validatedData['shelf_height'] ?? $section->shelf_height ?? 4,
                         'width' => $validatedData['width'] ?? $section->width ?? 130,
-                        'depth' => $validatedData['shelf_depth'] ?? 40,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ];
+                    ]);
                 }
-
-                if (!empty($shelves)) {
-                    $section->shelves()->insert($shelves);
-                }
-            } elseif ($numShelves < $currentShelves) {
-                // Remover prateleiras excedentes
-                $section->shelves()->where('position', '>=', $numShelves)->delete();
             }
 
-            // Atualizar dimensões das prateleiras existentes
-            if (isset($validatedData['width']) || isset($validatedData['shelf_height'])) {
-                $section->shelves()->update([
-                    'height' => $validatedData['shelf_height'] ?? $section->shelf_height ?? 4,
-                    'width' => $validatedData['width'] ?? $section->width ?? 130,
-                ]);
-            }
+            DB::commit();
+
+
+
+            // Carregar relacionamentos para o retorno
+            $section = $section->fresh(['gondola', 'shelves']);
+
+
+
+            return $this->handleSuccess('Seção atualizada com sucesso', [
+                'data' => new SectionResource($section)
+            ]);
+        } catch (ModelNotFoundException $e) {
+            DB::rollBack();
+            return $this->handleInternalServerError('Seção não encontrada');
+        } catch (Throwable $e) {
+            DB::rollBack();
+            return $this->handleInternalServerError('Ocorreu um erro ao atualizar a seção');
         }
-
-        DB::commit();
-
-        \Log::info('💾 [CONTROLLER] Transação commitada no banco', [
-            'section_id' => $section->id,
-            'timestamp' => now()->toISOString()
-        ]);
-
-        // Carregar relacionamentos para o retorno
-        $section = $section->fresh(['gondola', 'shelves']);
-
-        \Log::info('✅ [CONTROLLER] Seção atualizada com sucesso', [
-            'section_id' => $section->id,
-            'final_hole_width' => $section->hole_width,
-            'final_holes_count' => count($section->settings['holes'] ?? []),
-            'timestamp' => now()->toISOString()
-        ]);
-
-        return $this->handleSuccess('Seção atualizada com sucesso', [
-            'data' => new SectionResource($section)
-        ]);
-    } catch (ModelNotFoundException $e) {
-        DB::rollBack();
-        return $this->handleInternalServerError('Seção não encontrada');
-    } catch (Throwable $e) {
-        DB::rollBack();
-        return $this->handleInternalServerError('Ocorreu um erro ao atualizar a seção');
     }
-}
     public function destroy(Section $section)
     {
         try {

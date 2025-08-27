@@ -12,7 +12,7 @@
 
 <script setup lang="ts">
 import { Layer } from '@/types/segment';
-import { computed, onMounted, ref, CSSProperties } from 'vue'; 
+import { computed, onMounted, ref } from 'vue'; 
 import { useEditorStore } from '@plannerate/store/editor';
 import { useAnalysisResultStore } from '@plannerate/store/editor/analysisResult';
 const props = defineProps<{
@@ -92,30 +92,8 @@ const handleImageError = (event: Event) => {
         target.style.border = '1px solid #ddd';
     }
 };
-
-/**
- * Verifica se o layer está selecionado
- */
- const isSelected = computed(() => {
-    const layerId = props.layer.id;
-    // Usa selectedLayerIds (nome corrigido e agora existente)
-    return editorStore.isSelectedLayer(String(layerId));
-});
-
-/**
- * Retorna os estilos CSS para o produto baseado no estado de seleção
- */
-const productActiveTrigger = (): CSSProperties => {
-    if (isSelected.value) {
-        return {
-            // border: '1px solid',
-        };
-    }
-    return {
-        // border: '1px solid transparent',
-        // flexShrink: 0,
-    };
-};
+ 
+ 
 /**
  * Obtém o resultado da análise ABC do produto
  */
@@ -154,30 +132,15 @@ const productStyle = computed(() => {
         flexShrink: 0, 
     };
 });
-
-// Estilo do conteúdo interno do produto
-const contentStyle = computed(() => {
-    // Calcula dimensões proporcionais considerando o tamanho do produto
-    const maxWidth = Math.min(props.product.width * props.scaleFactor * 0.9, 100);
-    const maxHeight = Math.min(props.product.height * props.scaleFactor * 0.9, 100);
-
-    return {
-        maxWidth: `${maxWidth}px`,
-        maxHeight: `${maxHeight}px`,
-        overflow: 'hidden',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-    };
-});
+ 
 
 /**
  * Manipula o clique no produto
  */
 const handleProductClick = () => {
     // Não precisa chamar productActiveTrigger aqui, pois já é reativo através do computed
-    // A função productActiveTrigger() já é chamada automaticamente quando isSelected muda
-    console.log('Produto clicado:', props.product?.ean || 'EAN não disponível');
+    // A função productActiveTrigger() já é chamada automaticamente quando isSelected muda 
+    editorStore.clearSelectedSection(); // Limpa seleção de camadas ao selecionar prateleira
     
     // Aqui você pode adicionar lógica adicional para quando o produto é clicado
     // Por exemplo, emitir um evento ou atualizar o estado do editor

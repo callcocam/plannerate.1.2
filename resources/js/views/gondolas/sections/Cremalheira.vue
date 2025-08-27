@@ -3,10 +3,10 @@
         <!-- Botões que aparecem apenas no hover, posicionados acima da gramalheira em coluna -->
         <div v-if="!props.isLastSection"
             class="absolute -top-24 left-1/2 flex -translate-x-1/2 transform flex-col space-y-2 opacity-0 transition-opacity duration-200 group-hover:opacity-100 z-[100]">
-            <Button size="sm" class="h-6 w-6 p-0" variant="secondary" @click="$emit('edit-section', section)">
+            <Button size="sm" class="h-6 w-6 p-0 cursor-pointer" variant="secondary" @click="$emit('edit-section', section)">
                 <PencilIcon class="h-3 w-3" />
             </Button>
-            <Button size="sm" class="h-6 w-6 p-0" variant="destructive" @click="openDeleteConfirm">
+            <Button size="sm" class="h-6 w-6 p-0 cursor-pointer" variant="destructive" @click="openDeleteConfirm">
                 <TrashIcon class="h-3 w-3" />
             </Button>
             <slot name="actions" />
@@ -57,8 +57,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['edit-section', 'delete-section']);
-
-const gramalheiraWidth = computed(() => props.section.cremalheira_width * props.scaleFactor);
+ 
 const baseHeight = computed(() => props.section.base_height || 17);
 const editorStore = useEditorStore()
 
@@ -139,5 +138,8 @@ const addShelfToSection = (hole: any) => {
         section_id: section.id,
         product_type: 'normal',
     } as ShelfType);
+ 
+    editorStore.clearLayerSelection(); // Limpa seleção de camadas ao selecionar prateleira    
+    editorStore.clearSelectedShelf(); // Limpa seleção de prateleira ao selecionar produto
 }
 </script>

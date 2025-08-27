@@ -326,7 +326,7 @@ const getSelectedProducts = (): Product[] => {
 };
 
 const fetchCategories = async () => {
-    const response = await apiService.get<Category[]>('categories');
+    const response = await apiService.get<Category[]>('categories/mercadologico');
     allCategories.value = response;
 };
 
@@ -447,7 +447,9 @@ function handleDragStart(event: DragEvent, product: Product) {
 
 function viewStats(product: Product) {
     viewStatsStore.setSelectedProduct(product);
-
+    editorStore.clearSelectedSection(); // Limpa seleção de camadas ao selecionar prateleira
+    editorStore.clearLayerSelection(); // Limpa seleção de camadas ao selecionar prateleira    
+    editorStore.clearSelectedShelf(); // Limpa seleção de prateleira ao selecionar produto
 }
 
 function handleImageError(event: Event, product: Product) {

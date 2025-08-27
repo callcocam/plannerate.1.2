@@ -13,7 +13,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, CSSProperties, onMounted, onUnmounted, ref } from 'vue';
 import { useEditorStore } from '@plannerate/store/editor';
 import ProductNormal from '@plannerate/views/gondolas/sections/shelves/Product.vue';
 import { Layer as LayerType, Segment as SegmentType } from '@/types/segment';
@@ -66,6 +66,12 @@ const layerStyle = computed(() => {
     const quantity = props.layer.quantity || 1;
     let layerWidthFinal = `100%`; // Default para justify ou se não houver gôndola/alinhamento
 
+    const otherStyles: CSSProperties = {
+        display: 'flex', 
+        justifyContent: 'space-around',
+        position: 'relative',
+    };
+
     // Obtém o alinhamento da gôndola atual do editorStore
     const alignment = editorStore.getCurrentGondola?.alignment; 
     // Define a largura final com base no alinhamento
@@ -77,16 +83,13 @@ const layerStyle = computed(() => {
         layerWidthFinal = `${productWidth * quantity}px`;
     } else if (alignment === 'justify' || !alignment) {
         // Para justificado ou sem alinhamento definido, ocupa 100%
-        if (quantity > 1) {
-            layerWidthFinal = `100%`;
-        } else {
-            layerWidthFinal = `${productWidth}px`;
-        }
+         layerWidthFinal = `100%`;
     }
     return {
         width: layerWidthFinal,
         height: `${layerHeight * props.scaleFactor}px`,
         zIndex: '0',
+        ...otherStyles,
     };
 });
 

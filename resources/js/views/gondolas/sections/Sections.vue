@@ -1,138 +1,142 @@
 <template>
     <div class="flex flex-col md:flex-row">
-        <slot name="flow-direction"></slot>
+        <slot name="flow-direction" />
+
         <div class="mt-28 flex px-10 md:flex-row" ref="sectionsContainer">
-            <draggable v-model="draggableSectionsModel" item-key="id" handle=".drag-handle" class="flex md:flex-row">
+            <draggable v-model="draggableSections" item-key="id" handle=".drag-handle" class="flex md:flex-row"
+                :animation="200" :disabled="!canReorder">
                 <template #item="{ element: section, index }">
-                    <div :key="section.id">
-                        <div class="flex items-center relative">
-                            <Cremalheira :section="section" :scale-factor="scaleFactor" @delete-section="deleteSection"
-                                @edit-section="editSection">
-                                <template #actions>
-                                    <Button size="sm"
-                                        class="drag-handle h-6 w-6 cursor-move p-0 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-                                        variant="secondary">
-                                        <MoveIcon class="h-3 w-3" />
-                                    </Button>
-                                    <Button
-                                        class=" h-6 w-6  p-0 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-                                        size="sm" variant="outline" @click="invertShelves(section)"
-                                        v-if="section.shelves.length > 1">
-                                        <ArrowUpDownIcon class="h-3 w-3" />
-                                    </Button>
-                                </template>
-                            </Cremalheira>
-                            <SectionComponent :key="section.id" :gondola="gondola" :section-index="index"
-                                :section="section" :scale-factor="scaleFactor" :sections-container="sectionsContainer"
-                                @segment-select="$emit('segment-select', $event)" @delete-section="deleteSection"> 
-                            </SectionComponent>
-                        </div>
-                    </div>
+                    <SectionWrapper :key="section.id" :section="section" :index="index" :scale-factor="scaleFactor"
+                        :sections-container="sectionsContainer" :gondola="gondola" @delete="handleDeleteSection"
+                        @edit="handleEditSection" @invert-shelves="handleInvertShelves"
+                        @segment-select="$emit('segment-select', $event)" />
                 </template>
-            </draggable> 
-            <div v-if="lastSectionData" class="flex items-center">
-                <Cremalheira :section="lastSectionData" :scale-factor="scaleFactor" :is-last-section="true"
-                    :key="`rack-end-${lastSectionData.id}`" @edit-section="editSection" />
-            </div>
+            </draggable>
+
+            <!-- Última cremalheira -->
+            <LastRack v-if="lastSection" :section="lastSection" :scale-factor="scaleFactor" />
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { MoveIcon, ArrowUpDownIcon } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import draggable from 'vuedraggable';
 import { toast } from 'vue-sonner';
 import type { Gondola } from '@plannerate/types/gondola';
 import type { Section as SectionType } from '@plannerate/types/sections';
-
-import Cremalheira from '@plannerate/views/gondolas/sections/Cremalheira.vue';
-import SectionComponent from '@plannerate/views/gondolas/sections/Section.vue';
 import { useEditorStore } from '@plannerate/store/editor';
-import { Button } from '@/components/ui/button';
+import SectionWrapper from '@plannerate/views/gondolas/components/sections/SectionWrapper.vue';
+import LastRack from '@plannerate/views/gondolas/sections/LastRack.vue';
 
+// ===== Componentes Internos ===== 
+ 
 
+// ===== Props & Emits =====
 const props = defineProps<{
     gondola: Gondola;
     scaleFactor: number;
 }>();
- 
 
+const emit = defineEmits<{
+    (e: 'sections-reordered', sections: SectionType[]): void;
+    (e: 'shelves-updated'): void;
+    (e: 'move-shelf-to-section', data: any): void;
+    (e: 'segment-select', segment: any): void;
+}>();
+
+// ===== Store & Refs =====
+const editorStore = useEditorStore();
 const sectionsContainer = ref<HTMLElement | null>(null);
 
-const emit = defineEmits(['sections-reordered', 'shelves-updated', 'move-shelf-to-section', 'segment-select']);
+// ===== Computed Properties =====
+const canReorder = computed(() => props.gondola?.id && props.gondola.sections.length > 1);
 
-const editorStore = useEditorStore();
-
-const draggableSectionsModel = computed<SectionType[]>({
-    get() {
-        return [...(props.gondola?.sections || [])];
-    },
-    set(newSectionsOrder: SectionType[]) {
+const draggableSections = computed<SectionType[]>({
+    get: () => [...(props.gondola?.sections || [])],
+    set: (newOrder: SectionType[]) => {
         if (!props.gondola?.id) {
-            console.warn('draggableSectionsModel.set: ID da gôndola não encontrado.');
+            console.warn('Sections.vue: Não é possível reordenar - ID da gôndola não encontrado');
             return;
         }
-        editorStore.setGondolaSectionOrder(props.gondola.id, newSectionsOrder);
+
+        editorStore.setGondolaSectionOrder(props.gondola.id, newOrder);
+        emit('sections-reordered', newOrder);
     }
 });
 
-const lastSectionData = computed(() => {
+const lastSection = computed(() => {
     const sections = props.gondola?.sections || [];
     return sections.length > 0 ? sections[sections.length - 1] : null;
 });
 
-const deleteSection = (sectionToDelete: SectionType) => {
+// ===== Methods =====
+const handleDeleteSection = (section: SectionType) => {
     if (!props.gondola?.id) {
-        console.warn('Não é possível deletar seção: Gôndola não definida.');
-        return;
-    }
-    editorStore.removeSectionFromGondola(props.gondola.id, sectionToDelete.id);
-};
-
-
-const editSection = (section: SectionType) => {
-    editorStore.setSelectedSection(section);
-};
-
-
-
-const invertShelves = (section: SectionType) => {
-    if (!section || !props.gondola?.id) {
-        console.error('Erro ao inverter: Seção ou Gôndola não selecionada.');
-        toast({
-            title: 'Erro',
-            description: 'Seção ou Gôndola não encontrada para inverter prateleiras.',
-            variant: 'destructive',
+        toast.error('Erro', {
+            description: 'Não é possível deletar a seção: Gôndola não identificada.'
         });
         return;
     }
 
-    const gondolaId = props.gondola.id;
-    const sectionId = section.id;
+    // Confirmação adicional se for a última seção
+    if (props.gondola.sections.length === 1) {
+        toast.error('Aviso', {
+            description: 'Não é possível deletar a última seção da gôndola.'
+        });
+        return;
+    }
+
+    editorStore.removeSectionFromGondola(props.gondola.id, section.id);
+    toast.success('Seção removida', {
+        description: 'A seção foi removida com sucesso.'
+    });
+};
+
+const handleEditSection = (section: SectionType) => {
+    editorStore.setSelectedSection(section);
+    
+    editorStore.clearLayerSelection(); // Limpa seleção de camadas ao selecionar prateleira    
+    editorStore.clearSelectedShelf(); // Limpa seleção de prateleira ao selecionar produto
+};
+
+const handleInvertShelves = (section: SectionType) => {
+    if (!section || !props.gondola?.id) {
+        toast.error('Erro', {
+            description: 'Não foi possível inverter as prateleiras.'
+        });
+        return;
+    }
 
     try {
-        editorStore.invertShelvesInSection(gondolaId, sectionId);
-        toast({
-            title: 'Sucesso',
-            description: 'Ordem das prateleiras invertida.',
+        editorStore.invertShelvesInSection(props.gondola.id, section.id);
+        toast.success('Prateleiras invertidas', {
+            description: `${section.shelves.length} prateleiras foram invertidas com sucesso.`
         });
     } catch (error) {
-        toast({
-            title: 'Erro',
-            description: 'Falha ao inverter a ordem das prateleiras.',
-            variant: 'destructive',
+        console.error('Erro ao inverter prateleiras:', error);
+        toast.error('Erro', {
+            description: 'Ocorreu um erro ao inverter as prateleiras.'
         });
     }
 };
 </script>
 
 <style scoped>
-/* Estilos para o modo escuro específicos do componente Sections, se necessário */
+/* Animação suave para o draggable */
+.sortable-ghost {
+    opacity: 0.5;
+}
+
+.sortable-drag {
+    opacity: 0.8;
+    transform: scale(1.02);
+}
+
+/* Melhor feedback visual no dark mode */
 @media (prefers-color-scheme: dark) {
-    .drag-handle {
-        /* Ajustes adicionais para o ícone de arrastar no modo escuro, se necessário */
-        filter: brightness(1.1);
+    .drag-handle:hover {
+        background-color: rgb(55 65 81);
     }
 }
 </style>
