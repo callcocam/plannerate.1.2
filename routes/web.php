@@ -11,6 +11,21 @@ use Callcocam\Plannerate\Facades\Plannerate;
 use Callcocam\Plannerate\Http\Controllers\AppController;
 use Illuminate\Support\Facades\Route;
 
+// Rotas públicas para QR Code (sem autenticação)
+Route::prefix(Plannerate::getPath())
+    ->middleware(['web'])
+    ->group(function () {
+        
+        Route::get("/qr/{id?}/gondola/{gondolaId?}/{vue_capture?}", [AppController::class, 'show'])
+            ->where('vue_capture', '[\/\w\.\,\-]*')
+            ->name(sprintf('%s.qr.show', Plannerate::getRoute()));
+
+        Route::get("/qr/{vue_capture?}", [AppController::class, 'show'])
+            ->where('vue_capture', '[\/\w\.\,\-]*')
+            ->name(sprintf('%s.qr', Plannerate::getRoute()));
+    });
+
+// Rotas protegidas (com autenticação)
 Route::prefix(Plannerate::getPath())
     ->middleware([
         'web',

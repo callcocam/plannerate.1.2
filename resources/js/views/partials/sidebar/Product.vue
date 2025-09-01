@@ -14,17 +14,17 @@
                                     <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">{{
                                         layer.product.name }}
                                     </h4>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400">SKU: {{ layer.product.sku }}</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">EAN: {{ layer.product.ean
+                                        }}</p>
+                                    <!-- <p class="text-xs text-gray-500 dark:text-gray-400">SKU: {{ layer.product.sku }}</p> -->
                                     <p class="text-xs text-gray-500 dark:text-gray-400">Altura: {{ layer.product.height
                                         }}</p>
                                     <p class="text-xs text-gray-500 dark:text-gray-400">Largura: {{ layer.product.width
                                         }}</p>
                                     <p class="text-xs text-gray-500 dark:text-gray-400">Profundidade: {{ layer.product.depth}}</p>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400">Quantidade: {{ layer.quantity ||
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">Quantidade De Frentes: {{ layer.quantity ||
                                         0 }}
-                                    </p>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400">EAN: {{ layer.product.ean
-                                        }}</p>
+                                    </p>                                   
                                 </div>
                                 <div
                                     class="absolute bottom-0 right-0 flex items-center justify-end rounded-md p-2 flex-row gap-2">
