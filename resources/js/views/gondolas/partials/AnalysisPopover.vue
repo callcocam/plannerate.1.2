@@ -31,6 +31,29 @@
         <PrinterIcon class="h-4 w-4" />
         <span class="hidden xl:block">Imprimir</span>
       </Button>
+      
+      <!-- Popover de Gerar Relatório -->
+      <Popover v-model:open="showReportOptions">
+        <PopoverTrigger as-child>
+          <Button variant="outline" size="sm" @click="showReportOptions = true" title="Gerar Relatório">
+            <FileTextIcon class="h-4 w-4" />
+            <span class="hidden xl:block">Relatórios</span>
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent class="w-auto max-w-sm z-[1000]">
+          <div class="flex flex-col gap-2">
+            <h4 class="font-medium text-sm mb-2">Formato do Relatório</h4>
+            <Button variant="outline" @click="generateReport('excel')" :disabled="isGeneratingReport">
+              <FileSpreadsheetIcon class="h-4 w-4 mr-2" />
+              Relatório Reposição (.xlsx)
+            </Button>
+            <Button variant="outline" @click="generateReport('pdf')" :disabled="isGeneratingReport">
+              <FileTextIcon class="h-4 w-4 mr-2" />
+              Relatório Reposição (PDF)
+            </Button>
+          </div>
+        </PopoverContent>
+      </Popover>
     </div>
   </div>
 
@@ -95,7 +118,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import { NutIcon, PrinterIcon, Paintbrush } from 'lucide-vue-next';  
+import { NutIcon, PrinterIcon, Paintbrush, FileTextIcon, FileSpreadsheetIcon } from 'lucide-vue-next';  
 
 // Imports dos componentes de análise
 import ABCParamsPopover from '@plannerate/components/ABCParamsPopover.vue';
@@ -120,7 +143,9 @@ const showTargetStockParams = ref(false);
 const showBCGParams = ref(false);
 const showResultModal = ref(false);
 const showBCGResultModal = ref(false);
-const showTargetStockResultModal = ref(false);  
+const showTargetStockResultModal = ref(false);
+const showReportOptions = ref(false);
+const isGeneratingReport = ref(false);  
 
 // Watchers para fechar popover principal quando abrir parâmetros
 watch(showABCParams, (newVal) => {
@@ -241,5 +266,66 @@ function handleOpenTargetStockParams() {
 function handleOpenBCGParams() {
   showCalculos.value = false;
   showBCGParams.value = true;
+}
+
+// Função para gerar relatório
+async function generateReport(format: 'excel' | 'pdf') {
+  if (!editorStore.getCurrentGondola) {
+    alert('Nenhuma gôndola selecionada para gerar relatório.');
+    return;
+  }
+
+  isGeneratingReport.value = true;
+  showReportOptions.value = false;
+
+  try {
+    const gondolaId = editorStore.getCurrentGondola.id;
+    const endpoint = format === 'excel' 
+      ? `/api/plannerate/gondola-report/${gondolaId}/excel`
+      : `/api/plannerate/gondola-report/${gondolaId}/pdf`;
+
+    // Fazer download do arquivo
+    const response = await fetch(endpoint, {
+      method: 'GET',
+      headers: {
+        'Accept': format === 'excel' 
+          ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+          : 'application/pdf',
+        'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Erro ao gerar relatório: ${response.statusText}`);
+    }
+
+    // Obter o nome do arquivo do header ou usar um padrão
+    const contentDisposition = response.headers.get('content-disposition');
+    let filename = `relatorio-gondola-${gondolaId}.${format === 'excel' ? 'xlsx' : 'pdf'}`;
+    
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+      if (filenameMatch) {
+        filename = filenameMatch[1].replace(/['"]/g, '');
+      }
+    }
+
+    // Criar blob e fazer download
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+
+  } catch (error: any) {
+    console.error('Erro ao gerar relatório:', error);
+    alert(`Erro ao gerar relatório: ${error?.message || 'Erro desconhecido'}`);
+  } finally {
+    isGeneratingReport.value = false;
+  }
 }
 </script>
