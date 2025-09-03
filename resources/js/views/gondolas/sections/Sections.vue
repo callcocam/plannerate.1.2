@@ -2,7 +2,7 @@
     <div class="flex flex-col md:flex-row">
         <slot name="flow-direction" />
 
-        <div class="mt-28 flex md:flex-row" ref="sectionsContainer">
+        <div id="planogram-container-full" class="mt-28 flex md:flex-row" ref="sectionsContainer">
             <draggable v-model="draggableSections" item-key="id" handle=".drag-handle" class="flex md:flex-row"
                 :animation="200" :disabled="!canReorder">
                 <template #item="{ element: section, index }">
@@ -14,7 +14,7 @@
             </draggable>
 
             <!-- Última cremalheira -->
-            <LastRack v-if="lastSection" :section="lastSection" :scale-factor="scaleFactor" />
+            <LastRack v-if="lastSection" :section="lastSection" :scale-factor="scaleFactor" :index="gondola.sections.length" />
         </div>
     </div>
 </template>

@@ -27,7 +27,7 @@
       </Popover>
       
       <!-- Botão de imprimir -->
-      <Button variant="outline" size="sm" title="Imprimir">
+      <Button variant="outline" size="sm" title="Imprimir" @click="showPrintModal = true">
         <PrinterIcon class="h-4 w-4" />
         <span class="hidden xl:block">Imprimir</span>
       </Button>
@@ -114,11 +114,34 @@
   <BCGResultModalImproved 
   v-model:open="showBCGResultModal" 
   />
+
+  <!-- Modal de Impressão -->
+  <PrintModal 
+    v-model:open="showPrintModal"
+    @close="showPrintModal = false"
+  />
 </template>
 
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import { NutIcon, PrinterIcon, Paintbrush, FileTextIcon, FileSpreadsheetIcon } from 'lucide-vue-next';  
+import { NutIcon, PrinterIcon, Paintbrush, FileTextIcon, FileSpreadsheetIcon } from 'lucide-vue-next';
+
+// Componentes UI
+import { 
+  Popover, 
+  PopoverContent, 
+  PopoverTrigger 
+} from '@plannerate/components/ui/popover';
+import { Button } from '@plannerate/components/ui/button';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogTitle 
+} from '@plannerate/components/ui/dialog';
+
+// Componente de impressão
+import PrintModal from '@plannerate/components/PrintModal.vue';
 
 // Imports dos componentes de análise
 import ABCParamsPopover from '@plannerate/components/ABCParamsPopover.vue';
@@ -145,7 +168,8 @@ const showResultModal = ref(false);
 const showBCGResultModal = ref(false);
 const showTargetStockResultModal = ref(false);
 const showReportOptions = ref(false);
-const isGeneratingReport = ref(false);  
+const isGeneratingReport = ref(false);
+const showPrintModal = ref(false);  
 
 // Watchers para fechar popover principal quando abrir parâmetros
 watch(showABCParams, (newVal) => {

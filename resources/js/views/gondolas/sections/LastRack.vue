@@ -1,6 +1,6 @@
 <template>
-    <div class="flex items-center">
-        <Cremalheira :section="section" :scale-factor="scaleFactor" :is-last-section="true" />
+    <div class="flex items-center" data-last-rack="true">
+        <Cremalheira :section="section" :scale-factor="scaleFactor" :is-last-section="true" :index="index" />
     </div>
 </template>
 <script lang="ts" setup>
@@ -12,6 +12,10 @@ defineProps({
         required: true,
     },
     scaleFactor: {
+        type: Number,
+        required: true,
+    },
+    index: {
         type: Number,
         required: true,
     },

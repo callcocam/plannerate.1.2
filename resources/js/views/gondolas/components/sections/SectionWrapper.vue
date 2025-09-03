@@ -1,7 +1,7 @@
 <template>
     <div class="flex items-center relative">
         <Cremalheira :section="section" :scale-factor="scaleFactor" @delete-section="$emit('delete', section)"
-            @edit-section="$emit('edit', section)">
+            @edit-section="$emit('edit', section)" :index="index">
             <template #actions>
                 <!-- Botão de arrastar -->
                 <Button size="sm"

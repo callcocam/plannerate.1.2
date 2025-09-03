@@ -23,6 +23,8 @@
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
+    "dom-to-image": "^2.6.0",
+    "jspdf": "^3.0.2",
     "lodash-es": "^4.17.21",
     "pinia": "^2.0.0",
     "vue": "^3.0.0",

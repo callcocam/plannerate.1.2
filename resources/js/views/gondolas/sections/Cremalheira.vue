@@ -1,5 +1,5 @@
 <template>
-    <div :style="gramalheiraStyle" class="group relative bg-gray-800 dark:bg-gray-600 z-10 border border-gray-600 dark:border-gray-500">
+    <div :style="gramalheiraStyle" class="group relative bg-gray-800 dark:bg-gray-600 z-10 border border-gray-600 dark:border-gray-500" data-cremalheira="true" :data-cremalheira-index="index">
         <!-- Botões que aparecem apenas no hover, posicionados acima da gramalheira em coluna -->
         <div v-if="!props.isLastSection"
             class="absolute -top-24 left-1/2 flex -translate-x-1/2 transform flex-col space-y-2 opacity-0 transition-opacity duration-200 group-hover:opacity-100 z-[100]">
@@ -12,7 +12,7 @@
             <slot name="actions" />
         </div>
         <!-- Furos na gramalheira -->
-        <div v-for="(hole, index) in holes" :key="index" class="absolute bg-gray-300 dark:bg-gray-400 border border-gray-400 dark:border-gray-500" :style="{
+        <div v-for="(hole, index) in holes" :key="index" class="absolute bg-gray-300 dark:bg-gray-400 border border-gray-400 dark:border-gray-500" data-furo-cremalheira="true" :style="{
             width: `${hole.width * scaleFactor}px`,
             height: `${hole.height * scaleFactor}px`,
             top: `${hole.position * scaleFactor}px`,
@@ -20,7 +20,7 @@
             transform: `translateX(-50%)`,
         }" @dblclick="addShelfToSection(hole)"> </div>
         <!-- Base section (without holes) at the bottom -->
-        <div class="absolute bottom-0 left-0 w-full bg-gray-800 dark:bg-gray-600 border-t border-gray-600 dark:border-gray-500" :style="{
+        <div class="absolute bottom-0 left-0 w-full bg-gray-800 dark:bg-gray-600 border-t border-gray-600 dark:border-gray-500" data-base-cremalheira="true" :style="{
             height: `${baseHeight * props.scaleFactor}px`,
         }"></div>
     </div>
@@ -53,6 +53,10 @@ const props = defineProps({
     isFirstSection: {
         type: Boolean,
         default: false,
+    },
+    index: {
+        type: Number,
+        default: 0,
     },
 });
 
