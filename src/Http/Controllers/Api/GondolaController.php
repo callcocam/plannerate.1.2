@@ -147,11 +147,11 @@ class GondolaController extends Controller
             $planogram = Planogram::findOrFail($request->input('planogram_id'));
 
             // Limpar gôndolas existentes
-            // $this->deleteExistingGondolas($planogram->gondolas);
+            // $this->deleteExistingGondolas($planogram->gondolas); 
 
             // Validar dados
             $validatedData = $request->validated();
-            $validatedData['user_id'] = auth()->id();
+            $validatedData['user_id'] = auth()->id(); 
 
             // Criar nova gôndola
             $gondola = $this->createGondola($request, $planogram);
@@ -267,6 +267,7 @@ class GondolaController extends Controller
             'scale_factor' => $request->input('scale_factor', 3),
             'num_modulos' => $request->input('num_modulos', 4),
             'status' => $request->input('status', 'published'),
+            'linked_map_gondola_id' => $request->input('linked_map_gondola_id', null),
             'user_id' => auth()->id(),
             'tenant_id' => $planogram->tenant_id,
         ];

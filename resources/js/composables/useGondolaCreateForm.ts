@@ -64,7 +64,7 @@ const step4_ShelvesSchema = z.object({
 // Schema completo para validação final (incluindo campos não presentes nos passos)
 const fullGondolaFormSchema = z.object({
     gondolasLinkedMaps: z.any().optional(),
-    linkedMapGondolaId: z.string().min(1, { message: "Selecione uma gôndola para vincular." }),
+    linkedMapGondolaId: z.string().optional(),
     linkedMapGondolaCategory: z.string().optional(),
     planogram_id: z.string().min(1, { message: "Planogram ID é obrigatório." }),
     status: z.string().min(1, { message: "Status é obrigatório." }), // Validar status aqui
@@ -124,11 +124,11 @@ export function useGondolaCreateForm(options: UseGondolaCreateFormOptions) {
     const errors = ref<z.inferFlattenedErrors<typeof fullGondolaFormSchema>['fieldErrors']>({});
 
     const { currentState } = storeToRefs(editorStore) as any;
-    
+
     //verificar nas gondolas ja estão vinculadas ao mapa
-    const gondolasLinkedMaps = (currentState.value as any)?.gondolas.filter((g: Gondola) => 
+    const gondolasLinkedMaps = (currentState.value as any)?.gondolas.filter((g: Gondola) =>
         g.linked_map_gondola_id && g.linked_map_gondola_id.trim() !== ''
-    ) || []; 
+    ) || [];
     // Define o estado inicial do formData
     // Se estiver editando uma gôndola existente, usa os dados da primeira seção como base
     // para pré-preencher dimensões e configurações relevantes
