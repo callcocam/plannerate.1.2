@@ -31,20 +31,29 @@
                     Editar
                 </button>
             </EditProduct>
-            <fieldset>
+            <fieldset class="border-t pt-4 space-y-2" v-if="currentGondola">
                 <legend>Sincronizar</legend>
-                <button @click="syncProduct"
-                    class="mt-2 inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-green-50 hover:bg-green-100 text-green-700 rounded-md transition-colors dark:bg-green-900/20 dark:hover:bg-green-900/40 dark:text-green-300">
-                    🔄 Produto
-                </button>
-                <button @click="syncSales"
-                    class="mt-2 inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-yellow-50 hover:bg-yellow-100 text-yellow-700 rounded-md transition-colors dark:bg-yellow-900/20 dark:hover:bg-yellow-900/40 dark:text-yellow-300">
-                    📈 Vendas
-                </button>
-                <button @click="syncPurchases"
-                    class="mt-2 inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-md transition-colors dark:bg-purple-900/20 dark:hover:bg-purple-900/40 dark:text-purple-300">
-                    🛒 Compras
-                </button>
+                <SyncModal type="product" @save="syncProduct" :startDate="currentGondola?.start_date ?? ''"
+                    :endDate="currentGondola?.end_date ?? ''">
+                    <button type="button"
+                        class="mt-2 inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-green-50 hover:bg-green-100 text-green-700 rounded-md transition-colors dark:bg-green-900/20 dark:hover:bg-green-900/40 dark:text-green-300">
+                        🔄 Produto
+                    </button>
+                </SyncModal>
+                <SyncModal type="sales" @save="syncSales" :startDate="currentGondola.start_date ?? ''"
+                    :endDate="currentGondola.end_date ?? ''">
+                    <button type="button"
+                        class="mt-2 inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-yellow-50 hover:bg-yellow-100 text-yellow-700 rounded-md transition-colors dark:bg-yellow-900/20 dark:hover:bg-yellow-900/40 dark:text-yellow-300">
+                        📈 Vendas
+                    </button>
+                </SyncModal>
+                <SyncModal type="purchases" @save="syncPurchases" :startDate="currentGondola.start_date ?? ''"
+                    :endDate="currentGondola.end_date ?? ''">
+                    <button type="button"
+                        class="mt-2 inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-md transition-colors dark:bg-purple-900/20 dark:hover:bg-purple-900/40 dark:text-purple-300">
+                        🛒 Compras
+                    </button>
+                </SyncModal>
             </fieldset>
         </div>
 
@@ -255,12 +264,14 @@ import { EditIcon } from 'lucide-vue-next';
 import { Product } from '@/types/segment';
 import { useProductService } from '@plannerate/services/productService';
 import { useEditorStore } from '@plannerate/store/editor';
+import SyncModal from './SyncModal.vue';
+import { toast } from 'vue-sonner';
 
 const viewStatsStore = useViewStatsStore();
 
 const editorStore = useEditorStore();
 
-const { updateSalesPurchasesProduct } = useProductService();
+const { updateSalesPurchasesProduct, getProduct } = useProductService();
 
 const currentGondola = computed(() => editorStore.currentState);
 
@@ -315,43 +326,104 @@ const statusClass = computed(() => {
     }
 });
 
-const syncProduct = async () => {
-    console.log('Iniciando sincronização do produto...', currentGondola.value);
-    if (!productInfo.value) return;
-    await syncSalesPurchasesProduct({
-        sync_products: true
-    });
+const syncProduct = async (_type: string, dates: { startDate: string | null, endDate: string | null }) => {
+    console.log('Iniciando sincronização do produto...', currentGondola.value, dates);
+    if (!productInfo.value) throw new Error('Produto não encontrado');
+
+    try {
+        await syncSalesPurchasesProduct({
+            sync_products: true,
+            start_date: dates.startDate ?? '',
+            end_date: dates.endDate ?? ''
+        });
+
+        // Buscar dados atualizados do produto
+        const updatedProductResponse = await getProduct(productInfo.value.id);
+        if (updatedProductResponse.data) {
+            viewStatsStore.setSelectedProduct(updatedProductResponse.data);
+        }
+
+        toast.success('Sincronização do produto concluída com sucesso!');
+
+        console.log('✅ Sincronização do produto concluída com sucesso!');
+    } catch (error) {
+        console.error('❌ Erro na sincronização do produto:', error);
+
+        toast.error('Não foi possível sincronizar os dados do produto. Tente novamente.');
+
+        throw error;
+    }
 }
 
 
-const syncSales = async () => {
-    if (!productInfo.value) return;
-    await syncSalesPurchasesProduct({
-        sync_sales: true
-    });
+const syncSales = async (_type: string, dates: { startDate: string | null, endDate: string | null }) => {
+    if (!productInfo.value) throw new Error('Produto não encontrado');
+
+    try {
+        await syncSalesPurchasesProduct({
+            sync_sales: true,
+            start_date: dates.startDate ?? '',
+            end_date: dates.endDate ?? ''
+        });
+
+        // Buscar dados atualizados do produto
+        const updatedProductResponse = await getProduct(productInfo.value.id);
+        if (updatedProductResponse.data) {
+            viewStatsStore.setSelectedProduct(updatedProductResponse.data);
+        }
+        toast.success('Sincronização de vendas concluída com sucesso!');
+
+    } catch (error) {
+        console.error('❌ Erro na sincronização de vendas:', error);
+        toast.error('Não foi possível sincronizar os dados de vendas. Tente novamente.');
+
+        throw error;
+    }
 }
 
 
-const syncPurchases = async () => {
-    if (!productInfo.value) return;
-    await syncSalesPurchasesProduct({
-        sync_purchases: true
-    });
+const syncPurchases = async (_type: string, dates: { startDate: string | null, endDate: string | null }) => {
+    if (!productInfo.value) throw new Error('Produto não encontrado');
+
+    try {
+        await syncSalesPurchasesProduct({
+            sync_purchases: true,
+            start_date: dates.startDate ?? '',
+            end_date: dates.endDate ?? ''
+        });
+
+        // Buscar dados atualizados do produto
+        const updatedProductResponse = await getProduct(productInfo.value.id);
+        if (updatedProductResponse.data) {
+            viewStatsStore.setSelectedProduct(updatedProductResponse.data);
+        }
+
+        toast.success('Sincronização de compras concluída com sucesso!');
+
+        console.log('✅ Sincronização de compras concluída com sucesso!');
+    } catch (error) {
+        console.error('❌ Erro na sincronização de compras:', error);
+        toast.error('Não foi possível sincronizar os dados de compras. Tente novamente.');
+
+        throw error;
+    }
 }
 
 
 const syncSalesPurchasesProduct = async (prarams = {}) => {
-    if (!productInfo.value) return; 
+    if (!productInfo.value) throw new Error('Produto não encontrado');
+
     try {
         const response = await updateSalesPurchasesProduct({
             product: productInfo.value.id,
-            client_id: currentGondola.value?.client_id, // Ajuste conforme necessário
+            client_id: currentGondola.value?.client_id,
             ...prarams
         });
-        console.log('Resposta da sincronização:', response);
-        // Opcional: adicionar feedback visual de sucesso 
+        console.log('✅ Resposta da sincronização:', response);
+        return response;
     } catch (error) {
-        console.error('Erro ao sincronizar produto:', error);
+        console.error('❌ Erro ao sincronizar produto:', error);
+        throw error;
     }
 }
 

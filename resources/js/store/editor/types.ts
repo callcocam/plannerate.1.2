@@ -18,6 +18,10 @@ export interface PlanogramEditorState {
     mercadologico_nivel: any;
     client_id: string | null;
     store_id: string | null;
+    start_date: string | null | undefined;
+    end_date: string | null | undefined;
+    created_at: string | null | undefined;
+    updated_at: string | null | undefined;
 }
 
 /**
