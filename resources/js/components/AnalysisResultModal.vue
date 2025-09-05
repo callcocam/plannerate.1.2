@@ -314,7 +314,7 @@ analysisResultStore.$onAction(({ name }) => {
 <template>
   <TooltipProvider>
     <Dialog :open="open" @update:open="handleClose">
-      <DialogContent class="md:max-w-[70%] w-full max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent class="md:max-w-[90%] xl:max-w-[70%] w-full max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <div class="flex justify-between items-center">
             <div>
@@ -402,7 +402,7 @@ analysisResultStore.$onAction(({ name }) => {
           </div>
 
           <!-- Tabela -->
-          <div class="flex-1 overflow-auto border rounded-lg">
+          <div class="flex-1 overflow-auto border rounded-lg min-h-96">
             <table class="text-sm border-collapse w-full">
               <thead class="sticky top-0 bg-white z-10">
                 <tr class="bg-gray-100">
@@ -425,7 +425,7 @@ analysisResultStore.$onAction(({ name }) => {
                   </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody class="min-h-52 overflow-y-auto">
                 <tr 
                   v-for="item in filteredResults" 
                   :key="item.id"

@@ -1,7 +1,7 @@
 <template>
   <TooltipProvider>
     <Dialog :open="open" @update:open="handleClose">
-      <DialogContent class="md:max-w-[70%] w-full max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent class="md:max-w-[90%] xl:max-w-[70%] w-full max-h-[90%] overflow-hidden flex flex-col">
         <DialogHeader>
           <div class="flex justify-between items-center">
             <div>
@@ -90,7 +90,7 @@
           </div>
 
           <!-- Tabela -->
-          <div class="flex-1 overflow-auto border rounded-lg">
+          <div class="flex-1 overflow-auto border rounded-lg min-h-96">
             <table class="text-sm border-collapse w-full">
               <thead class="sticky top-0 bg-white z-10">
                 <tr class="bg-gray-100">
@@ -112,7 +112,7 @@
                   </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody >
                 <tr v-for="item in filteredResults" :key="item.ean" @click="selectedItemId = selectedItemId === item.ean ? null : item.ean"
                   :class="{'bg-blue-100 dark:bg-blue-900/50': selectedItemId === item.ean, 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50': true}">
                   <td class="px-2 py-1 border">{{ item.ean }}</td>

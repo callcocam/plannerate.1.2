@@ -10,6 +10,7 @@ namespace Callcocam\Plannerate\Services\Analysis;
 use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\Sale;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -79,7 +80,7 @@ class TargetStockAnalysisService
         $grouped = [];
 
         foreach ($sales as $sale) { 
-            $date = $sale->sale_date;
+            $date = $sale->sale_date instanceof Carbon ? $sale->sale_date->format('Y-m-d') : $sale->sale_date;
             $productId = $sale->product_id;
 
             if (!isset($grouped[$productId])) {
