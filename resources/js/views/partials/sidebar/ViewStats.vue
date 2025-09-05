@@ -1,105 +1,237 @@
 <template>
-    <div class="space-y-4 p-2">
-        <!-- Estatísticas de Visualização -->
-        <div class="flex items-center w-full justify-center" v-if="productInfo">
-            <img :src="productInfo.image_url" alt=""
-                class="h-16 w-16 rounded-md border object-contain dark:border-gray-600"
-                @error="(e) => handleImageError(e, productInfo)" />
-        </div>
+    <div class="space-y-6 p-4">
+        <!-- Header com Imagem e Nome do Produto -->
+        <div v-if="productInfo"
+            class="flex flex-col items-center text-center space-y-3 pb-4 border-b dark:border-gray-700">
+            <div class="relative">
+                <img :src="productInfo.image_url" alt=""
+                    class="h-24 w-24 rounded-lg border-2 object-contain shadow-lg dark:border-gray-600"
+                    @error="(e) => handleImageError(e, productInfo)" />
 
-        <!-- Informações do Produto -->
-        <div v-if="productInfo" class="border-t pt-4">
-            <h4 class="text-md font-medium mb-3">Informações do Produto</h4>
-
-            <!-- Nome e Descrição -->
-            <div class="space-y-2 mb-4">
-
-                <div>
-                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Nome:</span>
-                    <p class="text-sm text-gray-900 dark:text-gray-100">{{ productInfo.name }}</p>
-                </div>
-                <div v-if="productInfo.description && productInfo.description !== productInfo.name">
-                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Descrição:</span>
-                    <p class="text-sm text-gray-900 dark:text-gray-100">{{ productInfo.description }}</p>
-                </div>
+                <!-- Status Badge no canto da imagem -->
+                <span :class="statusClass"
+                    class="absolute -top-2 -right-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium">
+                    {{ statusText }}
+                </span>
             </div>
 
-            <!-- Códigos e Identificadores -->
-            <div class="space-y-2 mb-4">
-                <div v-if="productInfo.ean">
-                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">EAN:</span>
-                    <span class="text-sm text-gray-900 dark:text-gray-100 ml-2">{{ productInfo.ean }}</span>
-                </div>
-                <div v-if="(productInfo as any)?.codigo_erp">
-                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Código ERP:</span>
-                    <span class="text-sm text-gray-900 dark:text-gray-100 ml-2">{{ (productInfo as any).codigo_erp
-                    }}</span>
+            <div class="space-y-1">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ productInfo.name }}</h3>
+                <p v-if="productInfo.description && productInfo.description !== productInfo.name"
+                    class="text-sm text-gray-600 dark:text-gray-400 max-w-xs">
+                    {{ productInfo.description }}
+                </p>
+            </div>
+
+            <!-- Botão de Edição -->
+            <EditProduct :product="getProductForEdit(productInfo)" @update:product="handleLayerUpdate">
+                <button
+                    class="inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md transition-colors dark:bg-blue-900/20 dark:hover:bg-blue-900/40 dark:text-blue-300">
+                    <EditIcon class="h-3 w-3" />
+                    Editar
+                </button>
+            </EditProduct>
+        </div>
+
+        <div v-if="productInfo" class="space-y-2">
+            <!-- Informações Básicas -->
+            <div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+                <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Informações Básicas
+                </h4>
+
+                <div class="grid grid-cols-2 gap-3 text-sm">
+                    <div v-if="productInfo.ean" class="space-y-1">
+                        <span class="text-gray-600 dark:text-gray-400">EAN</span>
+                        <div class="font-mono bg-white dark:bg-gray-700 px-2 py-1 rounded border">
+                            {{ productInfo.ean }}
+                        </div>
+                    </div>
+
+                    <div v-if="(productInfo as any)?.codigo_erp" class="space-y-1">
+                        <span class="text-gray-600 dark:text-gray-400">Código ERP</span>
+                        <div class="font-mono bg-white dark:bg-gray-700 px-2 py-1 rounded border">
+                            {{ (productInfo as any).codigo_erp }}
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <!-- Dimensões -->
-            <div v-if="productInfo.dimensions" class="mb-4">
-                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Dimensões:</span>
-                <p class="text-sm text-gray-900 dark:text-gray-100">
-                    {{ productInfo.width }}cm × {{ productInfo.height }}cm × {{ productInfo.depth }}cm
-                    <span v-if="productInfo.dimensions.weight">({{ productInfo.dimensions.weight }}kg)</span>
-                </p>
+            <div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+                <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 8V4a1 1 0 011-1h4m12 0h-4a1 1 0 011 1v4m0 8v4a1 1 0 01-1 1h-4m-12 0h4a1 1 0 01-1-1v-4" />
+                    </svg>
+                    Dimensões
+                </h4>
+
+                <div class="grid grid-cols-3 gap-3 text-sm">
+                    <div class="text-center bg-white dark:bg-gray-700 rounded-md p-2">
+                        <div class="text-gray-600 dark:text-gray-400 text-xs">Largura</div>
+                        <div class="font-semibold">{{ productInfo.width }}cm</div>
+                    </div>
+                    <div class="text-center bg-white dark:bg-gray-700 rounded-md p-2">
+                        <div class="text-gray-600 dark:text-gray-400 text-xs">Altura</div>
+                        <div class="font-semibold">{{ productInfo.height }}cm</div>
+                    </div>
+                    <div class="text-center bg-white dark:bg-gray-700 rounded-md p-2">
+                        <div class="text-gray-600 dark:text-gray-400 text-xs">Profundidade</div>
+                        <div class="font-semibold">{{ productInfo.depth }}cm</div>
+                    </div>
+                </div>
+
+                <div v-if="productInfo.dimensions?.weight" class="mt-2 text-center">
+                    <span class="text-sm text-gray-600 dark:text-gray-400">Peso: </span>
+                    <span class="font-semibold">{{ productInfo.dimensions.weight }}kg</span>
+                </div>
             </div>
 
             <!-- Hierarquia Mercadológica -->
-            <div v-if="hasHierarchyData" class="mb-4">
-                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Hierarquia:</span>
-                <div class="text-sm text-gray-900 dark:text-gray-100 mt-1 space-y-1">
+            <div v-if="hasHierarchyData" class="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4">
+                <h4 class="text-sm font-semibold text-purple-700 dark:text-purple-300 mb-3 flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                    Hierarquia Mercadológica
+                </h4>
+
+                <div class="text-sm bg-white dark:bg-gray-800 rounded-md p-3 border">
                     {{ hasHierarchyData }}
                 </div>
             </div>
 
             <!-- Características do Produto -->
-            <div v-if="hasProductCharacteristics" class="mb-4">
-                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Características:</span>
-                <div class="flex flex-wrap gap-1 mt-1">
+            <div v-if="hasProductCharacteristics" class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+                <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Características
+                </h4>
+
+                <div class="flex flex-wrap gap-2">
                     <span v-if="(productInfo as any)?.stackable"
-                        class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                        Empilhável
+                        class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                        📚 Empilhável
                     </span>
                     <span v-if="(productInfo as any)?.perishable"
-                        class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
-                        Perecível
+                        class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                        ⏰ Perecível
                     </span>
                     <span v-if="(productInfo as any)?.flammable"
-                        class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
-                        Inflamável
+                        class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                        🔥 Inflamável
                     </span>
                     <span v-if="(productInfo as any)?.hangable"
-                        class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                        Pendurável
+                        class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                        🪝 Pendurável
                     </span>
                 </div>
             </div>
 
-            <!-- Status -->
-            <div class="mb-4">
-                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Status:</span>
-                <span :class="statusClass" class="inline-flex items-center px-2 py-1 rounded-full text-xs ml-2">
-                    {{ statusText }}
-                </span>
+            <!-- Summary - Informações Financeiras -->
+            <div v-if="productInfo.summary" class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+                <h4 class="text-sm font-semibold text-blue-700 dark:text-blue-300 mb-4 flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    Resumo Financeiro
+                </h4>
+
+                <!-- Vendas -->
+                <div class="mb-4">
+                    <h5 class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">
+                        Vendas</h5>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="bg-white dark:bg-gray-800 rounded-md p-2 text-center">
+                            <div class="text-xs text-gray-500 dark:text-gray-400">Valor Total</div>
+                            <div class="text-sm font-bold text-green-600 dark:text-green-400">
+                                R$ {{ formatCurrency(productInfo.summary.sales_total_value || 0) }}
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 rounded-md p-2 text-center">
+                            <div class="text-xs text-gray-500 dark:text-gray-400">Quantidade</div>
+                            <div class="text-sm font-bold text-blue-600 dark:text-blue-400">
+                                {{ productInfo.summary.sales_total_quantity || 0 }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Compras e Preços -->
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                    <div class="bg-white dark:bg-gray-800 rounded-md p-2 text-center">
+                        <div class="text-xs text-gray-500 dark:text-gray-400">Qtd. Comprada</div>
+                        <div class="text-sm font-bold text-purple-600 dark:text-purple-400">
+                            {{ productInfo.summary.purchases_total_quantity || 0 }}
+                        </div>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 rounded-md p-2 text-center">
+                        <div class="text-xs text-gray-500 dark:text-gray-400">Preço Médio</div>
+                        <div class="text-sm font-bold text-gray-700 dark:text-gray-300">
+                            R$ {{ formatCurrency(productInfo.summary.preco_medio || 0) }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Custos e Margem -->
+                <div class="grid grid-cols-3 gap-2">
+                    <div class="bg-white dark:bg-gray-800 rounded-md p-2 text-center">
+                        <div class="text-xs text-gray-500 dark:text-gray-400">Impostos</div>
+                        <div class="text-sm font-bold text-orange-600 dark:text-orange-400">
+                            R$ {{ formatCurrency(productInfo.summary.impostos_medio || 0) }}
+                        </div>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 rounded-md p-2 text-center">
+                        <div class="text-xs text-gray-500 dark:text-gray-400">Custo Médio</div>
+                        <div class="text-sm font-bold text-red-600 dark:text-red-400">
+                            R$ {{ formatCurrency(productInfo.summary.custo_medio || 0) }}
+                        </div>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 rounded-md p-2 text-center">
+                        <div class="text-xs text-gray-500 dark:text-gray-400">Margem</div>
+                        <div class="text-sm font-bold"
+                            :class="getMarginColor(productInfo.summary.margem_percentual || 0)">
+                            {{ (productInfo.summary.margem_percentual || 0).toFixed(1) }}%
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <!-- Tenant -->
-            <div v-if="(productInfo as any)?.tenant" class="text-xs text-gray-500 border-t pt-2">
-                <span class="font-medium">Tenant:</span> {{ (productInfo as any).tenant.name }}
+            <!-- Informações do Tenant -->
+            <div v-if="(productInfo as any)?.tenant"
+                class="text-xs text-gray-500 dark:text-gray-400 border-t pt-3 dark:border-gray-700">
+                <div class="flex items-center gap-1">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-4m-5 0H9m11 0v-5a2 2 0 00-2-2H7a2 2 0 00-2 2v5m6 0v-4a1 1 0 011-1h2a1 1 0 011 1v4m-6 0h6" />
+                    </svg>
+                    <span class="font-medium">Tenant:</span> {{ (productInfo as any).tenant.name }}
+                </div>
             </div>
-            <EditProduct :product="getProductForEdit(productInfo)" @update:product="handleLayerUpdate">
-                <EditIcon class="h-4 w-4 cursor-pointer no-remove-properties" />
-            </EditProduct>
         </div>
 
         <!-- Mensagem quando não há produto -->
-        <div v-else class="border-t pt-4">
-            <p class="text-sm text-muted-foreground">Nenhum produto selecionado</p>
+        <div v-else class="text-center py-6">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2M4 13h2m0 0V9a2 2 0 012-2h2m0 0V9a2 2 0 012-2h2a2 2 0 012 2v2M6 13h12" />
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">Nenhum produto selecionado</h3>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Selecione um produto para ver suas informações</p>
         </div>
     </div>
 </template>
+
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { useViewStatsStore } from '@plannerate/store/editor/viewStats';
@@ -109,9 +241,8 @@ import { Product } from '@/types/segment';
 
 const viewStatsStore = useViewStatsStore();
 
-
 const productInfo = computed(() => {
-    const product = viewStatsStore.getProduct; 
+    const product = viewStatsStore.getProduct;
     return product || null;
 });
 
@@ -161,18 +292,13 @@ const statusClass = computed(() => {
 
 const handleImageError = (event: Event, product: any) => {
     const target = event.target as HTMLImageElement;
-
-    // Pegar as iniciais do nome do produto
     const initials = product.name
         .split(' ')
         .map((word: any) => word.charAt(0).toUpperCase())
         .join('')
-        .slice(0, 2); // Limita a 2 letras (opcional)
-
-    // Exemplo de uso com placehold.co
+        .slice(0, 2);
     target.src = `https://placehold.co/400x600?text=${initials}`;
 }
-
 
 const getProductForEdit = (product: Product) => {
     return {
@@ -188,8 +314,21 @@ const getProductForEdit = (product: Product) => {
     } as any;
 }
 
-
 const handleLayerUpdate = (updatedProduct: Product) => {
-    viewStatsStore.setSelectedProduct(updatedProduct); 
+    viewStatsStore.setSelectedProduct(updatedProduct);
+}
+
+// Funções auxiliares para formatação
+const formatCurrency = (value: number): string => {
+    return new Intl.NumberFormat('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(value);
+}
+
+const getMarginColor = (margin: number): string => {
+    if (margin >= 20) return 'text-green-600 dark:text-green-400';
+    if (margin >= 10) return 'text-yellow-600 dark:text-yellow-400';
+    return 'text-red-600 dark:text-red-400';
 }
 </script>

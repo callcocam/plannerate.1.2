@@ -5,37 +5,134 @@
                 <p class="text-gray-800 dark:text-gray-200">{{ selectedLayers.length }} produto(s) selecionado(s)</p>
                 <div v-for="layer in selectedLayers" :key="layer.id" class="relative mb-2 flex items-center gap-2">
                     <template v-if="layer.product">
-                        <div class="flex flex-col">
-                            <div class="flex items-center gap-2">
+                        <div class="flex flex-col w-full">
+                            <div class="flex flex-col items-center gap-3 p-4 border rounded-lg dark:border-gray-600">
+                                <!-- Imagem do produto -->
                                 <img :src="layer.product.image_url" alt=""
-                                    class="h-16 w-16 rounded-md border object-contain dark:border-gray-600"
+                                    class="h-20 w-20 rounded-lg border object-contain shadow-sm dark:border-gray-600"
                                     @error="(e) => handleImageError(e, layer.product)" />
-                                <div class="flex flex-col">
-                                    <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">{{
+
+                                <!-- Informações básicas do produto -->
+                                <div class="flex flex-col text-center">
+                                    <h4 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-1">{{
                                         layer.product.name }}
                                     </h4>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400">EAN: {{ layer.product.ean
-                                        }}</p>
-                                    <!-- <p class="text-xs text-gray-500 dark:text-gray-400">SKU: {{ layer.product.sku }}</p> -->
-                                    <p class="text-xs text-gray-500 dark:text-gray-400">Altura: {{ layer.product.height
-                                        }}</p>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400">Largura: {{ layer.product.width
-                                        }}</p>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400">Profundidade: {{ layer.product.depth}}</p>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400">Quantidade De Frentes: {{ layer.quantity ||
-                                        0 }}
-                                    </p>                                   
+                                    <div class="grid grid-cols-2 gap-2 text-xs text-gray-500 dark:text-gray-400 mb-3">
+                                        <div><span class="font-medium">EAN:</span> {{ layer.product.ean }}</div>
+                                        <div><span class="font-medium">Frentes:</span> {{ layer.quantity || 0 }}</div>
+                                    </div>
                                 </div>
+
+                                <!-- Dimensões -->
+                                <div class="w-full bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mb-3">
+                                    <h5 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 text-center">
+                                        Dimensões</h5>
+                                    <div class="grid grid-cols-3 gap-2 text-xs">
+                                        <div class="text-center">
+                                            <div class="font-medium text-gray-600 dark:text-gray-400">Altura</div>
+                                            <div class="text-gray-800 dark:text-gray-200">{{ layer.product.height }}
+                                            </div>
+                                        </div>
+                                        <div class="text-center">
+                                            <div class="font-medium text-gray-600 dark:text-gray-400">Largura</div>
+                                            <div class="text-gray-800 dark:text-gray-200">{{ layer.product.width }}
+                                            </div>
+                                        </div>
+                                        <div class="text-center">
+                                            <div class="font-medium text-gray-600 dark:text-gray-400">Profundidade</div>
+                                            <div class="text-gray-800 dark:text-gray-200">{{ layer.product.depth }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Summary - Informações Financeiras -->
+                                <div v-if="layer.product.summary"
+                                    class="w-full bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+                                    <h5
+                                        class="text-sm font-semibold text-blue-700 dark:text-blue-300 mb-3 text-center flex items-center justify-center gap-1">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                        </svg>
+                                        Resumo Financeiro
+                                    </h5>
+
+                                    <!-- Vendas -->
+                                    <div class="mb-4">
+                                        <h6
+                                            class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">
+                                            Vendas</h6>
+                                        <div class="grid grid-cols-2 gap-3">
+                                            <div class="bg-white dark:bg-gray-800 rounded-md p-2 text-center">
+                                                <div class="text-xs text-gray-500 dark:text-gray-400">Valor Total</div>
+                                                <div class="text-sm font-bold text-green-600 dark:text-green-400">
+                                                    R$ {{ formatCurrency(layer.product.summary.sales_total_value || 0)
+                                                    }}
+                                                </div>
+                                            </div>
+                                            <div class="bg-white dark:bg-gray-800 rounded-md p-2 text-center">
+                                                <div class="text-xs text-gray-500 dark:text-gray-400">Quantidade</div>
+                                                <div class="text-sm font-bold text-blue-600 dark:text-blue-400">
+                                                    {{ layer.product.summary.sales_total_quantity || 0 }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Compras e Preços -->
+                                    <div class="grid grid-cols-2 gap-3 mb-4">
+                                        <div class="bg-white dark:bg-gray-800 rounded-md p-2 text-center">
+                                            <div class="text-xs text-gray-500 dark:text-gray-400">Qtd. Comprada</div>
+                                            <div class="text-sm font-bold text-purple-600 dark:text-purple-400">
+                                                {{ layer.product.summary.purchases_total_quantity || 0 }}
+                                            </div>
+                                        </div>
+                                        <div class="bg-white dark:bg-gray-800 rounded-md p-2 text-center">
+                                            <div class="text-xs text-gray-500 dark:text-gray-400">Preço Médio</div>
+                                            <div class="text-sm font-bold text-gray-700 dark:text-gray-300">
+                                                R$ {{ formatCurrency(layer.product.summary.preco_medio || 0) }}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Custos e Margem -->
+                                    <div class="grid grid-cols-3 gap-2">
+                                        <div class="bg-white dark:bg-gray-800 rounded-md p-2 text-center">
+                                            <div class="text-xs text-gray-500 dark:text-gray-400">Impostos</div>
+                                            <div class="text-sm font-bold text-orange-600 dark:text-orange-400">
+                                                R$ {{ formatCurrency(layer.product.summary.impostos_medio || 0) }}
+                                            </div>
+                                        </div>
+                                        <div class="bg-white dark:bg-gray-800 rounded-md p-2 text-center">
+                                            <div class="text-xs text-gray-500 dark:text-gray-400">Custo Médio</div>
+                                            <div class="text-sm font-bold text-red-600 dark:text-red-400">
+                                                R$ {{ formatCurrency(layer.product.summary.custo_medio || 0) }}
+                                            </div>
+                                        </div>
+                                        <div class="bg-white dark:bg-gray-800 rounded-md p-2 text-center">
+                                            <div class="text-xs text-gray-500 dark:text-gray-400">Margem</div>
+                                            <div class="text-sm font-bold"
+                                                :class="getMarginColor(layer.product.summary.margem_percentual || 0)">
+                                                {{ (layer.product.summary.margem_percentual || 0).toFixed(1) }}%
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Botões de ação -->
                                 <div
-                                    class="absolute bottom-0 right-0 flex items-center justify-end rounded-md p-2 flex-row gap-2">
+                                    class="absolute top-2 right-2 flex items-center justify-end rounded-md p-2 flex-row gap-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
                                     <AlertConfirm title="Excluir produto"
                                         message="Tem certeza que deseja excluir este produto? Esta ação não pode ser desfeita."
                                         confirmButtonText="Excluir" cancelButtonText="Cancelar" :isDangerous="true"
                                         @confirm="confirmDelete" @cancel="cancelDelete" :record="layer">
-                                        <TrashIcon class="h-4 w-4 cursor-pointer" />
+                                        <TrashIcon class="h-4 w-4 cursor-pointer text-red-500 hover:text-red-700" />
                                     </AlertConfirm>
-                                    <EditProduct :product="getProductForEdit(layer.product)" @update:product="handleLayerUpdate">
-                                        <EditIcon class="h-4 w-4 cursor-pointer no-remove-properties" />
+                                    <EditProduct :product="getProductForEdit(layer.product)"
+                                        @update:product="handleLayerUpdate">
+                                        <EditIcon
+                                            class="h-4 w-4 cursor-pointer no-remove-properties text-blue-500 hover:text-blue-700" />
                                     </EditProduct>
                                 </div>
                             </div>
@@ -53,18 +150,20 @@
         </div>
     </div>
 </template>
+
 <script setup lang="ts">
 import { EditIcon, TrashIcon } from 'lucide-vue-next';
 import { ref, watch } from 'vue';
 import { apiService } from '@plannerate/services';
 import { Layer } from '@/types/segment';
 import { Product } from '@plannerate/types/segment';
-import { useEditorStore } from '@plannerate/store/editor'; 
+import { useEditorStore } from '@plannerate/store/editor';
 import EditProduct from './EditProduct.vue';
+
 const editorStore = useEditorStore();
 
 const selectedLayers = ref<Layer[]>([]);
-const isLoadingDetails = ref(false); 
+const isLoadingDetails = ref(false);
 const emit = defineEmits<{
     (e: 'remove-layer', layer: Layer): void;
 }>();
@@ -95,9 +194,9 @@ watch(
     },
     { deep: true, immediate: true },
 );
- 
+
 const showDeleteConfirm = ref(false);
-const confirmDelete = (record: any) => { 
+const confirmDelete = (record: any) => {
     if (!record) {
         console.error('No layer selected');
         return;
@@ -120,28 +219,24 @@ const confirmDelete = (record: any) => {
         if (sectionId && shelfId && segmentId) {
             editorStore.removeSegmentFromShelf(editorStore.getCurrentGondola?.id, sectionId, shelfId, segmentId);
         }
-    } 
+    }
     emit('remove-layer', record);
 };
-const cancelDelete = ( ) => {
-    // Apenas fechar o modal 
+
+const cancelDelete = () => {
     showDeleteConfirm.value = false;
 };
 
 const handleImageError = (event: Event, product: Product) => {
     const target = event.target as HTMLImageElement;
-
-    // Pegar as iniciais do nome do produto
     const initials = product.name
         .split(' ')
         .map(word => word.charAt(0).toUpperCase())
         .join('')
-        .slice(0, 2); // Limita a 2 letras (opcional)
-
-    // Exemplo de uso com placehold.co
+        .slice(0, 2);
     target.src = `https://placehold.co/400x600?text=${initials}`;
 }
- 
+
 const getProductForEdit = (product: Product) => {
     return {
         ...product,
@@ -159,15 +254,25 @@ const getProductForEdit = (product: Product) => {
 const handleLayerUpdate = (updatedProduct: Product) => {
     console.log('handleLayerUpdate', selectedLayers.value);
     if (selectedLayers.value) {
-        // Atualiza o produto no layer selecionado
         selectedLayers.value.forEach(layer => {
             if (layer.product?.id === updatedProduct.id) {
                 layer.product = updatedProduct;
             }
         });
+    }
+}
 
-        // Opcionalmente, aqui você pode adicionar uma chamada à API para salvar as alterações
-        // apiService.put(`products/${updatedProduct.id}`, updatedProduct);
-    } 
+// Funções auxiliares para formatação
+const formatCurrency = (value: number): string => {
+    return new Intl.NumberFormat('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(value);
+}
+
+const getMarginColor = (margin: number): string => {
+    if (margin >= 20) return 'text-green-600 dark:text-green-400';
+    if (margin >= 10) return 'text-yellow-600 dark:text-yellow-400';
+    return 'text-red-600 dark:text-red-400';
 }
 </script>

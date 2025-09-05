@@ -28,6 +28,7 @@ class LayerResource extends JsonResource
             'alignment' => $this->alignment, 
             'segment' => new SegmentResource($this->whenLoaded('segment')),
             'reload' => now()->diffInSeconds($this->updated_at) < 5,
+            'ppp' => 2,
         ];
 
         if (class_exists('App\Http\Resources\ProductResource')) {

@@ -15,7 +15,7 @@ interface Dimensions {
     height: number;
     width: number;
     depth: number;
-    weight: number; 
+    weight: number;
 }
 
 interface AdditionalData {
@@ -47,6 +47,7 @@ interface Product {
     mercadologico_nivel?: MercadologicoNivel;
     dimensions?: Dimensions;
     additional_data?: AdditionalData;
+    summary?: any;
 }
 
 // Interface para o objeto Layer dentro do Segment
