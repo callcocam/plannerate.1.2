@@ -2,22 +2,7 @@
     <div class="grid gap-2">
         <Label :for="id">{{ label }}</Label>
         <div class="relative w-full h-48 overflow-hidden rounded-md border border-input">
-                <Cropper
-                    ref="cropperRef"
-                    :src="imageUrl || modelValue" 
-                    @change="handleCrop"
-                    class="w-full h-64"
-                /> 
-                <Button v-if="(previewUrl || modelValue)" type="button" variant="destructive" size="icon"
-                    class="absolute top-2 right-2 h-8 w-8" @click="removeImage"
-                    title="Remover imagem">
-                    <Trash2 class="h-4 w-4" />
-                </Button>
-                <Button v-if="previewUrl" type="button" variant="outline" size="icon"
-                    class="absolute top-2 left-2 h-8 w-8" @click="cancelImageSelection"
-                    title="Cancelar seleção">
-                    Cancelar
-                </Button>
+            <img :src="imageUrl || modelValue" alt="Imagem do produto" class="w-52 h-48 object-contain">
         </div> 
         <!-- Upload de nova imagem -->
         <div class="flex items-center gap-2 mt-2">
@@ -57,6 +42,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
     (e: 'update:modelValue', value: string): void;
+    (e: 'update:image', value: File): void;
     (e: 'crop', value: CropperResult): void;
 }>();
 
@@ -83,6 +69,7 @@ const selectImage = (e: Event) => {
     selectedFile.value = file;
     if (file) {
         imageUrl.value = URL.createObjectURL(file);
+        emit('update:image', file);
     } else {
         imageUrl.value = null;
         previewUrl.value = null;

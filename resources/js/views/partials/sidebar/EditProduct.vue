@@ -16,7 +16,7 @@
                     <div class="grid gap-2 col-span-full">
                         <ImageField v-model="record.image_url" label="Imagem" id="product-image"
                             :alt="record.name || 'Produto'" :error="validationErrors.image_url"
-                            @crop="handleImageCrop" />
+                            @crop="handleImageCrop" @update:image="handleImageUpdate" />
                     </div>
                     <div class="flex flex-col gap-2 col-span-full md:col-span-2">
                         <Label>Nome</Label>
@@ -149,6 +149,14 @@ const applyChanges = async (e: Event) => {
     }
 };
 
+const handleImageUpdate = async (file: File) => {
+    const response = await uploadProductImage(record.id, file);
+    if (response.status === 200) {
+        record.image_url = response.image_url;
+        toast.success('Imagem atualizada com sucesso!');
+    }
+};
+
 const handleImageCrop = async (result: CropperResult) => {
     const canvas = result.canvas;
     if (!canvas) {
@@ -170,13 +178,14 @@ const handleImageCrop = async (result: CropperResult) => {
             record.image_url = response.image_url;
             toast.success('Imagem atualizada com sucesso!');
         } else {
-            toast.error('Erro ao atualizar imagem.');
+            // toast.error(response.message);
         }
     } catch (error: any) {
         if (error?.response?.status === 404) {
             toast.error(`Rota /api/products/${record.id}/image não existe. Crie esta rota no backend para receber uploads de imagem.`);
         } else {
-            toast.error('Erro ao atualizar imagem.');
+            // toast.error('Erro ao atualizar imagem.');
+            validationErrors.image_url = error.response.data.message;
         }
     }
 };

@@ -7,9 +7,7 @@
  */
 namespace Callcocam\Plannerate\Services\Analysis;
 
-use App\Models\Product;
-use App\Models\Purchase;
-use App\Models\Sale;
+use App\Models\Product; 
 use Illuminate\Support\Collection;
 
 class ABCAnalysisService

@@ -24,7 +24,7 @@ class Segment extends Model
         'width',
         'ordering',
         'position',
-        'quantity', 
+        'quantity',
         'spacing',
         'settings',
         'alignment',
@@ -37,7 +37,7 @@ class Segment extends Model
 
     public function layer()
     {
-        return $this->hasOne(Layer::class) ;
+        return $this->hasOne(Layer::class);
     }
 
     public function shelf()
