@@ -31,6 +31,13 @@ class PlanogramResource extends JsonResource
             'name' => $this->name,
             'slug' => $this->slug,
             'description' => $this->description,
+            'client_id' => $this->client_id,
+            'client' => $this->whenLoaded('client', function () {
+                return [
+                    'id' => $this->client->id,
+                    'name' => $this->client->name,
+                ];
+            }),
             'store_id' => $this->store_id,
             'store' => $this->whenLoaded('store', function () {
                 return [

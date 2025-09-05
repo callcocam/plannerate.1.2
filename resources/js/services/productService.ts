@@ -72,6 +72,13 @@ export const useProductService = () => {
         return apiService.put(`/products/${productId}`, data);
     };
 
+    /**
+     * Sincronizar
+     */
+    const updateSalesPurchasesProduct = (params: any) => {
+        return apiService.post(`/products/sync-sales/purchases/product`, params);
+    }
+
     return {
         getProduct,
         getShelf,
@@ -81,6 +88,7 @@ export const useProductService = () => {
         updateLayerSpacing,
         syncProductContext,
         uploadProductImage,
-        updateProduct
+        updateProduct,
+        updateSalesPurchasesProduct,
     };
 };

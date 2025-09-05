@@ -31,6 +31,21 @@
                     Editar
                 </button>
             </EditProduct>
+            <fieldset>
+                <legend>Sincronizar</legend>
+                <button @click="syncProduct"
+                    class="mt-2 inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-green-50 hover:bg-green-100 text-green-700 rounded-md transition-colors dark:bg-green-900/20 dark:hover:bg-green-900/40 dark:text-green-300">
+                    🔄 Produto
+                </button>
+                <button @click="syncSales"
+                    class="mt-2 inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-yellow-50 hover:bg-yellow-100 text-yellow-700 rounded-md transition-colors dark:bg-yellow-900/20 dark:hover:bg-yellow-900/40 dark:text-yellow-300">
+                    📈 Vendas
+                </button>
+                <button @click="syncPurchases"
+                    class="mt-2 inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-md transition-colors dark:bg-purple-900/20 dark:hover:bg-purple-900/40 dark:text-purple-300">
+                    🛒 Compras
+                </button>
+            </fieldset>
         </div>
 
         <div v-if="productInfo" class="space-y-2">
@@ -238,8 +253,18 @@ import { useViewStatsStore } from '@plannerate/store/editor/viewStats';
 import EditProduct from './EditProduct.vue';
 import { EditIcon } from 'lucide-vue-next';
 import { Product } from '@/types/segment';
+import { useProductService } from '@plannerate/services/productService';
+import { useEditorStore } from '@plannerate/store/editor';
 
 const viewStatsStore = useViewStatsStore();
+
+const editorStore = useEditorStore();
+
+const { updateSalesPurchasesProduct } = useProductService();
+
+const currentGondola = computed(() => editorStore.currentState);
+
+console.log('Current Gondola:', currentGondola.value);
 
 const productInfo = computed(() => {
     const product = viewStatsStore.getProduct;
@@ -289,6 +314,47 @@ const statusClass = computed(() => {
             return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
     }
 });
+
+const syncProduct = async () => {
+    console.log('Iniciando sincronização do produto...', currentGondola.value);
+    if (!productInfo.value) return;
+    await syncSalesPurchasesProduct({
+        sync_products: true
+    });
+}
+
+
+const syncSales = async () => {
+    if (!productInfo.value) return;
+    await syncSalesPurchasesProduct({
+        sync_sales: true
+    });
+}
+
+
+const syncPurchases = async () => {
+    if (!productInfo.value) return;
+    await syncSalesPurchasesProduct({
+        sync_purchases: true
+    });
+}
+
+
+const syncSalesPurchasesProduct = async (prarams = {}) => {
+    if (!productInfo.value) return; 
+    try {
+        const response = await updateSalesPurchasesProduct({
+            product: productInfo.value.id,
+            client_id: currentGondola.value?.client_id, // Ajuste conforme necessário
+            ...prarams
+        });
+        console.log('Resposta da sincronização:', response);
+        // Opcional: adicionar feedback visual de sucesso 
+    } catch (error) {
+        console.error('Erro ao sincronizar produto:', error);
+    }
+}
+
 
 const handleImageError = (event: Event, product: any) => {
     const target = event.target as HTMLImageElement;

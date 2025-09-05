@@ -16,6 +16,8 @@ export interface PlanogramEditorState {
     isLoading: boolean;
     error: string | null;
     mercadologico_nivel: any;
+    client_id: string | null;
+    store_id: string | null;
 }
 
 /**

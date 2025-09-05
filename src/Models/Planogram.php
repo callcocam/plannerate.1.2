@@ -8,6 +8,7 @@
 
 namespace Callcocam\Plannerate\Models;
 
+use App\Models\Client;
 use Callcocam\LaraGatekeeper\Core\Landlord\BelongsToTenants;
 use Callcocam\LaraGatekeeper\Models\Tenant;
 use Callcocam\Plannerate\Enums\PlanogramStatus;
@@ -35,6 +36,11 @@ class Planogram extends Model
     public function gondolas()
     { 
         return $this->hasMany(Gondola::class);
+    }
+
+    public function client()
+    {
+        return $this->belongsTo(config('plannerate.client_model', Client::class));
     }
 
     public function tenant()
