@@ -33,7 +33,7 @@
 
     <title inertia>{{ config('app.name', 'Laravel') }}</title>
 
-    
+
     <link rel="icon" href="/img/favicon.jpg" sizes="any">
     <link rel="icon" href="/img/favicon.jpg" type="image/jpg">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -45,7 +45,7 @@
 
 <body class="font-sans antialiased">
     <div id="plannerate-app">
-        <v-plannerate   />
+        <v-plannerate />
     </div>
 </body>
 

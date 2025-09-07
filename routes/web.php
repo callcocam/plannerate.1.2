@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix(Plannerate::getPath())
     ->middleware(['web'])
     ->group(function () {
-        
+
         Route::get("/qr/{id?}/gondola/{gondolaId?}/{vue_capture?}", [AppController::class, 'show'])
             ->where('vue_capture', '[\/\w\.\,\-]*')
             ->name(sprintf('%s.qr.show', Plannerate::getRoute()));
@@ -32,7 +32,11 @@ Route::prefix(Plannerate::getPath())
         'auth',
     ])->group(function () {
 
-        
+
+
+        Route::get("/editor/{id}/criar", [AppController::class, 'show'])
+            ->name(sprintf('%s.editor.create', Plannerate::getRoute()));
+            
         Route::get("/editor/{id?}/gondola/{gondolaId?}/{vue_capture?}", [AppController::class, 'show'])
             ->where('vue_capture', '[\/\w\.\,\-]*')
             ->name(sprintf('%s.editor.show', Plannerate::getRoute()));

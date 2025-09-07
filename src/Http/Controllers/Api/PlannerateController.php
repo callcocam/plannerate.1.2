@@ -36,20 +36,13 @@ class PlannerateController extends Controller
      */
     public function show(string $id)
     {
-        try {
+        try { 
             $planogram = $this->getModel()::query()->with([
                 'tenant',
                 'store.store_map.gondolas',
                 'cluster',
-                'client',
-                'gondolas',
-                'gondolas.sections',
-                'gondolas.sections.shelves',
-                'gondolas.sections.shelves.segments',
-                'gondolas.sections.shelves.segments.layer',
-                'gondolas.sections.shelves.segments.layer.product',
-                'gondolas.sections.shelves.segments.layer.product.sales',
-                'gondolas.sections.shelves.segments.layer.product.purchases'
+                'client', 
+                'gondolas.sections.shelves.segments.layer.product', 
             ])->findOrFail($id); 
 
             return response()->json(new PlannerateResource($planogram));

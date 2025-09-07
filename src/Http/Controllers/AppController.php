@@ -11,8 +11,7 @@ class AppController extends Controller
 {
     public function show(Request $request)
     {
-        // Busca o planograma pelo ID com seus relacionamentos 
-
+        // Busca o planograma pelo ID com seus relacionamentos  
         return view('plannerate::app', [ 
             'title' => 'Visualizar Planograma',
             'description' => 'Detalhes do planograma',

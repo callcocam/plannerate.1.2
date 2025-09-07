@@ -19,7 +19,7 @@
                     </NavigationMenuLink>
                 </NavigationMenuItem>
             </NavigationMenuList>
-        </NavigationMenu>
+        </NavigationMenu> 
         <router-view :key="route.fullPath.concat('-gondolas')" />
     </div>
 </template>

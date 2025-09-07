@@ -103,6 +103,7 @@ class PlannerateController extends Controller
     {
         // Busca o planograma pelo ID com seus relacionamentos
         $planogram = Planogram::with(['store', 'cluster', 'gondolas.sections.shelves.segments'])->findOrFail($id);
+        dd( $planogram);
 
         return Inertia::render('plannerate/View', [
             'record' => $planogram,

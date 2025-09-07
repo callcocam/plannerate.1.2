@@ -31,12 +31,8 @@ class PlannerateResource extends JsonResource
             'client_id' => $this->client_id,
             'client' => $this->whenLoaded('client'),
             'cluster_id' => $this->cluster_id,
-            'cluster' => $this->whenLoaded('cluster', function () {
-                return $this->cluster->name;
-            }), 
-            'user' => $this->whenLoaded('user', function () {
-                return $this->user->name;
-            }),
+            'cluster' =>$this->cluster, 
+            'user' => $this->user,
             'start_date' => $this->start_date ? $this->start_date : null,
             'end_date' => $this->end_date ? $this->end_date : null,
             'status' => $this->status,
