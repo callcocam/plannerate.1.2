@@ -42,7 +42,7 @@ class SectionResource extends JsonResource
                 'color' => $this->status->color(),
             ],
             'shelves' => ShelfResource::collection($this->whenLoaded('shelves')),
-            'gondola' => new GondolaResource($this->whenLoaded('gondola')),
+            // 'gondola' => new GondolaResource($this->whenLoaded('gondola')),
         ];
     }
 }

@@ -231,13 +231,14 @@ class GondolaController extends Controller
      * @param Gondola $gondola
      * @return JsonResponse
      */
-    public function destroy(Gondola $gondola)
+    public function destroy($gondola)
     {
+         $model = Gondola::find($gondola);
         try {
             DB::beginTransaction();
 
             // Limpar seções e prateleiras
-            $this->deleteGondolaWithRelations($gondola);
+            $this->deleteGondolaWithRelations($model);
 
             DB::commit();
 

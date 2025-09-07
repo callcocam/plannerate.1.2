@@ -75,7 +75,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineEmits, defineProps, onMounted, onUnmounted, ref, watch, nextTick, type CSSProperties } from 'vue';
+import { computed, defineEmits, defineProps, onMounted, onUnmounted, ref, nextTick, type CSSProperties } from 'vue';
 import draggable from 'vuedraggable';
 import { useEditorStore } from '@plannerate/store/editor';
 import { type Product, type Segment as SegmentType } from '@plannerate/types/segment';

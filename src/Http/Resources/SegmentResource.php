@@ -28,7 +28,7 @@ class SegmentResource extends JsonResource
             'settings' => $this->settings,
             'alignment' => $this->alignment,
             'layer' => new LayerResource($this->whenLoaded('layer')),
-            'shelf' => new ShelfResource($this->whenLoaded('shelf')),
+            // 'shelf' => new ShelfResource($this->whenLoaded('shelf')),
         ];
     }
 }

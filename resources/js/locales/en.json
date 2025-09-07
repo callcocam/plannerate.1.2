@@ -1,0 +1,22 @@
+{
+  "notFound": {
+    "title": "Oops! Page not found",
+    "description": "The page you are looking for does not exist or has been moved to another location.",
+    "suggestions": "Maybe you were looking for:",
+    "actions": {
+      "goHome": "Go Home",
+      "goBack": "Go Back"
+    },
+    "links": {
+      "description": "Or try one of these options:",
+      "dashboard": "Dashboard",
+      "planograms": "Planograms",
+      "products": "Products",
+      "stores": "Stores"
+    },
+    "help": {
+      "tip": "Tip:",
+      "shortcut": "Press {key} to quickly return to the homepage."
+    }
+  }
+}

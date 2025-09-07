@@ -45,6 +45,7 @@ class PlannerateController extends Controller
                 'gondolas.sections.shelves.segments.layer.product', 
             ])->findOrFail($id); 
 
+           
             return response()->json(new PlannerateResource($planogram));
         } catch (ModelNotFoundException $e) {
             return response()->json([
@@ -92,19 +93,12 @@ class PlannerateController extends Controller
 
             $planogram =  $this->getModel()::query()->with([
                 'tenant',
-                'store',
+                // 'store',
                 'cluster',
-                'client',
-                'gondolas',
-                'gondolas.sections',
-                'gondolas.sections.shelves',
-                'gondolas.sections.shelves.segments',
-                'gondolas.sections.shelves.segments.layer',
-                'gondolas.sections.shelves.segments.layer.product',
-                'gondolas.sections.shelves.segments.layer.product.sales',
-                'gondolas.sections.shelves.segments.layer.product.purchases'
+                'client', 
+                'gondolas.sections.shelves.segments.layer.product', 
             ])->findOrFail($planogram->id);
-
+ 
             return response()->json([
                 'success' => true,
                 'message' =>   'Planograma atualizado com sucesso',

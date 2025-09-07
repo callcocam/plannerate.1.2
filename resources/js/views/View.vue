@@ -7,7 +7,7 @@ import Properties from '@plannerate/views/partials/sidebar/Properties.vue';
 import PlannerateHeader from '@plannerate/views/partials/Header.vue';
 import { useEditorStore } from '@plannerate/store/editor';
 import { useEditorService } from '@plannerate/services/editorService'; 
-import { Menu, X, Settings, Package } from 'lucide-vue-next';
+import {  X, Settings, Package } from 'lucide-vue-next';
 const route = useRoute() as any; 
 const editorService = useEditorService();
 const editorStore = useEditorStore(); 

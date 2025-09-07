@@ -7,18 +7,14 @@ import {
     AlignLeft,
     AlignRight,
     ArrowLeftRight,
-    Grid,
     Minus,
     Plus,
     Trash2,
     SaveIcon,
     Undo2Icon,
     Redo2Icon,
-    PrinterIcon,
-    NutIcon,
-    Paintbrush,
 } from 'lucide-vue-next';
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 // Imports Internos 
@@ -62,7 +58,6 @@ const filters = ref({
 /** Fator de escala atual do editor. */
 const scaleFactor = computed(() => editorStore.currentScaleFactor);
 /** Visibilidade da grade no editor. */
-const showGrid = computed(() => editorStore.isGridVisible);
 /** Seções da gôndola atual (agora lendo da prop). */
 const sections = computed(() => (props.gondola as Gondola | undefined)?.sections || []); // Cast para usar
 
@@ -85,8 +80,6 @@ const alignment = computed(() => {
     return alignment;
 });
 
-const analysisResultStore = useAnalysisResultStore();
-
 // Métodos
 /**
  * Atualiza o fator de escala no store.
@@ -99,14 +92,11 @@ const updateScale = (newScale: number) => {
 };
 
 /** Alterna a visibilidade da grade no store. */
-const toggleGrid = () => {
-    editorStore.toggleGrid();
-};
 
 /** Emite evento para inverter a ordem das seções da gôndola pai. */
 const invertSectionOrder = () => {
     const currentGondola = props.gondola as Gondola | undefined;
-    if (currentGondola?.id) { 
+    if (currentGondola?.id) {
         editorStore.invertGondolaSectionOrder(currentGondola.id);
     } else {
         console.warn('Não é possível inverter a ordem: Gôndola atual não definida.');
@@ -151,21 +141,11 @@ const confirmDeleteGondola = async () => {
     if (!currentGondola) return;
     try {
         const planogramId = currentGondola.planogram_id;
-        editorStore.removeGondola(currentGondola.id, () => {
-            const editorStore = useEditorStore();
-            const gondolas = editorStore.currentState?.gondolas;
-            if (gondolas?.length) {
-                const gondola = gondolas[0];
-                router.push({
-                    name: 'gondola.view',
-                    params: { id: planogramId, gondolaId: gondola.id },
-                });
-            } else {
-                router.push({
-                    name: 'plannerate.create',
-                    params: { id: planogramId },
-                });
-            }
+        editorStore.removeGondola(currentGondola.id, () => { 
+            router.push({
+                name: 'plannerate.index',
+                params: { id: planogramId },
+            });
         });
     } catch (error) {
         console.error('Erro ao remover gôndola:', error);
@@ -239,35 +219,6 @@ const setGondolaAlignmentHandler = (alignment: string | null = null) => {
 const undo = () => editorStore.undo();
 const redo = () => editorStore.redo();
 const saveChanges = () => editorStore.saveChanges();
-
-
-// function removeFromGondola(selectedItemId: string | null) {
-//     if (selectedItemId) {
-//         const record = editorStore.getCurrentGondola?.sections.flatMap(section => section.shelves.flatMap(shelf => shelf.segments.flatMap(segment => segment.layer.product))).find(product => product?.ean === selectedItemId);
-//         if (record) {
-//             let sectionId = null;
-//             let shelfId = null;
-//             let segmentId = null;
-//             if (editorStore.getCurrentGondola) {
-//                 editorStore.getCurrentGondola?.sections.forEach(section => {
-//                     section.shelves.forEach(shelf => {
-//                         shelf.segments.forEach(segment => {
-//                             if (segment.layer.product?.ean === selectedItemId) {
-//                                 sectionId = section.id;
-//                                 shelfId = shelf.id;
-//                                 segmentId = segment.id;
-//                             }
-//                         });
-//                     });
-//                 });
-//                 if (sectionId && shelfId && segmentId) {
-//                     editorStore.removeSegmentFromShelf(editorStore.getCurrentGondola?.id, sectionId, shelfId, segmentId);
-//                 }
-//             }
-//         }
-//     }
-// }
-
 
 </script>
 
@@ -349,7 +300,7 @@ const saveChanges = () => editorStore.saveChanges();
                         </Button>
                         <Button type="button" variant="destructive" size="sm" @click="confirmRemoveGondola"
                             title="Remover Gôndola">
-                            <Trash2 class="mr-1 h-4 w-4" /> <span class="hidden xl:inline">Gôndola</span>
+                            <Trash2 class="mr-1 h-4 w-4" /> <span class="hidden xl:inline">Remover Gôndola</span>
                         </Button>
                     </div>
 
@@ -377,14 +328,14 @@ const saveChanges = () => editorStore.saveChanges();
                                 <span class="hidden xl:block">Salvar</span>
                             </Button>
                         </div>
-                        <div class="flex gap-2"> 
+                        <div class="flex gap-2">
                             <AnalysisPopover />
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        
+
         <ConfirmModal :isOpen="showDeleteConfirm.some((item) => item.gondola)"
             @update:isOpen="(isOpen: boolean) => !isOpen && (showDeleteConfirm = [])" title="Excluir gondola"
             message="Tem certeza que deseja a gondola? Esta ação não pode ser desfeita." confirmButtonText="Excluir"
