@@ -150,11 +150,7 @@ const handleProductClick = () => {
  * Configura event listeners quando o componente é montado
  */
 onMounted(() => {
-    if (productRef.value) {
-        productRef.value.addEventListener('click', handleProductClick);
-    } else {
-        console.warn('Referência do produto não encontrada no onMounted');
-    }
+    
 });
 
 </script>
