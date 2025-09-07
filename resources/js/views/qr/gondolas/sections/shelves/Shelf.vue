@@ -29,7 +29,7 @@
                         'justify-center': alignment === 'center',
                         'justify-start': alignment === 'left',
                         'justify-end': alignment === 'right',
-                        'justify-between': alignment === 'justify',
+                        'justify-evenly': alignment === 'justify',
                     }" :style="segmentsContainerStyle">
                     <template #item="{ element: segment }">
                         <Segment :key="segment.id" :shelf="shelf" :segment="segment" :scale-factor="scaleFactor"
