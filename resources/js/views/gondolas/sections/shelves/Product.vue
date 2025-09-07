@@ -1,17 +1,13 @@
-<template> 
-        <!-- Imagem do produto, com fallback para placeholder dinâmico -->
-        <img
-            :src="imageUrl" 
-            alt="Imagem do Produto"
-            :style="{...imageStyle, ...productStyle}"
-        />  
+<template>
+    <!-- Imagem do produto, com fallback para placeholder dinâmico -->
+    <img :src="imageUrl" @error="handleImageError" alt="Imagem do Produto" :style="{ ...imageStyle, ...productStyle }" />
 </template>
 
 
 
 <script setup lang="ts">
 import { Layer } from '@/types/segment';
-import { computed, onMounted, ref } from 'vue'; 
+import { computed, onMounted, ref } from 'vue';
 import { useEditorStore } from '@plannerate/store/editor';
 import { useAnalysisResultStore } from '@plannerate/store/editor/analysisResult';
 const props = defineProps<{
@@ -21,7 +17,7 @@ const props = defineProps<{
     shelfDepth: number;
     layer: Layer;
 }>();
- 
+
 const editorStore = useEditorStore();
 const analysisResultStore = useAnalysisResultStore();
 const productRef = ref<HTMLDivElement | null>(null);
@@ -29,7 +25,7 @@ const productRef = ref<HTMLDivElement | null>(null);
 /**
  * URL do placeholder dinâmico baseado nas dimensões do produto
  */
-const placeholderUrl = computed(() => { 
+const placeholderUrl = computed(() => {
     // Garante um tamanho mínimo para o placeholder não quebrar 
     return `/img/fall4.jpg`;
 });
@@ -51,7 +47,7 @@ const imageUrl = computed(() => {
 const imageStyle = computed(() => {
     // Verifica se não há imagem do produto (vai usar placeholder)
     const hasProductImage = props.product?.image_url && typeof props.product.image_url === 'string';
-    
+
     if (!hasProductImage) {
         return {
             width: '100%',
@@ -61,7 +57,7 @@ const imageStyle = computed(() => {
             border: '1px solid #ddd'
         };
     }
-    
+
     return {
         width: '100%',
         height: '100%'
@@ -73,7 +69,7 @@ const imageStyle = computed(() => {
  */
 const handleImageError = (event: Event) => {
     const target = event.target as HTMLImageElement;
-    
+
     // Evita loop infinito caso o próprio placeholder falhe
     if (target.src !== placeholderUrl.value) {
         console.warn(`Erro ao carregar imagem do produto: ${target.src}`);
@@ -91,8 +87,8 @@ const handleImageError = (event: Event) => {
         target.style.border = '1px solid #ddd';
     }
 };
- 
- 
+
+
 /**
  * Obtém o resultado da análise ABC do produto
  */
@@ -112,7 +108,7 @@ const productStyle = computed(() => {
     if (analysisResult.value && productRef.value) {
         // Remove classes antigas antes de adicionar a nova
         productRef.value.classList.remove('A', 'B', 'C');
-        
+
         if (analysisResult.value.abcClass) {
             productRef.value.classList.add(analysisResult.value.abcClass);
         }
@@ -120,19 +116,18 @@ const productStyle = computed(() => {
         // Remove todas as classes se não há resultado de análise
         productRef.value.classList.remove('A', 'B', 'C');
     }
-    
+
     // Verifica se o produto tem dimensões válidas
     const width = props.product?.width || 50; // fallback para 50px
     const height = props.product?.height || 50; // fallback para 50px
-    
+
     return {
         width: `${width * props.scaleFactor}px`,
-        height: `${height * props.scaleFactor}px`, 
-        flexShrink: 0, 
-        flexGrow: 0,
+        height: `${height * props.scaleFactor}px`,
+        flexShrink: 0,
     };
 });
- 
+
 
 /**
  * Manipula o clique no produto
@@ -141,7 +136,7 @@ const handleProductClick = () => {
     // Não precisa chamar productActiveTrigger aqui, pois já é reativo através do computed
     // A função productActiveTrigger() já é chamada automaticamente quando isSelected muda 
     editorStore.clearSelectedSection(); // Limpa seleção de camadas ao selecionar prateleira
-    
+
     // Aqui você pode adicionar lógica adicional para quando o produto é clicado
     // Por exemplo, emitir um evento ou atualizar o estado do editor
 };
@@ -190,12 +185,15 @@ onMounted(() => {
     font-weight: bold;
     font-size: 16px;
 }
+
 .A {
     background-color: #00ff00;
 }
+
 .B {
     background-color: #0000ff;
 }
+
 .C {
     background-color: #ff0000;
 }

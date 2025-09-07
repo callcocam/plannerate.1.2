@@ -38,10 +38,7 @@ class PlannerateController extends Controller
     {
         try { 
             $planogram = $this->getModel()::query()->with([
-                'tenant',
-                'store.store_map.gondolas',
-                'cluster',
-                'client', 
+                'tenant', 
                 'gondolas.sections.shelves.segments.layer.product', 
             ])->findOrFail($id); 
 

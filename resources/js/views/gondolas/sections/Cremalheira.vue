@@ -1,9 +1,12 @@
 <template>
-    <div :style="gramalheiraStyle" class="group relative bg-gray-800 dark:bg-gray-600 z-10 border border-gray-600 dark:border-gray-500" data-cremalheira="true" :data-cremalheira-index="index">
+    <div :style="gramalheiraStyle"
+        class="group relative bg-gray-800 dark:bg-gray-600 z-10 border border-gray-600 dark:border-gray-500"
+        data-cremalheira="true" :data-cremalheira-index="index">
         <!-- Botões que aparecem apenas no hover, posicionados acima da gramalheira em coluna -->
         <div v-if="!props.isLastSection"
             class="absolute -top-24 left-1/2 flex -translate-x-1/2 transform flex-col space-y-2 opacity-0 transition-opacity duration-200 group-hover:opacity-100 z-[100]">
-            <Button size="sm" class="h-6 w-6 p-0 cursor-pointer" variant="secondary" @click="$emit('edit-section', section)">
+            <Button size="sm" class="h-6 w-6 p-0 cursor-pointer" variant="secondary"
+                @click="$emit('edit-section', section)">
                 <PencilIcon class="h-3 w-3" />
             </Button>
             <Button size="sm" class="h-6 w-6 p-0 cursor-pointer" variant="destructive" @click="openDeleteConfirm">
@@ -12,17 +15,20 @@
             <slot name="actions" />
         </div>
         <!-- Furos na gramalheira -->
-        <div v-for="(hole, index) in holes" :key="index" class="absolute bg-gray-300 dark:bg-gray-400 border border-gray-400 dark:border-gray-500" data-furo-cremalheira="true" :style="{
-            width: `${hole.width * scaleFactor}px`,
-            height: `${hole.height * scaleFactor}px`,
-            top: `${hole.position * scaleFactor}px`,
-            left: `50%`,
-            transform: `translateX(-50%)`,
-        }" @dblclick="addShelfToSection(hole)"> </div>
+        <div v-for="(hole, index) in holes" :key="index"
+            class="absolute bg-gray-300 dark:bg-gray-400 border border-gray-400 dark:border-gray-500"
+            data-furo-cremalheira="true" :style="{
+                width: `${hole.width * scaleFactor}px`,
+                height: `${hole.height * scaleFactor}px`,
+                top: `${hole.position * scaleFactor}px`,
+                left: `50%`,
+                transform: `translateX(-50%)`,
+            }" @dblclick="addShelfToSection(hole)"> </div>
         <!-- Base section (without holes) at the bottom -->
-        <div class="absolute bottom-0 left-0 w-full bg-gray-800 dark:bg-gray-600 border-t border-gray-600 dark:border-gray-500" data-base-cremalheira="true" :style="{
-            height: `${baseHeight * props.scaleFactor}px`,
-        }"></div>
+        <div class="absolute bottom-0 left-0 w-full bg-gray-800 dark:bg-gray-600 border-t border-gray-600 dark:border-gray-500"
+            data-base-cremalheira="true" :style="{
+                height: `${baseHeight * props.scaleFactor}px`,
+            }"></div>
     </div>
 
     <!-- Modal de confirmação -->
@@ -61,7 +67,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['edit-section', 'delete-section']);
- 
+
 const baseHeight = computed(() => props.section.base_height || 17);
 const editorStore = useEditorStore()
 
@@ -93,18 +99,18 @@ const gramalheiraStyle = computed(() => {
 // Função para calcular buracos localmente (mesmo algoritmo do backend)
 const calculateHoles = (sectionData: any) => {
     const { height, hole_height, hole_width, hole_spacing, base_height } = sectionData;
-    
+
     // Calcular altura disponível para furos (excluindo a base na parte inferior)
     const availableHeight = height - base_height;
-    
+
     // Calcular quantos furos cabem
     const totalSpaceNeeded = hole_height + hole_spacing;
     const holeCount = Math.floor(availableHeight / totalSpaceNeeded);
-    
+
     // Calcular o espaço restante para distribuir uniformemente
     const remainingSpace = availableHeight - holeCount * hole_height - (holeCount - 1) * hole_spacing;
     const marginTop = remainingSpace / 2; // Começar do topo com margem
-    
+
     const holes = [];
     for (let i = 0; i < holeCount; i++) {
         const holePosition = marginTop + i * (hole_height + hole_spacing);
@@ -115,7 +121,7 @@ const calculateHoles = (sectionData: any) => {
             position: holePosition,
         });
     }
-    
+
     return holes;
 };
 
@@ -129,20 +135,24 @@ const holes = computed(() => {
         hole_spacing: props.section.hole_spacing,
         base_height: props.section.base_height,
     };
-    
+
     return calculateHoles(sectionData);
 });
 
 const addShelfToSection = (hole: any) => {
     const section = props.section
+    const shelfHeight = ref(4); // Altura padrão da prateleira ao adicionar
+    section.shelves.map((shelf: any) => {
+        shelfHeight.value = shelf.shelf_height
+    }); 
     editorStore.addShelfToSection(section.gondola_id, section.id, {
         id: `temp-shelf-${Date.now()}`,
-        shelf_height: 4,
+        shelf_height: shelfHeight.value,
         shelf_position: hole.position,
         section_id: section.id,
         product_type: 'normal',
     } as ShelfType);
- 
+
     editorStore.clearLayerSelection(); // Limpa seleção de camadas ao selecionar prateleira    
     editorStore.clearSelectedShelf(); // Limpa seleção de prateleira ao selecionar produto
 }
