@@ -31,8 +31,8 @@ class LayerResource extends JsonResource
             'ppp' => 2,
         ];
 
-        if (class_exists('App\Http\Resources\ProductResource')) {
-            $data['product'] = app('App\Http\Resources\ProductResource', [
+        if (class_exists('App\Http\Resources\ProductSingleResource')) {
+            $data['product'] = app('App\Http\Resources\ProductSingleResource', [
                 'resource' => $this->whenLoaded('product'),
             ]);
         }

@@ -405,10 +405,10 @@ async function executeTargetStockAnalysisWithParams(serviceLevels: ServiceLevel[
                 const productSales = sales.find((sale: any) => sale.product_id === product.id);
                 return {
                     ...product,
-                    standard_deviation: productSales.standard_deviation,
-                    average_sales: productSales.average_sales,
-                    currentStock: productSales.currentStock,
-                    variability: productSales.variability,
+                    standard_deviation: productSales?.standard_deviation,
+                    average_sales: productSales?.average_sales,
+                    currentStock: productSales?.currentStock,
+                    variability: productSales?.variability,
                     sales: productSales ? Object.values(productSales.sales_by_day) : []
                 };
             });

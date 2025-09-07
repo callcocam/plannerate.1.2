@@ -696,9 +696,9 @@ export class PrintService {
                         const src = node.src || '';
                         // Lista de domínios problemáticos
                         const problematicDomains = [
-                            'digitaloceanspaces.com',
-                            'amazonaws.com',
-                            'cloudflare.com'
+                            // 'digitaloceanspaces.com',
+                            // 'amazonaws.com',
+                            // 'cloudflare.com'
                         ];
                         
                         if (problematicDomains.some(domain => src.includes(domain))) {

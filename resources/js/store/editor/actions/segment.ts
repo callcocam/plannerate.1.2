@@ -1,8 +1,9 @@
 // /store/editor/actions/segment.ts
 import type { Segment } from '@plannerate/types/segment';
 import { findGondola, findPath, findSection, findShelf } from '../utils';
-import { recordChange } from '../history'; 
+import { recordChange } from '../history';
 import { isLoading } from '../state';
+import { useSegmentService } from '@plannerate/services/segmentService';
 /**
  * Adiciona um novo segmento a uma prateleira específica
  * @param gondolaId ID da gôndola
@@ -15,12 +16,23 @@ export function addSegmentToShelf(gondolaId: string, sectionId: string, shelfId:
     if (!path) return;
 
     const { shelf } = path;
-    
+
     if (typeof newSegment.id === 'string') {
         if (!shelf) return;
-        shelf.segments.push(newSegment as import('@/types/shelves').Segment); 
-        recordChange(true);
-        
+
+        useSegmentService().addSegment(shelfId, newSegment).then(response => {
+
+            const { segment } = response.data as { segment: Segment };
+            if (segment) {
+                shelf.segments.push(segment as import('@/types/shelves').Segment);
+            } 
+            recordChange(false);
+        })
+            .catch(err => {
+                console.error('Erro ao adicionar camada:', err);
+            });
+        console.log(`Segmento ${newSegment.id} adicionado à prateleira ${shelfId}.`);
+
     } else {
         console.error('Tentativa de adicionar segmento sem ID.', newSegment);
     }

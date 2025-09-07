@@ -30,6 +30,12 @@ export const useProductService = () => {
     const updateLayer = (layerId: string, data: any) => {
         return apiService.put(`/layers/${layerId}`, data);
     };
+    /**
+     * Adiciona os dados de uma camada (layer)
+     */
+    const addLayer = (data: any) => {
+        return apiService.post(`/layers`, data);
+    };
 
     /**
      * Atualiza a quantidade de produtos em uma camada
@@ -71,6 +77,7 @@ export const useProductService = () => {
     const updateProduct = (productId: string, data: any) => {
         return apiService.put(`/products/${productId}`, data);
     };
+    
 
     /**
      * Sincronizar
@@ -84,6 +91,7 @@ export const useProductService = () => {
         getShelf,
         deleteLayer,
         updateLayer,
+        addLayer,
         updateLayerQuantity,
         updateLayerSpacing,
         syncProductContext,

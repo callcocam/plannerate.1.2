@@ -1,11 +1,11 @@
 // services/segmentService.ts 
-
-import { Segment } from "../views/gondolas/sections/types";
+ 
+import { Segment } from "@/types/segment";
 import apiService from "./api";
 
 export const useSegmentService = () => {
     const addSegment = (shelfId: string, segment: Segment) => {
-        return apiService.post(`shelves/${shelfId}/segments`, {
+        return apiService.post(`shelves/${shelfId}/segment`, {
             segment,
         });
     };

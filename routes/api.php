@@ -25,6 +25,7 @@ Route::middleware(['api'])
 
         Route::resource('sections', SectionController::class);
         Route::resource('shelves', ShelfController::class);
+        Route::post('shelves/{shelf}/segment', [ShelfController::class, 'segment'])->name('shelves.segment');
         Route::resource('segments', SegmentController::class);
         Route::resource('layers', LayerController::class);
 

@@ -57,7 +57,7 @@
                             <PopoverTrigger as-child>
                                 <Button variant="outline" class="w-full justify-between">
                                     <span>{{ filters.category ? 'Nível selecionado' : 'Selecionar nível mercadológico'
-                                        }}</span>
+                                    }}</span>
                                     <ChevronDown class="h-4 w-4 opacity-50" />
                                 </Button>
                             </PopoverTrigger>
@@ -113,10 +113,6 @@
                                 <Checkbox id="dimension" v-model:modelValue="filters.dimension" />
                                 <Label for="dimension" class="text-sm font-normal">Com Dimensões</Label>
                             </div>
-                            <div class="flex items-center space-x-2 col-span-2">
-                                <Checkbox id="sales" v-model:modelValue="filters.sales" />
-                                <Label for="sales" class="text-sm font-normal">Com Vendas</Label>
-                            </div>
                         </div>
                     </div>
 
@@ -139,6 +135,7 @@
                     <li v-for="product in filteredProducts" :key="product.id"
                         class="group  rounded-md p-2 shadow-sm transition" :class="{
                             'cursor-pointer': product.dimensions ? true : false,
+                            'disabled:opacity-50 cursor-not-allowed disabled': !product.dimensions,
                             'bg-blue-100 border-2 border-blue-400 dark:bg-blue-900 dark:border-blue-500': isProductSelected(product.id),
                             'bg-white hover:bg-blue-50 dark:bg-gray-700 dark:hover:bg-gray-600': !isProductSelected(product.id)
                         }" @click="handleProductSelect(product, $event)" :draggable="product.dimensions ? true : false"
@@ -146,25 +143,26 @@
                         <div class="flex items-center space-x-3">
                             <div
                                 class="flex-shrink-0 overflow-hidden rounded border bg-white p-1 dark:border-gray-600 dark:bg-gray-800">
-                                <img :src="product.image_url" :alt="product.name" class="h-12 w-12 object-contain"
+                                <img :src="product.image_url" :alt="product.name"
+                                    class="h-12 w-12 object-contain select-none" :disabled="!product.dimensions"
                                     @error="(e) => handleImageError(e, product)" />
                             </div>
                             <div class="min-w-0 flex-1">
                                 <p class="truncate text-sm font-medium text-gray-800 dark:text-gray-100">{{ product.name
-                                    }}
+                                }}
                                 </p>
                                 <p class="text-xs text-gray-500 dark:text-gray-400">{{ product.width }}×{{
                                     product.height
-                                    }}×{{ product.depth }} cm</p>
+                                }}×{{ product.depth }} cm</p>
                             </div>
                         </div>
-                        <div class="mt-1 flex justify-end">
+                        <!-- <div class="mt-1 flex justify-end">
                             <Button variant="ghost" size="sm"
                                 class="invisible text-xs group-hover:visible cursor-pointer"
                                 @click.stop="viewStats(product)">
                                 Ver estatísticas
                             </Button>
-                        </div>
+                        </div> -->
                     </li>
                 </ul>
 
@@ -401,8 +399,16 @@ watch(
 
 watch(productIdsInCurrentGondola, () => {
     setTimeout(async () => {
-        await fetchProducts(1, false);
-    }, 300); // Pequeno delay
+        // Refiltra baseado no usageStatus atual
+        if (filters.usageStatus === 'unused') {
+            // Mostra apenas produtos que NÃO estão na gôndola
+            filteredProducts.value = filteredProducts.value.filter(p => !productIdsInCurrentGondola.value.has(p.id));
+        } else if (filters.usageStatus === 'used') {
+            // Mostra apenas produtos que estão na gôndola
+            filteredProducts.value = filteredProducts.value.filter(p => productIdsInCurrentGondola.value.has(p.id));
+        }
+        // Se for 'all', não precisa filtrar
+    }, 100); // Pequeno delay
 });
 
 function loadMore() {
@@ -425,6 +431,10 @@ function handleProductSelect(product: Product, event?: MouseEvent) {
 
 function handleDragStart(event: DragEvent, product: Product) {
     viewStatsStore.reset();
+    if (!product.dimensions) {
+        event.preventDefault();
+        return;
+    }
     if (event.dataTransfer) {
         // Se há produtos selecionados e o produto arrastado está entre eles
         if (selectedProductsCount.value > 0 && isProductSelected(product.id)) {

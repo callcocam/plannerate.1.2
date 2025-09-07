@@ -73,6 +73,13 @@ class SegmentController extends Controller
             DB::beginTransaction();
             $validated = $request->all();
             $segment = Segment::create($validated);
+            if (!$segment) {
+                return $this->handleInternalServerError('Erro ao criar segmento');
+            }
+            $layer = data_get($validated, 'layer');
+            if ($layer) {
+                $segment->layer()->create($layer);
+            }
             return $this->handleSuccess('Segmento criado com sucesso', [
                 'data' => new SegmentResource($segment),
             ]);

@@ -205,13 +205,13 @@ const validateAndAddProduct = (product: Product, shelf: ShelfType, quantity = 1)
     return createSegment(product, shelf, quantity);
 };
 
-const handleProductDrop = async (product: Product, shelf: ShelfType) => {
+const handleProductDrop = async (product: Product, shelf: ShelfType, quantity = 1) => {
     if (!props.gondola.id || isProcessingDrop.value) return;
 
     isProcessingDrop.value = true;
 
     try {
-        const newSegment = validateAndAddProduct(product, shelf);
+        const newSegment = validateAndAddProduct(product, shelf, quantity);
         if (newSegment) {
             editorStore.addSegmentToShelf(
                 props.gondola.id,
@@ -275,7 +275,7 @@ const handleMultipleProductsDrop = async (products: Product[], shelf: ShelfType)
 const handleSegmentCopy = async (segment: Segment, shelf: ShelfType) => {
     if (!props.gondola.id || !segment.layer?.product) return;
 
-    handleProductDrop(segment.layer.product, shelf);
+    handleProductDrop(segment.layer.product, shelf, segment.layer.quantity || 1);
 };
 
 const handleSegmentMove = (segment: Segment, targetShelf: ShelfType) => {

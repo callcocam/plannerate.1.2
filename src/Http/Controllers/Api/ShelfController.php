@@ -138,7 +138,7 @@ class ShelfController extends Controller
         }
     }
 
-    public function segment(StoreShelfRequest $request, Shelf $shelf,)
+    public function segment(StoreShelfRequest $request, Shelf $shelf)
     {
         $validated = $request->validated();
 
@@ -162,8 +162,17 @@ class ShelfController extends Controller
                 'segments.layer.product.sales',
                 'segments.layer.product.purchases',
             ]);
+            $newSegment->load([
+                'layer',
+                'layer.product',
+                'layer.product.image',
+            ]);
             return $this->handleSuccess('Segmento criado com sucesso', [
-                'data' => new ShelfResource($shelf),
+                'data' => [
+                    'shelf' => new ShelfResource($shelf),
+                    'segment' => $newSegment ? new \Callcocam\Plannerate\Http\Resources\SegmentResource($newSegment) : null,
+                ],
+
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
