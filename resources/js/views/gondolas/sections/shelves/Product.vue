@@ -1,8 +1,7 @@
 <template> 
         <!-- Imagem do produto, com fallback para placeholder dinâmico -->
         <img
-            :src="imageUrl"
-            @error="handleImageError"
+            :src="imageUrl" 
             alt="Imagem do Produto"
             :style="{...imageStyle, ...productStyle}"
         />  
@@ -130,6 +129,7 @@ const productStyle = computed(() => {
         width: `${width * props.scaleFactor}px`,
         height: `${height * props.scaleFactor}px`, 
         flexShrink: 0, 
+        flexGrow: 0,
     };
 });
  
@@ -150,7 +150,11 @@ const handleProductClick = () => {
  * Configura event listeners quando o componente é montado
  */
 onMounted(() => {
-    
+    if (productRef.value) {
+        productRef.value.addEventListener('click', handleProductClick);
+    } else {
+        console.warn('Referência do produto não encontrada no onMounted');
+    }
 });
 
 </script>

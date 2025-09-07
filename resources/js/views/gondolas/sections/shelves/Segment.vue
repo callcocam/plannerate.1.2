@@ -8,12 +8,7 @@
             <LayerComponent v-for="(_, index) in segmentQuantity" :key="index" :shelf="shelf" :segment="segment"
                 :layer="segment.layer" :scale-factor="scaleFactor" :section-width="sectionWidth"
                 :shelf-depth="shelf.shelf_depth" @increase="onIncreaseQuantity" @decrease="onDecreaseQuantity"
-                @update-layer-quantity="updateLayerQuantity">
-                <!-- <template #depth-count>
-                    <Label :title="`Profundidade da prateleira: ${depthCount}`"
-                        class="product-content-depth absolute -top-2 -left-2 z-10 flex h-3 w-3 cursor-help items-center justify-center rounded-full bg-gray-700 text-xs text-gray-100 dark:bg-gray-300 dark:text-gray-800">
-                        {{ depthCount }}</Label>
-                </template> -->
+                @update-layer-quantity="updateLayerQuantity"> 
             </LayerComponent>
         </div>
     </div>
@@ -96,13 +91,13 @@ const outerSegmentStyle = computed(() => {
     const productWidth = props.segment.layer.product.width || 0;
     const productQuantity = props.segment.layer.quantity || 0;
     let layerWidthFinal = 0;
-    const currentAlignment = alignment.value;
+    // const currentAlignment = alignment.value;
 
-    if (currentAlignment === 'justify') {
-        layerWidthFinal = props.sectionWidth * props.scaleFactor;
-    } else {
+    // if (currentAlignment === 'justify') {
+    //     layerWidthFinal = props.sectionWidth * props.scaleFactor;
+    // } else {
         layerWidthFinal = productWidth * productQuantity * props.scaleFactor;
-    }
+    // }
     const totalWidth = layerWidthFinal;
     const layerHeight = (props.segment.layer.product.height || 0) * (props.segment.quantity || 0) * props.scaleFactor;
     const marginBottom = (props.shelf.shelf_height || 0) * props.scaleFactor;
