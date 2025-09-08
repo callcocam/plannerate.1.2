@@ -45,8 +45,7 @@ export function invertShelvesInSection(gondolaId: string, sectionId: string) {
             }
         });
 
-        if (changed) {
-            console.log(`Posições das prateleiras invertidas para a seção ${sectionId}`);
+        if (changed) { 
             recordChange();
         } else {
             console.log(`Posições das prateleiras já estavam invertidas ou erro no cálculo.`);
@@ -75,8 +74,7 @@ export function addShelfToSection(gondolaId: string, sectionId: string, newShelf
         alignment: newShelfData.alignment === null ? undefined : newShelfData.alignment,
     };
 
-    section.shelves.push(shelfToAdd);
-    console.log(`Prateleira ${shelfToAdd.id} adicionada à seção ${sectionId}`);
+    section.shelves.push(shelfToAdd); 
     recordChange();
 }
 

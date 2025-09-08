@@ -2,11 +2,12 @@
     <div class="segment drag-segment-handle group relative flex flex-col items-start" :style="outerSegmentStyle"
         @dragstart="onDragStart" @dragend="onDragEnd" draggable="true" :tabindex="segment.tabindex"
         @dragenter.prevent="handleDragEnter" @dragover.prevent="handleDragOver" @dragleave="handleDragLeave"
-        @drop.prevent="handleDrop" v-if="segment.layer && segment.layer.product">
+        @drop.prevent="handleDrop"
+         v-if="segment.layer && segment.layer.product">
         <div :style="innerSegmentStyle">
             <LayerComponent v-for="(_, index) in segmentQuantity" :key="index" :shelf="shelf" :segment="segment"
                 :layer="segment.layer" :scale-factor="scaleFactor" :section-width="sectionWidth"
-                :shelf-depth="shelf.shelf_depth" v-model:quantity="segment.layer.quantity"
+                :shelf-depth="shelf.shelf_depth"
                 @increase="onIncreaseQuantity" @decrease="onDecreaseQuantity"
                 @update-layer-quantity="updateLayerQuantity">
             </LayerComponent>
@@ -301,62 +302,62 @@ const handleDragLeave = (event: DragEvent) => {
 const handleDrop = (event: DragEvent) => {
     event.preventDefault();
 
-    const currentTargetElement = event.currentTarget as HTMLElement | null;
+    // const currentTargetElement = event.currentTarget as HTMLElement | null;
 
-    const resetVisualState = () => {
-        dragEnterCount.value = 0;
-        if (dragSegmentActive.value) {
-            dragSegmentActive.value = false;
-        }
-        segmentText.value = `Arrastando Prateleira (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`;
-        if (currentTargetElement) {
-            currentTargetElement.classList.remove('drag-over-segment');
-        }
-    };
+    // const resetVisualState = () => {
+    //     dragEnterCount.value = 0;
+    //     if (dragSegmentActive.value) {
+    //         dragSegmentActive.value = false;
+    //     }
+    //     segmentText.value = `Arrastando Prateleira (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`;
+    //     if (currentTargetElement) {
+    //         currentTargetElement.classList.remove('drag-over-segment');
+    //     }
+    // };
 
-    if (!isAcceptedDataType(event.dataTransfer) || !event.dataTransfer) {
-        resetVisualState();
-        return;
-    }
+    // if (!isAcceptedDataType(event.dataTransfer) || !event.dataTransfer) {
+    //     resetVisualState();
+    //     return;
+    // }
 
-    try {
-        const types = event.dataTransfer.types;
-        const position = { x: event.offsetX, y: event.offsetY };
+    // try {
+    //     const types = event.dataTransfer.types;
+    //     const position = { x: event.offsetX, y: event.offsetY };
 
-        if (types.includes('text/products-multiple')) {
-            const productsData = event.dataTransfer.getData('text/products-multiple');
-            if (!productsData) { console.error('handleDrop: productsData is empty!'); return; }
-            const products = JSON.parse(productsData) as Product[];
-            emit('drop-products-multiple', products, props.shelf, position);
+    //     if (types.includes('text/products-multiple')) {
+    //         const productsData = event.dataTransfer.getData('text/products-multiple');
+    //         if (!productsData) { console.error('handleDrop: productsData is empty!'); return; }
+    //         const products = JSON.parse(productsData) as Product[];
+    //         emit('drop-products-multiple', products, props.shelf, position);
 
-        } else if (types.includes('text/product')) {
-            const productData = event.dataTransfer.getData('text/product');
-            if (!productData) { console.error('handleDrop: productData is empty!'); return; }
-            const product = JSON.parse(productData) as Product;
-            emit('drop-product', product, props.shelf, position);
+    //     } else if (types.includes('text/product')) {
+    //         const productData = event.dataTransfer.getData('text/product');
+    //         if (!productData) { console.error('handleDrop: productData is empty!'); return; }
+    //         const product = JSON.parse(productData) as Product;
+    //         emit('drop-product', product, props.shelf, position);
 
-        } else if (types.includes('text/segment')) {
-            const segmentDataString = event.dataTransfer.getData('text/segment');
-            if (!segmentDataString) { console.error('handleDrop: segmentData is empty!'); return; }
-            const segmentData = JSON.parse(segmentDataString) as Segment;
-            const originShelfId = segmentData?.shelf_id;
+    //     } else if (types.includes('text/segment')) {
+    //         const segmentDataString = event.dataTransfer.getData('text/segment');
+    //         if (!segmentDataString) { console.error('handleDrop: segmentData is empty!'); return; }
+    //         const segmentData = JSON.parse(segmentDataString) as Segment;
+    //         const originShelfId = segmentData?.shelf_id;
 
-            if (originShelfId && originShelfId !== props.shelf.id) {
-                emit('drop-segment', segmentData, props.shelf, position);
-            }
+    //         if (originShelfId && originShelfId !== props.shelf.id) {
+    //             emit('drop-segment', segmentData, props.shelf, position);
+    //         }
 
-        } else if (types.includes('text/segment/copy')) {
-            const segmentDataCopy = event.dataTransfer.getData('text/segment/copy');
-            if (!segmentDataCopy) { console.error('handleDrop: segmentDataCopy is empty!'); return; }
-            const segment = JSON.parse(segmentDataCopy) as Segment;
-            emit('drop-segment-copy', segment, props.shelf, position);
-        }
+    //     } else if (types.includes('text/segment/copy')) {
+    //         const segmentDataCopy = event.dataTransfer.getData('text/segment/copy');
+    //         if (!segmentDataCopy) { console.error('handleDrop: segmentDataCopy is empty!'); return; }
+    //         const segment = JSON.parse(segmentDataCopy) as Segment;
+    //         emit('drop-segment-copy', segment, props.shelf, position);
+    //     }
 
-    } catch (e) {
-        console.error("handleDrop: Error processing dropped data:", e);
-    } finally {
-        resetVisualState();
-    }
+    // } catch (e) {
+    //     console.error("handleDrop: Error processing dropped data:", e);
+    // } finally {
+    //     resetVisualState();
+    // }
 };
 
 const onDragStart = (event: DragEvent) => {

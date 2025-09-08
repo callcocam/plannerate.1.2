@@ -144,7 +144,7 @@ class ShelfController extends Controller
 
         // Processa atualização normal com possível adição de segmento/camada
         $segment = data_get($validated, 'segment');
-        $layer = data_get($segment, 'layer');
+        $layer = data_get($segment, 'layer'); 
         try {
             if ($segment) {
                 DB::beginTransaction();

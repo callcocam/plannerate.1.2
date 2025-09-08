@@ -278,7 +278,8 @@ const handleSegmentCopy = async (segment: Segment, shelf: ShelfType) => {
     handleProductDrop(segment.layer.product, shelf, segment.layer.quantity || 1);
 };
 
-const handleSegmentMove = (segment: Segment, targetShelf: ShelfType) => { 
+const handleSegmentMove = (segment: Segment, targetShelf: ShelfType) => {
+    console.log('handleSegmentMove: segment:', segment, 'targetShelf:', targetShelf);
     if (!props.gondola.id || segment.shelf_id === targetShelf.id) return;
 
     // Encontrar seção de destino

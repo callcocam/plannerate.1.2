@@ -210,8 +210,7 @@ export function removeSegmentFromShelf(gondolaId: string, sectionId: string, she
     shelf.segments = shelf.segments.filter(segment => segment.id !== segmentId);
 
     // Verifica se um segmento foi realmente removido
-    if (shelf.segments.length < initialLength) {
-        console.log(`Segmento ${segmentId} removido da prateleira ${shelfId}.`);
+    if (shelf.segments.length < initialLength) { 
         recordChange(); // Registra a mudança no histórico
     } else {
         console.warn(`Segmento ${segmentId} não encontrado na prateleira ${shelfId} para remoção.`);
