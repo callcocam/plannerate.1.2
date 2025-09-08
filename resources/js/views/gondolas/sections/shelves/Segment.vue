@@ -1,14 +1,14 @@
 <template>
     <div class="segment drag-segment-handle group relative flex flex-col items-start" :style="outerSegmentStyle"
-        @dragstart="onDragStart" @dragend="onDragEnd" draggable="true" :tabindex="segment.tabindex" 
-        @dragenter.prevent="handleDragEnter" @dragover.prevent="handleDragOver"
-        @dragleave="handleDragLeave" @drop.prevent="handleDrop"
-        v-if="segment.layer && segment.layer.product">
+        @dragstart="onDragStart" @dragend="onDragEnd" draggable="true" :tabindex="segment.tabindex"
+        @dragenter.prevent="handleDragEnter" @dragover.prevent="handleDragOver" @dragleave="handleDragLeave"
+        @drop.prevent="handleDrop" v-if="segment.layer && segment.layer.product">
         <div :style="innerSegmentStyle">
             <LayerComponent v-for="(_, index) in segmentQuantity" :key="index" :shelf="shelf" :segment="segment"
                 :layer="segment.layer" :scale-factor="scaleFactor" :section-width="sectionWidth"
-                :shelf-depth="shelf.shelf_depth" @increase="onIncreaseQuantity" @decrease="onDecreaseQuantity"
-                @update-layer-quantity="updateLayerQuantity"> 
+                :shelf-depth="shelf.shelf_depth" v-model:quantity="segment.layer.quantity"
+                @increase="onIncreaseQuantity" @decrease="onDecreaseQuantity"
+                @update-layer-quantity="updateLayerQuantity">
             </LayerComponent>
         </div>
     </div>
@@ -38,25 +38,26 @@ const emit = defineEmits(['drop-product', 'drop-products-multiple', 'drop-segmen
 
 const editorStore = useEditorStore();
 
+
 // Variáveis para drag and drop
 const dragEnterCount = ref(0);
 const dragSegmentActive = ref(false);
 const segmentText = ref(`Arrastando Prateleira (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`);
 watch(dragSegmentActive, (newValue) => {
-  if (newValue) {
-    segmentText.value = `Arrastando Prateleira (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`;
-  } else {
-    segmentText.value = `Arrastando Prateleira (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`;
-  }
+    if (newValue) {
+        segmentText.value = `Arrastando Prateleira (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`;
+    } else {
+        segmentText.value = `Arrastando Prateleira (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`;
+    }
 });
 
 const currentSectionId = computed(() => props.shelf.section_id);
- 
+
 /** Segment quantity (number of layers) */
 const segmentQuantity = computed(() => {
     return props.segment?.quantity ?? 0;
 });
-const alignment = computed(() => editorStore.getCurrentGondola?.alignment);
+// const alignment = computed(() => editorStore.getCurrentGondola?.alignment);
 
 // Estilo para o container interno (conteúdo visual - Normal Shelf)
 const innerSegmentStyle = computed(() => {
@@ -80,7 +81,7 @@ const innerSegmentStyle = computed(() => {
 // Estilo para o container externo (manipulado pelo draggable - Normal Shelf)
 const outerSegmentStyle = computed(() => {
     // Verificações de segurança para evitar erros de null/undefined
-    if (!props.segment?.layer?.product) { 
+    if (!props.segment?.layer?.product) {
         return {
             width: '0px',
             height: '0px',
@@ -96,7 +97,7 @@ const outerSegmentStyle = computed(() => {
     // if (currentAlignment === 'justify') {
     //     layerWidthFinal = props.sectionWidth * props.scaleFactor;
     // } else {
-        layerWidthFinal = productWidth * productQuantity * props.scaleFactor;
+    layerWidthFinal = productWidth * productQuantity * props.scaleFactor;
     // }
     const totalWidth = layerWidthFinal;
     const layerHeight = (props.segment.layer.product.height || 0) * (props.segment.quantity || 0) * props.scaleFactor;
@@ -104,7 +105,7 @@ const outerSegmentStyle = computed(() => {
     return {
         width: `${totalWidth}px`,
         height: `${layerHeight}px`, // Altura explícita
-        marginBottom: `${marginBottom+4}px`,
+        marginBottom: `${marginBottom + 4}px`,
         zIndex: props.isSegmentDragging ? -1 : 0, // Z-index baixo quando segment está sendo arrastado
     } as CSSProperties;
 });
@@ -127,6 +128,7 @@ const updateLayerQuantity = (layer: Layer) => {
         toast.error('Limite de Largura Excedido', {
             description: `A largura total (${validation.totalWidth.toFixed(1)}cm) excederia a largura da seção (${validation.sectionWidth}cm).`,
         });
+        props.segment.layer.quantity -= 1;
         return;
     }
 
@@ -141,7 +143,7 @@ const updateLayerQuantity = (layer: Layer) => {
 }
 // Funções (onIncreaseQuantity, onDecreaseQuantity, onDragStart)
 // Mantidas como estavam, pois não dependem do tipo hook/normal
-const onIncreaseQuantity = () => {
+const onIncreaseQuantity = ({ quantity }: any) => {
     if (!editorStore.getCurrentGondola?.id || !currentSectionId.value || !props.shelf?.id || !props.segment?.id || !props.segment?.layer?.product?.id) {
         toast.error('Erro Interno', { description: 'Dados incompletos para aumentar quantidade.' });
         return;
@@ -150,9 +152,8 @@ const onIncreaseQuantity = () => {
         toast.error('Erro Interno', { description: 'Largura da seção inválida.' });
         return;
     }
-
-    const currentQuantity = props.segment.layer?.quantity ?? 0;
-    const newQuantity = currentQuantity + 1;
+    const currentQuantity = props.segment.layer.quantity ?? 0;
+    const newQuantity = quantity;
 
     const validation = validateShelfWidth(props.shelf, props.sectionWidth, props.segment.layer.product.id, newQuantity, null);
 
@@ -160,6 +161,7 @@ const onIncreaseQuantity = () => {
         toast.error('Limite de Largura Excedido', {
             description: `A largura total (${validation.totalWidth.toFixed(1)}cm) excederia a largura da seção (${validation.sectionWidth}cm).`,
         });
+        props.segment.layer.quantity = currentQuantity; // Reverter para a quantidade anterior
         return;
     }
 
@@ -172,19 +174,19 @@ const onIncreaseQuantity = () => {
         newQuantity,
     );
 };
-const onDecreaseQuantity = () => {
-    if (!editorStore.getCurrentGondola?.id || !currentSectionId.value || !props.shelf?.id || !props.segment?.id || !props.segment?.layer?.product?.id) { 
+const onDecreaseQuantity = ({ quantity }: any) => {
+    if (!editorStore.getCurrentGondola?.id || !currentSectionId.value || !props.shelf?.id || !props.segment?.id || !props.segment?.layer?.product?.id) {
         toast.error('Erro Interno', { description: 'Dados incompletos para diminuir quantidade.' });
         return;
     }
-    if (props.sectionWidth === undefined || props.sectionWidth <= 0) { 
+    if (props.sectionWidth === undefined || props.sectionWidth <= 0) {
         toast.error('Erro Interno', { description: 'Largura da seção inválida.' });
         return;
     }
 
-    const currentQuantity = props.segment.layer?.quantity ?? 0;
+    const currentQuantity = quantity ?? 0;
     if (currentQuantity > 0) {
-        const newQuantity = currentQuantity - 1;
+        const newQuantity = currentQuantity;
 
         const validation = validateShelfWidth(props.shelf, props.sectionWidth, props.segment.layer.product.id, newQuantity, null);
 
@@ -211,10 +213,10 @@ const onDecreaseQuantity = () => {
 const isAcceptedDataType = (dataTransfer: DataTransfer | null): boolean => {
     if (!dataTransfer) return false;
     const types = dataTransfer.types;
-    return types.includes('text/product') || 
-           types.includes('text/products-multiple') || 
-           types.includes('text/segment') || 
-           types.includes('text/segment/copy');
+    return types.includes('text/product') ||
+        types.includes('text/products-multiple') ||
+        types.includes('text/segment') ||
+        types.includes('text/segment/copy');
 };
 
 // Verifica especificamente se é um segment sendo arrastado
@@ -233,12 +235,12 @@ const handleDragEnter = (event: DragEvent) => {
     dragEnterCount.value++;
     dragSegmentActive.value = true;
     segmentText.value = `Arrastando Prateleira (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`;
-    
+
     // Verificar se é um segment sendo arrastado
-    if (isSegmentBeingDragged(event.dataTransfer)) { 
+    if (isSegmentBeingDragged(event.dataTransfer)) {
         emit('segment-drag-over', props.segment, props.shelf, true);
     }
-    
+
     if (event.currentTarget) {
         (event.currentTarget as HTMLElement).classList.add('drag-over-segment');
     }
@@ -269,7 +271,7 @@ const handleDragOver = (event: DragEvent) => {
 
     if (event.dataTransfer) {
         let effect: DataTransfer["dropEffect"] = 'move';
-        if (event.dataTransfer.types.includes('text/segment/copy') || 
+        if (event.dataTransfer.types.includes('text/segment/copy') ||
             event.dataTransfer.types.includes('text/product') ||
             event.dataTransfer.types.includes('text/products-multiple')) {
             effect = 'copy';
@@ -285,7 +287,7 @@ const handleDragLeave = (event: DragEvent) => {
             if (dragSegmentActive.value) {
                 dragSegmentActive.value = false;
                 // Emitir que o drag saiu do segment
-                if (event.dataTransfer && isSegmentBeingDragged(event.dataTransfer)) { 
+                if (event.dataTransfer && isSegmentBeingDragged(event.dataTransfer)) {
                     emit('segment-drag-over', props.segment, props.shelf, false);
                 }
                 if (event.currentTarget) {
@@ -298,7 +300,7 @@ const handleDragLeave = (event: DragEvent) => {
 
 const handleDrop = (event: DragEvent) => {
     event.preventDefault();
-    
+
     const currentTargetElement = event.currentTarget as HTMLElement | null;
 
     const resetVisualState = () => {
@@ -367,7 +369,7 @@ const onDragStart = (event: DragEvent) => {
         ...props.segment,
         shelf_id: props.shelf.id, // Garantir que o shelf_id está incluído
     };
-    
+
     if (isCtrlOrMetaPressed) {
         // Copiar (quando Ctrl/Meta está pressionado)
         event.dataTransfer.effectAllowed = 'copy';
@@ -379,14 +381,12 @@ const onDragStart = (event: DragEvent) => {
         event.dataTransfer.setData('text/segment', JSON.stringify(segmentData));
     }
 
-    // Emitir evento para informar que o segment está sendo arrastado
-    console.log('Segment: emitindo segment-drag-start', props.segment.id, props.shelf.id);
+    // Emitir evento para informar que o segment está sendo arrastado 
     emit('segment-drag-start', props.segment, props.shelf);
 };
 
 const onDragEnd = (event: DragEvent) => {
-    // Emitir evento para informar que o drag do segment terminou
-    console.log('Segment: emitindo segment-drag-end', props.segment.id, props.shelf.id);
+    // Emitir evento para informar que o drag do segment terminou 
     emit('segment-drag-end', props.segment, props.shelf);
 };
 
@@ -397,7 +397,4 @@ const onDragEnd = (event: DragEvent) => {
 .segment {
     position: relative;
 }
- 
-
-
 </style>

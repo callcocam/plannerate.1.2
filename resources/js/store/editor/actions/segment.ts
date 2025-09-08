@@ -175,8 +175,7 @@ export function updateLayerQuantity(
     // Verifica se o layerId corresponde ao ID do produto da camada
     if (segment.layer.product.id === layerId) {
         if (segment.layer.quantity !== newQuantity) {
-            segment.layer.quantity = newQuantity;
-            console.log(`Quantidade da layer ${layerId} atualizada para ${newQuantity} no segmento ${segmentId}.`);
+            segment.layer.quantity = newQuantity; 
             recordChange();
         } else {
             console.log(`Quantidade da layer ${layerId} já era ${newQuantity}.`);

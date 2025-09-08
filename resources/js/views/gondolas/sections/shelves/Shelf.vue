@@ -3,10 +3,10 @@
         <ContextMenuTrigger>
             <ShelfContent :shelf="shelf" :sorted-shelves="sortedShelves" :index="index" :scale-factor="scaleFactor"
                 :section="section" :segment-dragging="segmentDragging" :dragging-segment="draggingSegment"
-                @drop-product="(product: Product, shelf: Shelf) => $emit('drop-product', product, shelf)"
-                @drop-products-multiple="(products: Product[], shelf: Shelf) => $emit('drop-products-multiple', products, shelf)"
-                @drop-segment-copy="(segment: SegmentType, shelf: Shelf) => $emit('drop-segment-copy', segment, shelf)"
-                @drop-segment="(segment: SegmentType, oldShelf: Shelf) => $emit('drop-segment', segment, oldShelf)" />
+                @drop-product="(product: Product, shelf: Shelf) => $emit('drop-product', product, shelf, { x: 0, y: 0 })"
+                @drop-products-multiple="(products: Product[], shelf: Shelf) => $emit('drop-products-multiple', products, shelf, { x: 0, y: 0 })"
+                @drop-segment-copy="(segment: SegmentType, shelf: Shelf) => $emit('drop-segment-copy', segment, shelf, { x: 0, y: 0 })"
+                @drop-segment="(segment: SegmentType, oldShelf: Shelf) => $emit('drop-segment', segment, oldShelf, { x: 0, y: 0 })" />
 
             <!-- Overlay para quando um segment está sendo arrastado -->
             <div class="segment-drag-overlay absolute inset-0 pointer-events-none"
@@ -38,10 +38,10 @@
                         <Segment :key="segment.id" :shelf="shelf" :segment="segment" :scale-factor="scaleFactor"
                             :section-width="sectionWidth" :gondola="gondola"
                             :is-segment-dragging="segmentDragging && draggingSegment?.id === segment.id"
-                            @drop-product="(product: Product, shelf: Shelf) => $emit('drop-product', product, shelf)"
-                            @drop-products-multiple="(products: Product[], shelf: Shelf) => $emit('drop-products-multiple', products, shelf)"
-                            @drop-segment-copy="(segment: SegmentType, shelf: Shelf) => $emit('drop-segment-copy', segment, shelf)"
-                            @drop-segment="(segment: SegmentType, oldShelf: Shelf) => $emit('drop-segment', segment, oldShelf)"
+                            @drop-product="(product: Product, shelf: Shelf) => $emit('drop-product', product, shelf, { x: 0, y: 0 })"
+                            @drop-products-multiple="(products: Product[], shelf: Shelf) => $emit('drop-products-multiple', products, shelf, { x: 0, y: 0 })"
+                            @drop-segment-copy="(eventSegment: SegmentType, shelf: Shelf) => $emit('drop-segment-copy', eventSegment, shelf, { x: 0, y: 0 })"
+                            @drop-segment="(eventSegment: SegmentType, oldShelf: Shelf) => $emit('drop-segment', eventSegment, oldShelf, { x: 0, y: 0 })"
                             @segment-drag-start="handleSegmentDragStart" @segment-drag-end="handleSegmentDragEnd"
                             @segment-drag-over="handleSegmentDragOver" />
                     </template>
@@ -78,7 +78,7 @@
 import { computed, defineEmits, defineProps, onMounted, onUnmounted, ref, nextTick, type CSSProperties } from 'vue';
 import draggable from 'vuedraggable';
 import { useEditorStore } from '@plannerate/store/editor';
-import { type Product, type Segment as SegmentType } from '@plannerate/types/segment';
+import { Layer, type Product, type Segment as SegmentType } from '@plannerate/types/segment';
 import { type Shelf } from '@plannerate/types/shelves';
 import Segment from './Segment.vue';
 import ShelfContent from './ShelfContent.vue';
@@ -182,7 +182,13 @@ const segmentOverlayStyle = computed(() => {
 const gondolaId = computed(() => props.gondola.id);
 const holeWidth = computed(() => props.section.hole_width);
 // Definir Emits
-const emit = defineEmits(['drop-product', 'drop-products-multiple', 'drop-segment-copy', 'drop-segment']);
+
+defineEmits<{
+    'drop-product': [product: Product, shelf: Shelf, position: { x: number; y: number }];
+    'drop-products-multiple': [products: Product[], shelf: Shelf, position: { x: number; y: number }];
+    'drop-segment-copy': [segment: SegmentType, shelf: Shelf, position: { x: number; y: number }];
+    'drop-segment': [segment: SegmentType, shelf: Shelf, position: { x: number; y: number }];
+}>();
 const editorStore = useEditorStore();
 
 // Corrigido: Determina o alinhamento efetivo da prateleira seguindo a hierarquia

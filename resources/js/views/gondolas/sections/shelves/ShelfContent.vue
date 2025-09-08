@@ -1,13 +1,12 @@
 <template>
-    <div class=" w-full flex items-center justify-center text-center text-xs text-gray-100 bg-transparent p-5 rounded-md "
-        :style="shelfContentStyle" @dragenter.prevent="handleDragEnter" @dragover.prevent="handleDragOver"
-        @dragleave="handleDragLeave" @drop.prevent="handleDrop" ref="shelfContentRef">
-        <!-- Quero alinhar o texto no centro da prateleira  -->
-        <span class="text-center text-gray-800 dark:text-gray-200 pointer-events-none font-bold absolute inset-0 flex items-center justify-center"
-            v-if="dragShelfActive"> {{ shelftext }}</span>
-        
-        <!-- Overlay para quando um segment está sendo arrastado - REMOVIDO, agora está no Shelf.vue -->
-        <!-- Texto para quando um segment está sendo arrastado - REMOVIDO, agora está no Shelf.vue -->
+    <div class="w-full flex items-center justify-center text-center text-xs text-gray-100 bg-transparent p-5 rounded-md"
+        :style="shelfContentStyle" :class="{ 'drag-over': dragShelfActive }" @dragenter.prevent="handleDragEnter"
+        @dragover.prevent="handleDragOver" @dragleave="handleDragLeave" @drop.prevent="handleDrop"
+        ref="shelfContentRef">
+        <span v-if="dragShelfActive"
+            class="text-center text-gray-800 dark:text-gray-200 pointer-events-none font-bold absolute inset-0 flex items-center justify-center">
+            {{ shelfText }}
+        </span>
     </div>
 </template>
 
@@ -15,8 +14,9 @@
 import { defineEmits, defineProps, ref, watch, computed, CSSProperties } from 'vue';
 import { type Shelf } from '@plannerate/types/shelves';
 import { Section } from '@/types/sections';
-import type { Product, Layer } from '@plannerate/types/segment'; 
-// Definir Props
+import type { Product, Layer } from '@plannerate/types/segment';
+
+// Props
 const props = defineProps<{
     shelf: Shelf;
     scaleFactor: number;
@@ -26,93 +26,75 @@ const props = defineProps<{
     segmentDragging?: boolean;
     draggingSegment?: any;
 }>();
-const dragShelfActive = ref(false); // Estado para rastrear se a prateleira está sendo arrastada
-const dragEnterCount = ref(0); // Garantir que está definido aqui
-const shelftext = ref(`Shelf (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`); // Texto da prateleira
-// segmentDragText removido - agora está no Shelf.vue
 
-// Estado local para detectar quando um segment está sendo arrastado sobre esta prateleira
+// Emits
+const emit = defineEmits<{
+    'drop-product': [product: Product, shelf: Shelf, position: { x: number; y: number }];
+    'drop-products-multiple': [products: Product[], shelf: Shelf, position: { x: number; y: number }];
+    'drop-segment': [segment: Layer, shelf: Shelf, position: { x: number; y: number }];
+    'drop-segment-copy': [segment: Layer, shelf: Shelf, position: { x: number; y: number }];
+}>();
+
+// Reactive state
+const dragShelfActive = ref(false);
+const dragEnterCount = ref(0);
 const segmentDragOverActive = ref(false);
 const segmentDragOverCount = ref(0);
-
-// Debug: log quando segmentDragging muda
-watch(() => props.segmentDragging, (newValue) => {
-    console.log('ShelfContent: segmentDragging mudou para', newValue, 'shelf:', props.shelf.id);
-});
 const shelfContentRef = ref<HTMLElement | null>(null);
-// Definir Emits
-const emit = defineEmits(['drop-product', 'drop-products-multiple', 'drop-segment', 'drop-segment-copy']); // Para quando um produto é solto na prateleira
-// const editorStore = useEditorStore();
-// import { type Shelf as ShelfType } from '@plannerate/types/shelves';
+const isCtrlPressed = ref(false);
 
-watch(dragShelfActive, (newValue) => {
-    if (newValue) {
-        // Adicionar lógica para quando a prateleira está sendo arrastada
-        shelftext.value = `Arrastando Prateleira (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`;
-    } else {
-        // Adicionar lógica para quando a prateleira não está mais sendo arrastada
-        shelftext.value = `Shelf (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`;
-    }
-});
+// Computed properties
+const baseShelfText = computed(() => `Shelf (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`);
 
+const shelfText = ref(baseShelfText.value);
 
 const shelfContentStyle = computed((): CSSProperties => {
-    const currentShelf = props.shelf;
-    const currentIndex = props.index;
-    const sortedShelves = props.sortedShelves;
-    const scaleFactor = props.scaleFactor;
-    const sectionHeight = props.section.height;
+    const { shelf, index, sortedShelves, scaleFactor, section } = props;
 
-    // --- Definir Padding Visual (em pixels) ---
-    const verticalPaddingPx = 8; // Ex: 4px total (2px topo, 2px baixo)
+    // Visual padding constants
+    const verticalPaddingPx = 8;
     const topPaddingPx = verticalPaddingPx / 2;
     const bottomPaddingPx = verticalPaddingPx / 2;
-    const minTopHeightPx = 120; // Altura mínima para a primeira prateleira
+    const minTopHeightPx = 120;
 
-    // --- Calcular Posição e Altura em CM ---
+    // Calculate position and height in CM
     let topPositionCm: number;
-    let rawHeightCm: number; // Altura bruta do espaço
+    let rawHeightCm: number;
 
-    if (currentIndex === 0) {
+    if (index === 0) {
         topPositionCm = 0;
-        rawHeightCm = Math.max(0, currentShelf.shelf_position);
+        rawHeightCm = Math.max(0, shelf.shelf_position);
     } else {
-        const previousShelf = sortedShelves[currentIndex - 1];
+        const previousShelf = sortedShelves[index - 1];
         topPositionCm = Math.max(0, previousShelf.shelf_position);
-        rawHeightCm = Math.max(0, currentShelf.shelf_position - previousShelf.shelf_position);
+        rawHeightCm = Math.max(0, shelf.shelf_position - previousShelf.shelf_position);
     }
 
-    // Garante que não ultrapasse a altura da seção
-    if (topPositionCm + rawHeightCm > sectionHeight) {
-        rawHeightCm = Math.max(0, sectionHeight - topPositionCm);
+    // Ensure it doesn't exceed section height
+    if (topPositionCm + rawHeightCm > section.height) {
+        rawHeightCm = Math.max(0, section.height - topPositionCm);
     }
 
-    // --- Converter para Pixels ---
-    let topPx = topPositionCm * scaleFactor + props.shelf.shelf_height * scaleFactor;
-    let heightPx = rawHeightCm * scaleFactor - props.shelf.shelf_height * scaleFactor;
+    // Convert to pixels
+    let topPx = topPositionCm * scaleFactor + shelf.shelf_height * scaleFactor;
+    let heightPx = rawHeightCm * scaleFactor - shelf.shelf_height * scaleFactor;
 
-    // --- Aplicar Ajustes de Padding e Altura Mínima ---
-    let otherStyles = {}
-    // 1. Altura mínima para a primeira prateleira
-    if (currentIndex === 0) {
+    // Apply padding and minimum height adjustments
+    let otherStyles = {};
+
+    if (index === 0) {
         heightPx = Math.max(minTopHeightPx, heightPx);
-        // Para a primeira, o padding inferior é aplicado, mas o topo começa em 0
-        heightPx = Math.max(props.shelf.shelf_position, heightPx - bottomPaddingPx);
+        heightPx = Math.max(shelf.shelf_position, heightPx - bottomPaddingPx);
         otherStyles = {
             transform: `translateY(-${heightPx}px)`
-        }
-        topPx = props.shelf.shelf_position * scaleFactor;
+        };
+        topPx = shelf.shelf_position * scaleFactor;
     } else {
-        // Para as demais, aplica padding no topo e embaixo
-        topPx += topPaddingPx; // Desce o topo um pouco
-        heightPx = Math.max(0, heightPx - topPaddingPx - bottomPaddingPx); // Reduz altura pelos dois paddings
+        topPx += topPaddingPx;
+        heightPx = Math.max(0, heightPx - topPaddingPx - bottomPaddingPx);
     }
 
-
-    // // Debug logs
-    // console.log(`Shelf ${currentIndex} (Pos ${currentShelf.shelf_position.toFixed(1)}): TopPx=${topPx.toFixed(1)}, HeightPx=${heightPx.toFixed(1)}`);
-
-    // Garantir altura mínima quando segment está sendo arrastado
+    // Ensure minimum height when segment is being dragged
     const finalHeightPx = props.segmentDragging ? Math.max(heightPx, 50) : heightPx;
 
     return {
@@ -121,155 +103,134 @@ const shelfContentStyle = computed((): CSSProperties => {
         top: `${topPx}px`,
         left: '0',
         position: 'absolute',
-        zIndex: dragShelfActive.value ? 9999 : 0, // Z-index alto durante drag
+        zIndex: dragShelfActive.value ? 9999 : 0,
         ...otherStyles,
-        // Adicione outros estilos se necessário (background, borda para debug, etc.)
-        // backgroundColor: 'rgba(255, 0, 0, 0.3)',
     };
 });
 
-// --- Lógica de Drag and Drop ---
+// Watchers
+watch(dragShelfActive, (newValue) => {
+    if (newValue) {
+        const action = isCtrlPressed.value ? 'Copiar para' : 'Mover para';
+        shelfText.value = `${action} (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`;
+    } else {
+        shelfText.value = baseShelfText.value;
+    }
+}); 
 
-// Renomeada: Verifica apenas se o TIPO de dado arrastado é aceitável
+// Drag and Drop utility functions
+const ACCEPTED_TYPES = {
+    PRODUCT: 'text/product',
+    PRODUCTS_MULTIPLE: 'text/products-multiple',
+    SEGMENT: 'text/segment',
+    SEGMENT_COPY: 'text/segment/copy'
+} as const;
+
 const isAcceptedDataType = (dataTransfer: DataTransfer | null): boolean => {
     if (!dataTransfer) return false;
     const types = dataTransfer.types;
-    // console.log('isAcceptedDataType: Detected types:', types);
-    return types.includes('text/product') || 
-           types.includes('text/products-multiple') || 
-           types.includes('text/segment') || 
-           types.includes('text/segment/copy');
+    return Object.values(ACCEPTED_TYPES).some(type => types.includes(type));
 };
 
-// Verifica especificamente se é um segment sendo arrastado
 const isSegmentBeingDragged = (dataTransfer: DataTransfer | null): boolean => {
     if (!dataTransfer) return false;
     const types = dataTransfer.types;
-    return types.includes('text/segment') || types.includes('text/segment/copy');
+    return types.includes(ACCEPTED_TYPES.SEGMENT) || types.includes(ACCEPTED_TYPES.SEGMENT_COPY);
 };
 
-const handleDragEnter = (event: DragEvent) => {
-    // console.log('--- handleDragEnter called ---');
-    // Verifica apenas o TIPO
-    if (!isAcceptedDataType(event.dataTransfer)) {
-        return;
+const updateCtrlState = (event: DragEvent): void => {
+    isCtrlPressed.value = event.ctrlKey || event.metaKey;
+};
+
+const resetVisualState = (): void => {
+    dragEnterCount.value = 0;
+    segmentDragOverCount.value = 0;
+
+    if (dragShelfActive.value) {
+        dragShelfActive.value = false;
     }
 
-    event.preventDefault();
-    dragEnterCount.value++;
-    // console.log(`handleDragEnter: Incremented count to ${dragEnterCount.value}`);
+    if (segmentDragOverActive.value) {
+        segmentDragOverActive.value = false;
+    }
 
-    // Verifica se é um segment sendo arrastado
+    isCtrlPressed.value = false;
+};
+
+// Drag event handlers
+const handleDragEnter = (event: DragEvent): void => {
+    if (!isAcceptedDataType(event.dataTransfer)) return;
+
+    event.preventDefault();
+    updateCtrlState(event);
+    dragEnterCount.value++;
+
     if (isSegmentBeingDragged(event.dataTransfer)) {
         segmentDragOverCount.value++;
         if (!segmentDragOverActive.value) {
-            console.log('ShelfContent: Segment sendo arrastado sobre a prateleira', props.shelf.id);
             segmentDragOverActive.value = true;
         }
     }
 
-    // Ativa o visual se puder (baseado no tipo) e ainda não estiver ativo
     if (!dragShelfActive.value) {
-        // console.log('handleDragEnter: Activating visual state...');
         dragShelfActive.value = true;
-        shelftext.value = `Soltar aqui (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`;
-        if (event.currentTarget) {
-            (event.currentTarget as HTMLElement).classList.add('drag-over');
-        }
+        const action = isCtrlPressed.value ? 'Copiar para' : 'Mover para';
+        shelfText.value = `${action} (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`;
     }
 };
 
-const handleDragOver = (event: DragEvent) => {
-    // Verifica apenas o TIPO
+const handleDragOver = (event: DragEvent): void => {
     if (!isAcceptedDataType(event.dataTransfer)) {
         if (event.dataTransfer) event.dataTransfer.dropEffect = 'none';
-        // Desativa visual se estava ativo por engano
         if (dragShelfActive.value) {
-            // console.log('handleDragOver: Type not accepted, but was active. Deactivating visual state.');
-            dragShelfActive.value = false;
-            dragEnterCount.value = 0;
-            if (event.currentTarget) {
-                (event.currentTarget as HTMLElement).classList.remove('drag-over');
-            }
+            resetVisualState();
         }
         return;
     }
 
-    // Se pode aceitar (baseado no tipo)
     event.preventDefault();
+    updateCtrlState(event);
 
-    // Garante visual ativo
     if (!dragShelfActive.value) {
-        // console.log('handleDragOver: Activating visual state (was inactive)...');
         dragShelfActive.value = true;
-        shelftext.value = `Soltar aqui (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`;
-        if (event.currentTarget) {
-            (event.currentTarget as HTMLElement).classList.add('drag-over');
-        }
+        const action = isCtrlPressed.value ? 'Copiar para' : 'Mover para';
+        shelfText.value = `${action} (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`;
     }
 
-    // Define dropEffect
+    // Update drop effect based on Ctrl key and data type
     if (event.dataTransfer) {
+        const types = event.dataTransfer.types;
         let effect: DataTransfer["dropEffect"] = 'move';
-        if (event.dataTransfer.types.includes('text/segment/copy') || 
-            event.dataTransfer.types.includes('text/product') ||
-            event.dataTransfer.types.includes('text/products-multiple')) {
+
+        if (isCtrlPressed.value ||
+            types.includes(ACCEPTED_TYPES.SEGMENT_COPY) ||
+            types.includes(ACCEPTED_TYPES.PRODUCT) ||
+            types.includes(ACCEPTED_TYPES.PRODUCTS_MULTIPLE)) {
             effect = 'copy';
         }
+
         event.dataTransfer.dropEffect = effect;
+    }
+
+    // Update text if Ctrl state changed
+    const action = isCtrlPressed.value ? 'Copiar para' : 'Mover para';
+    shelfText.value = `${action} (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`;
+};
+
+const handleDragLeave = (event: DragEvent): void => {
+    if (dragEnterCount.value > 0) {
+        dragEnterCount.value--;
+
+        if (dragEnterCount.value === 0) {
+            resetVisualState();
+        }
     }
 };
 
-const handleDragLeave = (event: DragEvent) => {
-    // console.log('--- handleDragLeave called ---');
-    if (dragEnterCount.value > 0) {
-        dragEnterCount.value--;
-        // console.log(`handleDragLeave: Decremented count to ${dragEnterCount.value}`);
-        if (dragEnterCount.value === 0) {
-            // console.log('handleDragLeave: Count is 0, DEACTIVATING visual state...');
-            if (dragShelfActive.value) {
-                dragShelfActive.value = false;
-                if (event.currentTarget) {
-                    // console.log('handleDragLeave: Removing drag-over class');
-                    (event.currentTarget as HTMLElement).classList.remove('drag-over');
-                }
-            }
-            
-            // Resetar estado do segment drag
-            if (segmentDragOverActive.value) {
-                segmentDragOverCount.value = 0;
-                segmentDragOverActive.value = false;
-                console.log('ShelfContent: Segment drag resetado na prateleira', props.shelf.id);
-            }
-        }
-    } /* else {
-        // console.log('handleDragLeave: Called but count is already 0.');
-    } */
-};
-
-const handleDrop = (event: DragEvent) => {
+const handleDrop = (event: DragEvent): void => {
     event.preventDefault();
-    const currentTargetElement = event.currentTarget as HTMLElement | null;
+    updateCtrlState(event);
 
-    // Função de reset movida para o início para melhor clareza
-    const resetVisualState = () => {
-        dragEnterCount.value = 0;
-        if (dragShelfActive.value) {
-            dragShelfActive.value = false;
-        }
-        if (currentTargetElement) {
-            currentTargetElement.classList.remove('drag-over');
-        }
-        
-        // Resetar estado do segment drag
-        segmentDragOverCount.value = 0;
-        if (segmentDragOverActive.value) {
-            segmentDragOverActive.value = false;
-            console.log('ShelfContent: Segment drag resetado no drop na prateleira', props.shelf.id);
-        }
-    };
-
-    // Verifica tipo inicial, mas a lógica principal está no try
     if (!isAcceptedDataType(event.dataTransfer) || !event.dataTransfer) {
         resetVisualState();
         return;
@@ -279,75 +240,68 @@ const handleDrop = (event: DragEvent) => {
         const types = event.dataTransfer.types;
         const position = { x: event.offsetX, y: event.offsetY };
 
-        if (types.includes('text/products-multiple')) {
-            // Processar múltiplos produtos
-            const productsData = event.dataTransfer.getData('text/products-multiple');
-            if (!productsData) { console.error('handleDrop: productsData is empty!'); return; }
-            const products = JSON.parse(productsData) as Product[];
-
-            emit('drop-products-multiple', products, props.shelf, position);
-
-        } else if (types.includes('text/product')) {
-            // Processar produto único (comportamento original)
-            const productData = event.dataTransfer.getData('text/product');
-            if (!productData) { console.error('handleDrop: productData is empty!'); return; }
-            const product = JSON.parse(productData) as Product;
-            emit('drop-product', product, props.shelf, position);
-
-        } else if (types.includes('text/segment')) {
-            const segmentDataString = event.dataTransfer.getData('text/segment');
-            if (!segmentDataString) { console.error('handleDrop: segmentData is empty!'); return; }
-            const segmentData = JSON.parse(segmentDataString) as Layer & { segment?: { shelf_id?: string } }; // Tipagem para segment.shelf_id
-            const originShelfId = segmentData?.segment?.shelf_id;
-
-            // *** VERIFICAÇÃO DE ORIGEM MOVIDA PARA CÁ ***
-            if (originShelfId && originShelfId !== props.shelf.id) {
-                emit('drop-segment', segmentData, props.shelf, position);
-            } else if (!originShelfId) {
-                console.warn('handleDrop (segment): Origin Shelf ID not found in data. Allowing drop.');
-                emit('drop-segment', segmentData, props.shelf, position); // Comportamento leniente: permite se não achar origem
-            } else {
-                // Não faz nada se a origem for a mesma
-            }
-
-        } else if (types.includes('text/segment/copy')) {
-            const segmentDataCopy = event.dataTransfer.getData('text/segment/copy');
-            if (!segmentDataCopy) { console.error('handleDrop: segmentDataCopy is empty!'); return; }
-            const segment = JSON.parse(segmentDataCopy) as Layer;
-            emit('drop-segment-copy', segment, props.shelf, position);
-
-        } else {
-            // console.log('handleDrop: No relevant data type found on drop.');
+        if (types.includes(ACCEPTED_TYPES.PRODUCTS_MULTIPLE)) {
+            handleProductsMultipleDrop(event.dataTransfer, position);
+        } else if (types.includes(ACCEPTED_TYPES.PRODUCT)) {
+            handleProductDrop(event.dataTransfer, position);
+        } else if (types.includes(ACCEPTED_TYPES.SEGMENT)) {
+            handleSegmentDrop(event.dataTransfer, position);
+        } else if (types.includes(ACCEPTED_TYPES.SEGMENT_COPY)) {
+            handleSegmentCopyDrop(event.dataTransfer, position);
         }
-
-    } catch (e) {
-        console.error("handleDrop: Error processing dropped data:", e);
+    } catch (error) {
+        console.error("handleDrop: Error processing dropped data:", error);
     } finally {
-        resetVisualState(); // Garante reset no final
+        resetVisualState();
     }
 };
 
-// const handleDoubleClick = (event: MouseEvent) => {
-//     event.stopPropagation();
-//     const section = props.section;
-//     console.log('handleDoubleClick: ', event.clientX, event.clientY);
-//     editorStore.addShelfToSection(section.gondola_id, section.id, {
-//         id: `temp-shelf-${Date.now()}`,
-//         shelf_height: 4,
-//         shelf_position: props.shelf.shelf_position - 10,
-//         section_id: section.id,
-//         product_type: 'normal',
-//     } as ShelfType);
-// }
+// Drop handlers for different data types
+const handleProductsMultipleDrop = (dataTransfer: DataTransfer, position: { x: number; y: number }): void => {
+    const productsData = dataTransfer.getData(ACCEPTED_TYPES.PRODUCTS_MULTIPLE);
+    if (!productsData) return;
 
-// onMounted(() => {
-//     if (shelfContentRef.value) {
-//         shelfContentRef.value.addEventListener('dblclick', handleDoubleClick);
-//     }
-// });
+    const products = JSON.parse(productsData) as Product[];
+    emit('drop-products-multiple', products, props.shelf, position);
+};
 
+const handleProductDrop = (dataTransfer: DataTransfer, position: { x: number; y: number }): void => {
+    const productData = dataTransfer.getData(ACCEPTED_TYPES.PRODUCT);
+    if (!productData) return;
 
+    const product = JSON.parse(productData) as Product;
+    emit('drop-product', product, props.shelf, position);
+};
 
+const handleSegmentDrop = (dataTransfer: DataTransfer, position: { x: number; y: number }): void => {
+    const segmentDataString = dataTransfer.getData(ACCEPTED_TYPES.SEGMENT);
+    if (!segmentDataString) return;
+
+    const segmentData = JSON.parse(segmentDataString) as Layer & { segment?: { shelf_id?: string } };
+    const originShelfId = segmentData?.segment?.shelf_id;
+
+    // If Ctrl is pressed, force copy behavior instead of move
+    if (isCtrlPressed.value) {
+        emit('drop-segment-copy', segmentData, props.shelf, position);
+        return;
+    }
+
+    // Original move logic - only if not same shelf
+    if (originShelfId && originShelfId !== props.shelf.id) {
+        emit('drop-segment', segmentData, props.shelf, position);
+    } else if (!originShelfId) {
+        emit('drop-segment', segmentData, props.shelf, position);
+    }
+    // If same shelf and no Ctrl, do nothing (prevent unwanted moves)
+};
+
+const handleSegmentCopyDrop = (dataTransfer: DataTransfer, position: { x: number; y: number }): void => {
+    const segmentDataCopy = dataTransfer.getData(ACCEPTED_TYPES.SEGMENT_COPY);
+    if (!segmentDataCopy) return;
+
+    const segment = JSON.parse(segmentDataCopy) as Layer;
+    emit('drop-segment-copy', segment, props.shelf, position);
+};
 </script>
 
 <style scoped>
@@ -357,25 +311,14 @@ const handleDrop = (event: DragEvent) => {
     border-width: 2px;
     border-style: dashed;
     border-radius: 4px;
-    /* Adicionar sombra se necessário */
     box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
-    /* Adicionar transição suave */
-    transition:
-        border-color 0.2s ease-in-out,
-        background-color 0.2s ease-in-out;
-    /* Aumentar a area de drop */
-    /* Adicionar um efeito de escala */
+    transition: border-color 0.2s ease-in-out, background-color 0.2s ease-in-out;
     cursor: grab;
-    z-index: 9999 !important; /* Sempre por cima durante drag */
+    z-index: 9999 !important;
 }
 
-/* Estilos do overlay do segment removidos - agora estão no Shelf.vue */
-
-/* Debug para o ShelfContent */
 .debug-shelf-content {
     background-color: rgba(0, 255, 0, 0.3) !important;
     border: 2px solid green !important;
 }
-
-/* Estilos do overlay do segment removidos - agora estão no Shelf.vue */
 </style>

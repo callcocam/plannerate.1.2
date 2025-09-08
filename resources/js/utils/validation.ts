@@ -1,5 +1,5 @@
 import type { Shelf } from '@plannerate/types/shelves';
-import type { Layer, Segment } from '@plannerate/types/segment'; // Importar Segment novamente
+import type { Layer } from '@plannerate/types/segment'; // Importar Segment novamente
 
 /**
  * Valida se a largura total dos segmentos em uma prateleira, considerando uma mudança proposta
