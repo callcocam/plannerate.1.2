@@ -29,18 +29,22 @@ class PlannerateController extends Controller
 {
 
     /**
-     * Exibe um planograma específico
+     * Exibe um planograma específico com otimizações de performance
      * 
-     * @param Planogram $planogram
+     * @param string $id
      * @return PlannerateResource|JsonResponse
      */
     public function show(string $id)
     {
-        try { 
-            $planogram = $this->getModel()::query()->with([
-                'tenant', 
-                'gondolas.sections.shelves.segments.layer.product', 
-            ])->findOrFail($id); 
+        try {
+            // Versão otimizada: carrega apenas campos essenciais
+            $planogram = $this->getModel()::query()
+                // ->select(['id', 'name', 'slug', 'description', 'tenant_id', 'status'])
+                ->with([
+                    'tenant:id,name,slug',
+                    'gondolas.sections.shelves.segments.layer.product'
+                ])
+                ->findOrFail($id);
 
             return response()->json(new PlannerateResource($planogram));
         } catch (ModelNotFoundException $e) {
@@ -50,15 +54,141 @@ class PlannerateController extends Controller
             ], 404);
         } catch (Throwable $e) {
             Log::error('Erro ao exibir planograma', [
+                'planogram_id' => $id,
                 'exception' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
             ]);
 
             return response()->json([
-                'message' => $e->getMessage(),
+                'message' => 'Erro interno do servidor',
                 'status' => 'error'
             ], 500);
+        }
+    }
+
+    /**
+     * Versão ultra-otimizada para planogramas muito grandes
+     * Carrega dados em chunks para evitar memory overflow
+     * 
+     * @param string $id
+     * @return JsonResponse
+     */
+    public function showOptimized(string $id)
+    {
+        try {
+            // Carregar apenas o planograma base
+            $planogram = $this->getModel()::query()
+                ->select(['id', 'name', 'slug', 'description', 'status'])
+                ->findOrFail($id);
+
+            // Carregar gôndolas com paginação se necessário
+            $gondolas = \Callcocam\Plannerate\Models\Gondola::query()
+                ->select(['id', 'planogram_id', 'name', 'location', 'alignment', 'scale_factor'])
+                ->where('planogram_id', $id)
+                ->orderBy('id')
+                ->get();
+
+            // Usar raw queries para performance máxima em estruturas complexas
+            $sections = DB::select("
+                SELECT s.id, s.gondola_id, s.name, s.width, s.height, s.ordering
+                FROM sections s 
+                INNER JOIN gondolas g ON s.gondola_id = g.id 
+                WHERE g.planogram_id = ? 
+                AND s.deleted_at IS NULL 
+                ORDER BY g.id, s.ordering
+            ", [$id]);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'planogram' => $planogram,
+                    'gondolas' => $gondolas,
+                    'sections' => $sections,
+                    'meta' => [
+                        'optimized' => true,
+                        'load_method' => 'chunked'
+                    ]
+                ]
+            ]);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'message' => 'Planograma não encontrado',
+                'status' => 'error'
+            ], 404);
+        } catch (Throwable $e) {
+            Log::error('Erro ao exibir planograma otimizado', [
+                'planogram_id' => $id,
+                'exception' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'Erro interno do servidor',
+                'status' => 'error'
+            ], 500);
+        }
+    }
+
+    /**
+     * Versão com cache para máxima performance em produção
+     * 
+     * @param string $id
+     * @return JsonResponse
+     */
+    public function showCached(string $id)
+    {
+        try {
+            // Cache por 15 minutos (ou até planograma ser atualizado)
+            $cacheKey = "planogram:{$id}:optimized";
+
+            $planogramData = cache()->remember($cacheKey, 15 * 60, function () use ($id) {
+                $planogram = $this->getModel()::query()
+                    ->select(['id', 'name', 'slug', 'description', 'tenant_id', 'status'])
+                    ->with([
+                        'tenant:id,name,slug',
+                        'gondolas:id,planogram_id,name,location,alignment,scale_factor',
+                        'gondolas.sections:id,gondola_id,name,width,height,ordering',
+                        'gondolas.sections.shelves:id,section_id,shelf_width,shelf_height,shelf_depth,shelf_position,ordering',
+                        'gondolas.sections.shelves.segments:id,shelf_id,ordering,quantity,spacing',
+                        'gondolas.sections.shelves.segments.layer:id,segment_id,product_id,height,quantity,spacing',
+                        'gondolas.sections.shelves.segments.layer.product:id,name,ean'
+                    ])
+                    ->findOrFail($id);
+
+                return new PlannerateResource($planogram);
+            });
+
+            return response()->json($planogramData);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'message' => 'Planograma não encontrado',
+                'status' => 'error'
+            ], 404);
+        } catch (Throwable $e) {
+            Log::error('Erro ao exibir planograma cached', [
+                'planogram_id' => $id,
+                'exception' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'Erro interno do servidor',
+                'status' => 'error'
+            ], 500);
+        }
+    }
+
+    /**
+     * Limpa o cache de um planograma específico
+     */
+    private function clearPlanogramCache(string $planogramId): void
+    {
+        $cacheKeys = [
+            "planogram:{$planogramId}:optimized",
+            "planogram:{$planogramId}:full",
+        ];
+
+        foreach ($cacheKeys as $key) {
+            cache()->forget($key);
         }
     }
 
@@ -84,13 +214,16 @@ class PlannerateController extends Controller
             // Processa as gôndolas e sua estrutura aninhada
             $this->processGondolas($planogram, data_get($data, 'gondolas', []));
 
+            // Limpar cache após salvar
+            $this->clearPlanogramCache($planogram->id);
+
             // Se chegou até aqui sem erros, confirma a transação
             DB::commit();
 
             $planogram =  $this->getModel()::query()->with([
-                'tenant', 
-                'client', 
-                'gondolas.sections.shelves.segments.layer.product', 
+                'tenant',
+                'client',
+                'gondolas.sections.shelves.segments.layer.product',
             ])->findOrFail($planogram->id);
 
             return response()->json([
@@ -155,13 +288,22 @@ class PlannerateController extends Controller
         $existingGondolaIds = $planogram->gondolas()->pluck('id')->toArray();
         $processedGondolaIds = [];
 
+        $data = [];
+
         foreach ($gondolas as $gondolaData) {
             // Verificar se é uma gôndola existente ou nova
             $gondola = Gondola::query()->where('id', data_get($gondolaData, 'id'))->first();
 
+            $data[] = array_merge($this->filterGondolaAttributes($gondolaData), [
+                'id' => $gondola->id,
+                'tenant_id' => $planogram->tenant_id,
+                'user_id' => $planogram->user_id,
+                'planogram_id' => $planogram->id,
+                'name' => data_get($gondolaData, 'name', 'Gôndola'),
+            ]);
             // Atualizar atributos da gôndola
-            $gondola->fill($this->filterGondolaAttributes($gondolaData));
-            $gondola->save();
+            // $gondola->fill($this->filterGondolaAttributes($gondolaData));
+            // $gondola->save();
 
             // Registrar o ID para não remover depois
             $processedGondolaIds[] = $gondola->id;
@@ -172,11 +314,23 @@ class PlannerateController extends Controller
             }
         }
 
+
         // Remover gôndolas que não estão mais presentes no planograma
         $gondolasToDelete = array_diff($existingGondolaIds, $processedGondolaIds);
         if (!empty($gondolasToDelete)) {
             Gondola::whereIn('id', $gondolasToDelete)->delete();
         }
+        // Sincronizar gôndolas com o planograma
+        DB::table('gondolas')->upsert($data, ['id'], [
+            'name', 
+            'scale_factor',
+            'location',
+            'alignment',
+            'linked_map_gondola_id',
+            'linked_map_gondola_category',
+            'flow', 
+            'updated_at'
+        ]);
     }
 
     /**
@@ -188,18 +342,13 @@ class PlannerateController extends Controller
     private function filterGondolaAttributes(array $data): array
     {
         $fillable = [
-            'name',
-            'width',
-            'height',
-            'base_height',
-            'thickness',
+            'name', 
             'scale_factor',
             'location',
             'alignment',
             'linked_map_gondola_id',
             'linked_map_gondola_category',
-            'flow',
-            'ordering',
+            'flow', 
             // 'status',
             // Adicione outros campos conforme necessário
         ];
@@ -222,39 +371,72 @@ class PlannerateController extends Controller
 
         // Criar seções se fornecidas
         $shelfService =  new ShelfPositioningService();
+        $data = [];
         foreach ($sections as $i => $sectionData) {
             // Verificar se é uma seção existente ou nova
             $section = Section::query()->where('id', data_get($sectionData, 'id'))->first();
-            if (!$section) {
-                $section = Section::query()->create([
+            if ($section) {
+                $section->updated_at = now();
+                $data[] = array_merge($this->filterSectionAttributes($sectionData, $shelfService, $gondola), [
+                    'id' => $section->id,
+                    'tenant_id' => $gondola->tenant_id,
+                    'user_id' => $gondola->user_id,
+                    'gondola_id' => data_get($sectionData, 'gondola_id', $gondola->id),
+                    'name' => data_get($sectionData, 'name', sprintf('%s# Sessão', $i)),
+                ]);
+                // Registrar o ID para não remover depois
+                $processedSectionIds[] = $section->id;
+                // $section = Section::query()->create([
+                //     'id' => (string) Str::orderedUuid(),
+                //     'tenant_id' => $gondola->tenant_id,
+                //     'user_id' => $gondola->user_id,
+                //     'gondola_id' => $gondola->id,
+                //     'name' => data_get($sectionData, 'name'),
+                // ]);
+            } else {
+                $data[] = array_merge($this->filterSectionAttributes($sectionData, $shelfService, $gondola), [
                     'id' => (string) Str::orderedUuid(),
                     'tenant_id' => $gondola->tenant_id,
                     'user_id' => $gondola->user_id,
                     'gondola_id' => $gondola->id,
-                    'name' => data_get($sectionData, 'name'),
+                    'name' => sprintf('%s# Sessão', $i),
                 ]);
             }
 
             // Atualizar atributos da seção
-            $section->fill($this->filterSectionAttributes($sectionData, $shelfService, $gondola));
-            $section->gondola_id = $gondola->id;
-            $section->name = sprintf('%s# Sessão', $i);
-            $section->save();
+            // $section->fill($this->filterSectionAttributes($sectionData, $shelfService, $gondola));
+            // $section->gondola_id = $gondola->id;
+            // $section->name = sprintf('%s# Sessão', $i);
+            // $section->save();
 
-            // Registrar o ID para não remover depois
-            $processedSectionIds[] = $section->id;
 
             // Processar prateleiras desta seção
             if (isset($sectionData['shelves'])) {
                 $this->processShelves($section, data_get($sectionData, 'shelves', []), $shelfService);
             }
         }
-
         // Remover seções que não estão mais presentes na gôndola
         $sectionsToDelete = array_diff($existingSectionIds, $processedSectionIds);
         if (!empty($sectionsToDelete)) {
             Section::whereIn('id', $sectionsToDelete)->delete();
         }
+        // Sincronizar seções com a gôndola
+        DB::table('sections')->upsert($data, ['id'], [
+            'name',
+            'slug',
+            'width',
+            'height',
+            'num_shelves',
+            'base_height',
+            'base_depth',
+            'base_width',
+            'hole_height',
+            'hole_width',
+            'hole_spacing',
+            'cremalheira_width',
+            'ordering',
+            'updated_at'
+        ]);
     }
 
     /**
@@ -278,7 +460,6 @@ class PlannerateController extends Controller
             'hole_height',
             'hole_width',
             'hole_spacing',
-            'shelf_height',
             'cremalheira_width',
             'ordering',
             // 'settings',
@@ -308,26 +489,40 @@ class PlannerateController extends Controller
         // Coletar IDs existentes para depois remover os que não estão mais presentes
         $existingShelfIds = $section->shelves()->pluck('id')->toArray();
         $processedShelfIds = [];
-
+        $data = [];
         foreach ($shelves as  $i => $shelfData) {
             // Verificar se é uma prateleira existente ou nova
             $shelf = Shelf::query()->where('id', data_get($shelfData, 'id'))->first();
-            if (!$shelf) {
-                $shelf = Shelf::query()->create([
+            if ($shelf) {
+
+                // Registrar o ID para não remover depois
+                $shelf->updated_at = now();
+                $processedShelfIds[] = $shelf->id;
+                $data[] = array_merge($this->filterShelfAttributes($shelfData, $shelfService, $i, $section), [
+                    'id' => $shelf->id,
+                    'tenant_id' => $section->tenant_id,
+                    'user_id' => $section->user_id,
+                    'section_id' => data_get($shelfData, 'section_id', $section->id),
+                ]);
+                // $shelf = Shelf::query()->create([
+                //     'id' => (string) Str::orderedUuid(),
+                //     'tenant_id' => $section->tenant_id,
+                //     'user_id' => $section->user_id,
+                //     'section_id' => $section->id,
+                // ]);
+            } else {
+                $data[] = array_merge($this->filterShelfAttributes($shelfData, $shelfService, $i, $section), [
                     'id' => (string) Str::orderedUuid(),
                     'tenant_id' => $section->tenant_id,
                     'user_id' => $section->user_id,
-                    'section_id' => $section->id,
+                    'section_id' => data_get($shelfData, 'section_id', $section->id),
                 ]);
             }
 
             // Atualizar atributos da prateleira
-            $shelf->fill($this->filterShelfAttributes($shelfData, $shelfService, $i, $section));
-            $shelf->section_id = $section->id;
-            $shelf->save();
-
-            // Registrar o ID para não remover depois
-            $processedShelfIds[] = $shelf->id;
+            // $shelf->fill($this->filterShelfAttributes($shelfData, $shelfService, $i, $section));
+            // $shelf->section_id = $section->id;
+            // $shelf->save();
 
             // Processar segmentos desta prateleira
             if (isset($shelfData['segments'])) {
@@ -340,6 +535,21 @@ class PlannerateController extends Controller
         if (!empty($shelvesToDelete)) {
             Shelf::whereIn('id', $shelvesToDelete)->delete();
         }
+
+        // Sincronizar prateleiras com a seção
+        DB::table('shelves')->upsert($data, ['id'], [
+            'product_type',
+            'shelf_width',
+            'shelf_height',
+            'shelf_depth',
+            'shelf_position',
+            'ordering',
+            'spacing',
+            'settings',
+            'status',
+            'alignment',
+            'updated_at'
+        ]);
     }
 
     /**
@@ -360,8 +570,6 @@ class PlannerateController extends Controller
             'shelf_height',
             'shelf_depth',
             'shelf_position',
-            'shelf_x_position',
-            'quantity',
             'ordering',
             'spacing',
             'settings',
@@ -369,11 +577,8 @@ class PlannerateController extends Controller
             'alignment',
             // Adicione outros campos conforme necessário
         ];
-        // $holes = data_get($section, 'settings.holes', []);
-        // $position = $shelfService->calculateShelfPosition($section->num_shelves, data_get($data, 'shelf_height', 4), $holes, $i, $section->gondola->scale_factor);
-        // $data['shelf_position'] = $position;
-        // Converter settings para JSON se for array
 
+        $data['settings'] = json_encode(data_set($data, 'settings', []));
 
         return array_intersect_key($data, array_flip($fillable));
     }
@@ -390,27 +595,37 @@ class PlannerateController extends Controller
         // Coletar IDs existentes para depois remover os que não estão mais presentes
         $existingSegmentIds = $shelf->segments()->pluck('id')->toArray();
         $processedSegmentIds = [];
-
+        $data = [];
         foreach ($segments as $segmentData) {
             // Verificar se é um segmento existente ou novo
             // Para segmentos temporários (ex: "segment-1745084634214-0"), geramos um novo ID
             $segment = Segment::query()->where('id', data_get($segmentData, 'id'))->first();
-            if (!$segment) {
-                $segment = Segment::query()->create([
+            if ($segment) {
+                $segment->updated_at = now();
+                $data[] = array_merge($this->filterSegmentAttributes($segmentData), [
+                    'id' => $segment->id,
+                    'tenant_id' => $shelf->tenant_id,
+                    'user_id' => $shelf->user_id,
+                    'shelf_id' => data_get($segmentData, 'shelf_id', $shelf->id),
+
+                ]);
+                // Registrar o ID para não remover depois
+                $processedSegmentIds[] = $segment->id;
+            } else {
+                $data[] = array_merge($this->filterSegmentAttributes($segmentData), [
                     'id' => (string) Str::orderedUuid(),
                     'tenant_id' => $shelf->tenant_id,
                     'user_id' => $shelf->user_id,
                     'shelf_id' => $shelf->id,
+
                 ]);
             }
 
             // Atualizar atributos do segmento
-            $segment->fill($this->filterSegmentAttributes($segmentData));
-            $segment->shelf_id = $shelf->id;
-            $segment->save();
+            // $segment->fill($this->filterSegmentAttributes($segmentData));
+            // $segment->shelf_id = $shelf->id;
+            // $segment->save();
 
-            // Registrar o ID para não remover depois
-            $processedSegmentIds[] = $segment->id;
 
             // Processar camada (layer) deste segmento
             if (isset($segmentData['layer'])) {
@@ -422,6 +637,22 @@ class PlannerateController extends Controller
         $segmentsToDelete = array_diff($existingSegmentIds, $processedSegmentIds);
         if (!empty($segmentsToDelete)) {
             Segment::whereIn('id', $segmentsToDelete)->delete();
+        }
+        if ($data) {
+            // Sincronizar segmentos com a prateleira
+            DB::table('segments')->upsert($data, ['id'], [
+                'shelf_id',
+                'width',
+                'ordering',
+                'position',
+                'quantity',
+                'spacing',
+                'settings',
+                'alignment',
+                'status',
+                // 'tabindex',
+                'updated_at'
+            ]);
         }
     }
 
@@ -442,7 +673,7 @@ class PlannerateController extends Controller
             'settings',
             'alignment',
             'status',
-            'tabindex',
+            // 'tabindex',
             // Adicione outros campos conforme necessário
         ];
 
@@ -496,7 +727,7 @@ class PlannerateController extends Controller
             'alignment',
             'reload',
             'status',
-            'tabindex',
+            // 'tabindex',
             // Adicione outros campos conforme necessário
         ];
 

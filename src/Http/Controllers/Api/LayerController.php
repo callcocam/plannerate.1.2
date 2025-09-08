@@ -9,7 +9,7 @@
 namespace Callcocam\Plannerate\Http\Controllers\Api; 
 
 use Callcocam\Plannerate\Http\Requests\Layer\Api\UpdateLayerRequest;
-use Callcocam\Plannerate\Http\Resources\LayerResource;
+use Callcocam\Plannerate\Http\Resources\LayerSingleResource;
 use Callcocam\Plannerate\Models\Layer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -31,7 +31,7 @@ class LayerController extends Controller
             ]);
             DB::commit();
             return $this->handleSuccess('Camadas carregadas com sucesso', [
-                'data' => LayerResource::collection($layer->all()),
+                'data' => LayerSingleResource::collection($layer->all()),
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -52,7 +52,7 @@ class LayerController extends Controller
                 'product.sales',
                 'product.purchases',
             ]); 
-            return response()->json(new LayerResource($layer), 200);
+            return response()->json(new LayerSingleResource($layer), 200);
         } catch (\Exception $e) { 
             return $this->handleInternalServerError('Erro ao carregar a camada');
         }
@@ -71,7 +71,7 @@ class LayerController extends Controller
             $layer = $layer->create($validated);
             DB::commit();
             return $this->handleSuccess('Camada criada com sucesso', [
-                'data' => new LayerResource($layer),
+                'data' => new LayerSingleResource($layer),
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -93,7 +93,7 @@ class LayerController extends Controller
             $layer->update($validated);
             DB::commit();
             return $this->handleSuccess('Camada atualizada com sucesso', [
-                'data' => new LayerResource($layer),
+                'data' => new LayerSingleResource($layer),
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
