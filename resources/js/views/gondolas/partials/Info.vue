@@ -13,6 +13,7 @@ import {
     SaveIcon,
     Undo2Icon,
     Redo2Icon,
+    Zap,
 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
@@ -21,8 +22,8 @@ import { useRouter } from 'vue-router';
 import { useEditorStore } from '@plannerate/store/editor';
 import Category from './Category.vue';
 import type { Gondola } from '@plannerate/types/gondola';
-import { useAnalysisResultStore } from '@plannerate/store/editor/analysisResult';
 import AnalysisPopover from './AnalysisPopover.vue';
+import AutoGenerateModal, { type AutoGenerateFilters } from './AutoGenerateModal.vue';
 // Definição das Props usando sintaxe padrão
 const props = defineProps({
     gondola: {
@@ -220,6 +221,100 @@ const undo = () => editorStore.undo();
 const redo = () => editorStore.redo();
 const saveChanges = () => editorStore.saveChanges();
 
+/**
+ * Inicia o processo de geração automática do planograma.
+ * Conectado ao Motor de Planograma Automático via API.
+ */
+const isGeneratingScores = ref(false);
+
+// Estado do modal de geração automática
+const showAutoGenerateModal = ref(false);
+
+// Abre o modal de configuração da geração automática
+const openAutoGenerateModal = () => {
+    const currentGondola = props.gondola as Gondola | undefined;
+    if (!currentGondola?.id) {
+        console.warn('Não é possível gerar automaticamente: Gôndola atual não definida.');
+        alert('⚠️ Gôndola não definida. Não é possível gerar planograma automaticamente.');
+        return;
+    }
+    
+    showAutoGenerateModal.value = true;
+};
+
+// Executa a geração automática com os filtros selecionados
+const executeAutomaticGeneration = async (filters: AutoGenerateFilters) => {
+    const currentGondola = props.gondola as Gondola | undefined;
+    if (!currentGondola?.id) {
+        console.warn('Não é possível gerar automaticamente: Gôndola atual não definida.');
+        return;
+    }
+
+    // Fechar o modal
+    showAutoGenerateModal.value = false;
+    isGeneratingScores.value = true;
+
+    try {
+        console.log('Iniciando geração automática para a gôndola:', currentGondola.id);
+        console.log('Filtros aplicados:', filters);
+        
+        // Importar dinamicamente o engineService
+        const { engineService } = await import('@plannerate/services/engineService');
+        
+        // Calcular scores e distribuir produtos automaticamente
+        const response = await engineService.calculateScores({
+            gondola_id: currentGondola.id,
+            auto_distribute: true
+            // TODO: Implementar filtros no backend
+            // filters: filters
+        });
+
+        // Verificar se há produtos para análise
+        if (response.data.calculation_info.products_analyzed === 0) {
+            alert(`⚠️ ${response.message}`);
+            return;
+        }
+
+        console.log('Scores calculados:', response.data.summary);
+        console.log('Distribuição automática:', response.data.distribution);
+        
+        // Verificar se a distribuição foi realizada
+        const distribution = response.data.distribution;
+        let message = `✅ Planograma gerado automaticamente!\n\n`;
+        message += `Produtos analisados: ${response.data.calculation_info.products_analyzed}\n`;
+        message += `Score médio: ${(response.data.summary.average_score * 100).toFixed(1)}%\n\n`;
+        
+        if (distribution) {
+            message += `📦 Distribuição:\n`;
+            message += `• Produtos colocados: ${distribution.products_placed}\n`;
+            message += `• Segmentos utilizados: ${distribution.segments_used}\n`;
+            message += `• Classe A: ${distribution.placement_by_class?.A?.total_products || 0} produtos\n`;
+            message += `• Classe B: ${distribution.placement_by_class?.B?.total_products || 0} produtos\n`;
+            message += `• Classe C: ${distribution.placement_by_class?.C?.total_products || 0} produtos`;
+        } else {
+            message += `Classe A: ${response.data.summary.abc_distribution.A || 0} produtos\n`;
+            message += `Classe B: ${response.data.summary.abc_distribution.B || 0} produtos\n`;
+            message += `Classe C: ${response.data.summary.abc_distribution.C || 0} produtos`;
+        }
+        
+        alert(message);
+        
+        // Loggar detalhes para debug
+        console.table(response.data.scores.slice(0, 10)); // Mostrar top 10 produtos
+        
+        // Recarregar a gôndola para mostrar os produtos distribuídos
+        if (distribution && distribution.products_placed > 0) {
+            window.location.reload();
+        }
+        
+    } catch (error: any) {
+        console.error('Erro na geração automática:', error);
+        alert(`❌ Erro na geração automática:\n\n${error.message}`);
+    } finally {
+        isGeneratingScores.value = false;
+    }
+};
+
 </script>
 
 <template>
@@ -294,6 +389,20 @@ const saveChanges = () => editorStore.saveChanges();
                             @click="invertSectionOrder" title="Inverter Ordem Seções">
                             <ArrowLeftRight class="mr-1 h-4 w-4" /> <span class="hidden xl:inline">Inverter</span>
                         </Button>
+                <Button type="button" variant="default" size="sm"
+                    @click="openAutoGenerateModal" :disabled="isGeneratingScores" 
+                    title="Gerar Planograma Automático">
+                    <template v-if="isGeneratingScores">
+                        <svg class="animate-spin mr-1 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span class="hidden xl:inline">Calculando...</span>
+                    </template>
+                    <template v-else>
+                        <Zap class="mr-1 h-4 w-4" /> <span class="hidden xl:inline">Gerar Automático</span>
+                    </template>
+                </Button>
                         <Button type="button" variant="secondary" size="sm" @click="navigateToAddSection"
                             title="Adicionar Seção">
                             <Plus class="mr-1 h-4 w-4" /> <span class="hidden xl:inline">Adicionar novo Modulo</span>
@@ -346,5 +455,13 @@ const saveChanges = () => editorStore.saveChanges();
             message="Tem certeza que deseja excluir este produto? Esta ação não pode ser desfeita."
             confirmButtonText="Excluir" cancelButtonText="Cancelar" :isDangerous="true" @confirm="confirmDeleteShelf"
             @cancel="cancelDelete" />
+
+        <!-- Modal de Geração Automática -->
+        <AutoGenerateModal 
+            v-model:open="showAutoGenerateModal" 
+            :is-loading="isGeneratingScores"
+            :planogram-category="'Categoria do planograma'"
+            @confirm="executeAutomaticGeneration" 
+        />
     </div>
 </template>

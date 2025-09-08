@@ -105,8 +105,13 @@ class GondolaController extends Controller
      */
     public function show(string $id)
     {
+        \Log::info("🔥 PACKAGE GondolaController::show CHAMADO", ['id' => $id]);
+        
         try {
-            // Verificar se o planograma existe 
+            Log::info("PACKAGE GondolaController::show - Carregando gôndola", [
+                'gondola_id' => $id,
+                'package_controller' => true
+            ]);
 
             $gondola = Gondola::with([
                 'sections',
@@ -120,6 +125,28 @@ class GondolaController extends Controller
                 'sections.shelves.section.gondola',
             ])
                 ->findOrFail($id);
+
+            Log::info("PACKAGE GondolaController::show - Gôndola carregada", [
+                'gondola_id' => $gondola->id,
+                'gondola_class' => get_class($gondola),
+                'sections_count' => $gondola->sections->count(),
+                'total_shelves' => $gondola->sections->sum(fn($section) => $section->shelves->count()),
+                'total_segments' => $gondola->sections->sum(fn($section) => 
+                    $section->shelves->sum(fn($shelf) => $shelf->segments->count())
+                ),
+                'segments_with_layers' => $gondola->sections->sum(fn($section) => 
+                    $section->shelves->sum(fn($shelf) => 
+                        $shelf->segments->sum(fn($segment) => $segment->layer ? 1 : 0)
+                    )
+                ),
+                'segments_with_products' => $gondola->sections->sum(fn($section) => 
+                    $section->shelves->sum(fn($shelf) => 
+                        $shelf->segments->sum(fn($segment) => 
+                            ($segment->layer && $segment->layer->product_id) ? 1 : 0
+                        )
+                    )
+                )
+            ]);
 
             return (new GondolaResource($gondola))
                 ->additional([

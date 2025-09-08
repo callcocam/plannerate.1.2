@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model; 
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Tall\Sluggable\HasSlug;
 use Tall\Sluggable\SlugOptions;
@@ -48,6 +49,11 @@ class Gondola extends Model
     public function sections(): HasMany
     {
         return $this->hasMany(Section::class)->orderBy('ordering');
+    }
+
+    public function planogram(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Plannerate\Planogram::class, 'planogram_id');
     }
 
     public function scopePublished($query)

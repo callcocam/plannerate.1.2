@@ -2,6 +2,7 @@
 
 use Callcocam\Plannerate\Http\Controllers\Api\AnalysisController;
 use Callcocam\Plannerate\Http\Controllers\Api\AnalysisControllerUpdated;
+use Callcocam\Plannerate\Http\Controllers\Api\AutoPlanogramController;
 use Callcocam\Plannerate\Http\Controllers\Api\GondolaController;
 use Callcocam\Plannerate\Http\Controllers\Api\LayerController;
 use Callcocam\Plannerate\Http\Controllers\Api\PlannerateController;
@@ -53,6 +54,21 @@ Route::middleware(['api'])
 
             Route::post('/target-stock', [AnalysisControllerUpdated::class, 'targetStockAnalysis'])
                 ->name('analysis.target-stock');
+        });
+
+        // Rotas do Motor de Planograma Automático
+        Route::prefix('auto-planogram')->name('auto-planogram.')->group(function () {
+            // Calcular scores automáticos para uma gôndola
+            Route::post('/calculate-scores', [AutoPlanogramController::class, 'calculateScores'])
+                ->name('calculate-scores');
+            
+            // Aplicar scores calculados aos segmentos
+            Route::post('/apply-scores', [AutoPlanogramController::class, 'applyScores'])
+                ->name('apply-scores');
+            
+            // Obter configurações do motor automático
+            Route::get('/config', [AutoPlanogramController::class, 'getConfig'])
+                ->name('config');
         });
     });
 //Plannerate
