@@ -5,6 +5,7 @@ import { findGondola, findPath, findSection } from '../utils';
 import { recordChange } from '../history';
 import { isEqual } from 'lodash-es';
 import { selectedShelf, isShelfEditing } from '../state';
+import { useShelfService } from '@plannerate/services/shelfService';
 /**
  * Inverte a ordem das prateleiras de uma seção específica
  * @param gondolaId ID da gôndola
@@ -125,22 +126,21 @@ export function duplicateShelfInSection(gondolaId: string, sectionId: string, sh
         return;
     }
 
-    // Criar uma cópia profunda da prateleira para duplicar
-    const newShelf: Shelf = JSON.parse(JSON.stringify(shelf));
-    newShelf.id = `shelf-${Date.now()}`; // Novo ID único
-    newShelf.shelf_position += 1; // Coloca a nova prateleira logo acima da original
-    newShelf.alignment = shelf.alignment === null ? undefined : shelf.alignment;
-
-    // Incrementar a posição das prateleiras acima da nova para evitar sobreposição
-    section.shelves.forEach(sh => {
-        if (sh.shelf_position >= newShelf.shelf_position) {
-            sh.shelf_position += 1;
+    useShelfService().copyShelf(shelf.id).then(response => {
+        console.log('Resposta da API ao duplicar prateleira:', response);
+        if (response && response.data) {
+            const newShelfFromApi: Shelf = response.data;
+            // Ajustar alignment se for null 
+            section.shelves.push(newShelfFromApi);
+            console.log(`Prateleira ${shelfId} duplicada como ${newShelfFromApi.id} na seção ${sectionId} via API`);
+        } else {
+            console.error(`Resposta inválida ao duplicar prateleira ${shelfId}:`, response);
         }
+        recordChange();
+    }).catch(error => {
+        console.error(`Erro ao duplicar prateleira ${shelfId} via API:`, error);
+        recordChange();
     });
-
-    section.shelves.push(newShelf);
-    console.log(`Prateleira ${shelfId} duplicada como ${newShelf.id} na seção ${sectionId}`);
-    recordChange();
 }
 /**
  * Remove uma prateleira específica de uma seção

@@ -21,10 +21,11 @@ Route::middleware(['api'])
 
         Route::resource('gondolas', GondolaController::class);
 
-       
+
 
         Route::resource('sections', SectionController::class);
         Route::resource('shelves', ShelfController::class);
+        Route::post('shelves/{shelf}/copy', [ShelfController::class, 'shelfCopy'])->name('shelves.copy');
         Route::post('shelves/{shelf}/segment', [ShelfController::class, 'segment'])->name('shelves.segment');
         Route::resource('segments', SegmentController::class);
         Route::resource('layers', LayerController::class);
