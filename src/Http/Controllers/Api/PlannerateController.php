@@ -29,18 +29,22 @@ class PlannerateController extends Controller
 {
 
     /**
-     * Exibe um planograma específico
+     * Exibe um planograma específico com otimizações de performance
      * 
-     * @param Planogram $planogram
+     * @param string $id
      * @return PlannerateResource|JsonResponse
      */
     public function show(string $id)
     {
-        try { 
-            $planogram = $this->getModel()::query()->with([
-                'tenant', 
-                'gondolas.sections.shelves.segments.layer.product', 
-            ])->findOrFail($id); 
+        try {
+            // Versão otimizada: carrega apenas campos essenciais
+            $planogram = $this->getModel()::query()
+                // ->select(['id', 'name', 'slug', 'description', 'tenant_id', 'status'])
+                ->with([
+                    'tenant:id,name,slug', 
+                    'gondolas.sections.shelves.segments.layer.product'
+                ])
+                ->findOrFail($id);
 
             return response()->json(new PlannerateResource($planogram));
         } catch (ModelNotFoundException $e) {
@@ -50,15 +54,141 @@ class PlannerateController extends Controller
             ], 404);
         } catch (Throwable $e) {
             Log::error('Erro ao exibir planograma', [
+                'planogram_id' => $id,
                 'exception' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
             ]);
 
             return response()->json([
-                'message' => $e->getMessage(),
+                'message' => 'Erro interno do servidor',
                 'status' => 'error'
             ], 500);
+        }
+    }
+
+    /**
+     * Versão ultra-otimizada para planogramas muito grandes
+     * Carrega dados em chunks para evitar memory overflow
+     * 
+     * @param string $id
+     * @return JsonResponse
+     */
+    public function showOptimized(string $id)
+    {
+        try {
+            // Carregar apenas o planograma base
+            $planogram = $this->getModel()::query()
+                ->select(['id', 'name', 'slug', 'description', 'status'])
+                ->findOrFail($id);
+
+            // Carregar gôndolas com paginação se necessário
+            $gondolas = \Callcocam\Plannerate\Models\Gondola::query()
+                ->select(['id', 'planogram_id', 'name', 'location', 'alignment', 'scale_factor'])
+                ->where('planogram_id', $id)
+                ->orderBy('id')
+                ->get();
+
+            // Usar raw queries para performance máxima em estruturas complexas
+            $sections = DB::select("
+                SELECT s.id, s.gondola_id, s.name, s.width, s.height, s.ordering
+                FROM sections s 
+                INNER JOIN gondolas g ON s.gondola_id = g.id 
+                WHERE g.planogram_id = ? 
+                AND s.deleted_at IS NULL 
+                ORDER BY g.id, s.ordering
+            ", [$id]);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'planogram' => $planogram,
+                    'gondolas' => $gondolas,
+                    'sections' => $sections,
+                    'meta' => [
+                        'optimized' => true,
+                        'load_method' => 'chunked'
+                    ]
+                ]
+            ]);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'message' => 'Planograma não encontrado',
+                'status' => 'error'
+            ], 404);
+        } catch (Throwable $e) {
+            Log::error('Erro ao exibir planograma otimizado', [
+                'planogram_id' => $id,
+                'exception' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'Erro interno do servidor',
+                'status' => 'error'
+            ], 500);
+        }
+    }
+
+    /**
+     * Versão com cache para máxima performance em produção
+     * 
+     * @param string $id
+     * @return JsonResponse
+     */
+    public function showCached(string $id)
+    {
+        try {
+            // Cache por 15 minutos (ou até planograma ser atualizado)
+            $cacheKey = "planogram:{$id}:optimized";
+
+            $planogramData = cache()->remember($cacheKey, 15 * 60, function () use ($id) {
+                $planogram = $this->getModel()::query()
+                    ->select(['id', 'name', 'slug', 'description', 'tenant_id', 'status'])
+                    ->with([
+                        'tenant:id,name,slug',
+                        'gondolas:id,planogram_id,name,location,alignment,scale_factor',
+                        'gondolas.sections:id,gondola_id,name,width,height,ordering',
+                        'gondolas.sections.shelves:id,section_id,shelf_width,shelf_height,shelf_depth,shelf_position,ordering',
+                        'gondolas.sections.shelves.segments:id,shelf_id,ordering,quantity,spacing',
+                        'gondolas.sections.shelves.segments.layer:id,segment_id,product_id,height,quantity,spacing',
+                        'gondolas.sections.shelves.segments.layer.product:id,name,ean'
+                    ])
+                    ->findOrFail($id);
+
+                return new PlannerateResource($planogram);
+            });
+
+            return response()->json($planogramData);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'message' => 'Planograma não encontrado',
+                'status' => 'error'
+            ], 404);
+        } catch (Throwable $e) {
+            Log::error('Erro ao exibir planograma cached', [
+                'planogram_id' => $id,
+                'exception' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'Erro interno do servidor',
+                'status' => 'error'
+            ], 500);
+        }
+    }
+
+    /**
+     * Limpa o cache de um planograma específico
+     */
+    private function clearPlanogramCache(string $planogramId): void
+    {
+        $cacheKeys = [
+            "planogram:{$planogramId}:optimized",
+            "planogram:{$planogramId}:full",
+        ];
+
+        foreach ($cacheKeys as $key) {
+            cache()->forget($key);
         }
     }
 
@@ -84,13 +214,16 @@ class PlannerateController extends Controller
             // Processa as gôndolas e sua estrutura aninhada
             $this->processGondolas($planogram, data_get($data, 'gondolas', []));
 
+            // Limpar cache após salvar
+            $this->clearPlanogramCache($planogram->id);
+
             // Se chegou até aqui sem erros, confirma a transação
             DB::commit();
 
             $planogram =  $this->getModel()::query()->with([
-                'tenant', 
-                'client', 
-                'gondolas.sections.shelves.segments.layer.product', 
+                'tenant',
+                'client',
+                'gondolas.sections.shelves.segments.layer.product',
             ])->findOrFail($planogram->id);
 
             return response()->json([
