@@ -10,7 +10,7 @@ use Callcocam\Plannerate\Http\Controllers\Api\SegmentController;
 use Callcocam\Plannerate\Http\Controllers\Api\ShelfController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['api'])
+Route::middleware(['api','image.cache', 'compress'])
     ->prefix('api')
     ->name('api.')
     ->group(function () {

@@ -11,6 +11,14 @@ export const useProductService = () => {
     };
 
     /**
+    * Obtém detalhes de um produto específico
+    */
+    const getProductsPost = (params: any) => {
+        return apiService.post(`/products/filters/listar`, { ...params });
+    };
+
+
+    /**
      * Obtém os detalhes atualizados de uma prateleira
      */
     const getShelf = (shelfId: string) => {
@@ -77,7 +85,7 @@ export const useProductService = () => {
     const updateProduct = (productId: string, data: any) => {
         return apiService.put(`/products/${productId}`, data);
     };
-    
+
 
     /**
      * Sincronizar
@@ -98,5 +106,6 @@ export const useProductService = () => {
         uploadProductImage,
         updateProduct,
         updateSalesPurchasesProduct,
+        getProductsPost
     };
 };

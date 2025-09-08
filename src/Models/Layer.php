@@ -35,9 +35,9 @@ class Layer extends Model
         'settings' => 'array',
     ];
 
-    protected $appends = [
-        'settings',
-    ];
+    // protected $appends = [
+    //     'settings',
+    // ];
 
     public function getSettingsAttribute($value)
     {

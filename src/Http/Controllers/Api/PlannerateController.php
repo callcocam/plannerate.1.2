@@ -28,6 +28,7 @@ use Throwable;
 class PlannerateController extends Controller
 {
 
+
     /**
      * Exibe um planograma específico com otimizações de performance
      * 
@@ -39,10 +40,10 @@ class PlannerateController extends Controller
         try {
             // Versão otimizada: carrega apenas campos essenciais
             $planogram = $this->getModel()::query()
-                // ->select(['id', 'name', 'slug', 'description', 'tenant_id', 'status'])
+                
                 ->with([
                     'tenant:id,name,slug',
-                    'gondolas.sections.shelves.segments.layer.product'
+                    'gondolas.sections.shelves.segments.layer.product.dimensions'
                 ])
                 ->findOrFail($id);
 
@@ -322,13 +323,13 @@ class PlannerateController extends Controller
         }
         // Sincronizar gôndolas com o planograma
         DB::table('gondolas')->upsert($data, ['id'], [
-            'name', 
+            'name',
             'scale_factor',
             'location',
             'alignment',
             'linked_map_gondola_id',
             'linked_map_gondola_category',
-            'flow', 
+            'flow',
             'updated_at'
         ]);
     }
@@ -342,13 +343,13 @@ class PlannerateController extends Controller
     private function filterGondolaAttributes(array $data): array
     {
         $fillable = [
-            'name', 
+            'name',
             'scale_factor',
             'location',
             'alignment',
             'linked_map_gondola_id',
             'linked_map_gondola_category',
-            'flow', 
+            'flow',
             // 'status',
             // Adicione outros campos conforme necessário
         ];

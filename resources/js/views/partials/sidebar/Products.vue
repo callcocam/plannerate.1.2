@@ -57,7 +57,7 @@
                             <PopoverTrigger as-child>
                                 <Button variant="outline" class="w-full justify-between">
                                     <span>{{ filters.category ? 'Nível selecionado' : 'Selecionar nível mercadológico'
-                                    }}</span>
+                                        }}</span>
                                     <ChevronDown class="h-4 w-4 opacity-50" />
                                 </Button>
                             </PopoverTrigger>
@@ -126,12 +126,12 @@
 
             <!-- Lista de produtos com design limpo -->
             <div class="flex-1 overflow-y-auto p-2 dark:bg-gray-800 bg-transparent">
-                <div v-if="!editorStore.isLoading && filteredProducts.length > 0"
+                <div v-if="!loading && filteredProducts.length > 0"
                     class="mb-2 px-2 py-1 text-sm text-gray-500 dark:text-gray-400">
                     <span>{{ filteredProducts.length }} produtos encontrados</span>
                 </div>
 
-                <ul v-if="!editorStore.isLoading && filteredProducts.length > 0" class="space-y-1">
+                <ul v-if="!loading && filteredProducts.length > 0" class="space-y-1">
                     <li v-for="product in filteredProducts" :key="product.id"
                         class="group  rounded-md p-2 shadow-sm transition" :class="{
                             'cursor-pointer': product.dimensions ? true : false,
@@ -149,11 +149,11 @@
                             </div>
                             <div class="min-w-0 flex-1">
                                 <p class="truncate text-sm font-medium text-gray-800 dark:text-gray-100">{{ product.name
-                                }}
+                                    }}
                                 </p>
                                 <p class="text-xs text-gray-500 dark:text-gray-400">{{ product.width }}×{{
                                     product.height
-                                }}×{{ product.depth }} cm</p>
+                                    }}×{{ product.depth }} cm</p>
                             </div>
                         </div>
                         <!-- <div class="mt-1 flex justify-end">
@@ -167,13 +167,13 @@
                 </ul>
 
                 <!-- Loading state -->
-                <div v-if="editorStore.isLoading" class="flex items-center justify-center py-10">
+                <div v-if="loading" class="flex items-center justify-center py-10">
                     <Loader class="h-6 w-6 animate-spin text-primary" />
                     <span class="ml-2 text-sm text-gray-500 dark:text-gray-400">Carregando...</span>
                 </div>
 
                 <!-- Empty state -->
-                <div v-if="!editorStore.isLoading && filteredProducts.length === 0"
+                <div v-if="!loading && filteredProducts.length === 0"
                     class="flex flex-col items-center justify-center py-10 text-center">
                     <Package class="h-10 w-10 text-gray-300 dark:text-gray-600" />
                     <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Nenhum produto disponível encontrado</p>
@@ -208,6 +208,7 @@ import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import MercadologicoSelector from '@/components/form/fields/MercadologicoSelector.vue';
 import { useViewStatsStore } from '@plannerate/store/editor/viewStats';
+import { useProductService } from '@plannerate/services/productService';
 
 const viewStatsStore = useViewStatsStore();
 
@@ -283,13 +284,6 @@ const currentPage = ref(1);
 const hasMorePages = ref(true);
 const LIST_LIMIT = 20;
 
-interface PaginatedProductsResponse {
-    data: Product[];
-    meta: {
-        current_page: number;
-        last_page: number;
-    };
-}
 
 // Computed para contar produtos selecionados
 const selectedProductsCount = computed(() => selectedProducts.value.size);
@@ -343,6 +337,7 @@ const fetchProducts = async (page = 1, append = false) => {
             dimension: filters.dimension || undefined,
             sales: filters.sales || undefined,
             planogram_id: editorStore.currentState?.id || undefined,
+            client_id: editorStore.currentState?.client_id,
             page: page,
             limit: LIST_LIMIT,
         };
@@ -361,7 +356,7 @@ const fetchProducts = async (page = 1, append = false) => {
             }
         });
 
-        const response = await apiService.get<PaginatedProductsResponse>('products', { params });
+        const response = await useProductService().getProductsPost(params);
         // console.log('API Response:', response);
 
         const newProducts = response.data || [];
