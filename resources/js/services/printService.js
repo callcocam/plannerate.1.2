@@ -20,6 +20,11 @@ export class PrintService {
             quality: 0.95, // Qualidade da imagem (0-1)
             backgroundColor: '#ffffff'
         };
+        
+        // Cache para fluxo detectado - evita detecções inconsistentes
+        this._detectedFlow = null;
+        this._flowDetectionTimestamp = null;
+        this._flowCacheTimeout = 5000; // 5 segundos de cache
     }
 
     /**
@@ -36,17 +41,39 @@ export class PrintService {
         const sections = document.querySelectorAll('[data-section-id]');
         console.log(`🔍 Encontradas ${sections.length} seções no planograma`);
         
-        if (sections.length === 0) {
-            console.warn('❌ Nenhuma seção encontrada no planograma!');
+        // Filtrar seções únicas para evitar duplicatas
+        const uniqueSections = [];
+        const seenIds = new Set();
+        
+        sections.forEach(section => {
+            const sectionId = section.getAttribute('data-section-id');
+            if (!seenIds.has(sectionId)) {
+                seenIds.add(sectionId);
+                uniqueSections.push(section);
+            }
+        });
+        
+        console.log(`🔍 Seções únicas após filtro: ${uniqueSections.length}`);
+        
+        if (uniqueSections.length === 0) {
+            console.warn('❌ Nenhuma seção única encontrada no planograma!');
             return [];
         }
         
-        // Segundo: para cada seção, monta o módulo completo
-        sections.forEach((sectionElement, index) => {
+        
+        // Detecta o fluxo da gôndola
+        const flow = this.detectGondolaFlow();
+        console.log(`🌊 Fluxo detectado: ${flow}`);
+        
+        // Segundo: para cada seção única, monta o módulo completo
+        uniqueSections.forEach((sectionElement, index) => {
             const sectionId = sectionElement.getAttribute('data-section-id');
             const sectionIndex = index; // Índice da seção (0-8)
             
-            console.log(`🔧 Montando módulo ${sectionIndex + 1} (seção: ${sectionId})...`);
+            // Calcula o número do módulo baseado no fluxo
+            const moduleNumber = this.calculateModuleNumber(sectionIndex, uniqueSections.length, flow);
+            
+            console.log(`🔧 Montando módulo ${moduleNumber} (seção: ${sectionId}, índice: ${sectionIndex}, fluxo: ${flow})...`);
             
             try {
                 // Busca cremalheira esquerda (índice atual)
@@ -54,29 +81,29 @@ export class PrintService {
                 
                 // Busca cremalheira direita (próximo índice ou LastRack)
                 let cremalheiraDireita;
-                if (sectionIndex === sections.length - 1) {
+                if (sectionIndex === uniqueSections.length - 1) {
                     // Último módulo: usa LastRack como cremalheira direita
                     cremalheiraDireita = document.querySelector('[data-last-rack="true"] [data-cremalheira="true"]');
-                    console.log(`📍 Módulo ${sectionIndex + 1}: Usando LastRack como cremalheira direita`);
+                    console.log(`📍 Módulo ${moduleNumber}: Usando LastRack como cremalheira direita`);
                 } else {
                     // Módulos normais: usa próxima cremalheira
                     cremalheiraDireita = document.querySelector(`[data-cremalheira-index="${sectionIndex + 1}"]`);
-                    console.log(`📍 Módulo ${sectionIndex + 1}: Usando cremalheira ${sectionIndex + 1} como direita`);
+                    console.log(`📍 Módulo ${moduleNumber}: Usando cremalheira ${sectionIndex + 1} como direita`);
                 }
                 
                 // Valida se encontrou todos os componentes necessários
                 if (!sectionElement) {
-                    console.warn(`❌ Módulo ${sectionIndex + 1}: Seção não encontrada`);
+                    console.warn(`❌ Módulo ${moduleNumber}: Seção não encontrada`);
                     return;
                 }
                 
                 if (!cremalheiraEsquerda) {
-                    console.warn(`❌ Módulo ${sectionIndex + 1}: Cremalheira esquerda (${sectionIndex}) não encontrada`);
+                    console.warn(`❌ Módulo ${moduleNumber}: Cremalheira esquerda (${sectionIndex}) não encontrada`);
                     return;
                 }
                 
                 if (!cremalheiraDireita) {
-                    console.warn(`❌ Módulo ${sectionIndex + 1}: Cremalheira direita não encontrada`);
+                    console.warn(`❌ Módulo ${moduleNumber}: Cremalheira direita não encontrada`);
                     return;
                 }
                 
@@ -92,7 +119,7 @@ export class PrintService {
                 if (moduleContainer && this.isElementValid(moduleContainer)) {
                     const moduleData = {
                         id: sectionId,
-                        name: `Módulo ${sectionIndex + 1}`,
+                        name: `Módulo ${moduleNumber}`,
                         element: moduleContainer,
                         moduleType: 'COMPLETE_MODULE',
                         hasCremalheira: true,
@@ -101,6 +128,8 @@ export class PrintService {
                         sectionCount: 1,
                         isValid: true,
                         sectionIndex: sectionIndex,
+                        moduleNumber: moduleNumber,
+                        flow: flow,
                         components: {
                             section: sectionElement,
                             cremalheiraEsquerda,
@@ -109,19 +138,246 @@ export class PrintService {
                     };
                     
                     modules.push(moduleData);
-                    console.log(`✅ Módulo ${sectionIndex + 1} criado com sucesso`);
+                    console.log(`✅ Módulo ${moduleNumber} criado com sucesso - Nome: "${moduleData.name}"`);
                 } else {
-                    console.warn(`❌ Módulo ${sectionIndex + 1}: Container virtual inválido`);
+                    console.warn(`❌ Módulo ${moduleNumber}: Container virtual inválido`);
                 }
                 
             } catch (error) {
-                console.error(`❌ Erro ao montar módulo ${sectionIndex + 1}:`, error);
+                console.error(`❌ Erro ao montar módulo ${moduleNumber}:`, error);
             }
         });
         
+        // SEMPRE ordena do Módulo 1 para o último, independente do fluxo
+        // O fluxo só afeta a posição física, não a ordem no relatório
+        modules.sort((a, b) => a.moduleNumber - b.moduleNumber);
+        
+        if (flow === 'right_to_left') {
+            console.log(`🔄 Fluxo right_to_left: Relatório sempre Módulo 1, 2, 3... (fisicamente: último, penúltimo, antepenúltimo...)`);
+        } else {
+            console.log(`➡️  Fluxo left_to_right: Relatório sempre Módulo 1, 2, 3... (fisicamente: primeiro, segundo, terceiro...)`);
+        }
+        
+        // Valida a consistência da detecção
+        const validation = this.validateModuleDetection(modules);
+        
+        if (!validation.isValid) {
+            console.error('❌ Problemas críticos na detecção de módulos:', validation.issues);
+        }
+        
+        if (validation.warnings.length > 0) {
+            console.warn('⚠️ Avisos na detecção de módulos:', validation.warnings);
+        }
+        
         console.log(`🎯 RESULTADO FINAL: ${modules.length} módulos completos detectados`);
+        console.log(`📋 Ordem dos módulos:`, modules.map(m => `${m.name} (índice: ${m.sectionIndex})`));
         
         return modules;
+    }
+
+    /**
+     * Detecta o fluxo da gôndola baseado nos elementos do DOM
+     * Usa cache para evitar detecções inconsistentes
+     * @returns {string} 'left_to_right' ou 'right_to_left'
+     */
+    detectGondolaFlow() {
+        // Verifica se há cache válido
+        const now = Date.now();
+        if (this._detectedFlow && this._flowDetectionTimestamp && 
+            (now - this._flowDetectionTimestamp) < this._flowCacheTimeout) {
+            console.log(`🔄 Usando fluxo em cache: ${this._detectedFlow}`);
+            return this._detectedFlow;
+        }
+        
+        console.log('🔍 Detectando fluxo da gôndola...');
+        
+        // MÉTODO 1: Tenta encontrar o FlowIndicator no DOM
+        const flowIndicator = document.querySelector('[class*="flow"]') || 
+                             document.querySelector('[data-flow]') ||
+                             document.querySelector('.flow-indicator');
+        
+        if (flowIndicator) {
+            // Verifica se há seta para a direita (left_to_right)
+            const rightArrow = flowIndicator.querySelector('[class*="arrow-right"]') || 
+                              flowIndicator.querySelector('.arrow-right') ||
+                              flowIndicator.querySelector('[data-arrow="right"]');
+            
+            // Verifica se há seta para a esquerda (right_to_left)
+            const leftArrow = flowIndicator.querySelector('[class*="arrow-left"]') || 
+                             flowIndicator.querySelector('.arrow-left') ||
+                             flowIndicator.querySelector('[data-arrow="left"]');
+            
+            if (rightArrow && !leftArrow) {
+                this._cacheFlow('left_to_right', 'seta direita encontrada');
+                return this._detectedFlow;
+            } else if (leftArrow && !rightArrow) {
+                this._cacheFlow('right_to_left', 'seta esquerda encontrada');
+                return this._detectedFlow;
+            }
+        }
+        
+        // MÉTODO 2: Verifica elementos com classes específicas de fluxo
+        const rightToLeftElements = document.querySelectorAll('[class*="right-to-left"], [class*="right_to_left"]');
+        const leftToRightElements = document.querySelectorAll('[class*="left-to-right"], [class*="left_to_right"]');
+        
+        if (rightToLeftElements.length > leftToRightElements.length) {
+            this._cacheFlow('right_to_left', 'elementos com classe right-to-left encontrados');
+            return this._detectedFlow;
+        } else if (leftToRightElements.length > rightToLeftElements.length) {
+            this._cacheFlow('left_to_right', 'elementos com classe left-to-right encontrados');
+            return this._detectedFlow;
+        }
+        
+        // MÉTODO 3: Análise mais robusta do posicionamento das seções
+        const sections = document.querySelectorAll('[data-section-id]');
+        if (sections.length > 1) {
+            // Coleta posições de todas as seções para análise mais precisa
+            const sectionPositions = Array.from(sections).map(section => {
+                const rect = section.getBoundingClientRect();
+                return {
+                    element: section,
+                    left: rect.left,
+                    right: rect.right,
+                    center: rect.left + (rect.width / 2)
+                };
+            });
+            
+            // Ordena por posição horizontal
+            sectionPositions.sort((a, b) => a.left - b.left);
+            
+            // Analisa o padrão de posicionamento
+            const firstSection = sectionPositions[0];
+            const lastSection = sectionPositions[sectionPositions.length - 1];
+            
+            // Calcula a diferença de posição
+            const positionDiff = lastSection.left - firstSection.left;
+            
+            // Se a diferença é significativa e positiva, é left_to_right
+            if (positionDiff > 50) { // 50px de tolerância
+                this._cacheFlow('left_to_right', 'posicionamento das seções (análise robusta)');
+                return this._detectedFlow;
+            } else if (positionDiff < -50) {
+                this._cacheFlow('right_to_left', 'posicionamento das seções (análise robusta)');
+                return this._detectedFlow;
+            }
+        }
+        
+        // MÉTODO 4: Análise de atributos data-section-id para determinar ordem
+        const sectionIds = Array.from(sections).map(s => s.getAttribute('data-section-id'));
+        if (sectionIds.length > 1) {
+            // Se os IDs seguem um padrão sequencial, assume left_to_right
+            const hasSequentialPattern = sectionIds.every((id, index) => {
+                if (index === 0) return true;
+                // Verifica se há algum padrão nos IDs
+                return id && sectionIds[index - 1];
+            });
+            
+            if (hasSequentialPattern) {
+                this._cacheFlow('left_to_right', 'padrão sequencial dos IDs das seções');
+                return this._detectedFlow;
+            }
+        }
+        
+        // Padrão: left_to_right
+        this._cacheFlow('left_to_right', 'padrão padrão (fallback)');
+        return this._detectedFlow;
+    }
+    
+    /**
+     * Armazena o fluxo detectado no cache
+     * @param {string} flow - Fluxo detectado
+     * @param {string} method - Método usado para detecção
+     */
+    _cacheFlow(flow, method) {
+        this._detectedFlow = flow;
+        this._flowDetectionTimestamp = Date.now();
+        console.log(`✅ Fluxo detectado: ${flow} (${method})`);
+        console.log(`💾 Fluxo armazenado em cache por ${this._flowCacheTimeout}ms`);
+    }
+    
+    /**
+     * Limpa o cache de fluxo (útil para forçar nova detecção)
+     */
+    clearFlowCache() {
+        this._detectedFlow = null;
+        this._flowDetectionTimestamp = null;
+        console.log('🗑️ Cache de fluxo limpo');
+    }
+    
+    /**
+     * Valida a consistência da detecção de módulos
+     * @param {Array} modules - Array de módulos detectados
+     * @returns {Object} Resultado da validação
+     */
+    validateModuleDetection(modules) {
+        const validation = {
+            isValid: true,
+            issues: [],
+            warnings: []
+        };
+        
+        if (!modules || modules.length === 0) {
+            validation.isValid = false;
+            validation.issues.push('Nenhum módulo detectado');
+            return validation;
+        }
+        
+        // Verifica se todos os módulos têm elementos válidos
+        const invalidModules = modules.filter(module => !module.element || !this.isElementValid(module.element));
+        if (invalidModules.length > 0) {
+            validation.warnings.push(`${invalidModules.length} módulos com elementos inválidos`);
+        }
+        
+        // Verifica se há módulos duplicados
+        const moduleIds = modules.map(m => m.id);
+        const uniqueIds = [...new Set(moduleIds)];
+        if (moduleIds.length !== uniqueIds.length) {
+            validation.isValid = false;
+            validation.issues.push('Módulos duplicados detectados');
+        }
+        
+        // Verifica se a numeração dos módulos está correta
+        const moduleNumbers = modules.map(m => m.moduleNumber).sort((a, b) => a - b);
+        const expectedNumbers = Array.from({length: modules.length}, (_, i) => i + 1);
+        const hasCorrectNumbering = moduleNumbers.every((num, index) => num === expectedNumbers[index]);
+        
+        if (!hasCorrectNumbering) {
+            validation.warnings.push('Numeração dos módulos pode estar incorreta');
+        }
+        
+        // Verifica se todos os módulos têm o mesmo fluxo
+        const flows = modules.map(m => m.flow);
+        const uniqueFlows = [...new Set(flows)];
+        if (uniqueFlows.length > 1) {
+            validation.isValid = false;
+            validation.issues.push('Fluxos inconsistentes detectados entre módulos');
+        }
+        
+        console.log('🔍 Validação de módulos:', validation);
+        return validation;
+    }
+
+    /**
+     * Calcula o número do módulo baseado no fluxo da gôndola
+     * @param {number} sectionIndex - Índice da seção (0-8)
+     * @param {number} totalSections - Total de seções
+     * @param {string} flow - Fluxo da gôndola
+     * @returns {number} Número do módulo (1-9)
+     */
+    calculateModuleNumber(sectionIndex, totalSections, flow) {
+        if (flow === 'right_to_left') {
+            // Fluxo da direita para esquerda: INVERTE a numeração
+            // Seção 0 (direita) vira Módulo 6, Seção 1 vira Módulo 5, etc.
+            const moduleNumber = totalSections - sectionIndex;
+            console.log(`🔄 Fluxo right_to_left: Seção ${sectionIndex} (direita) -> Módulo ${moduleNumber} (INVERTIDO)`);
+            return moduleNumber;
+        } else {
+            // Fluxo da esquerda para direita: NÃO inverte (numeração normal)
+            // Seção 0 vira Módulo 1, seção 1 vira Módulo 2, etc.
+            const moduleNumber = sectionIndex + 1;
+            console.log(`➡️  Fluxo left_to_right: Seção ${sectionIndex} (esquerda) -> Módulo ${moduleNumber} (NORMAL)`);
+            return moduleNumber;
+        }
     }
 
     /**
@@ -879,6 +1135,9 @@ export class PrintService {
         console.log('=== INICIANDO CAPTURA DE MÓDULOS ===');
         console.log('IDs solicitados:', moduleIds);
         
+        // Limpa cache de fluxo antes da captura para garantir detecção atualizada
+        this.clearFlowCache();
+        
         let selectedModules = [];
         
         // LÓGICA SEPARADA: Planograma Completo vs Módulos Individuais
@@ -1028,7 +1287,7 @@ export class PrintService {
 
         for (let i = 0; i < captures.length; i++) {
             const capture = captures[i];
-            console.log(`Adicionando página ${i + 1}: ${capture.name}`);
+            console.log(`📄 Adicionando página ${i + 1}: "${capture.name}" (ID: ${capture.id})`);
             
             if (!isFirstPage) {
                 pdf.addPage();
@@ -1038,6 +1297,7 @@ export class PrintService {
             // Adiciona título do módulo
             pdf.setFontSize(16);
             pdf.setFont(undefined, 'bold');
+            console.log(`📝 Escrevendo título no PDF: "${capture.name}"`);
             pdf.text(capture.name, finalConfig.margins.left, finalConfig.margins.top);
 
             // Se houve erro na captura, adiciona mensagem de erro
@@ -1367,6 +1627,40 @@ if (typeof window !== 'undefined') {
                 return capture;
             }
             console.log('Módulo não encontrado:', moduleIndex);
+        },
+        // Novos métodos de debug para fluxo
+        detectFlow: () => printService.detectGondolaFlow(),
+        clearFlowCache: () => printService.clearFlowCache(),
+        getFlowCache: () => ({
+            flow: printService._detectedFlow,
+            timestamp: printService._flowDetectionTimestamp,
+            timeout: printService._flowCacheTimeout
+        }),
+        // Métodos de validação
+        validateModules: () => {
+            const modules = printService.detectModules();
+            return printService.validateModuleDetection(modules);
+        },
+        // Método para debug completo
+        debugComplete: () => {
+            console.log('=== DEBUG COMPLETO DO PRINTSERVICE ===');
+            const flow = printService.detectGondolaFlow();
+            const modules = printService.detectModules();
+            const validation = printService.validateModuleDetection(modules);
+            
+            console.log('Fluxo detectado:', flow);
+            console.log('Módulos detectados:', modules.length);
+            console.log('Validação:', validation);
+            
+            return {
+                flow,
+                modules,
+                validation,
+                cache: {
+                    flow: printService._detectedFlow,
+                    timestamp: printService._flowDetectionTimestamp
+                }
+            };
         }
     };
 }
