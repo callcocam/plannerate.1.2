@@ -45,7 +45,7 @@ export function invertShelvesInSection(gondolaId: string, sectionId: string) {
             }
         });
 
-        if (changed) { 
+        if (changed) {
             recordChange();
         } else {
             console.log(`Posições das prateleiras já estavam invertidas ou erro no cálculo.`);
@@ -68,13 +68,13 @@ export function addShelfToSection(gondolaId: string, sectionId: string, newShelf
     const { section } = path;
 
     // Criar uma cópia e ajustar tipos antes de adicionar ao estado
-    const shelfToAdd = { 
+    const shelfToAdd = {
         ...newShelfData,
         // Garante que alignment seja string ou undefined, tratando null
         alignment: newShelfData.alignment === null ? undefined : newShelfData.alignment,
     };
 
-    section.shelves.push(shelfToAdd); 
+    section.shelves.push(shelfToAdd);
     recordChange();
 }
 
@@ -107,28 +107,41 @@ export function setShelfPosition(
     }
 }
 
+// duplicateShelfInSection
 /**
- * Define o alinhamento para uma prateleira específica
+ * Duplica uma prateleira existente dentro da mesma seção
  * @param gondolaId ID da gôndola
  * @param sectionId ID da seção
- * @param shelfId ID da prateleira
- * @param alignment Novo valor de alinhamento
+ * @param shelfId ID da prateleira a ser duplicada
  */
-// export function setShelfAlignment(gondolaId: string, sectionId: string, shelfId: string, alignment: string | null) {
-//     const path = findPath(gondolaId, sectionId, shelfId, 'setShelfAlignment');
-//     if (!path) return;
+export function duplicateShelfInSection(gondolaId: string, sectionId: string, shelfId: string) {
+    const path = findPath(gondolaId, sectionId, shelfId, 'duplicateShelfInSection');
+    if (!path) return;
 
-//     const { shelf } = path;
+    const { section, shelf } = path;
 
-//     if (shelf && shelf.alignment !== alignment) {
-//         shelf.alignment = alignment;
-//         console.log(`Alinhamento da prateleira ${shelfId} definido para ${alignment}`);
-//         recordChange();
-//     } else {
-//         console.log(`Alinhamento da prateleira ${shelfId} já era ${alignment}.`);
-//     }
-// }
+    if (!shelf) {
+        console.warn(`Prateleira ${shelfId} não encontrada na seção ${sectionId} para duplicação.`);
+        return;
+    }
 
+    // Criar uma cópia profunda da prateleira para duplicar
+    const newShelf: Shelf = JSON.parse(JSON.stringify(shelf));
+    newShelf.id = `shelf-${Date.now()}`; // Novo ID único
+    newShelf.shelf_position += 1; // Coloca a nova prateleira logo acima da original
+    newShelf.alignment = shelf.alignment === null ? undefined : shelf.alignment;
+
+    // Incrementar a posição das prateleiras acima da nova para evitar sobreposição
+    section.shelves.forEach(sh => {
+        if (sh.shelf_position >= newShelf.shelf_position) {
+            sh.shelf_position += 1;
+        }
+    });
+
+    section.shelves.push(newShelf);
+    console.log(`Prateleira ${shelfId} duplicada como ${newShelf.id} na seção ${sectionId}`);
+    recordChange();
+}
 /**
  * Remove uma prateleira específica de uma seção
  * @param gondolaId ID da gôndola
@@ -229,7 +242,7 @@ export function setIsShelfEditing(value: boolean) {
     isShelfEditing.value = value;
 }
 
-export function setSelectedShelf(shelf: Shelf) { 
+export function setSelectedShelf(shelf: Shelf) {
     selectedShelf.value = shelf;
 }
 

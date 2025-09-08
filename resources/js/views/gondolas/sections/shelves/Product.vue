@@ -132,25 +132,23 @@ const productStyle = computed(() => {
 /**
  * Manipula o clique no produto
  */
-const handleProductClick = () => {
-    // Não precisa chamar productActiveTrigger aqui, pois já é reativo através do computed
-    // A função productActiveTrigger() já é chamada automaticamente quando isSelected muda 
-    editorStore.clearSelectedSection(); // Limpa seleção de camadas ao selecionar prateleira
-
-    // Aqui você pode adicionar lógica adicional para quando o produto é clicado
-    // Por exemplo, emitir um evento ou atualizar o estado do editor
-};
+// const handleProductClick = () => {
+//     // Não precisa chamar productActiveTrigger aqui, pois já é reativo através do computed
+//     // A função productActiveTrigger() já é chamada automaticamente quando isSelected muda 
+//     editorStore.clearSelectedSection(); // Limpa seleção de camadas ao selecionar prateleira
+// console.log('Produto clicado:', props.product);
+//     // Aqui você pode adicionar lógica adicional para quando o produto é clicado
+//     // Por exemplo, emitir um evento ou atualizar o estado do editor
+// };
 
 /**
  * Configura event listeners quando o componente é montado
  */
-onMounted(() => {
-    if (productRef.value) {
-        productRef.value.addEventListener('click', handleProductClick);
-    } else {
-        console.warn('Referência do produto não encontrada no onMounted');
-    }
-});
+// onMounted(() => {
+//     if (productRef?.value) {
+//         productRef.value.addEventListener('click', handleProductClick);
+//     } 
+// });
 
 </script>
 
