@@ -26,7 +26,7 @@ const ModuleLabel = {
         <div 
             class="module-label text-black text-xs absolute left-1/2 -translate-x-1/2 p-2 dark:text-white uppercase font-bold" 
             :style="{ 
-                bottom: baseHeight / 3 + 'px', 
+                bottom: baseHeight / -45 + 'rem', 
                 fontSize: scaleFactor * 3.5 + 'px' 
             }"
         >
