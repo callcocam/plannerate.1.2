@@ -56,6 +56,11 @@
             <ContextMenuRadioGroup model-value="modulos">
                 <ContextMenuLabel inset> Prateleiras </ContextMenuLabel>
                 <ContextMenuSeparator />
+                <ContextMenuItem inset @click="replicateShelf">
+                    Replicar
+                    <ContextMenuShortcut>⌘]</ContextMenuShortcut>
+                </ContextMenuItem>
+                <ContextMenuSeparator />
                 <ContextMenuItem inset @click="selectShelfClick">
                     Editar
                     <ContextMenuShortcut>⌘]</ContextMenuShortcut>
@@ -382,6 +387,14 @@ const handleSegmentDragOver = (segment: SegmentType, shelf: Shelf, isOver: boole
             draggingSegment.value = null;
         }
     }
+};
+
+const replicateShelf = () => {
+    if (!gondolaId.value || !props.shelf.section_id || !props.shelf.id) {
+        console.log('replicateShelf: IDs faltando (gondola, section, ou shelf).');
+        return;
+    }
+    editorStore.duplicateShelfInSection(gondolaId.value, props.shelf.section_id, props.shelf.id);
 };
 
 onMounted(() => {

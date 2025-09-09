@@ -1,11 +1,14 @@
 // services/shelfService.ts 
- 
+
 import { Shelf } from "../types/shelves";
 import apiService from "./api";
 
 export const useShelfService = () => {
     const addShelf = (shelf: Shelf) => {
         return apiService.post('shelves', shelf);
+    };
+    const copyShelf = (shelf: string) => {
+        return apiService.post(`shelves/${shelf}/copy`);
     };
 
     const updateShelf = (shelfId: string, data: Partial<Shelf>) => {
@@ -37,5 +40,6 @@ export const useShelfService = () => {
         deleteShelf,
         updateShelfAlignment,
         inverterShelves,
+        copyShelf
     };
 };

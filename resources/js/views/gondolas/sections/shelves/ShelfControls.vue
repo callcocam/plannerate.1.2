@@ -11,10 +11,7 @@
                 <ChevronLeftIcon class="h-4 w-4 text-white" />
             </div>
         </transition>
-        <span class="flex z-20 items-center justify-center font-bold" 
-        :class="[
-            isEmpty ? '-translate-y-1' : '-translate-y-full'
-        ]"
+        <span class="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 flex z-20 items-center justify-center font-bold text-center" 
         :style="{ fontSize: scaleFactor * 3.5 + 'px' }">
            {{ invertIndex }}   
         </span>

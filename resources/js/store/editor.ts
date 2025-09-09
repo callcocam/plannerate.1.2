@@ -136,6 +136,7 @@ export const useEditorStore = defineStore('editor', () => {
         clearSelectedShelf: actions.clearSelectedShelf,
         isShelfSelected: actions.isShelfSelected,
         updateSegmentQuantity: actions.updateSegmentQuantity,
+        duplicateShelfInSection: actions.duplicateShelfInSection,
         // Manipulação de segmentos
         addSegmentToShelf: actions.addSegmentToShelf,
         setShelfSegmentsOrder: actions.setShelfSegmentsOrder,

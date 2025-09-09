@@ -175,8 +175,7 @@ export function updateLayerQuantity(
     // Verifica se o layerId corresponde ao ID do produto da camada
     if (segment.layer.product.id === layerId) {
         if (segment.layer.quantity !== newQuantity) {
-            segment.layer.quantity = newQuantity;
-            console.log(`Quantidade da layer ${layerId} atualizada para ${newQuantity} no segmento ${segmentId}.`);
+            segment.layer.quantity = newQuantity; 
             recordChange();
         } else {
             console.log(`Quantidade da layer ${layerId} já era ${newQuantity}.`);
@@ -211,8 +210,7 @@ export function removeSegmentFromShelf(gondolaId: string, sectionId: string, she
     shelf.segments = shelf.segments.filter(segment => segment.id !== segmentId);
 
     // Verifica se um segmento foi realmente removido
-    if (shelf.segments.length < initialLength) {
-        console.log(`Segmento ${segmentId} removido da prateleira ${shelfId}.`);
+    if (shelf.segments.length < initialLength) { 
         recordChange(); // Registra a mudança no histórico
     } else {
         console.warn(`Segmento ${segmentId} não encontrado na prateleira ${shelfId} para remoção.`);

@@ -53,12 +53,41 @@ export function useSectionCreateForm(options: UseSectionCreateFormOptions) {
     const gondola = editorStore.getGondola(gondolaId.value)
     const sectionHeight = ref(0);
     const sectionWidth = ref(0);
+    const sectionBaseHeight = ref(0);
+    const sectionBaseWidth = ref(0);
+    const sectionBaseDepth = ref(0);
+    const sectionHoleHeight = ref(0);
+    const sectionHoleWidth = ref(0);
+    const sectionHoleSpacing = ref(0);
+    const sectionCremalheiraWidth = ref(0);
+
+    const shelfHeight = ref(0);
+    const shelfWidth = ref(0);
+    const shelfDepth = ref(0);
+    // Pega a primeira seção da gôndola como base (pode ser ajustado conforme necessário)
     gondola?.sections.forEach(section => {
         sectionHeight.value = section.height;
         sectionWidth.value = section.width;
+        sectionBaseHeight.value = section.base_height;
+        sectionBaseWidth.value = section.base_width;
+        sectionBaseDepth.value = section.base_depth;
+        sectionHoleHeight.value = section.hole_height;
+        sectionHoleWidth.value = section.hole_width;
+        sectionHoleSpacing.value = section.hole_spacing;
+        sectionBaseDepth.value = section.base_depth;
+        sectionCremalheiraWidth.value = section.cremalheira_width;
+
+        section.shelves.forEach(shelf => {
+            // Apenas um exemplo, pode ser ajustado conforme necessário
+            shelfHeight.value = shelf.shelf_height;
+            shelfWidth.value = shelf.shelf_width;
+            shelfDepth.value = shelf.shelf_depth;
+        });
     });
     // Função para gerar código (precisa ser importada ou movida para utils se usada em mais lugares)
     const generateSectionCode = () => `SEC-${Date.now().toString().slice(-6)}`;
+
+    console.log(gondola);
 
     const getInitialFormData = (): SectionFormData => ({
         gondola_id: typeof gondolaId.value === 'string' ? gondolaId.value : '',
@@ -67,16 +96,16 @@ export function useSectionCreateForm(options: UseSectionCreateFormOptions) {
         num_modulos: 1,
         width: sectionWidth.value || 130,
         height: sectionHeight.value || 180,
-        base_height: 17,
-        base_width: sectionWidth.value || 130,
-        base_depth: 40,
-        cremalheira_width: 4.0,
-        hole_height: 3.0,
-        hole_width: 2.0,
-        hole_spacing: 2.0,
+        base_height: sectionBaseHeight.value || 10,
+        base_width: sectionBaseWidth.value || 130,
+        base_depth: sectionBaseDepth.value || 40,
+        cremalheira_width: sectionCremalheiraWidth.value || 4.0,
+        hole_height: sectionHoleHeight.value || 3.0,
+        hole_width: sectionHoleWidth.value || 2.0,
+        hole_spacing: sectionHoleSpacing.value || 2.0,
         shelf_width: sectionWidth.value - (4 * 2), // Exemplo: largura seção - 2 * largura cremalheira
-        shelf_height: 4,
-        shelf_depth: 40,
+        shelf_height: shelfHeight.value || 30,
+        shelf_depth: shelfDepth.value || 40,
         num_shelves: 4,
         product_type: 'normal',
     });

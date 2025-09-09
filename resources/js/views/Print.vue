@@ -90,6 +90,7 @@ const planogramData = computed(() => editorStore.currentState);
  
 
 onMounted(async () => {
+    document.documentElement.classList.add('light');
     // Inicializa sidebarOpen com o valor salvo no localStorage
     sidebarOpen.value = getSidebarState();
     propertiesOpen.value = getPropertiesState();
@@ -101,6 +102,7 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+    document.documentElement.classList.remove('light');
     // Remover listener do evento de duplo clique no produto
     window.removeEventListener('product-double-click', handleProductDoubleClick as EventListener);
 });

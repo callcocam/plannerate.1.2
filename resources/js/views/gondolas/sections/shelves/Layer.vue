@@ -18,6 +18,8 @@ import { useEditorStore } from '@plannerate/store/editor';
 import ProductNormal from '@plannerate/views/gondolas/sections/shelves/Product.vue';
 import { Layer as LayerType, Segment as SegmentType } from '@/types/segment';
 import { Shelf } from '@plannerate/types/shelves';
+import { validateShelfWidth } from '@plannerate/utils/validation';
+import { toast } from 'vue-sonner';
 const props = defineProps<{
     layer: LayerType;
     segment: SegmentType;
@@ -67,13 +69,13 @@ const layerStyle = computed(() => {
     let layerWidthFinal = `100%`; // Default para justify ou se não houver gôndola/alinhamento
 
     const otherStyles: CSSProperties = {
-        display: 'flex', 
+        display: 'flex',
         justifyContent: 'space-around',
         position: 'relative',
     };
 
     // Obtém o alinhamento da gôndola atual do editorStore
-    const alignment = editorStore.getCurrentGondola?.alignment; 
+    const alignment = editorStore.getCurrentGondola?.alignment;
     // Define a largura final com base no alinhamento
     if (alignment === 'left' || alignment === 'right') {
         // Para alinhamento à esquerda ou direita, usa a largura calculada dos produtos
@@ -83,7 +85,7 @@ const layerStyle = computed(() => {
         layerWidthFinal = `${productWidth * quantity}px`;
     } else if (alignment === 'justify' || !alignment) {
         // Para justificado ou sem alinhamento definido, ocupa 100%
-         layerWidthFinal = `100%`;
+        layerWidthFinal = `100%`;
     }
     return {
         width: layerWidthFinal,
@@ -158,6 +160,7 @@ const onUpdateQuantity = async (quantity: number) => {
     // Usa selectedLayerIds
     if (editorStore.getSelectedLayerIds.size > 1) return;
 
+
     emit('update-layer-quantity', {
         ...props.layer,
         quantity: quantity,
@@ -169,10 +172,19 @@ const onUpdateQuantity = async (quantity: number) => {
 const onIncreaseQuantity = async () => {
     // Usa selectedLayerIds
     if (editorStore.getSelectedLayerIds.size > 1) return;
+    const newQuantity = (layerQuantity.value += 1);
+    const validation = validateShelfWidth(props.shelf, props.sectionWidth, props.layer.product.id, newQuantity, null);
+    if (!validation.isValid) {
+        toast.error('Limite de Largura Excedido', {
+            description: `A largura total (${validation.totalWidth.toFixed(1)}cm) excederia a largura da seção (${validation.sectionWidth}cm).`,
+        });
+        layerQuantity.value -= 1;
+        return;
+    }
 
     emit('increase', {
         ...props.layer,
-        quantity: (layerQuantity.value += 1),
+        quantity: newQuantity,
     });
 };
 
@@ -198,6 +210,7 @@ const onIncreaseSegmentQuantity = () => {
         return;
     }
     segmentQuantity.value += 1;
+    console.log("Increasing segment quantity to:", segmentQuantity.value);
     editorStore.updateSegmentQuantity(
         editorGondola.value.id,
         currentSectionId.value,
@@ -229,7 +242,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
     // Gerencia aumento/diminuição com setas quando selecionado
     if (isSelected.value) {
         const target = event?.target as HTMLElement;
-        const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA'; 
+        const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
         // Vamos verificar se e um numero e passar o numero no incremant da quantity
         if (/^[1-9]$/.test(event.key) && !isInput) {
             event.preventDefault();

@@ -5,6 +5,7 @@ import { findGondola, findPath, findSection } from '../utils';
 import { recordChange } from '../history';
 import { isEqual } from 'lodash-es';
 import { selectedShelf, isShelfEditing } from '../state';
+import { useShelfService } from '@plannerate/services/shelfService';
 /**
  * Inverte a ordem das prateleiras de uma seção específica
  * @param gondolaId ID da gôndola
@@ -46,7 +47,6 @@ export function invertShelvesInSection(gondolaId: string, sectionId: string) {
         });
 
         if (changed) {
-            console.log(`Posições das prateleiras invertidas para a seção ${sectionId}`);
             recordChange();
         } else {
             console.log(`Posições das prateleiras já estavam invertidas ou erro no cálculo.`);
@@ -69,14 +69,13 @@ export function addShelfToSection(gondolaId: string, sectionId: string, newShelf
     const { section } = path;
 
     // Criar uma cópia e ajustar tipos antes de adicionar ao estado
-    const shelfToAdd = { 
+    const shelfToAdd = {
         ...newShelfData,
         // Garante que alignment seja string ou undefined, tratando null
         alignment: newShelfData.alignment === null ? undefined : newShelfData.alignment,
     };
 
     section.shelves.push(shelfToAdd);
-    console.log(`Prateleira ${shelfToAdd.id} adicionada à seção ${sectionId}`);
     recordChange();
 }
 
@@ -109,28 +108,40 @@ export function setShelfPosition(
     }
 }
 
+// duplicateShelfInSection
 /**
- * Define o alinhamento para uma prateleira específica
+ * Duplica uma prateleira existente dentro da mesma seção
  * @param gondolaId ID da gôndola
  * @param sectionId ID da seção
- * @param shelfId ID da prateleira
- * @param alignment Novo valor de alinhamento
+ * @param shelfId ID da prateleira a ser duplicada
  */
-// export function setShelfAlignment(gondolaId: string, sectionId: string, shelfId: string, alignment: string | null) {
-//     const path = findPath(gondolaId, sectionId, shelfId, 'setShelfAlignment');
-//     if (!path) return;
+export function duplicateShelfInSection(gondolaId: string, sectionId: string, shelfId: string) {
+    const path = findPath(gondolaId, sectionId, shelfId, 'duplicateShelfInSection');
+    if (!path) return;
 
-//     const { shelf } = path;
+    const { section, shelf } = path;
 
-//     if (shelf && shelf.alignment !== alignment) {
-//         shelf.alignment = alignment;
-//         console.log(`Alinhamento da prateleira ${shelfId} definido para ${alignment}`);
-//         recordChange();
-//     } else {
-//         console.log(`Alinhamento da prateleira ${shelfId} já era ${alignment}.`);
-//     }
-// }
+    if (!shelf) {
+        console.warn(`Prateleira ${shelfId} não encontrada na seção ${sectionId} para duplicação.`);
+        return;
+    }
 
+    useShelfService().copyShelf(shelf.id).then(response => {
+        console.log('Resposta da API ao duplicar prateleira:', response);
+        if (response && response.data) {
+            const newShelfFromApi: Shelf = response.data;
+            // Ajustar alignment se for null 
+            section.shelves.push(newShelfFromApi);
+            console.log(`Prateleira ${shelfId} duplicada como ${newShelfFromApi.id} na seção ${sectionId} via API`);
+        } else {
+            console.error(`Resposta inválida ao duplicar prateleira ${shelfId}:`, response);
+        }
+        recordChange();
+    }).catch(error => {
+        console.error(`Erro ao duplicar prateleira ${shelfId} via API:`, error);
+        recordChange();
+    });
+}
 /**
  * Remove uma prateleira específica de uma seção
  * @param gondolaId ID da gôndola
@@ -231,7 +242,7 @@ export function setIsShelfEditing(value: boolean) {
     isShelfEditing.value = value;
 }
 
-export function setSelectedShelf(shelf: Shelf) { 
+export function setSelectedShelf(shelf: Shelf) {
     selectedShelf.value = shelf;
 }
 

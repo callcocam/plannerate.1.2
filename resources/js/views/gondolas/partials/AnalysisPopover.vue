@@ -51,6 +51,23 @@
               <FileTextIcon class="h-4 w-4 mr-2" />
               Relatório Reposição (PDF)
             </Button>
+            
+            <!-- Divisor -->
+            <div class="border-t border-gray-200 dark:border-gray-700 my-2"></div>
+            
+            <!-- Novos relatórios -->
+            <Button variant="outline" @click="generateReport('compra')" :disabled="isGeneratingReport">
+              <FileSpreadsheetIcon class="h-4 w-4 mr-2" />
+              Relatório Compra (.xlsx)
+            </Button>
+            <Button variant="outline" @click="generateReport('dimensao')" :disabled="isGeneratingReport">
+              <FileSpreadsheetIcon class="h-4 w-4 mr-2" />
+              Relatório Sem Dimensões (.xlsx)
+            </Button>
+            <Button variant="outline" @click="generateReport('image')" :disabled="isGeneratingReport">
+              <FileSpreadsheetIcon class="h-4 w-4 mr-2" />
+              Relatório Sem Imagens (.xlsx)
+            </Button>
           </div>
         </PopoverContent>
       </Popover>
@@ -293,7 +310,7 @@ function handleOpenBCGParams() {
 }
 
 // Função para gerar relatório
-async function generateReport(format: 'excel' | 'pdf') {
+async function generateReport(format: 'excel' | 'pdf' | 'compra' | 'dimensao' | 'image') {
   if (!editorStore.getCurrentGondola) {
     alert('Nenhuma gôndola selecionada para gerar relatório.');
     return;
@@ -304,17 +321,47 @@ async function generateReport(format: 'excel' | 'pdf') {
 
   try {
     const gondolaId = editorStore.getCurrentGondola.id;
-    const endpoint = format === 'excel' 
-      ? `/api/plannerate/gondola-report/${gondolaId}/excel`
-      : `/api/plannerate/gondola-report/${gondolaId}/pdf`;
+    
+    // Definir endpoint baseado no formato
+    let endpoint: string;
+    let acceptHeader: string;
+    let fileExtension: string;
+    
+    switch (format) {
+      case 'excel':
+        endpoint = `/api/plannerate/gondola-report/${gondolaId}/excel`;
+        acceptHeader = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        fileExtension = 'xlsx';
+        break;
+      case 'pdf':
+        endpoint = `/api/plannerate/gondola-report/${gondolaId}/pdf`;
+        acceptHeader = 'application/pdf';
+        fileExtension = 'pdf';
+        break;
+      case 'compra':
+        endpoint = `/api/plannerate/gondola-report/${gondolaId}/compra`;
+        acceptHeader = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        fileExtension = 'xlsx';
+        break;
+      case 'dimensao':
+        endpoint = `/api/plannerate/gondola-report/${gondolaId}/dimensao`;
+        acceptHeader = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        fileExtension = 'xlsx';
+        break;
+      case 'image':
+        endpoint = `/api/plannerate/gondola-report/${gondolaId}/image`;
+        acceptHeader = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        fileExtension = 'xlsx';
+        break;
+      default:
+        throw new Error('Formato de relatório inválido');
+    }
 
     // Fazer download do arquivo
     const response = await fetch(endpoint, {
       method: 'GET',
       headers: {
-        'Accept': format === 'excel' 
-          ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-          : 'application/pdf',
+        'Accept': acceptHeader,
         'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
       },
     });
@@ -325,7 +372,7 @@ async function generateReport(format: 'excel' | 'pdf') {
 
     // Obter o nome do arquivo do header ou usar um padrão
     const contentDisposition = response.headers.get('content-disposition');
-    let filename = `relatorio-gondola-${gondolaId}.${format === 'excel' ? 'xlsx' : 'pdf'}`;
+    let filename = `relatorio-gondola-${gondolaId}.${fileExtension}`;
     
     if (contentDisposition) {
       const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);

@@ -180,6 +180,47 @@ class ShelfController extends Controller
         }
     }
 
+
+    /**
+     * @param Request $request
+     * @param Shelf $shelf
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function shelfCopy(Shelf $shelf)
+    {
+        $validated = $shelf->toArray();
+
+        // Processa atualização normal
+        try {
+            DB::beginTransaction();
+            $shelfCopy = Shelf::create(array_merge($validated, [
+                'code' => uniqid('shelf-'),
+                'name' => $shelf->name . ' (Cópia)',
+                'shelf_position' => $shelf->shelf_position + 1,
+            ]));
+            if ($shelfCopy) {
+                foreach ($shelf->segments as $segment) {
+                    $newSegment =  $shelfCopy->segments()->create($segment->toArray());
+                    if ($newSegment && $segment->layer) {
+                        $newSegment->layer()->create($segment->layer->toArray());
+                    }
+                }
+            }
+            $shelfCopy->load([
+                'segments',
+                'segments.layer',
+                'segments.layer.product',
+            ]);
+            DB::commit();
+            return $this->handleSuccess('Prateleira criada com sucesso', [
+                'data' => new ShelfResource($shelfCopy),
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return $this->handleInternalServerError('Erro ao criar prateleira: ' . $e->getMessage());
+        }
+    }
+
     public function segmentCopy(StoreShelfRequest $request, Shelf $shelf)
     {
         $validated = $request->validated();
