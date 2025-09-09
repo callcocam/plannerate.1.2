@@ -295,12 +295,12 @@ class PlannerateController extends Controller
             // Verificar se é uma gôndola existente ou nova
             $gondolaId = data_get($gondolaData, 'id');
             $gondola = null;
-            
+
             // Só tenta buscar a gôndola se o ID tem exatamente 26 caracteres (ULID válido)
             if ($gondolaId && strlen($gondolaId) === 26) {
                 $gondola = Gondola::query()->where('id', $gondolaId)->first();
             }
-            
+
             if ($gondola) {
                 $data[] = array_merge($this->filterGondolaAttributes($gondolaData), [
                     'id' => $gondola->id,
@@ -395,12 +395,12 @@ class PlannerateController extends Controller
             // Verificar se é uma seção existente ou nova
             $sectionId = data_get($sectionData, 'id');
             $section = null;
-            
+
             // Só tenta buscar a seção se o ID tem exatamente 26 caracteres (ULID válido)
             if ($sectionId && strlen($sectionId) === 26) {
                 $section = Section::query()->where('id', $sectionId)->first();
             }
-            
+
             if ($section) {
                 $section->updated_at = now();
                 $data[] = array_merge($this->filterSectionAttributes($sectionData, $shelfService, $gondola), [
@@ -516,12 +516,12 @@ class PlannerateController extends Controller
             // Verificar se é uma prateleira existente ou nova
             $shelfId = data_get($shelfData, 'id');
             $shelf = null;
-            
+
             // Só tenta buscar a prateleira se o ID tem exatamente 26 caracteres (ULID válido)
             if ($shelfId && strlen($shelfId) === 26) {
                 $shelf = Shelf::query()->where('id', $shelfId)->first();
             }
-            
+
             if ($shelf) {
                 // Registrar o ID para não remover depois
                 $shelf->updated_at = now();
@@ -630,22 +630,22 @@ class PlannerateController extends Controller
         $existingSegmentIds = $shelf->segments()->pluck('id')->toArray();
         $processedSegmentIds = [];
         $data = [];
-        
+
         foreach ($segments as $segmentData) {
             // Verificar se é um segmento existente ou novo
             $segmentId = data_get($segmentData, 'id');
             $segment = null;
             $newSegmentId = null;
-            
+
             // Só tenta buscar o segmento se o ID tem exatamente 26 caracteres (ULID válido)
             if ($segmentId && strlen($segmentId) === 26) {
                 $segment = Segment::query()->where('id', $segmentId)->first();
             }
-            
+
             if ($segment) {
                 $newSegmentId = $segment->id;
                 $processedSegmentIds[] = $segment->id;
-                
+
                 $segmentRow = array_merge($this->filterSegmentAttributes($segmentData), [
                     'id' => $segment->id,
                     'tenant_id' => $shelf->tenant_id,
@@ -657,7 +657,7 @@ class PlannerateController extends Controller
                 // Criar um novo segmento
                 $newSegmentId = (string) Str::ulid();
                 $processedSegmentIds[] = $newSegmentId;
-                
+
                 $segmentRow = array_merge($this->filterSegmentAttributes($segmentData), [
                     'id' => $newSegmentId,
                     'tenant_id' => $shelf->tenant_id,
@@ -666,94 +666,27 @@ class PlannerateController extends Controller
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
-                
-                // Criar um objeto segmento temporário para o processamento da camada
-                $segment = new Segment();
-                $segment->id = $newSegmentId;
-                $segment->tenant_id = $shelf->tenant_id;
-                $segment->user_id = $shelf->user_id;
-                $segment->shelf_id = $shelf->id;
-            }
-
-            // Validar que o registro tem todas as colunas necessárias
-            $requiredColumns = [
-                'alignment', 'id', 'ordering', 'position', 'quantity', 
-                'settings', 'shelf_id', 'spacing', 'tenant_id', 'updated_at', 
-                'user_id', 'width'
-            ];
-            
-            foreach ($requiredColumns as $column) {
-                if (!array_key_exists($column, $segmentRow)) {
-                    // Definir valores padrão para colunas faltantes
-                    switch ($column) {
-                        case 'alignment':
-                            $segmentRow['alignment'] = 'left';
-                            break;
-                        case 'ordering':
-                            $segmentRow['ordering'] = 0;
-                            break;
-                        case 'position':
-                            $segmentRow['position'] = 0;
-                            break;
-                        case 'quantity':
-                            $segmentRow['quantity'] = 1;
-                            break;
-                        case 'spacing':
-                            $segmentRow['spacing'] = 0;
-                            break;
-                        case 'width':
-                            $segmentRow['width'] = 230;
-                            break;
-                        case 'settings':
-                            $segmentRow['settings'] = '{}';
-                            break;
-                        case 'status':
-                            $segmentRow['status'] = 'published';
-                            break;
-                    }
-                }
             }
 
             $data[] = $segmentRow;
 
             // Processar camada (layer) deste segmento
             if (isset($segmentData['layer']) && $segment) {
-                $this->processLayer($segment, data_get($segmentData, 'layer', []));
+                $this->processLayer(data_get($segmentData, 'layer', []));
             }
         }
 
         // Remover segmentos que não estão mais presentes na prateleira
         $segmentsToDelete = array_diff($existingSegmentIds, $processedSegmentIds);
         if (!empty($segmentsToDelete)) {
-            Segment::whereIn('id', $segmentsToDelete)->delete();
+            $chunks = array_chunk($segmentsToDelete, 100);
+            foreach ($chunks as $chunk) {
+                Segment::whereIn('id', $chunk)->delete();
+            }
         }
 
-        if ($data) {
+        if ($data) { 
             try {
-                // Log para debug
-                Log::info('Processando segmentos', [
-                    'shelf_id' => $shelf->id,
-                    'total_segments' => count($data),
-                    'sample_data' => array_slice($data, 0, 1) // Apenas o primeiro registro para debug
-                ]);
-
-                // Validar que todos os registros têm o mesmo número de colunas
-                $firstRowColumns = array_keys($data[0]);
-                foreach ($data as $index => $row) {
-                    $currentRowColumns = array_keys($row);
-                    if (count($currentRowColumns) !== count($firstRowColumns)) {
-                        Log::error('Inconsistência no número de colunas', [
-                            'row_index' => $index,
-                            'expected_columns' => count($firstRowColumns),
-                            'actual_columns' => count($currentRowColumns),
-                            'first_row_columns' => $firstRowColumns,
-                            'current_row_columns' => $currentRowColumns,
-                            'row_data' => $row
-                        ]);
-                        throw new \InvalidArgumentException("Linha {$index} tem número diferente de colunas");
-                    }
-                }
-                
                 // Sincronizar segmentos com a prateleira
                 DB::table('segments')->upsert($data, ['id'], [
                     'shelf_id',
@@ -767,12 +700,7 @@ class PlannerateController extends Controller
                     'status',
                     'updated_at'
                 ]);
-            } catch (\Exception $e) {
-                Log::error('Erro ao fazer upsert de segmentos', [
-                    'error' => $e->getMessage(),
-                    'data_count' => count($data),
-                    'sample_data' => array_slice($data, 0, 2), // Primeiros 2 registros para debug
-                ]);
+            } catch (\Exception $e) { 
                 throw $e;
             }
         }
@@ -836,28 +764,28 @@ class PlannerateController extends Controller
      * @param array $layerData
      * @return void
      */
-    private function processLayer(Segment $segment, array $layerData): void
+    private function processLayer(array $layerData): void
     {
         // Verificar se é uma camada existente ou nova
         // Para camadas temporárias (ex: "layer-1745084634214-01jqp9bx4t369a5aqe9z90xdhg"), geramos um novo ID
         $layerId = data_get($layerData, 'id');
         $layer = null;
-        
+
         // Só tenta buscar a camada se o ID tem exatamente 26 caracteres (ULID válido)
         if ($layerId && strlen($layerId) === 26) {
             $layer = Layer::query()->where('id', $layerId)->first();
         }
-        
+
         if (!$layer) {
             $layer = Layer::query()->create([
-                'tenant_id' => $segment->tenant_id,
-                'user_id' => $segment->user_id,
-                'segment_id' => $segment->id,
+                'tenant_id' => data_get($layerData, 'tenant_id'),
+                'user_id' => data_get($layerData, 'user_id'),
+                'segment_id' => data_get($layerData, 'segment_id'),
             ]);
         }
         // Atualizar atributos da camada
         $layer->fill($this->filterLayerAttributes($layerData));
-        $layer->segment_id = $segment->id;
+        $layer->segment_id = data_get($layerData, 'segment_id');
         $layer->save();
     }
 
