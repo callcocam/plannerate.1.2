@@ -40,7 +40,7 @@ class PlannerateController extends Controller
         try {
             // Versão otimizada: carrega apenas campos essenciais
             $planogram = $this->getModel()::query()
-                
+
                 ->with([
                     'tenant:id,name,slug',
                     'gondolas.sections.shelves.segments.layer.product.dimensions'
@@ -388,7 +388,7 @@ class PlannerateController extends Controller
                 // Registrar o ID para não remover depois
                 $processedSectionIds[] = $section->id;
                 // $section = Section::query()->create([
-                //     'id' => (string) Str::orderedUuid(),
+                //     'id' => (string) Str::ulid(),
                 //     'tenant_id' => $gondola->tenant_id,
                 //     'user_id' => $gondola->user_id,
                 //     'gondola_id' => $gondola->id,
@@ -396,7 +396,7 @@ class PlannerateController extends Controller
                 // ]);
             } else {
                 $data[] = array_merge($this->filterSectionAttributes($sectionData, $shelfService, $gondola), [
-                    'id' => (string) Str::orderedUuid(),
+                    'id' => (string) Str::ulid(),
                     'tenant_id' => $gondola->tenant_id,
                     'user_id' => $gondola->user_id,
                     'gondola_id' => $gondola->id,
@@ -506,14 +506,14 @@ class PlannerateController extends Controller
                     'section_id' => data_get($shelfData, 'section_id', $section->id),
                 ]);
                 // $shelf = Shelf::query()->create([
-                //     'id' => (string) Str::orderedUuid(),
+                //     'id' => (string) Str::ulid(),
                 //     'tenant_id' => $section->tenant_id,
                 //     'user_id' => $section->user_id,
                 //     'section_id' => $section->id,
                 // ]);
             } else {
                 $data[] = array_merge($this->filterShelfAttributes($shelfData, $shelfService, $i, $section), [
-                    'id' => (string) Str::orderedUuid(),
+                    'id' => (string) Str::ulid(),
                     'tenant_id' => $section->tenant_id,
                     'user_id' => $section->user_id,
                     'section_id' => data_get($shelfData, 'section_id', $section->id),
@@ -614,7 +614,7 @@ class PlannerateController extends Controller
                 $processedSegmentIds[] = $segment->id;
             } else {
                 $data[] = array_merge($this->filterSegmentAttributes($segmentData), [
-                    'id' => (string) Str::orderedUuid(),
+                    'id' => (string) Str::ulid(),
                     'tenant_id' => $shelf->tenant_id,
                     'user_id' => $shelf->user_id,
                     'shelf_id' => $shelf->id,
@@ -629,7 +629,8 @@ class PlannerateController extends Controller
 
 
             // Processar camada (layer) deste segmento
-            if (isset($segmentData['layer'])) {
+            if (isset($segmentData['layer']) && $segment) {
+
                 $this->processLayer($segment, data_get($segmentData, 'layer', []));
             }
         }
