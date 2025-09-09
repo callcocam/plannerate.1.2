@@ -1,14 +1,17 @@
 <template>
   <Dialog v-model:open="isOpen">
-    <DialogContent class="w-auto max-w-2xl z-[100]">
-      <DialogTitle>Configurações de Impressão</DialogTitle>
-      <DialogDescription>
-        Configure as opções de impressão do planograma e selecione os módulos desejados.
-      </DialogDescription>
+    <DialogContent class="w-auto max-w-2xl max-h-[90vh] z-[100] flex flex-col p-0">
+      <div class="px-6 pt-6 pb-4">
+        <DialogTitle>Configurações de Impressão</DialogTitle>
+        <DialogDescription>
+          Configure as opções de impressão do planograma e selecione os módulos desejados.
+        </DialogDescription>
+      </div>
 
-      <div class="flex flex-col gap-6 py-4">
+      <div class="flex-1 overflow-y-auto px-6">
+        <div class="flex flex-col gap-4 pb-4">
         <!-- Modo de Captura -->
-        <div class="space-y-4">
+        <div class="space-y-3">
           <h4 class="font-medium text-sm">Modo de Captura</h4>
           
           <div class="flex items-center space-x-3">
@@ -40,7 +43,7 @@
         </div>
 
         <!-- Seleção de Módulos -->
-        <div v-if="!captureFullPlanogram" class="space-y-4">
+        <div v-if="!captureFullPlanogram" class="space-y-3">
           <h4 class="font-medium text-sm">Módulos para Impressão</h4>
           
           <div class="flex flex-wrap gap-2">
@@ -57,7 +60,7 @@
           </div>
 
           <!-- Lista de Módulos Individuais -->
-          <div class="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-40 overflow-y-auto">
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-32 overflow-y-auto">
             <label
               v-for="module in availableModules"
               :key="module.id"
@@ -80,7 +83,7 @@
         </div>
 
         <!-- Configurações de Qualidade -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <!-- Escala -->
           <div class="space-y-2">
             <Label for="scale">Escala de Qualidade</Label>
@@ -146,9 +149,9 @@
         </div>
 
         <!-- Margens Personalizadas -->
-        <div class="space-y-3">
+        <div class="space-y-2">
           <h4 class="font-medium text-sm">Margens (mm)</h4>
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
             <div class="space-y-1">
               <Label for="marginTop" class="text-xs">Superior</Label>
               <Input
@@ -197,9 +200,9 @@
         </div>
 
         <!-- Preview -->
-        <div v-if="showPreview && previewImages.length > 0" class="space-y-3">
+        <div v-if="showPreview && previewImages.length > 0" class="space-y-2">
           <h4 class="font-medium text-sm">Preview</h4>
-          <div class="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-60 overflow-y-auto">
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
             <div
               v-for="preview in previewImages"
               :key="preview.id"
@@ -236,9 +239,10 @@
             </div>
           </div>
         </div>
+        </div>
       </div>
 
-      <div class="flex justify-between pt-4">
+      <div class="flex justify-between px-6 py-4 border-t bg-white mt-auto">
         <div class="flex gap-2">
           <Button
             v-if="!isProcessing"

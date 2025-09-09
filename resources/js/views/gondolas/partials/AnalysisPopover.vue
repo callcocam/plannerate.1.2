@@ -62,11 +62,11 @@
             </Button>
             <Button variant="outline" @click="generateReport('dimensao')" :disabled="isGeneratingReport">
               <FileSpreadsheetIcon class="h-4 w-4 mr-2" />
-              Relatório Dimensão (.xlsx)
+              Relatório Sem Dimensões (.xlsx)
             </Button>
             <Button variant="outline" @click="generateReport('image')" :disabled="isGeneratingReport">
               <FileSpreadsheetIcon class="h-4 w-4 mr-2" />
-              Relatório Image (.xlsx)
+              Relatório Sem Imagens (.xlsx)
             </Button>
           </div>
         </PopoverContent>

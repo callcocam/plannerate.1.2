@@ -43,10 +43,10 @@
                             @segment-drag-over="handleSegmentDragOver" />
                     </template>
                 </draggable>
-                <!-- <ShelfControls :shelf="shelf" :scale-factor="scaleFactor" :section-width="sectionWidth"
+                <ShelfControls :shelf="shelf" :scale-factor="scaleFactor" :section-width="sectionWidth"
                     :section-height="sectionHeight" :shelf-element="shelfElement" :base-height="baseHeight"
                     :sections-container="sectionsContainer" :section-index="sectionIndex" :hole-width="holeWidth"
-                    :index="index" :totalItems="sortedShelves.length" /> -->
+                    :index="index" :totalItems="sortedShelves.length" />
             </div>
         </ContextMenuTrigger>
         <ContextMenuContent class="w-64">
@@ -79,7 +79,7 @@ import { type Product, type Segment as SegmentType } from '@plannerate/types/seg
 import { type Shelf } from '@plannerate/types/shelves';
 import Segment from './Segment.vue';
 import ShelfContent from './ShelfContent.vue';
-// import ShelfControls from './ShelfControls.vue';
+import ShelfControls from './ShelfControls.vue';
 import { Section } from '@/types/sections';
 import { Gondola } from '@plannerate/types/gondola';
 
@@ -177,7 +177,7 @@ const segmentOverlayStyle = computed(() => {
 });
 
 const gondolaId = computed(() => props.gondola.id);
-// const holeWidth = computed(() => props.section.hole_width); // Removido pois não está sendo usado
+const holeWidth = computed(() => props.section.hole_width);
 // Definir Emits
 const emit = defineEmits(['drop-product', 'drop-products-multiple', 'drop-segment-copy', 'drop-segment']);
 const editorStore = useEditorStore();
