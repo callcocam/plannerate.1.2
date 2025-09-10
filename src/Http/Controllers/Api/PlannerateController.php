@@ -269,7 +269,6 @@ class PlannerateController extends Controller
             'cluster',
             'start_date',
             'end_date',
-            'status',
             // Adicione outros campos conforme necessário
         ];
 
@@ -296,37 +295,18 @@ class PlannerateController extends Controller
             $gondolaId = data_get($gondolaData, 'id');
             $gondola = null;
 
-            // Só tenta buscar a gôndola se o ID tem exatamente 26 caracteres (ULID válido)
-            if ($gondolaId && strlen($gondolaId) === 26) {
-                $gondola = Gondola::query()->where('id', $gondolaId)->first();
-            }
-
-            if ($gondola) {
-                $data[] = array_merge($this->filterGondolaAttributes($gondolaData), [
-                    'id' => $gondola->id,
-                    'tenant_id' => $planogram->tenant_id,
-                    'user_id' => $planogram->user_id,
-                    'planogram_id' => $planogram->id,
-                    'name' => data_get($gondolaData, 'name', 'Gôndola'),
-                    'updated_at' => now(),
-                ]);
-                // Registrar o ID para não remover depois
-                $processedGondolaIds[] = $gondola->id;
-            } else {
-                $newId = (string) Str::ulid();
-                $data[] = array_merge($this->filterGondolaAttributes($gondolaData), [
-                    'id' => $newId,
-                    'tenant_id' => $planogram->tenant_id,
-                    'user_id' => $planogram->user_id,
-                    'planogram_id' => $planogram->id,
-                    'name' => data_get($gondolaData, 'name', 'Gôndola'),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-                // Registrar o ID para não remover depois
-                $processedGondolaIds[] = $newId;
-            }
-
+            // Só tenta buscar a gôndola se o ID tem exatamente 26 caracteres (ULID válido) 
+            $gondola = Gondola::query()->where('id', substr($gondolaId, 0, 26))->first();
+            $data[] = array_merge($this->filterGondolaAttributes($gondolaData), [
+                'id' => $gondola->id,
+                'tenant_id' => $planogram->tenant_id,
+                'user_id' => $planogram->user_id,
+                'planogram_id' => $planogram->id,
+                'name' => data_get($gondolaData, 'name', 'Gôndola'),
+                'updated_at' => now(),
+            ]);
+            // Registrar o ID para não remover depois
+            $processedGondolaIds[] = $gondola->id;
             // Processar seções desta gôndola
             if (isset($gondolaData['sections'])) {
                 $this->processSections($gondola, data_get($gondolaData, 'sections', []));
@@ -395,43 +375,18 @@ class PlannerateController extends Controller
             // Verificar se é uma seção existente ou nova
             $sectionId = data_get($sectionData, 'id');
             $section = null;
-
-            // Só tenta buscar a seção se o ID tem exatamente 26 caracteres (ULID válido)
-            if ($sectionId && strlen($sectionId) === 26) {
-                $section = Section::query()->where('id', $sectionId)->first();
-            }
-
-            if ($section) {
-                $section->updated_at = now();
-                $data[] = array_merge($this->filterSectionAttributes($sectionData, $shelfService, $gondola), [
-                    'id' => $section->id,
-                    'tenant_id' => $gondola->tenant_id,
-                    'user_id' => $gondola->user_id,
-                    'gondola_id' => data_get($sectionData, 'gondola_id', $gondola->id),
-                    'name' => data_get($sectionData, 'name', sprintf('%s# Sessão', $i)),
-                    'updated_at' => now(),
-                ]);
-                // Registrar o ID para não remover depois
-                $processedSectionIds[] = $section->id;
-            } else {
-                $data[] = array_merge($this->filterSectionAttributes($sectionData, $shelfService, $gondola), [
-                    'id' => (string) Str::ulid(),
-                    'tenant_id' => $gondola->tenant_id,
-                    'user_id' => $gondola->user_id,
-                    'gondola_id' => $gondola->id,
-                    'name' => sprintf('%s# Sessão', $i),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            }
-
-            // Atualizar atributos da seção
-            // $section->fill($this->filterSectionAttributes($sectionData, $shelfService, $gondola));
-            // $section->gondola_id = $gondola->id;
-            // $section->name = sprintf('%s# Sessão', $i);
-            // $section->save();
-
-
+            $section = Section::query()->where('id', $sectionId)->first();
+            $section->updated_at = now();
+            $data[] = array_merge($this->filterSectionAttributes($sectionData, $shelfService, $gondola), [
+                'id' => $section->id,
+                'tenant_id' => $gondola->tenant_id,
+                'user_id' => $gondola->user_id,
+                'gondola_id' => data_get($sectionData, 'gondola_id', $gondola->id),
+                'name' => data_get($sectionData, 'name', sprintf('%s# Sessão', $i)),
+                'updated_at' => now(),
+            ]);
+            // Registrar o ID para não remover depois
+            $processedSectionIds[] = $section->id;
             // Processar prateleiras desta seção
             if (isset($sectionData['shelves'])) {
                 $this->processShelves($section, data_get($sectionData, 'shelves', []), $shelfService);
@@ -440,7 +395,10 @@ class PlannerateController extends Controller
         // Remover seções que não estão mais presentes na gôndola
         $sectionsToDelete = array_diff($existingSectionIds, $processedSectionIds);
         if (!empty($sectionsToDelete)) {
-            Section::whereIn('id', $sectionsToDelete)->delete();
+            $chunks = array_chunk($sectionsToDelete, 100);
+            foreach ($chunks as $chunk) {
+                Section::whereIn('id', $chunk)->delete();
+            }
         }
         // Sincronizar seções com a gôndola
         DB::table('sections')->upsert($data, ['id'], [
@@ -484,9 +442,6 @@ class PlannerateController extends Controller
             'hole_spacing',
             'cremalheira_width',
             'ordering',
-            // 'settings',
-            // 'status',
-            // Adicione outros campos conforme necessário
         ];
 
 
@@ -514,13 +469,11 @@ class PlannerateController extends Controller
         $data = [];
         foreach ($shelves as  $i => $shelfData) {
             // Verificar se é uma prateleira existente ou nova
-            $shelfId = data_get($shelfData, 'id');
+            $newShelfId = data_get($shelfData, 'id');
             $shelf = null;
 
             // Só tenta buscar a prateleira se o ID tem exatamente 26 caracteres (ULID válido)
-            if ($shelfId && strlen($shelfId) === 26) {
-                $shelf = Shelf::query()->where('id', $shelfId)->first();
-            }
+            $shelf = Shelf::query()->where('id', substr($newShelfId, 0, 26))->first();
 
             if ($shelf) {
                 // Registrar o ID para não remover depois
@@ -531,36 +484,28 @@ class PlannerateController extends Controller
                     'tenant_id' => $section->tenant_id,
                     'user_id' => $section->user_id,
                     'section_id' => data_get($shelfData, 'section_id', $section->id),
-                    'updated_at' => now(),
+                    'updated_at' => now()->format('Y-m-d H:i:s'),
                 ]);
             } else {
-                $newShelfId = (string) Str::ulid();
-                $processedShelfIds[] = $newShelfId;
-                $data[] = array_merge($this->filterShelfAttributes($shelfData, $shelfService, $i, $section), [
+                $new = Shelf::create(array_merge($this->filterShelfAttributes($shelfData), [
                     'id' => $newShelfId,
                     'tenant_id' => $section->tenant_id,
                     'user_id' => $section->user_id,
                     'section_id' => data_get($shelfData, 'section_id', $section->id),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+                    'created_at' => now()->format('Y-m-d H:i:s'),
+                    'updated_at' => now()->format('Y-m-d H:i:s'),
+                ]));
 
-                // Criar objeto temporário para processar segmentos
-                $shelf = new Shelf();
-                $shelf->id = $newShelfId;
-                $shelf->tenant_id = $section->tenant_id;
-                $shelf->user_id = $section->user_id;
-                $shelf->section_id = $section->id;
+                $newShelfId = $new->id;
+                $processedShelfIds[] = $newShelfId;
             }
-
-            // Atualizar atributos da prateleira
-            // $shelf->fill($this->filterShelfAttributes($shelfData, $shelfService, $i, $section));
-            // $shelf->section_id = $section->id;
-            // $shelf->save();
 
             // Processar segmentos desta prateleira
             if (isset($shelfData['segments']) && $shelf) {
-                $this->processSegments($shelf, data_get($shelfData, 'segments', []));
+                $this->processSegments($newShelfId, data_get($shelfData, 'segments', []), [
+                    'tenant_id' => $section->tenant_id,
+                    'user_id' => $section->user_id,
+                ]);
             }
         }
 
@@ -580,7 +525,6 @@ class PlannerateController extends Controller
             'ordering',
             'spacing',
             'settings',
-            'status',
             'alignment',
             'updated_at'
         ]);
@@ -589,13 +533,10 @@ class PlannerateController extends Controller
     /**
      * Filtra atributos da prateleira
      * 
-     * @param array $data
-     * @param ShelfPositioningService $shelfService
-     * @param int $i
-     * @param Section $section
+     * @param array $data 
      * @return array
      */
-    private function filterShelfAttributes(array $data, ShelfPositioningService $shelfService, int $i, Section $section): array
+    private function filterShelfAttributes(array $data): array
     {
         $fillable = [
             // 'code',
@@ -607,7 +548,6 @@ class PlannerateController extends Controller
             'ordering',
             'spacing',
             'settings',
-            'status',
             'alignment',
             // Adicione outros campos conforme necessário
         ];
@@ -619,15 +559,15 @@ class PlannerateController extends Controller
 
     /**
      * Processa os segmentos de uma prateleira
-     * 
-     * @param Shelf $shelf
+     *
+     * @param string $newShelfId
      * @param array $segments
      * @return void
      */
-    private function processSegments(Shelf $shelf, array $segments): void
+    private function processSegments($newShelfId, array $segments, array $context): void
     {
         // Coletar IDs existentes para depois remover os que não estão mais presentes
-        $existingSegmentIds = $shelf->segments()->pluck('id')->toArray();
+        $existingSegmentIds = Segment::query()->where('shelf_id', $newShelfId)->pluck('id')->toArray();
         $processedSegmentIds = [];
         $data = [];
 
@@ -637,42 +577,34 @@ class PlannerateController extends Controller
             $segment = null;
             $newSegmentId = null;
 
-            // Só tenta buscar o segmento se o ID tem exatamente 26 caracteres (ULID válido)
-            if ($segmentId && strlen($segmentId) === 26) {
-                $segment = Segment::query()->where('id', $segmentId)->first();
-            }
+            // Só tenta buscar o segmento se o ID tem exatamente 26 caracteres (ULID válido) 
+            $segment = Segment::query()->where('id', substr($segmentId, 0, 26))->first();
 
             if ($segment) {
                 $newSegmentId = $segment->id;
                 $processedSegmentIds[] = $segment->id;
-
                 $segmentRow = array_merge($this->filterSegmentAttributes($segmentData), [
                     'id' => $segment->id,
-                    'tenant_id' => $shelf->tenant_id,
-                    'user_id' => $shelf->user_id,
-                    'shelf_id' => $shelf->id,
-                    'updated_at' => now(),
+                    'shelf_id' => $newShelfId,
+                    'updated_at' => now()->format('Y-m-d H:i:s'),
                 ]);
+                $data[] = $segmentRow;
             } else {
                 // Criar um novo segmento
-                $newSegmentId = (string) Str::ulid();
-                $processedSegmentIds[] = $newSegmentId;
-
-                $segmentRow = array_merge($this->filterSegmentAttributes($segmentData), [
+                $new = Segment::create(array_merge($this->filterSegmentAttributes($segmentData), [
                     'id' => $newSegmentId,
-                    'tenant_id' => $shelf->tenant_id,
-                    'user_id' => $shelf->user_id,
-                    'shelf_id' => $shelf->id,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+                    'tenant_id' => data_get($context, 'tenant_id'),
+                    'user_id' => data_get($context, 'user_id'),
+                    'shelf_id' => $newShelfId,
+                    'created_at' => now()->format('Y-m-d H:i:s'),
+                    'updated_at' => now()->format('Y-m-d H:i:s'),
+                ]));
+                $newSegmentId = $new->id;
+                $processedSegmentIds[] = $newSegmentId;
             }
-
-            $data[] = $segmentRow;
-
             // Processar camada (layer) deste segmento
-            if (isset($segmentData['layer']) && $segment) {
-                $this->processLayer(data_get($segmentData, 'layer', []));
+            if (isset($segmentData['layer'])) {
+                $this->processLayer($newSegmentId, data_get($segmentData, 'layer', []), $context);
             }
         }
 
@@ -685,7 +617,7 @@ class PlannerateController extends Controller
             }
         }
 
-        if ($data) { 
+        if ($data) {
             try {
                 // Sincronizar segmentos com a prateleira
                 DB::table('segments')->upsert($data, ['id'], [
@@ -697,10 +629,9 @@ class PlannerateController extends Controller
                     'spacing',
                     'settings',
                     'alignment',
-                    'status',
                     'updated_at'
                 ]);
-            } catch (\Exception $e) { 
+            } catch (\Exception $e) {
                 throw $e;
             }
         }
@@ -722,7 +653,6 @@ class PlannerateController extends Controller
             'spacing',
             'settings',
             'alignment',
-            'status',
             // 'tabindex',
             // Adicione outros campos conforme necessário
         ];
@@ -760,32 +690,29 @@ class PlannerateController extends Controller
     /**
      * Processa a camada (layer) de um segmento
      * 
-     * @param Segment $segment
+     * @param string $segmentId
      * @param array $layerData
+     * @param array $context
      * @return void
      */
-    private function processLayer(array $layerData): void
+    private function processLayer(string $segmentId, array $layerData, array $context): void
     {
         // Verificar se é uma camada existente ou nova
         // Para camadas temporárias (ex: "layer-1745084634214-01jqp9bx4t369a5aqe9z90xdhg"), geramos um novo ID
         $layerId = data_get($layerData, 'id');
-        $layer = null;
 
-        // Só tenta buscar a camada se o ID tem exatamente 26 caracteres (ULID válido)
-        if ($layerId && strlen($layerId) === 26) {
-            $layer = Layer::query()->where('id', $layerId)->first();
-        }
+        // Só tenta buscar a camada se o ID tem exatamente 26 caracteres (ULID válido) 
+        $layer = Layer::query()->where('id', substr($layerId, 0, 26))->first();
 
         if (!$layer) {
             $layer = Layer::query()->create([
-                'tenant_id' => data_get($layerData, 'tenant_id'),
-                'user_id' => data_get($layerData, 'user_id'),
-                'segment_id' => data_get($layerData, 'segment_id'),
+                'tenant_id' => data_get($context, 'tenant_id'),
+                'user_id' => data_get($context, 'user_id'),
+                'segment_id' => $segmentId
             ]);
         }
         // Atualizar atributos da camada
         $layer->fill($this->filterLayerAttributes($layerData));
-        $layer->segment_id = data_get($layerData, 'segment_id');
         $layer->save();
     }
 
@@ -805,15 +732,9 @@ class PlannerateController extends Controller
             'settings',
             'alignment',
             'reload',
-            'status',
             // 'tabindex',
             // Adicione outros campos conforme necessário
         ];
-
-        // Extrair o product_id de objetos aninhados, se necessário
-        // if (isset($data['product']) && isset($data['product']['id']) && !isset($data['product_id'])) {
-        //     $data['product_id'] = $data['product']['id'];
-        // }
 
         // Converter settings para JSON se for array
         if (isset($data['settings']) && is_array($data['settings'])) {
