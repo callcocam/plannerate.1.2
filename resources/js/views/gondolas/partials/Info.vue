@@ -20,8 +20,7 @@ import { useRouter } from 'vue-router';
 // Imports Internos 
 import { useEditorStore } from '@plannerate/store/editor';
 import Category from './Category.vue';
-import type { Gondola } from '@plannerate/types/gondola';
-import { useAnalysisResultStore } from '@plannerate/store/editor/analysisResult';
+import type { Gondola } from '@plannerate/types/gondola'; 
 import AnalysisPopover from './AnalysisPopover.vue';
 // Definição das Props usando sintaxe padrão
 const props = defineProps({
@@ -224,7 +223,7 @@ const saveChanges = () => editorStore.saveChanges();
 
 <template>
     <!-- Cabeçalho Fixo com Controles -->
-    <div class="sticky top-0 z-50 border-b border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+    <div class="sticky top-0 z-40 border-b border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
         <div class="p-2">
             <div class="flex items-center justify-between   gap-2 overflow-x-auto">
                 <!-- Grupo Esquerda: Controles de Visualização e Filtros -->

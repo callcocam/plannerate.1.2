@@ -87,26 +87,29 @@
 
             <!-- Dimensões -->
             <div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
-                <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-1">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M4 8V4a1 1 0 011-1h4m12 0h-4a1 1 0 011 1v4m0 8v4a1 1 0 01-1 1h-4m-12 0h4a1 1 0 01-1-1v-4" />
-                    </svg>
-                    Dimensões
+                <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center justify-between">
+                    <div class="flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 8V4a1 1 0 011-1h4m12 0h-4a1 1 0 011 1v4m0 8v4a1 1 0 01-1 1h-4m-12 0h4a1 1 0 01-1-1v-4" />
+                        </svg>
+                        Dimensões
+                    </div>
+                    <EditDimensions :product="productInfo" @update:product="handleLayerUpdate" />
                 </h4>
 
                 <div class="grid grid-cols-3 gap-3 text-sm">
                     <div class="text-center bg-white dark:bg-gray-700 rounded-md p-2">
                         <div class="text-gray-600 dark:text-gray-400 text-xs">Largura</div>
-                        <div class="font-semibold">{{ productInfo.width }}cm</div>
+                        <div class="font-semibold">{{ productInfo.width || 0 }}cm</div>
                     </div>
                     <div class="text-center bg-white dark:bg-gray-700 rounded-md p-2">
                         <div class="text-gray-600 dark:text-gray-400 text-xs">Altura</div>
-                        <div class="font-semibold">{{ productInfo.height }}cm</div>
+                        <div class="font-semibold">{{ productInfo.height || 0 }}cm</div>
                     </div>
                     <div class="text-center bg-white dark:bg-gray-700 rounded-md p-2">
                         <div class="text-gray-600 dark:text-gray-400 text-xs">Profundidade</div>
-                        <div class="font-semibold">{{ productInfo.depth }}cm</div>
+                        <div class="font-semibold">{{ productInfo.depth || 0 }}cm</div>
                     </div>
                 </div>
 
@@ -260,6 +263,7 @@
 import { computed } from 'vue';
 import { useViewStatsStore } from '@plannerate/store/editor/viewStats';
 import EditProduct from './EditProduct.vue';
+import EditDimensions from './EditDimensions.vue';
 import { EditIcon } from 'lucide-vue-next';
 import { Product } from '@/types/segment';
 import { useProductService } from '@plannerate/services/productService';

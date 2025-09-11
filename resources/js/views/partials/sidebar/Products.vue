@@ -57,7 +57,7 @@
                             <PopoverTrigger as-child>
                                 <Button variant="outline" class="w-full justify-between">
                                     <span>{{ filters.category ? 'Nível selecionado' : 'Selecionar nível mercadológico'
-                                        }}</span>
+                                    }}</span>
                                     <ChevronDown class="h-4 w-4 opacity-50" />
                                 </Button>
                             </PopoverTrigger>
@@ -149,20 +149,20 @@
                             </div>
                             <div class="min-w-0 flex-1">
                                 <p class="truncate text-sm font-medium text-gray-800 dark:text-gray-100">{{ product.name
-                                    }}
+                                }}
                                 </p>
                                 <p class="text-xs text-gray-500 dark:text-gray-400">{{ product.width }}×{{
                                     product.height
-                                    }}×{{ product.depth }} cm</p>
+                                }}×{{ product.depth }} cm</p>
                             </div>
                         </div>
-                        <!-- <div class="mt-1 flex justify-end">
+                        <div class="mt-1 flex justify-end">
                             <Button variant="ghost" size="sm"
                                 class="invisible text-xs group-hover:visible cursor-pointer"
                                 @click.stop="viewStats(product)">
                                 Ver estatísticas
                             </Button>
-                        </div> -->
+                        </div>
                     </li>
                 </ul>
 
