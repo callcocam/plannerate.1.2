@@ -37,6 +37,18 @@ export interface ScoreWeights {
 }
 
 /**
+ * Filtros dinâmicos para seleção de produtos
+ */
+export interface ProductFilters {
+    dimension?: boolean;
+    unusedOnly?: boolean;
+    sales?: boolean;
+    hangable?: boolean;
+    stackable?: boolean;
+    limit?: number;
+}
+
+/**
  * Parâmetros para cálculo de scores
  */
 export interface CalculateScoresParams {
@@ -46,6 +58,7 @@ export interface CalculateScoresParams {
     end_date?: string;
     store_id?: number;
     auto_distribute?: boolean;
+    filters?: ProductFilters;
 }
 
 /**
@@ -191,7 +204,8 @@ export class EngineService {
       console.log('EngineService: Calculando scores automáticos', {
         gondola_id: params.gondola_id,
         weights: params.weights,
-        period: params.start_date ? `${params.start_date} - ${params.end_date}` : 'Período completo'
+        period: params.start_date ? `${params.start_date} - ${params.end_date}` : 'Período completo',
+        filters: params.filters
       });
 
       const response = await apiService.post(`${this.baseUrl}/calculate-scores`, params);

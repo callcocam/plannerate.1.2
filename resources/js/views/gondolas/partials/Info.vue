@@ -264,9 +264,8 @@ const executeAutomaticGeneration = async (filters: AutoGenerateFilters) => {
         // Calcular scores e distribuir produtos automaticamente
         const response = await engineService.calculateScores({
             gondola_id: currentGondola.id,
-            auto_distribute: true
-            // TODO: Implementar filtros no backend
-            // filters: filters
+            auto_distribute: true,
+            filters: filters
         });
 
         // Verificar se há produtos para análise

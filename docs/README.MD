@@ -443,9 +443,10 @@ Score = (W_qty * Qty_normalized) +
 ```
 
 ### Zonas de Prateleira:
-- **Zona Nobre** (altura 120-160cm): Produtos A, alta margem
-- **Zona Intermediária** (altura 80-120cm): Produtos B, médio giro
+- **Zona Nobre** (altura 100-160cm): Produtos A, alta margem
+- **Zona Intermediária** (altura 80-100cm): Produtos B, médio giro
 - **Zona Rodapé** (altura 40-80cm): Produtos C, baixo giro
+- **Zona Espelho** (altura 160cm->)
 
 ## 🔢 **Sistema de Frentes/Facing**
 
