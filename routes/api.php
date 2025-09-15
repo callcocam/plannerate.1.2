@@ -67,6 +67,10 @@ Route::middleware(['api'])
             Route::post('/apply-scores', [AutoPlanogramController::class, 'applyScores'])
                 ->name('apply-scores');
             
+            // Geração inteligente com ABC + Target Stock
+            Route::post('/generate-intelligent', [AutoPlanogramController::class, 'generateIntelligent'])
+                ->name('generate-intelligent');
+            
             // Obter configurações do motor automático
             Route::get('/config', [AutoPlanogramController::class, 'getConfig'])
                 ->name('config');

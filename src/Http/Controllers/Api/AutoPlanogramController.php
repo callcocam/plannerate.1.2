@@ -11,6 +11,10 @@ namespace Callcocam\Plannerate\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Callcocam\Plannerate\Models\Gondola;
 use Callcocam\Plannerate\Services\Engine\ScoreEngineService;
+use Callcocam\Plannerate\Services\FacingCalculatorService;
+use Callcocam\Plannerate\Services\ProductDataExtractorService;
+use Callcocam\Plannerate\Services\ProductPlacementService;
+use Callcocam\Plannerate\Services\StepLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -24,10 +28,20 @@ use Illuminate\Support\Facades\Validator;
 class AutoPlanogramController extends Controller
 {
     protected ScoreEngineService $scoreEngine;
+    protected FacingCalculatorService $facingCalculator;
+    protected ProductDataExtractorService $productDataExtractor;
+    protected ProductPlacementService $productPlacement;
 
-    public function __construct(ScoreEngineService $scoreEngine)
-    {
+    public function __construct(
+        ScoreEngineService $scoreEngine,
+        FacingCalculatorService $facingCalculator,
+        ProductDataExtractorService $productDataExtractor,
+        ProductPlacementService $productPlacement
+    ) {
         $this->scoreEngine = $scoreEngine;
+        $this->facingCalculator = $facingCalculator;
+        $this->productDataExtractor = $productDataExtractor;
+        $this->productPlacement = $productPlacement;
     }
 
     /**
@@ -70,8 +84,8 @@ class AutoPlanogramController extends Controller
             // Buscar a gôndola com relação ao planogram
             $gondola = Gondola::with(['sections.shelves.segments', 'planogram'])->findOrFail($request->gondola_id);
             
-            // Buscar produtos baseado na categoria do planogram (não da gôndola)
-            $productsData = $this->getProductsByPlanogramCategory($gondola, $request);
+            // Buscar produtos usando o mesmo endpoint do Products.vue
+            $productsData = $this->getAllProductsByPlanogramCategory($gondola, $request);
             
             if (empty($productsData)) {
                 $planogram = $gondola->planogram;
@@ -126,17 +140,21 @@ class AutoPlanogramController extends Controller
                 ]);
             }
 
-            // Extrair IDs dos produtos para o ScoreEngine
-            $productIds = collect($productsData)->pluck('id')->toArray();
-            
-            Log::info('AutoPlanogram: Calculando scores para gôndola', [
-                'gondola_id' => $gondola->id,
-                'gondola_name' => $gondola->name,
-                'produtos_count' => count($productIds),
-                'produtos_with_dimensions' => collect($productsData)->filter(function($product) {
-                    return isset($product['dimensions']) && $product['dimensions'] !== null;
-                })->count()
-            ]);
+        // Filtrar apenas produtos com dimensões válidas
+        $productsWithDimensions = collect($productsData)->filter(function($product) {
+            return isset($product['dimensions']) && 
+                   isset($product['dimensions']['width']) && 
+                   $product['dimensions']['width'] > 0;
+        })->values()->toArray();
+        
+        // PASSO 1: Iniciar processo de distribuição automática
+        StepLogger::startProcess($gondola->id, $gondola->name, count($productsWithDimensions));
+        
+        // Usar apenas produtos com dimensões válidas
+        $productsData = $productsWithDimensions;
+        
+        // Extrair IDs dos produtos filtrados para o ScoreEngine
+        $productIds = collect($productsData)->pluck('id')->toArray();
 
             // Calcular scores usando o ScoreEngine
             $scores = $this->scoreEngine->calculateScores(
@@ -268,7 +286,6 @@ class AutoPlanogramController extends Controller
                         
                         if ($scoreData) {
                             // Atualizar segmento com dados calculados
-                            // Nota: Campos 'score', 'abc_class', 'confidence_flag' serão adicionados na próxima etapa
                             $segment->update([
                                 'settings' => array_merge($segment->settings ?? [], [
                                     'auto_score' => $scoreData['final_score'],
@@ -368,179 +385,7 @@ class AutoPlanogramController extends Controller
         ]);
     }
 
-    /**
-     * Busca produtos baseado na categoria do planogram (não da gôndola)
-     * Usa o category_id do planogram para encontrar produtos da mesma categoria
-     * Aplica filtros dinâmicos vindos do modal AutoGenerateModal.vue
-     */
-    protected function getProductsByPlanogramCategory(Gondola $gondola, $request): array
-    {
-        // 1. Obter o planogram da gôndola
-        $planogram = $gondola->planogram;
-        
-        Log::info("Debug planogram carregado", [
-            'gondola_id' => $gondola->id,
-            'gondola_planogram_id' => $gondola->planogram_id,
-            'planogram_found' => $planogram ? 'SIM' : 'NÃO',
-            'planogram_data' => $planogram ? [
-                'id' => $planogram->id,
-                'name' => $planogram->name,
-                'category_id' => $planogram->category_id,
-            ] : null
-        ]);
-        
-        if (!$planogram) {
-            Log::warning("Gôndola sem planogram associado", [
-                'gondola_id' => $gondola->id,
-                'gondola_name' => $gondola->name
-            ]);
-            
-            // Retornar array vazio em vez de exception
-            return [];
-        }
-
-        // 2. Verificar se o planogram tem categoria definida
-        if (!$planogram->category_id) {
-            Log::warning("Planogram sem categoria definida", [
-                'gondola_id' => $gondola->id,
-                'planogram_id' => $planogram->id,
-                'planogram_name' => $planogram->name ?? 'N/A',
-                'category_id' => $planogram->category_id
-            ]);
-            
-            // Retornar array vazio em vez de exception
-            return [];
-        }
-
-        // 3. Buscar produtos baseado na hierarquia da categoria do planogram
-        $productsQuery = \App\Models\Product::query();
-        $categoryId = $planogram->category_id;
-        
-        // Obter a categoria e sua hierarquia completa
-        $category = \App\Models\Category::find($categoryId);
-        if (!$category) {
-            Log::warning("Categoria do planogram não encontrada", [
-                'category_id' => $categoryId,
-                'planogram_id' => $planogram->id
-            ]);
-            return [];
-        }
-
-        // Usar a mesma lógica da API de produtos (ProductController)
-        // Criar objeto mercadológico baseado no level_name da categoria
-        $mercadologicoNivel = [];
-        $mercadologicoNivel[$category->level_name] = $categoryId;
-        
-        // Buscar descendentes da categoria (subcategorias)
-        $descendants = $this->getCategoryDescendants($categoryId);
-        $descendants[] = $categoryId; // Incluir a própria categoria
-        
-        // Aplicar filtro nos produtos
-        $productsQuery->whereIn('category_id', $descendants);
-        
-        $levelUsed = $category->level_name . ': ' . $category->name . ' (+ ' . (count($descendants)-1) . ' descendentes)';
-        
-        Log::info("Busca hierárquica na categoria", [
-            'categoria' => $category->name,
-            'category_id' => $categoryId,
-            'level_name' => $category->level_name,
-            'mercadologico_nivel' => $mercadologicoNivel,
-            'total_categorias_incluidas' => count($descendants),
-            'descendentes' => array_slice($descendants, 0, 5) // Primeiras 5 para debug
-        ]);
-
-        // 4. Produtos com EAN (sempre obrigatório)
-        $productsQuery->whereNotNull('ean');
-        
-        // 5. Aplicar filtros dinâmicos vindos do modal AutoGenerateModal.vue
-        $filters = $request->input('filters', []);
-        $this->applyDynamicFilters($productsQuery, $filters, $gondola);
-        
-        // Buscar produtos com limite dinâmico  
-        $limit = $filters['limit'] ?? 20; // Padrão 20 se não informado
-        $products = $productsQuery->with(['dimensions'])->limit($limit)->get();
-
-        Log::info("Produtos encontrados para geração automática COM FILTROS DINÂMICOS", [
-            'gondola_id' => $gondola->id,
-            'planogram_id' => $planogram->id,
-            'mercadologico_level_used' => $levelUsed,
-            'products_found' => $products->count(),
-            'products_with_dimensions' => $products->filter(function($product) {
-                return $product->dimensions !== null;
-            })->count(),
-            'limit_applied' => $limit,
-            'filters_applied' => $filters
-        ]);
-
-        // Retornar dados completos dos produtos ao invés de apenas IDs
-        return $products->toArray();
-    }
-
-    /**
-     * Extrai IDs dos produtos de uma gôndola (método legacy - mantido para compatibilidade)
-     * @deprecated Use getProductsByPlanogramMercadologico para geração automática
-     */
-    protected function extractProductIds(Gondola $gondola): array
-    {
-        $productIds = [];
-        
-        foreach ($gondola->sections as $section) {
-            foreach ($section->shelves as $shelf) {
-                foreach ($shelf->segments as $segment) {
-                    if ($segment->layer && $segment->layer->product_id) {
-                        $productIds[] = $segment->layer->product_id;
-                    }
-                }
-            }
-        }
-        
-        return array_unique($productIds);
-    }
-
-    /**
-     * Método auxiliar para buscar todos os descendentes de uma categoria
-     * Copiado do ProductController para manter consistência
-     */
-    private function getCategoryDescendants($category)
-    {
-        $descendants = [];
-
-        // Busca filhos diretos
-        if (is_string($category)) {
-            $children = \App\Models\Category::where('category_id', $category)->get();
-        } else {
-            $children = \App\Models\Category::where('category_id', $category->id)->get();
-        }
-
-        foreach ($children as $child) {
-            $descendants[] = $child->id;
-            // Recursivamente busca descendentes dos filhos
-            $descendants = array_merge($descendants, $this->getCategoryDescendants($child));
-        }
-
-        return $descendants;
-    }
-
-    /**
-     * Obtém IDs dos produtos já usados na gôndola atual
-     * Para filtrar apenas produtos "unused" (igual à sidebar)
-     */
-    private function getProductIdsInGondola(Gondola $gondola): array
-    {
-        $productIds = [];
-        
-        foreach ($gondola->sections as $section) {
-            foreach ($section->shelves as $shelf) {
-                foreach ($shelf->segments as $segment) {
-                    if ($segment->layer && $segment->layer->product_id) {
-                        $productIds[] = $segment->layer->product_id;
-                    }
-                }
-            }
-        }
-        
-        return array_unique($productIds);
-    }
+    // Método getProductsByPlanogramCategory removido - agora usa endpoint do Products.vue
 
     /**
      * Distribui produtos automaticamente na gôndola baseado nos scores
@@ -548,14 +393,15 @@ class AutoPlanogramController extends Controller
      */
     protected function distributeProductsInGondola(Gondola $gondola, array $scores, array $productsData = []): array
     {
-        Log::info("Iniciando distribuição automática", [
-            'gondola_id' => $gondola->id,
-            'total_scores' => count($scores),
-            'products_data_count' => count($productsData)
-        ]);
+            // PASSO 2: Iniciar distribuição automática com dados enrichecidos
+            StepLogger::logCustomStep('DADOS ENRICHECIDOS PREPARADOS', [
+                '📊 SCORES_CALCULADOS' => count($scores),
+                '📦 PRODUTOS_COM_DADOS' => count($productsData),
+                '🔄 PRÓXIMA_ETAPA' => 'Classificação ABC e distribuição'
+            ]);
 
         // 0. Enrichar scores com dados dos produtos (incluindo dimensões)
-        $enrichedScores = $this->enrichScoresWithProductData($scores, $productsData);
+        $enrichedScores = $this->productDataExtractor->enrichScoresWithProductData($scores, $productsData);
 
         // 1. Ordenar produtos por score (maior para menor)
         usort($enrichedScores, function($a, $b) {
@@ -588,15 +434,14 @@ class AutoPlanogramController extends Controller
             }
         }
 
+        // PASSO 3: Classificar produtos em ABC
+        StepLogger::logABCClassification($classifiedProducts);
+
         // 3. Obter estrutura da gôndola (seções, prateleiras, segmentos)
         $gondolaStructure = $this->analyzeGondolaStructure($gondola);
         
-        Log::info("Estrutura da gôndola analisada", [
-            'gondola_id' => $gondola->id,
-            'total_sections' => $gondolaStructure['total_sections'],
-            'total_segments' => $gondolaStructure['total_segments'],
-            'shelves_by_level' => array_map('count', $gondolaStructure['shelves_by_level'])
-        ]);
+        // PASSO 4: Analisar estrutura da gôndola
+        StepLogger::logGondolaStructure($gondolaStructure);
         
         // 4. Garantir que a gôndola tenha segmentos (criar se necessário)
         $this->ensureGondolaHasSegments($gondola);
@@ -605,19 +450,21 @@ class AutoPlanogramController extends Controller
         $this->clearGondola($gondola);
 
         // 5. Distribuir produtos sequencialmente aproveitando todo o espaço
-        $distributionResult = $this->placeProductsSequentially(
+        $distributionResult = $this->productPlacement->placeProductsSequentially(
             $gondola,
             $classifiedProducts,
             $gondolaStructure
         );
 
-        Log::info("Distribuição automática concluída", [
-            'gondola_id' => $gondola->id,
-            'produtos_classe_A' => count($classifiedProducts['A']),
-            'produtos_classe_B' => count($classifiedProducts['B']),
-            'produtos_classe_C' => count($classifiedProducts['C']),
-            'produtos_colocados' => $distributionResult['products_placed'],
-            'segmentos_utilizados' => $distributionResult['segments_used']
+        // PASSO FINAL: Resultado da distribuição automática
+        StepLogger::logFinalResult([
+            'products_placed' => $distributionResult['products_placed'],
+            'total_placements' => $distributionResult['total_placements'] ?? 0,
+            'segments_used' => $distributionResult['segments_used'],
+            'module_usage' => $distributionResult['module_usage'] ?? [],
+            'space_utilization' => round(($distributionResult['segments_used'] / max($gondolaStructure['total_segments'], 1)) * 100, 1),
+            'placement_success_rate' => round(($distributionResult['products_placed'] / max(count($scores), 1)) * 100, 1),
+            'products_still_failed' => 0 // Será calculado no service
         ]);
 
         // Adicionar informações das classes ABC à resposta
@@ -666,6 +513,9 @@ class AutoPlanogramController extends Controller
      */
     protected function ensureGondolaHasSegments(Gondola $gondola): void
     {
+        // Primeiro, corrigir segmentos incorretos
+        $this->fixIncorrectSegments($gondola);
+        
         foreach ($gondola->sections as $section) {
             foreach ($section->shelves as $shelf) {
                 $segmentCount = $shelf->segments()->count();
@@ -682,13 +532,124 @@ class AutoPlanogramController extends Controller
                         'status' => 'published'
                     ]);
                     
-                    Log::info("Segmento criado automaticamente", [
-                        'shelf_id' => $shelf->id,
-                        'gondola_id' => $gondola->id
+                    StepLogger::logSegmentAction('created', $shelf->segments()->latest()->first()->id ?? 'unknown', 
+                        ['product_id' => 'vazio', 'product' => ['name' => 'Segmento vazio padrão'], 'abc_class' => 'N/A'], 
+                        0, floatval($shelf->shelf_width));
+                }
+            }
+        }
+    }
+
+    /**
+     * 🔧 NOVA FUNÇÃO: Corrige segmentos com largura incorreta
+     * Verifica se largura do segmento bate com largura da prateleira
+     */
+    protected function fixIncorrectSegments(Gondola $gondola): void
+    {
+        $fixedSegments = 0;
+        $deletedSegments = 0;
+        
+        StepLogger::logCustomStep('CORREÇÃO DE SEGMENTOS INICIADA', [
+            '🔧 GONDOLA_ID' => $gondola->id,
+            '🎯 OBJETIVO' => 'Corrigir segmentos com largura incorreta ou desnecessários'
+        ]);
+        
+        foreach ($gondola->sections as $sectionIndex => $section) {
+            foreach ($section->shelves as $shelfIndex => $shelf) {
+                $shelfWidth = floatval($shelf->shelf_width ?? 125.0);
+                $segments = $shelf->segments()->get();
+                
+                Log::info("🔍 Analisando prateleira", [
+                    'section_ordering' => $section->ordering,
+                    'shelf_ordering' => $shelf->ordering,
+                    'shelf_width' => $shelfWidth,
+                    'segments_count' => $segments->count()
+                ]);
+                
+                foreach ($segments as $segment) {
+                    $segmentWidth = floatval($segment->width ?? 0);
+                    $hasProduct = $segment->layer && $segment->layer->product_id;
+                    
+                    // CRITÉRIO 1: Segmento com largura muito pequena (< 5cm) sem produto
+                    if ($segmentWidth < 5.0 && !$hasProduct) {
+                        Log::warning("❌ Segmento com largura suspeita detectado - DELETANDO", [
+                            'segment_id' => $segment->id,
+                            'shelf_id' => $shelf->id,
+                            'section_ordering' => $section->ordering,
+                            'shelf_ordering' => $shelf->ordering,
+                            'segment_width' => $segmentWidth,
+                            'shelf_width' => $shelfWidth,
+                            'has_product' => $hasProduct,
+                            'reason' => 'Largura muito pequena sem produto'
+                        ]);
+                        
+                        $segment->delete();
+                        $deletedSegments++;
+                        continue;
+                    }
+                    
+                    // CRITÉRIO 2: Segmento com largura quase igual à prateleira (>90%) sem produto
+                    $widthPercentage = ($segmentWidth / $shelfWidth) * 100;
+                    if ($widthPercentage > 90 && !$hasProduct && $segmentWidth != $shelfWidth) {
+                        Log::warning("❌ Segmento com largura quase total detectado - CORRIGINDO", [
+                            'segment_id' => $segment->id,
+                            'shelf_id' => $shelf->id,
+                            'section_ordering' => $section->ordering,
+                            'shelf_ordering' => $shelf->ordering,
+                            'segment_width' => $segmentWidth,
+                            'shelf_width' => $shelfWidth,
+                            'width_percentage' => round($widthPercentage, 1),
+                            'has_product' => $hasProduct,
+                            'reason' => 'Largura quase total sem produto - corrigindo para largura exata'
+                        ]);
+                        
+                        $segment->update(['width' => $shelfWidth]);
+                        $fixedSegments++;
+                        continue;
+                    }
+                    
+                    // CRITÉRIO 3: Múltiplos segmentos vazios na mesma prateleira
+                    $emptySegments = $segments->filter(function($seg) {
+                        return !($seg->layer && $seg->layer->product_id);
+                    });
+                    
+                    if ($emptySegments->count() > 1 && !$hasProduct) {
+                        Log::warning("❌ Múltiplos segmentos vazios detectados - DELETANDO extras", [
+                            'segment_id' => $segment->id,
+                            'shelf_id' => $shelf->id,
+                            'section_ordering' => $section->ordering,
+                            'shelf_ordering' => $shelf->ordering,
+                            'empty_segments_total' => $emptySegments->count(),
+                            'reason' => 'Segmento vazio extra'
+                        ]);
+                        
+                        // Manter apenas o primeiro segmento vazio, deletar os outros
+                        if ($segment->id !== $emptySegments->first()->id) {
+                            $segment->delete();
+                            $deletedSegments++;
+                            continue;
+                        }
+                    }
+                    
+                    Log::info("✅ Segmento OK", [
+                        'segment_id' => $segment->id,
+                        'section_ordering' => $section->ordering,
+                        'shelf_ordering' => $shelf->ordering,
+                        'segment_width' => $segmentWidth,
+                        'shelf_width' => $shelfWidth,
+                        'has_product' => $hasProduct,
+                        'status' => 'Mantido'
                     ]);
                 }
             }
         }
+        
+        Log::info("🎯 Correção de segmentos concluída", [
+            'gondola_id' => $gondola->id,
+            'segments_fixed' => $fixedSegments,
+            'segments_deleted' => $deletedSegments,
+            'total_changes' => $fixedSegments + $deletedSegments
+        ]);
     }
 
     /**
@@ -708,220 +669,10 @@ class AutoPlanogramController extends Controller
         }
     }
 
-    /**
-     * Distribui produtos nas prateleiras baseado na classificação ABC
-     */
-    protected function placeProductsByABCLevels(Gondola $gondola, array $classifiedProducts, array $structure): array
-    {
-        $placedProducts = 0;
-        $usedSegments = 0;
-        $placement_log = [];
 
-        // Definir níveis de prateleira por classe ABC
-        $shelfLevels = array_keys($structure['shelves_by_level']);
-        sort($shelfLevels);
-        
-        $levelMapping = [
-            'A' => $this->getBestShelfLevels($shelfLevels), // Níveis centrais (olhos/mãos)
-            'B' => $this->getMiddleShelfLevels($shelfLevels), // Níveis intermediários
-            'C' => $this->getWorstShelfLevels($shelfLevels)  // Níveis extremos
-        ];
 
-        // Distribuir cada classe ABC
-        foreach (['A', 'B', 'C'] as $class) {
-            $products = $classifiedProducts[$class];
-            $targetLevels = $levelMapping[$class];
-            
-            $classResult = $this->placeProductsInLevels(
-                $gondola, 
-                $products, 
-                $targetLevels, 
-                $structure
-            );
-            
-            $placedProducts += $classResult['placed'];
-            $usedSegments += $classResult['segments_used'];
-            $placement_log[$class] = $classResult;
-        }
 
-        return [
-            'products_placed' => $placedProducts,
-            'segments_used' => $usedSegments,
-            'placement_by_class' => $placement_log,
-            'gondola_structure' => $structure
-        ];
-    }
 
-    /**
-     * Determina os melhores níveis de prateleira (Classe A)
-     */
-    protected function getBestShelfLevels(array $allLevels): array
-    {
-        $totalLevels = count($allLevels);
-        if ($totalLevels <= 2) return $allLevels;
-        
-        // Pega os níveis centrais (meio da gôndola)
-        $middleIndex = intval($totalLevels / 2);
-        return array_slice($allLevels, max(0, $middleIndex - 1), 2);
-    }
-
-    /**
-     * Determina os níveis intermediários (Classe B)
-     */
-    protected function getMiddleShelfLevels(array $allLevels): array
-    {
-        $totalLevels = count($allLevels);
-        if ($totalLevels <= 3) return $allLevels;
-        
-        $bestLevels = $this->getBestShelfLevels($allLevels);
-        return array_diff($allLevels, array_merge($bestLevels, $this->getWorstShelfLevels($allLevels)));
-    }
-
-    /**
-     * Determina os piores níveis de prateleira (Classe C)
-     */
-    protected function getWorstShelfLevels(array $allLevels): array
-    {
-        $totalLevels = count($allLevels);
-        if ($totalLevels <= 2) return [];
-        
-        // Pega primeiro e último nível (extremos)
-        return [$allLevels[0], $allLevels[$totalLevels - 1]];
-    }
-
-    /**
-     * Coloca produtos em níveis específicos de prateleira
-     */
-    protected function placeProductsInLevels(Gondola $gondola, array $products, array $targetLevels, array $structure): array
-    {
-        $placed = 0;
-        $segmentsUsed = 0;
-        
-        foreach ($products as $productData) {
-            $productId = $productData['product_id'];
-            $placed_in_level = false;
-            
-            // Tentar colocar nos níveis preferidos
-            foreach ($targetLevels as $level) {
-                if (!isset($structure['shelves_by_level'][$level])) continue;
-                
-                foreach ($structure['shelves_by_level'][$level] as $shelf) {
-                    foreach ($shelf->segments as $segment) {
-                        // Recarregar o relacionamento para garantir dados atualizados
-                        $segment->load('layer');
-                        $existingLayer = $segment->layer;
-                        
-                        if ($existingLayer && !$existingLayer->product_id) {
-                            // Layer vazia encontrada, colocar produto com facing inteligente
-                            $optimalFacing = $this->calculateOptimalFacing(
-                                $productData,
-                                $segment
-                            );
-                            
-                            $existingLayer->update([
-                                'product_id' => $productId,
-                                'quantity' => $optimalFacing
-                            ]);
-                            $placed++;
-                            $segmentsUsed++;
-                            $placed_in_level = true;
-                            break 3; // Sair de todos os loops
-                        } elseif (!$existingLayer) {
-                            // Criar nova layer no segmento (hasOne)
-                            try {
-                                // Calcular facing inteligente baseado no score e dimensões
-                                $optimalFacing = $this->calculateOptimalFacing(
-                                    $productData,
-                                    $segment
-                                );
-                                
-                                $layer = $segment->layer()->create([
-                                    'tenant_id' => $segment->tenant_id,
-                                    'user_id' => $segment->user_id,
-                                    'product_id' => $productId,
-                                    'quantity' => $optimalFacing,
-                                    'status' => 'published'
-                                ]);
-                                
-                                Log::info("Layer criada com sucesso", [
-                                    'layer_id' => $layer->id,
-                                    'segment_id' => $segment->id,
-                                    'product_id' => $productId
-                                ]);
-                                
-                                $placed++;
-                                $segmentsUsed++;
-                                $placed_in_level = true;
-                                break 3; // Sair de todos os loops - IMPORTANTE: cada produto em um segmento
-                            } catch (\Exception $e) {
-                                Log::error("Erro ao criar layer", [
-                                    'segment_id' => $segment->id,
-                                    'product_id' => $productId,
-                                    'erro' => $e->getMessage()
-                                ]);
-                            }
-                        }
-                    }
-                }
-            }
-            
-            // Se não conseguiu colocar nos níveis preferidos, tentar em qualquer lugar
-            if (!$placed_in_level) {
-                foreach ($gondola->sections as $section) {
-                    foreach ($section->shelves as $shelf) {
-                        foreach ($shelf->segments as $segment) {
-                            // Recarregar o relacionamento para garantir dados atualizados
-                            $segment->load('layer');
-                            $existingLayer = $segment->layer;
-                            
-                            if ($existingLayer && !$existingLayer->product_id) {
-                                // Layer vazia encontrada, colocar produto
-                                $existingLayer->update(['product_id' => $productId]);
-                                $placed++;
-                                $segmentsUsed++;
-                                $placed_in_level = true;
-                                break 3; // Sair de todos os loops
-                            } elseif (!$existingLayer) {
-                                // Criar nova layer no segmento (hasOne)
-                                try {
-                                    $layer = $segment->layer()->create([
-                                        'tenant_id' => $segment->tenant_id,
-                                        'user_id' => $segment->user_id,
-                                        'product_id' => $productId,
-                                        'quantity' => 1,
-                                        'status' => 'published'
-                                    ]);
-                                    
-                                    Log::info("Layer criada com sucesso (fallback)", [
-                                        'layer_id' => $layer->id,
-                                        'segment_id' => $segment->id,
-                                        'product_id' => $productId
-                                    ]);
-                                    
-                                    $placed++;
-                                    $segmentsUsed++;
-                                    $placed_in_level = true;
-                                    break 3; // Sair de todos os loops
-                                } catch (\Exception $e) {
-                                    Log::error("Erro ao criar layer (fallback)", [
-                                        'segment_id' => $segment->id,
-                                        'product_id' => $productId,
-                                        'erro' => $e->getMessage()
-                                    ]);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        
-        return [
-            'placed' => $placed,
-            'segments_used' => $segmentsUsed,
-            'total_products' => count($products)
-        ];
-    }
 
     /**
      * Gera resumo estatístico dos scores
@@ -957,451 +708,10 @@ class AutoPlanogramController extends Controller
         ];
     }
 
-    // /**
-    //  * Calcula o número ótimo de frentes baseado no score, classe ABC e dimensões
-    //  */
-    // protected function calculateOptimalFacing(array $productData, $segment): int
-    // {
-    //     $productId = $productData['product_id'];
-    //     $finalScore = $productData['final_score'];
-    //     $abcClass = $productData['abc_class'] ?? 'C';
-        
-    //     // Buscar produto para obter dimensões
-    //     $product = \App\Models\Product::with('dimensions')->find($productId);
-    //     if (!$product || !$product->dimensions) {
-    //         Log::warning("Produto sem dimensões para cálculo de facing", [
-    //             'product_id' => $productId
-    //         ]);
-    //         return 1; // Facing mínimo
-    //     }
-        
-    //     // Obter larguras (em cm)
-    //     $productWidth = $product->dimensions->width ?? 10; // Padrão 10cm se não definido
-    //     $segmentWidth = $segment->width ?? 100; // Padrão 100cm se não definido
-        
-    //     // Definir regras por classe ABC
-    //     $facingRules = [
-    //         'A' => ['min' => 2, 'max' => 6, 'score_multiplier' => 1.0],
-    //         'B' => ['min' => 1, 'max' => 3, 'score_multiplier' => 0.7],
-    //         'C' => ['min' => 1, 'max' => 2, 'score_multiplier' => 0.4]
-    //     ];
-        
-    //     $rules = $facingRules[$abcClass] ?? $facingRules['C'];
-        
-    //     // Calcular facing baseado no score normalizado
-    //     $normalizedScore = max(0, min(1, $finalScore)); // Garantir entre 0 e 1
-    //     $scoreBasedFacing = $rules['min'] + 
-    //         ($normalizedScore * $rules['score_multiplier'] * ($rules['max'] - $rules['min']));
-        
-    //     // Arredondar para inteiro
-    //     $desiredFacing = (int) round($scoreBasedFacing);
-        
-    //     // Verificar limitação física (largura)
-    //     $maxFacingByWidth = (int) floor($segmentWidth / $productWidth);
-        
-    //     // Aplicar limitações
-    //     $optimalFacing = min(
-    //         $desiredFacing,           // Facing desejado pelo score
-    //         $maxFacingByWidth,        // Limitação física
-    //         $rules['max']             // Limitação da classe ABC
-    //     );
-        
-    //     // Garantir mínimo de 1
-    //     $optimalFacing = max(1, $optimalFacing);
-        
-    //     Log::info("Facing calculado", [
-    //         'product_id' => $productId,
-    //         'abc_class' => $abcClass,
-    //         'final_score' => $finalScore,
-    //         'product_width' => $productWidth,
-    //         'segment_width' => $segmentWidth,
-    //         'desired_facing' => $desiredFacing,
-    //         'max_by_width' => $maxFacingByWidth,
-    //         'optimal_facing' => $optimalFacing
-    //     ]);
-        
-    //     return $optimalFacing;
-    // }
 
-    /**
-     * Distribui produtos com VERTICALIZAÇÃO POR MÓDULO - ALGORITMO SECTION-BY-SECTION
-     */
-    protected function placeProductsSequentially(Gondola $gondola, array $classifiedProducts, array $structure): array
-    {
-        $productsPlaced = 0;
-        $segmentsUsed = 0;
-        $totalProductPlacements = 0;
-        $moduleUsage = [];
-        
-        Log::info("🎯 ALGORITMO SECTION-BY-SECTION - VERTICALIZAÇÃO POR MÓDULO", [
-            'classe_A' => count($classifiedProducts['A']),
-            'classe_B' => count($classifiedProducts['B']),
-            'classe_C' => count($classifiedProducts['C']),
-            'total_sections' => $structure['total_sections']
-        ]);
+    // Método placeProductsSequentially movido para ProductPlacementService
 
-        // 1. PEGAR TODAS AS SECTIONS (MÓDULOS) DA GONDOLA EM ORDEM
-        $allSections = $gondola->sections()
-            ->with(['shelves.segments.layer'])
-            ->orderBy('ordering')
-            ->get();
-            
-        Log::info("📋 Sections encontradas", [
-            'total_sections' => $allSections->count(),
-            'section_ids' => $allSections->pluck('id')->toArray(),
-            'section_orderings' => $allSections->pluck('ordering')->toArray()
-        ]);
 
-        // 2. PROCESSAR CADA MÓDULO (SECTION) INDIVIDUALMENTE COM DISTRIBUIÇÃO EM CASCATA
-        $allFailedProducts = []; // Produtos que falharam em todos os módulos
-        
-        foreach ($allSections as $section) {
-            $moduleNumber = $section->ordering + 1; // Módulo 1, 2, 3, 4...
-            
-            Log::info("🏗️ Processando Módulo COM CASCATA", [
-                'module_number' => $moduleNumber,
-                'section_id' => $section->id,
-                'section_ordering' => $section->ordering
-            ]);
-            
-            // 3. DETERMINAR PRODUTOS PARA ESTE MÓDULO BASEADO NA POSIÇÃO
-            $targetProducts = $this->getProductsForModule($moduleNumber, $classifiedProducts);
-            
-            if (empty($targetProducts)) {
-                Log::info("⚠️ Nenhum produto designado para este módulo", [
-                    'module_number' => $moduleNumber
-                ]);
-                continue;
-            }
-            
-            Log::info("🎯 Produtos selecionados para o módulo", [
-                'module_number' => $moduleNumber,
-                'products_count' => count($targetProducts),
-                'product_ids' => array_column($targetProducts, 'product_id')
-            ]);
-            
-            // 4. VERTICALIZAR PRODUTOS DENTRO DO MÓDULO
-            $moduleResults = $this->fillSectionVertically($section, $targetProducts, $structure);
-            
-            // 5. CONSOLIDAR RESULTADOS
-            $productsPlaced += $moduleResults['products_placed'];
-            $segmentsUsed += $moduleResults['segments_used'];
-            $totalProductPlacements += $moduleResults['total_placements'];
-            
-            $moduleUsage[$moduleNumber] = [
-                'products_placed' => $moduleResults['products_placed'],
-                'total_placements' => $moduleResults['total_placements'],
-                'segments_used' => $moduleResults['segments_used'],
-                'products' => $moduleResults['products_details'],
-                'failed_products' => count($moduleResults['failed_products'] ?? [])
-            ];
-            
-            // 6. DISTRIBUIÇÃO EM CASCATA: Tentar produtos que falharam em outros módulos
-            if (!empty($moduleResults['failed_products'])) {
-                $cascadeResults = $this->tryCascadeDistribution(
-                    $allSections, 
-                    $moduleResults['failed_products'], 
-                    $section->id, 
-                    $structure
-                );
-                
-                $productsPlaced += $cascadeResults['products_placed'];
-                $segmentsUsed += $cascadeResults['segments_used'];
-                $totalProductPlacements += $cascadeResults['total_placements'];
-                
-                // Produtos que ainda falharam após cascata
-                $allFailedProducts = array_merge($allFailedProducts, $cascadeResults['still_failed']);
-                
-                Log::info("🔄 CASCATA executada para produtos que falharam", [
-                    'module_number' => $moduleNumber,
-                    'failed_products' => count($moduleResults['failed_products']),
-                    'cascade_placed' => $cascadeResults['products_placed'],
-                    'still_failed' => count($cascadeResults['still_failed'])
-                ]);
-            }
-            
-            // NOVA FASE: PREENCHIMENTO OPORTUNÍSTICO - maximizar uso do espaço
-            $opportunisticResults = $this->fillOpportunisticSpace($section, $targetProducts);
-            $moduleResults['segments_used'] += $opportunisticResults['segments_used'];
-            $moduleResults['total_placements'] += $opportunisticResults['total_placements'];
-            
-            Log::info("✅ Módulo processado COM CASCATA E OPORTUNÍSTICO", [
-                'module_number' => $moduleNumber,
-                'products_placed' => $moduleResults['products_placed'],
-                'segments_used' => $moduleResults['segments_used'],
-                'total_placements' => $moduleResults['total_placements'],
-                'opportunistic_added' => $opportunisticResults['total_placements']
-            ]);
-        }
-        
-        Log::info("🎉 DISTRIBUIÇÃO SECTION-BY-SECTION CONCLUÍDA COM CASCATA", [
-            'products_placed' => $productsPlaced,
-            'total_placements' => $totalProductPlacements,
-            'segments_used' => $segmentsUsed,
-            'modules_used' => count($moduleUsage),
-            'space_utilization' => round(($segmentsUsed / max($structure['total_segments'], 1)) * 100, 1) . '%',
-            'products_still_failed' => count($allFailedProducts),
-            'placement_success_rate' => round(($productsPlaced / max(count($classifiedProducts['A']) + count($classifiedProducts['B']) + count($classifiedProducts['C']), 1)) * 100, 1) . '%'
-        ]);
-        
-        // Log detalhado dos produtos que ainda falharam
-        if (!empty($allFailedProducts)) {
-            Log::warning("❌ PRODUTOS QUE NÃO COUBERAM EM NENHUM MÓDULO", [
-                'count' => count($allFailedProducts),
-                'failed_products' => array_map(function($product) {
-                    return [
-                        'product_id' => $product['product_id'],
-                        'abc_class' => $product['abc_class'],
-                        'width' => $product['product']['width'] ?? 'N/A',
-                        'score' => $product['final_score'] ?? 'N/A'
-                    ];
-                }, array_slice($allFailedProducts, 0, 10)) // Primeiros 10 para não sobrecarregar o log
-            ]);
-        }
-
-        return [
-            'products_placed' => $productsPlaced,
-            'total_placements' => $totalProductPlacements,
-            'segments_used' => $segmentsUsed,
-            'module_usage' => $moduleUsage
-        ];
-    }
-
-    /**
-     * Obtém todas as prateleiras organizadas por ordering
-     */
-    protected function getAllShelvesInOrder(Gondola $gondola): array
-    {
-        $allShelves = [];
-        
-        // Buscar todas as prateleiras de todas as seções
-        foreach ($gondola->sections as $section) {
-            foreach ($section->shelves as $shelf) {
-                $allShelves[] = $shelf;
-            }
-        }
-        
-        // Ordenar por ordering (do menor para o maior)
-        usort($allShelves, function ($a, $b) {
-            return ($a->ordering ?? 0) <=> ($b->ordering ?? 0);
-        });
-        
-        Log::info("Prateleiras coletadas e ordenadas", [
-            'total_shelves' => count($allShelves),
-            'ordering_sequence' => array_map(function($shelf) {
-                return $shelf->ordering ?? 'null';
-            }, $allShelves)
-        ]);
-        
-        return $allShelves;
-    }
-
-    /**
-     * Distribui produtos em uma prateleira com ocupação horizontal completa
-     */
-    protected function distributeProductsInShelf($shelf, array $allProducts, int $startProductIndex = 0): array
-    {
-        // NOVA ABORDAGEM: Calcular espaço real e distribuir de forma inteligente [[memory:8393313]]
-        // 1. CALCULAR ESPAÇO TOTAL DISPONÍVEL
-        $physicalShelfWidth = floatval($shelf->shelf_width ?? 125);
-        $totalShelfWidth = $physicalShelfWidth;
-        
-        Log::info("🏗️ Calculando capacidade da prateleira", [
-            'shelf_id' => $shelf->id,
-            'physical_width_cm' => $totalShelfWidth
-        ]);
-        
-        // 2. CALCULAR QUANTOS PRODUTOS CABEM FISICAMENTE
-        $avgProductWidth = $this->calculateAverageProductWidth($allProducts);
-        $maxProductsCapacity = max(1, floor($totalShelfWidth / $avgProductWidth));
-        
-        Log::info("📊 Capacidade calculada", [
-            'shelf_width' => $totalShelfWidth,
-            'avg_product_width' => $avgProductWidth,
-            'max_products_capacity' => $maxProductsCapacity,
-            'products_available' => count($allProducts)
-        ]);
-        
-        // 3. SELECIONAR PRODUTOS BASEADO NO SCORE
-        $productsToPlace = array_slice($allProducts, $startProductIndex, min($maxProductsCapacity, count($allProducts) - $startProductIndex));
-        
-        // 4. DISTRIBUIR PRODUTOS (1 segmento por tipo de produto)
-        $segments = $shelf->segments;
-        $segmentsUsed = 0;
-        $productsPlaced = 0;
-        $totalPlacements = 0;
-        $productsMap = [];
-        $widthUsed = 0;
-        $currentSegmentIndex = 0;
-        
-        // LOOP PRINCIPAL: Distribuir cada produto selecionado
-        foreach ($productsToPlace as $product) {
-            $productId = $product['product_id'];
-            $productData = $product['product'] ?? [];
-            $productWidth = floatval($productData['width'] ?? 25);
-            $abcClass = $product['abc_class'] ?? 'C';
-            
-            // Calcular facing otimizado baseado no score e espaço disponível
-            $availableWidth = $totalShelfWidth - $widthUsed;
-            $optimalFacing = $this->calculateOptimalFacing($product, $availableWidth);
-            $productTotalWidth = $productWidth * $optimalFacing;
-            
-            // Verificar se cabe na prateleira
-            if ($widthUsed + $productTotalWidth <= $totalShelfWidth) {
-                // Usar segmento existente ou criar novo
-                $segment = null;
-                
-                if ($currentSegmentIndex < $segments->count()) {
-                    // Usar segmento existente
-                    $segment = $segments[$currentSegmentIndex];
-                    Log::info("📦 Usando segmento existente", [
-                        'segment_id' => $segment->id,
-                        'segment_index' => $currentSegmentIndex
-                    ]);
-                } else {
-                    // Criar novo segmento
-                    $segment = $this->createOptimalSegment($shelf, $currentSegmentIndex, $productTotalWidth);
-                    if ($segment) {
-                        Log::info("🆕 Segmento criado para produto", [
-                            'segment_id' => $segment->id,
-                            'product_id' => $productId,
-                            'facing' => $optimalFacing
-                        ]);
-                    }
-                }
-                
-                if ($segment) {
-                    // Colocar produto no segmento com facing otimizado
-                    $success = $this->placeProductInSegmentWithFacing($segment, $product, $optimalFacing);
-                    
-                    if ($success) {
-                        $segmentsUsed++;
-                        $productsPlaced++;
-                        $totalPlacements += $optimalFacing;
-                        $widthUsed += $productTotalWidth;
-                        $currentSegmentIndex++;
-                        
-                        $productsMap[$productId] = $optimalFacing;
-                        
-                        Log::info("✅ Produto distribuído com sucesso", [
-                            'product_id' => $productId,
-                            'abc_class' => $abcClass,
-                            'facing' => $optimalFacing,
-                            'width_used' => $productTotalWidth,
-                            'segment_id' => $segment->id,
-                            'cumulative_width' => $widthUsed,
-                            'utilization' => round(($widthUsed / $totalShelfWidth) * 100, 1) . '%'
-                        ]);
-                    }
-                }
-        } else {
-                Log::info("⚠️ Produto não cabe - capacidade atingida", [
-                    'product_id' => $productId,
-                    'width_needed' => $productTotalWidth,
-                    'width_available' => $totalShelfWidth - $widthUsed,
-                    'facing_requested' => $optimalFacing
-                ]);
-            }
-        }
-        
-        Log::info("📦 Prateleira processada com NOVA LÓGICA", [
-            'shelf_id' => $shelf->id,
-            'segments_used' => $segmentsUsed,
-            'width_used' => $widthUsed,
-            'width_utilization' => round(($widthUsed / $totalShelfWidth) * 100, 1) . '%',
-            'products_placed' => $productsPlaced,
-            'total_facing' => $totalPlacements,
-            'avg_facing_per_product' => $productsPlaced > 0 ? round($totalPlacements / $productsPlaced, 1) : 0
-        ]);
-
-        return [
-            'segments_used' => $segmentsUsed,
-            'products_placed' => $productsPlaced,
-            'total_placements' => $totalPlacements,
-            'products_map' => $productsMap,
-            'width_used' => $widthUsed,
-            'width_available' => $totalShelfWidth,
-            'segments_created' => $currentSegmentIndex,
-            'next_product_index' => $startProductIndex + $productsPlaced
-        ];
-    }
-
-    /**
-     * Cria um novo segmento dinamicamente para ocupar espaço horizontal
-     * CORREÇÃO: Verifica se não ultrapassa largura física da prateleira
-     */
-    protected function createDynamicSegment($shelf, int $position, float $width)
-    {
-        try {
-            // VERIFICAÇÃO: Calcular largura total atual dos segmentos
-            $currentTotalWidth = $shelf->segments()->sum('width');
-            $physicalShelfWidth = floatval($shelf->shelf_width ?? null);
-            
-            // Se há largura física definida, verificar se não ultrapassa
-            if ($physicalShelfWidth > 0) {
-                $futureWidth = $currentTotalWidth + $width;
-                if ($futureWidth > $physicalShelfWidth) {
-                    Log::warning("⚠️ Segmento não criado: ultrapassaria largura física", [
-                        'shelf_id' => $shelf->id,
-                        'current_width_cm' => $currentTotalWidth,
-                        'new_segment_width_cm' => $width,
-                        'future_width_cm' => $futureWidth,
-                        'physical_limit_cm' => $physicalShelfWidth,
-                        'overflow_cm' => $futureWidth - $physicalShelfWidth
-                    ]);
-                    return null;
-                }
-            }
-
-            $segment = $shelf->segments()->create([
-                'tenant_id' => $shelf->tenant_id,
-                'user_id' => $shelf->user_id,
-                'width' => $width,
-                'ordering' => $position,
-                'position' => $position,
-                'quantity' => 1, // Altura padrão
-                'spacing' => 0,
-                'alignment' => 'left',
-                'status' => 'published'
-            ]);
-
-            Log::info("🆕 Segmento criado com sucesso", [
-                'segment_id' => $segment->id,
-                'shelf_id' => $shelf->id,
-                'width_cm' => $width,
-                'position' => $position,
-                'current_total_width_cm' => $currentTotalWidth + $width,
-                'physical_limit_cm' => $physicalShelfWidth ?? 'não definida'
-            ]);
-
-            return $segment;
-        } catch (\Exception $e) {
-            Log::error("❌ Erro ao criar segmento dinamicamente", [
-                'shelf_id' => $shelf->id,
-                'position' => $position,
-                'width' => $width,
-                'error' => $e->getMessage()
-            ]);
-            return null;
-        }
-    }
-
-    /**
-     * Define facing baseado na classe ABC
-     */
-    protected function getFacingByClass(string $abcClass): int
-    {
-        switch ($abcClass) {
-            case 'A':
-                return 4; // Produtos A: 4 facing (maior visibilidade)
-            case 'B':
-                return 2; // Produtos B: 2 facing (visibilidade média)
-            case 'C':
-                return 1; // Produtos C: 1 facing (visibilidade mínima)
-            default:
-                return 1;
-        }
-    }
 
     /**
      * Coloca produto no segmento com facing personalizado
@@ -1446,6 +756,17 @@ class AutoPlanogramController extends Controller
     }
 
     /**
+     * Extrai largura do produto com fallback seguro
+     */
+    protected function getProductWidth(array $productData): float
+    {
+        if (!isset($productData['width']) || $productData['width'] <= 0) {
+            throw new \InvalidArgumentException("Produto deve ter largura válida > 0");
+        }
+        return floatval($productData['width']);
+    }
+
+    /**
      * NOVA FUNÇÃO: Calcula largura média dos produtos [[memory:8393313]]
      */
     protected function calculateAverageProductWidth(array $products): float
@@ -1457,15 +778,11 @@ class AutoPlanogramController extends Controller
         
         foreach ($products as $product) {
             $productData = $product['product'] ?? [];
-            $width = floatval($productData['width'] ?? 25);
+            $width = $this->getProductWidth($productData);
             $totalWidth += $width;
             $validWidths++;
             
-            Log::debug("Calculando largura média", [
-                'product_id' => $product['product_id'] ?? 'unknown',
-                'width' => $width,
-                'has_product_data' => isset($product['product'])
-            ]);
+            // Cálculo de largura média
         }
         
         $avgWidth = $validWidths > 0 ? ($totalWidth / $validWidths) : 25.0;
@@ -1480,1267 +797,33 @@ class AutoPlanogramController extends Controller
         return $avgWidth;
     }
     
-    /**
-     * CORREÇÃO: Calcula facing otimizado REALISTA baseado no espaço disponível
-     * Prioriza garantir que o produto SEMPRE cabe, mesmo que com facing menor
-     */
-    protected function calculateOptimalFacing($product, float $availableWidth): int
-    {
-        $productData = $product['product'] ?? [];
-        $productWidth = floatval($productData['width'] ?? 25);
-        $abcClass = $product['abc_class'] ?? 'C';
-        $finalScore = floatval($product['final_score'] ?? 0);
-        
-        Log::debug("🧮 Calculando facing REALISTA", [
-            'product_id' => $product['product_id'] ?? 'unknown',
-            'product_width' => $productWidth,
-            'available_width' => $availableWidth,
-            'abc_class' => $abcClass,
-            'final_score' => $finalScore
-        ]);
-        
-        // 1. PRIMEIRO: Verificar se o produto tem largura válida
-        if ($productWidth <= 0) {
-            Log::warning("⚠️ Produto com largura inválida", [
-                'product_id' => $product['product_id'] ?? 'unknown',
-                'product_width' => $productWidth,
-                'available_width' => $availableWidth
-            ]);
-            return 0; // Largura inválida, não pode ser colocado
-        }
-        
-        // 2. Verificar se o produto cabe pelo menos 1 vez
-        if ($productWidth > $availableWidth) {
-            Log::warning("⚠️ Produto não cabe nem 1 vez no espaço disponível", [
-                'product_id' => $product['product_id'] ?? 'unknown',
-                'product_width' => $productWidth,
-                'available_width' => $availableWidth,
-                'deficit' => $productWidth - $availableWidth
-            ]);
-            return 0; // Não cabe
-        }
-        
-        // 3. Calcular facing máximo possível fisicamente
-        $maxPhysicalFacing = floor($availableWidth / $productWidth);
-        
-        // 4. Facing desejado baseado na classe ABC (MAIS CONSERVADOR)
-        $desiredFacing = match($abcClass) {
-            'A' => min(4, $maxPhysicalFacing), // Classe A: máximo 4 facing (mais conservador)
-            'B' => min(3, $maxPhysicalFacing), // Classe B: máximo 3 facing
-            'C' => min(2, $maxPhysicalFacing), // Classe C: máximo 2 facing
-            default => min(1, $maxPhysicalFacing)
-        };
-        
-        // 5. Ajuste baseado no score (bonus mais moderado)
-        $normalizedScore = max(0, min(1, $finalScore));
-        if ($normalizedScore > 0.7) {
-            $desiredFacing = min($desiredFacing + 1, $maxPhysicalFacing); // Score alto: +1 facing
-        } elseif ($normalizedScore < 0.3) {
-            $desiredFacing = max(1, $desiredFacing - 1); // Score baixo: -1 facing
-        }
-        
-        // 6. Garantir que sempre cabe pelo menos 1 facing
-        $finalFacing = max(1, min($desiredFacing, $maxPhysicalFacing));
-        
-        // Calcular eficiência de uso do espaço
-        $usedWidth = $finalFacing * $productWidth;
-        $widthEfficiency = round(($usedWidth / $availableWidth) * 100, 1);
-        
-        Log::info("✅ Facing REALISTA calculado", [
-            'product_id' => $product['product_id'] ?? 'unknown',
-            'abc_class' => $abcClass,
-            'product_width' => $productWidth,
-            'available_width' => $availableWidth,
-            'max_physical_facing' => $maxPhysicalFacing,
-            'desired_facing' => $desiredFacing,
-            'final_facing' => $finalFacing,
-            'used_width' => $usedWidth,
-            'width_efficiency' => $widthEfficiency . '%',
-            'score_adjustment' => $normalizedScore > 0.7 ? '+1' : ($normalizedScore < 0.3 ? '-1' : '0')
-        ]);
-        
-        return $finalFacing;
-    }
+    // Método calculateOptimalFacing movido para FacingCalculatorService
 
-    /**
-     * CORREÇÃO: Define facing máximo baseado no tamanho do produto (como na foto do usuário)
-     * Produtos grandes = poucos facing + verticalização automática
-     */
-    protected function getMaxFacingByProductSize(float $productWidth): int
-    {
-        // Baseado na análise da imagem do usuário:
-        // Produtos grandes (AUTO ALLEGRO) = poucos facing, produtos pequenos = múltiplos facing
-        
-        if ($productWidth >= 22) {
-            // Produtos muito grandes (≥22mm): Max 2-3 facing → FORÇA verticalização
-            $maxFacing = 3;
-            $category = 'MUITO GRANDE';
-        } elseif ($productWidth >= 18) {
-            // Produtos grandes (18-21mm): Max 4 facing → Encourage verticalização  
-            $maxFacing = 4;
-            $category = 'GRANDE';
-        } elseif ($productWidth >= 15) {
-            // Produtos médios (15-17mm): Max 6 facing → Verticalização opcional
-            $maxFacing = 6;
-            $category = 'MÉDIO';
-        } else {
-            // Produtos pequenos (<15mm): Max 8 facing → Mais facing por prateleira
-            $maxFacing = 8;
-            $category = 'PEQUENO';
-        }
-
-        Log::debug("📏 Facing limitado por tamanho do produto", [
-            'product_width' => $productWidth,
-            'category' => $category,
-            'max_facing_per_shelf' => $maxFacing,
-            'logic' => 'Produtos grandes → menos facing → mais verticalização'
-        ]);
-
-        return $maxFacing;
-    }
     
-    /**
-     * NOVA FUNÇÃO: Cria segmento otimizado para o produto [[memory:8393313]]
-     */
-    protected function createOptimalSegment($shelf, int $position, float $width)
-    {
-        try {
-            $segment = $shelf->segments()->create([
-                'tenant_id' => $shelf->tenant_id,
-                'user_id' => $shelf->user_id,
-                'width' => $width,
-                'ordering' => $position,
-                'position' => $position,
-                'quantity' => 1,
-                'spacing' => 0,
-                'alignment' => 'left',
-                'status' => 'published'
-            ]);
 
-            return $segment;
-        } catch (\Exception $e) {
-            Log::error("❌ Erro ao criar segmento otimizado", [
-                'shelf_id' => $shelf->id,
-                'error' => $e->getMessage()
-            ]);
-            return null;
-        }
-    }
 
-    /**
-     * Obtém todos os segmentos em ordem de preenchimento
-     */
-    protected function getAllSegmentsInOrder(Gondola $gondola, array $structure): array
-    {
-        $allSegments = [];
-        
-        // Ordenar níveis (prateleiras) - começar do nível mais alto para o mais baixo
-        $levels = array_keys($structure['shelves_by_level']);
-        rsort($levels); // Nível mais alto primeiro (como na imagem)
-        
-        foreach ($levels as $level) {
-            $shelves = $structure['shelves_by_level'][$level];
-            
-            // Para cada prateleira neste nível, pegar todos os segmentos
-            foreach ($shelves as $shelf) {
-                foreach ($shelf->segments as $segment) {
-                    $allSegments[] = $segment;
-                }
-            }
-        }
-        
-        return $allSegments;
-    }
 
-    /**
-     * Conta segmentos por nível para debug
-     */
-    protected function getSegmentsCountByLevel(array $segments): array
-    {
-        $countByLevel = [];
-        
-        foreach ($segments as $segment) {
-            $shelf = $segment->shelf;
-            $level = $shelf->ordering;
-            
-            if (!isset($countByLevel[$level])) {
-                $countByLevel[$level] = 0;
-            }
-            $countByLevel[$level]++;
-        }
-        
-        return $countByLevel;
-    }
 
-    /**
-     * Distribui produtos com verticalização (alinhamento vertical por marca/categoria)
-     */
-    protected function placeProductsWithVerticalization(Gondola $gondola, array $classifiedProducts, array $structure): array
-    {
-        $placedProducts = 0;
-        $usedSegments = 0;
-        $placement_log = [];
 
-        // Analisar estrutura para verticalização
-        $verticalStructure = $this->analyzeVerticalStructure($structure);
-        
-        Log::info("Estrutura vertical analisada", [
-            'total_columns' => $verticalStructure['total_columns'],
-            'levels_per_column' => $verticalStructure['levels_per_column'],
-            'segments_per_level' => $verticalStructure['segments_per_level']
-        ]);
 
-        // Distribuir cada classe ABC com verticalização
-        foreach (['A', 'B', 'C'] as $class) {
-            $products = $classifiedProducts[$class];
-            if (empty($products)) continue;
-            
-            // Agrupar produtos por marca para verticalização
-            $productsByBrand = $this->groupProductsByBrand($products);
-            
-            $classResult = $this->placeProductsVerticallyByBrand(
-                $gondola, 
-                $productsByBrand,
-                $class,
-                $verticalStructure
-            );
-            
-            $placedProducts += $classResult['placed'];
-            $usedSegments += $classResult['segments_used'];
-            $placement_log[$class] = $classResult;
-        }
 
-        return [
-            'products_placed' => $placedProducts,
-            'segments_used' => $usedSegments,
-            'placement_by_class' => $placement_log,
-            'gondola_structure' => $structure,
-            'vertical_structure' => $verticalStructure
-        ];
-    }
 
-    /**
-     * Analisa estrutura da gôndola para distribuição vertical
-     */
-    protected function analyzeVerticalStructure(array $structure): array
-    {
-        $levels = array_keys($structure['shelves_by_level']);
-        sort($levels);
-        
-        // Calcular número de colunas (segmentos por nível)
-        $segmentsPerLevel = [];
-        $totalColumns = 0;
-        
-        foreach ($levels as $level) {
-            $shelves = $structure['shelves_by_level'][$level];
-            $segmentsInLevel = 0;
-            
-            foreach ($shelves as $shelf) {
-                $segmentsInLevel += $shelf->segments->count();
-            }
-            
-            $segmentsPerLevel[$level] = $segmentsInLevel;
-            $totalColumns = max($totalColumns, $segmentsInLevel);
-        }
-        
-        return [
-            'levels' => $levels,
-            'total_columns' => $totalColumns,
-            'levels_per_column' => count($levels),
-            'segments_per_level' => $segmentsPerLevel
-        ];
-    }
 
-    /**
-     * Agrupa produtos por marca para verticalização
-     */
-    protected function groupProductsByBrand(array $products): array
-    {
-        $productsByBrand = [];
-        
-        foreach ($products as $productData) {
-            $productId = $productData['product_id'];
-            
-            // Buscar produto para obter marca
-            $product = \App\Models\Product::find($productId);
-            if (!$product) continue;
-            
-            // Usar marca ou nome do produto como agrupador
-            $brandKey = $product->brand ?? $this->extractBrandFromName($product->name);
-            
-            if (!isset($productsByBrand[$brandKey])) {
-                $productsByBrand[$brandKey] = [];
-            }
-            
-            $productsByBrand[$brandKey][] = $productData;
-        }
-        
-        // Ordenar marcas por score médio (melhor marca primeiro)
-        uasort($productsByBrand, function($brandA, $brandB) {
-            $avgScoreA = array_sum(array_column($brandA, 'final_score')) / count($brandA);
-            $avgScoreB = array_sum(array_column($brandB, 'final_score')) / count($brandB);
-            return $avgScoreB <=> $avgScoreA;
-        });
-        
-        return $productsByBrand;
-    }
 
-    /**
-     * Extrai marca do nome do produto (fallback)
-     */
-    protected function extractBrandFromName(string $productName): string
-    {
-        // Pegar primeira palavra como "marca"
-        $words = explode(' ', $productName);
-        return $words[0] ?? 'MARCA_DESCONHECIDA';
-    }
 
-    /**
-     * Distribui produtos verticalmente por marca
-     */
-    protected function placeProductsVerticallyByBrand(Gondola $gondola, array $productsByBrand, string $class, array $verticalStructure): array
-    {
-        $placed = 0;
-        $segmentsUsed = 0;
-        $currentColumn = 0;
-        
-        foreach ($productsByBrand as $brand => $products) {
-            Log::info("Distribuindo marca verticalmente", [
-                'brand' => $brand,
-                'class' => $class,
-                'products_count' => count($products),
-                'current_column' => $currentColumn
-            ]);
-            
-            // Distribuir produtos desta marca em coluna vertical
-            $brandResult = $this->placeProductsInVerticalColumn(
-                $gondola,
-                $products,
-                $currentColumn,
-                $verticalStructure
-            );
-            
-            $placed += $brandResult['placed'];
-            $segmentsUsed += $brandResult['segments_used'];
-            
-            // Avançar para próxima coluna
-            $currentColumn += $brandResult['columns_used'];
-            
-            // Verificar se ainda há colunas disponíveis
-            if ($currentColumn >= $verticalStructure['total_columns']) {
-                Log::warning("Limite de colunas atingido", [
-                    'current_column' => $currentColumn,
-                    'total_columns' => $verticalStructure['total_columns']
-                ]);
-                break;
-            }
-        }
-        
-        return [
-            'placed' => $placed,
-            'segments_used' => $segmentsUsed,
-            'columns_used' => $currentColumn
-        ];
-    }
 
-    /**
-     * Coloca produtos de uma marca em coluna vertical
-     */
-    protected function placeProductsInVerticalColumn(Gondola $gondola, array $products, int $columnIndex, array $verticalStructure): array
-    {
-        $placed = 0;
-        $segmentsUsed = 0;
-        $columnsUsed = 1;
-        
-        // Percorrer níveis de cima para baixo
-        $levels = $verticalStructure['levels'];
-        rsort($levels); // Começar do nível mais alto
-        
-        $productIndex = 0;
-        
-        foreach ($levels as $level) {
-            if ($productIndex >= count($products)) break;
-            
-            $productData = $products[$productIndex];
-            
-            // Encontrar segmento na posição da coluna
-            $segment = $this->findSegmentAtColumnPosition($gondola, $level, $columnIndex);
-            
-            if ($segment) {
-                // Colocar produto no segmento
-                $success = $this->placeProductInSegment($segment, $productData);
-                
-                if ($success) {
-                    $placed++;
-                    $segmentsUsed++;
-                    $productIndex++;
-                    
-                    Log::info("Produto colocado em coluna vertical", [
-                        'product_id' => $productData['product_id'],
-                        'level' => $level,
-                        'column' => $columnIndex,
-                        'segment_id' => $segment->id
-                    ]);
-                }
-            }
-        }
-        
-        return [
-            'placed' => $placed,
-            'segments_used' => $segmentsUsed,
-            'columns_used' => $columnsUsed
-        ];
-    }
 
-    /**
-     * Encontra segmento na posição específica da coluna
-     */
-    protected function findSegmentAtColumnPosition(Gondola $gondola, int $level, int $columnIndex)
-    {
-        $segmentCounter = 0;
-        
-        foreach ($gondola->sections as $section) {
-            foreach ($section->shelves as $shelf) {
-                // Verificar se é o nível correto
-                if ($shelf->ordering != $level) continue;
-                
-                foreach ($shelf->segments as $segment) {
-                    if ($segmentCounter == $columnIndex) {
-                        return $segment;
-                    }
-                    $segmentCounter++;
-                }
-            }
-        }
-        
-        return null;
-    }
 
-    /**
-     * Coloca produto em segmento específico
-     */
-    protected function placeProductInSegment($segment, array $productData): bool
-    {
-        try {
-            // Recarregar relacionamento
-            $segment->load('layer');
-            $existingLayer = $segment->layer;
-            
-            // Calcular facing ótimo
-            $optimalFacing = $this->calculateOptimalFacing($productData, $segment);
-            
-            if ($existingLayer && !$existingLayer->product_id) {
-                // Layer vazia, atualizar
-                $existingLayer->update([
-                    'product_id' => $productData['product_id'],
-                    'quantity' => $optimalFacing
-                ]);
-                return true;
-            } elseif (!$existingLayer) {
-                // Criar nova layer
-                $segment->layer()->create([
-                    'tenant_id' => $segment->tenant_id,
-                    'user_id' => $segment->user_id,
-                    'product_id' => $productData['product_id'],
-                    'quantity' => $optimalFacing,
-                    'status' => 'published'
-                ]);
-                return true;
-            }
-            
-            return false; // Segmento ocupado
-            
-        } catch (\Exception $e) {
-            Log::error("Erro ao colocar produto em segmento", [
-                'segment_id' => $segment->id,
-                'product_id' => $productData['product_id'],
-                'error' => $e->getMessage()
-            ]);
-            return false;
-        }
-    }
 
-    /**
-     * NOVA FUNÇÃO: Calcula facing total baseado no score do produto [[memory:8393313]]
-     */
-    protected function calculateTotalFacingByScore($product, $structure): int
-    {
-        $abcClass = $product['abc_class'] ?? 'C';
-        $score = $product['final_score'] ?? 0;
-        
-        // Facing base por classe ABC
-        $baseFacing = match($abcClass) {
-            'A' => 6, // Produtos A: facing alto
-            'B' => 4, // Produtos B: facing médio  
-            'C' => 2, // Produtos C: facing baixo
-            default => 1
-        };
-        
-        // Ajustar baseado no score dentro da classe
-        if ($score > 0.5) {
-            $baseFacing = ceil($baseFacing * 1.5); // Score alto = +50%
-        } elseif ($score > 0.3) {
-            $baseFacing = ceil($baseFacing * 1.2); // Score médio = +20%
-        }
-        
-        return min($baseFacing, 10); // Máximo 10 faces total
-    }
+    // Método enrichScoresWithProductData não é mais necessário
 
-    /**
-     * CORREÇÃO: Distribui o facing verticalmente APENAS no módulo correto baseado na classe ABC
-     * Exemplo: Classe A → Módulo 4, Classe B → Módulos 2-3, Classe C → Módulo 1
-     */
-    protected function distributeProductVertically($product, $allShelves, int $facingTotal): array
-    {
-        $distribution = [];
-        
-        if (empty($allShelves) || $facingTotal <= 0) {
-            return $distribution;
-        }
-        
-        // Determinar módulo baseado na classe ABC
-        $abcClass = $product['abc_class'] ?? 'C';
-        $targetModule = $this->getTargetModuleByClass($abcClass);
-        
-        Log::info("🎯 Selecionando módulo para produto", [
-            'product_id' => $product['product_id'],
-            'abc_class' => $abcClass,
-            'target_module' => $targetModule,
-            'facing_total' => $facingTotal
-        ]);
-        
-        // Filtrar apenas prateleiras do módulo alvo
-        $targetShelves = $this->getShelvesFromModule($allShelves, $targetModule);
-        
-        if (empty($targetShelves)) {
-            Log::warning("⚠️ Nenhuma prateleira encontrada no módulo alvo", [
-                'product_id' => $product['product_id'],
-                'target_module' => $targetModule,
-                'total_shelves' => count($allShelves)
-            ]);
-            
-            // Fallback: usar primeiras prateleiras disponíveis
-            $targetShelves = array_slice($allShelves, 0, 4);
-        }
-        
-        $totalShelves = count($targetShelves);
-        
-        // Distribuir facing apenas entre 2-3 prateleiras do módulo (não todas as 4)
-        $maxShelvesToUse = min(3, $totalShelves); // Máximo 3 prateleiras
-        $shelvesToUse = array_slice($targetShelves, 0, $maxShelvesToUse);
-        
-        // Distribuir facing entre as prateleiras selecionadas
-        $facingPerShelf = floor($facingTotal / count($shelvesToUse));
-        $remainder = $facingTotal % count($shelvesToUse);
-        
-        foreach ($shelvesToUse as $index => $shelf) {
-            $facingInThisShelf = $facingPerShelf;
-            
-            // Distribuir o restante nas primeiras prateleiras (melhor posicionamento)
-            if ($index < $remainder) {
-                $facingInThisShelf++;
-            }
-            
-            if ($facingInThisShelf > 0) {
-                $distribution[$shelf->id] = $facingInThisShelf;
-            }
-        }
-        
-        Log::info("📐 Distribuição vertical CORRIGIDA por módulo", [
-            'product_id' => $product['product_id'],
-            'abc_class' => $abcClass,
-            'target_module' => $targetModule,
-            'facing_total' => $facingTotal,
-            'total_shelves_available' => count($allShelves),
-            'target_shelves_found' => count($targetShelves),
-            'shelves_used' => count($shelvesToUse),
-            'facing_per_shelf' => $facingPerShelf,
-            'remainder' => $remainder,
-            'distribution' => $distribution
-        ]);
-        
-        return $distribution;
-    }
 
-    /**
-     * NOVA FUNÇÃO: Coloca produto em prateleira específica com facing definido [[memory:8393313]]
-     */
-    protected function placeProductInShelfWithVerticalFacing($shelf, $product, int $facing): bool
-    {
-        // Procurar segmento vazio na prateleira
-        $segments = $shelf->segments()->orderBy('ordering')->get();
-        
-        foreach ($segments as $segment) {
-            $segment->load('layer');
-            $existingLayer = $segment->layer;
-            
-            if (!$existingLayer || !$existingLayer->product_id) {
-                // Segmento vazio - criar layer com facing
-                try {
-                    $segment->layer()->create([
-                        'tenant_id' => $segment->tenant_id,
-                        'user_id' => $segment->user_id,
-                        'product_id' => $product['product_id'],
-                        'quantity' => $facing, // FACING = QUANTITY no segmento
-                        'status' => 'published'
-                    ]);
-                    
-                    Log::info("✅ Produto colocado verticalmente", [
-                        'product_id' => $product['product_id'],
-                        'shelf_id' => $shelf->id,
-                        'segment_id' => $segment->id,
-                        'facing' => $facing
-                    ]);
-                    
-                    return true;
-                } catch (\Exception $e) {
-                    Log::error("❌ Erro ao criar layer vertical", [
-                        'segment_id' => $segment->id,
-                        'product_id' => $product['product_id'],
-                        'facing' => $facing,
-                        'error' => $e->getMessage()
-                    ]);
-                }
-            }
-        }
-        
-        // Se não encontrou segmento vazio, criar novo
-        return $this->createNewVerticalSegment($shelf, $product, $facing);
-    }
 
-    /**
-     * NOVA FUNÇÃO: Cria novo segmento quando necessário para verticalização [[memory:8393313]]
-     */
-    protected function createNewVerticalSegment($shelf, $product, int $facing): bool
-    {
-        try {
-            $productData = $product['product'] ?? [];
-            $productWidth = floatval($productData['width'] ?? 25);
-            $totalWidth = $productWidth * $facing;
-            
-            // Criar segmento com largura baseada no facing
-            $segment = $shelf->segments()->create([
-                'tenant_id' => $shelf->tenant_id,
-                'user_id' => $shelf->user_id,
-                'width' => $totalWidth,
-                'ordering' => $shelf->segments()->count(),
-                'position' => $shelf->segments()->count(),
-                'quantity' => 1,
-                'spacing' => 0,
-                'alignment' => 'left',
-                'status' => 'published'
-            ]);
-
-            // Criar layer com o facing calculado
-            $segment->layer()->create([
-                'tenant_id' => $segment->tenant_id,
-                'user_id' => $segment->user_id,
-                'product_id' => $product['product_id'],
-                'quantity' => $facing, // FACING = QUANTITY
-                'status' => 'published'
-            ]);
-
-            Log::info("🆕 Segmento vertical criado", [
-                'product_id' => $product['product_id'],
-                'shelf_id' => $shelf->id,
-                'segment_id' => $segment->id,
-                'facing' => $facing,
-                'width' => $totalWidth
-            ]);
-
-            return true;
-        } catch (\Exception $e) {
-            Log::error("❌ Erro ao criar segmento vertical", [
-                'shelf_id' => $shelf->id,
-                'product_id' => $product['product_id'],
-                'facing' => $facing,
-                'error' => $e->getMessage()
-            ]);
-            return false;
-        }
-    }
-
-    /**
-     * NOVA FUNÇÃO: Enricha scores com dados dos produtos (incluindo dimensões)
-     */
-    protected function enrichScoresWithProductData(array $scores, array $productsData): array
-    {
-        // Criar mapa de produtos por ID para acesso rápido
-        $productMap = collect($productsData)->keyBy('id');
-        
-        $enrichedScores = [];
-        foreach ($scores as $scoreData) {
-            $productId = $scoreData['product_id'];
-            $product = $productMap->get($productId);
-            
-            if ($product) {
-                // Adicionar dados do produto ao score
-                $scoreData['product'] = [
-                    'id' => $product['id'],
-                    'name' => $product['name'] ?? 'Produto sem nome',
-                    'ean' => $product['ean'] ?? '',
-                    'width' => $product['dimensions']['width'] ?? 25, // Fallback para 25mm
-                    'height' => $product['dimensions']['height'] ?? 40,
-                    'depth' => $product['dimensions']['depth'] ?? 30,
-                ];
-                
-                Log::info("Produto enrichado com dimensões", [
-                    'product_id' => $productId,
-                    'width' => $scoreData['product']['width'],
-                    'has_dimensions' => isset($product['dimensions']) && $product['dimensions'] !== null
-                ]);
-            } else {
-                // Produto não encontrado, usar fallbacks
-                $scoreData['product'] = [
-                    'id' => $productId,
-                    'name' => 'Produto não encontrado',
-                    'ean' => '',
-                    'width' => 25, // Fallback padrão
-                    'height' => 40,
-                    'depth' => 30,
-                ];
-                
-                Log::warning("Produto não encontrado nos dados fornecidos", [
-                    'product_id' => $productId
-                ]);
-            }
-            
-            $enrichedScores[] = $scoreData;
-        }
-        
-        Log::info("Scores enrichados com sucesso", [
-            'total_scores' => count($enrichedScores),
-            'avg_width' => collect($enrichedScores)->avg('product.width'),
-            'products_with_real_dimensions' => collect($enrichedScores)->filter(function($score) {
-                return $score['product']['width'] !== 25; // Não é fallback
-            })->count()
-        ]);
-        
-        return $enrichedScores;
-    }
-
-    /**
-     * NOVA FUNÇÃO: Determina módulo alvo baseado na classe ABC
-     */
-    protected function getTargetModuleByClass(string $abcClass): int
-    {
-        // LÓGICA CORRETA: Módulo 1 = mais nobre, Módulo 4 = menos nobre
-        return match($abcClass) {
-            'A' => 1, // Classe A → Módulo 1 (MAIS NOBRE)
-            'B' => 2, // Classe B → Módulo 2 (intermediário)  
-            'C' => 4, // Classe C → Módulo 4 (MENOS NOBRE)
-            default => 4
-        };
-    }
-
-    /**
-     * NOVA FUNÇÃO: Filtra prateleiras que pertencem ao módulo específico
-     * Baseado na análise dos logs: 16 prateleiras, 4 por seção, ordering de 0 a 3
-     */
-    protected function getShelvesFromModule(array $allShelves, int $targetModule): array
-    {
-        $shelvesInModule = [];
-        
-        // CORREÇÃO: Agrupar prateleiras por seção ID primeiro
-        $sectionGroups = [];
-        foreach ($allShelves as $shelf) {
-            $sectionId = $shelf->section_id ?? null;
-            if ($sectionId) {
-                if (!isset($sectionGroups[$sectionId])) {
-                    $sectionGroups[$sectionId] = [];
-                }
-                $sectionGroups[$sectionId][] = $shelf;
-            }
-        }
-        
-        // Ordenar seções por ID para ter ordem consistente
-        ksort($sectionGroups);
-        $orderedSections = array_keys($sectionGroups);
-        
-        Log::info("🏗️ Estrutura de seções descoberta", [
-            'total_sections' => count($orderedSections),
-            'section_ids' => $orderedSections,
-            'target_module' => $targetModule,
-            'shelves_per_section' => array_map('count', $sectionGroups)
-        ]);
-        
-        // Mapear módulo para seção (Módulo 1 = primeira seção, etc.)
-        $targetSectionIndex = $targetModule - 1;
-        
-        if (isset($orderedSections[$targetSectionIndex])) {
-            $targetSectionId = $orderedSections[$targetSectionIndex];
-            $shelvesInModule = $sectionGroups[$targetSectionId] ?? [];
-            
-            Log::info("🎯 Prateleiras do módulo selecionado", [
-                'target_module' => $targetModule,
-                'target_section_id' => $targetSectionId,
-                'target_section_index' => $targetSectionIndex,
-                'shelves_found' => count($shelvesInModule),
-                'shelf_ids' => array_map(function($shelf) {
-                    return $shelf->id;
-                }, $shelvesInModule)
-            ]);
-        } else {
-            Log::warning("⚠️ Módulo alvo não encontrado na estrutura", [
-                'target_module' => $targetModule,
-                'target_section_index' => $targetSectionIndex,
-                'available_sections' => count($orderedSections)
-            ]);
-        }
-        
-        return $shelvesInModule;
-    }
-
-    /**
-     * NOVO: Determina quais produtos devem ser colocados em cada módulo COM BALANCEAMENTO
-     * Evita overflow distribuindo produtos de forma equilibrada entre os módulos
-     * SUPORTA MÓDULOS EXTRAS (5, 6, 7...) recebendo produtos restantes
-     */
-    protected function getProductsForModule(int $moduleNumber, array $classifiedProducts): array
-    {
-        $totalProducts = count($classifiedProducts['A']) + count($classifiedProducts['B']) + count($classifiedProducts['C']);
-        $avgProductsPerModule = $totalProducts > 0 ? ceil($totalProducts / 6) : 0; // Assumindo 6 módulos
-        
-        // DISTRIBUIÇÃO BALANCEADA: evitar overflow em qualquer módulo
-        $productsForModule = match($moduleNumber) {
-            1 => $this->getBalancedProductsForModule1($classifiedProducts), // Módulo 1: A + melhores B
-            2 => $this->getBalancedProductsForModule2($classifiedProducts), // Módulo 2: B restantes
-            3 => $this->getBalancedProductsForModule3($classifiedProducts), // Módulo 3: B + melhores C  
-            4 => $this->getBalancedProductsForModule4($classifiedProducts), // Módulo 4: C restantes
-            default => $this->getBalancedProductsForExtraModules($moduleNumber, $classifiedProducts) // Módulos extras: produtos restantes
-        };
-        
-        Log::info("📋 Produtos BALANCEADOS por módulo", [
-            'module_number' => $moduleNumber,
-            'strategy' => $this->getModuleStrategy($moduleNumber),
-            'products_count' => count($productsForModule),
-            'avg_per_module' => $avgProductsPerModule,
-            'product_ids' => array_column($productsForModule, 'product_id'),
-            'classe_A_total' => count($classifiedProducts['A']),
-            'classe_B_total' => count($classifiedProducts['B']),
-            'classe_C_total' => count($classifiedProducts['C'])
-        ]);
-        
-        return $productsForModule;
-    }
+    // Métodos movidos para ProductPlacementService:
+    // - getProductsForModule(), fillSectionVertically(), tryPlaceProductInSection(), tryCascadeDistribution()
+    // - getBalancedProductsForExtraModules(), getBalancedProductsForModule1-4()
     
-    /**
-     * NOVO: Produtos balanceados para módulos EXTRAS (5, 6, 7...)
-     * Distribui produtos restantes que não couberam nos módulos principais
-     */
-    protected function getBalancedProductsForExtraModules(int $moduleNumber, array $classifiedProducts): array
-    {
-        // Coletar todos os produtos disponíveis
-        $allProducts = array_merge(
-            $classifiedProducts['A'],
-            $classifiedProducts['B'], 
-            $classifiedProducts['C']
-        );
-        
-        if (empty($allProducts)) {
-            return [];
-        }
-        
-        $totalProducts = count($allProducts);
-        
-        // Produtos dos primeiros 4 módulos (aproximadamente)
-        $productsInMainModules = min($totalProducts, 4 * 5); // ~20 produtos nos módulos principais
-        $remainingProducts = max(0, $totalProducts - $productsInMainModules);
-        
-        if ($remainingProducts == 0) {
-            return []; // Não há produtos restantes
-        }
-        
-        // Distribuir produtos restantes entre módulos extras (5+)
-        $extraModulesCount = $moduleNumber - 4; // Quantos módulos extras existem até este
-        $avgProductsPerExtraModule = ceil($remainingProducts / max(1, $extraModulesCount));
-        
-        // Calcular range de produtos restantes para este módulo extra
-        $extraModuleIndex = $moduleNumber - 5; // Índice baseado em 0 para módulos extras
-        $startIndex = $productsInMainModules + ($extraModuleIndex * $avgProductsPerExtraModule);
-        $endIndex = min($startIndex + $avgProductsPerExtraModule, $totalProducts);
-        
-        if ($startIndex >= $totalProducts) {
-            // Não há produtos suficientes para este módulo
-            return [];
-        }
-        
-        // Extrair produtos para este módulo
-        $productsForModule = array_slice($allProducts, $startIndex, $endIndex - $startIndex);
-        
-        Log::info("🔄 Módulo EXTRA com produtos restantes", [
-            'module_number' => $moduleNumber,
-            'total_products' => $totalProducts,
-            'products_main_modules' => $productsInMainModules,
-            'remaining_products' => $remainingProducts,
-            'extra_modules_count' => $extraModulesCount,
-            'avg_per_extra_module' => $avgProductsPerExtraModule,
-            'start_index' => $startIndex,
-            'end_index' => $endIndex,
-            'products_count' => count($productsForModule),
-            'product_ids' => array_column($productsForModule, 'product_id')
-        ]);
-        
-        return $productsForModule;
-    }
-    
-    /**
-     * NOVO: Produtos balanceados para Módulo 1 (Nobre)
-     */
-    protected function getBalancedProductsForModule1(array $classifiedProducts): array
-    {
-        // Módulo 1: TODOS produtos A + 1 melhor produto B (se necessário para balanceamento)
-        $products = $classifiedProducts['A'];
-        
-        if (count($products) < 5 && !empty($classifiedProducts['B'])) {
-            // Adicionar melhor produto B para balancear
-            $products[] = $classifiedProducts['B'][0];
-        }
-        
-        Log::info("🥇 Módulo 1 - Nobre", [
-            'classe_A_count' => count($classifiedProducts['A']),
-            'classe_B_added' => count($products) - count($classifiedProducts['A']),
-            'total_products' => count($products)
-        ]);
-        
-        return $products;
-    }
-    
-    /**
-     * NOVO: Produtos balanceados para Módulo 2 (Premium)  
-     */
-    protected function getBalancedProductsForModule2(array $classifiedProducts): array
-    {
-        // Módulo 2: Primeira metade B (excluindo o que foi para Módulo 1)
-        $startIndex = count($classifiedProducts['A']) >= 5 ? 0 : 1; // Se Módulo 1 pegou 1 B, começar do índice 1
-        $firstHalf = array_slice($classifiedProducts['B'], $startIndex, 4);
-        
-        Log::info("🥈 Módulo 2 - Premium", [
-            'start_index' => $startIndex,
-            'products_count' => count($firstHalf),
-            'product_ids' => array_column($firstHalf, 'product_id')
-        ]);
-        
-        return $firstHalf;
-    }
-    
-    /**
-     * NOVO: Produtos balanceados para Módulo 3 (Intermediário)
-     */
-    protected function getBalancedProductsForModule3(array $classifiedProducts): array
-    {
-        // Módulo 3: Segunda metade B + primeiros produtos C para balancear
-        $startIndex = count($classifiedProducts['A']) >= 5 ? 4 : 5; // Ajustar baseado no Módulo 2
-        $secondHalfB = array_slice($classifiedProducts['B'], $startIndex);
-        
-        $products = $secondHalfB;
-        $needed = 5 - count($products);
-        
-        if ($needed > 0 && !empty($classifiedProducts['C'])) {
-            $firstC = array_slice($classifiedProducts['C'], 0, $needed);
-            $products = array_merge($products, $firstC);
-        }
-        
-        Log::info("🥉 Módulo 3 - Intermediário", [
-            'classe_B_count' => count($secondHalfB),
-            'classe_C_added' => count($products) - count($secondHalfB),
-            'total_products' => count($products)
-        ]);
-        
-        return $products;
-    }
-    
-    /**
-     * NOVO: Produtos balanceados para Módulo 4 (Básico)
-     */
-    protected function getBalancedProductsForModule4(array $classifiedProducts): array
-    {
-        // Módulo 4: Produtos C restantes (excluindo os que foram para Módulo 3)
-        $usedInModule3 = max(0, 5 - (count($classifiedProducts['B']) - 4)); // Quantos C foram pro Módulo 3
-        $remainingC = array_slice($classifiedProducts['C'], $usedInModule3);
-        
-        Log::info("📍 Módulo 4 - Básico", [
-            'used_in_module3' => $usedInModule3,
-            'remaining_count' => count($remainingC),
-            'product_ids' => array_column($remainingC, 'product_id')
-        ]);
-        
-        return $remainingC;
-    }
-    
-    
-    /**
-     * NOVO: Verticaliza produtos dentro de uma section específica COM DISTRIBUIÇÃO EM CASCATA
-     */
-    protected function fillSectionVertically($section, array $products, array $structure): array
-    {
-        $productsPlaced = 0;
-        $segmentsUsed = 0;
-        $totalPlacements = 0;
-        $productsDetails = [];
-        $failedProducts = []; // Produtos que não couberam
-        
-        // Pegar prateleiras da section em ordem
-        $shelves = $section->shelves()->orderBy('ordering')->get();
-        
-        Log::info("🏗️ Preenchendo section verticalmente COM CASCATA", [
-            'section_id' => $section->id,
-            'section_ordering' => $section->ordering,
-            'shelves_count' => $shelves->count(),
-            'products_to_place' => count($products)
-        ]);
-        
-        // Para cada produto, colocar verticalmente nas prateleiras desta section
-        foreach ($products as $product) {
-            $facingTotal = $this->calculateTotalFacingByScore($product, $structure);
-            
-            if ($facingTotal <= 0) {
-                continue;
-            }
-            
-            Log::info("🔄 Verticalizando produto na section", [
-                'product_id' => $product['product_id'],
-                'abc_class' => $product['abc_class'],
-                'facing_total' => $facingTotal,
-                'section_ordering' => $section->ordering
-            ]);
-            
-            // NOVA ABORDAGEM: Tentar colocar o produto de forma inteligente
-            $placementResult = $this->tryPlaceProductInSection($section, $product, $facingTotal, $shelves);
-            
-            if ($placementResult['success']) {
-                $productsPlaced++;
-                $segmentsUsed += $placementResult['segments_used'];
-                $totalPlacements += $placementResult['total_placements'];
-                
-                $productsDetails[] = [
-                    'product_id' => $product['product_id'],
-                    'abc_class' => $product['abc_class'],
-                    'facing_total' => $placementResult['total_placements'],
-                    'shelves_used' => $placementResult['segments_used']
-                ];
-                
-                Log::info("✅ Produto colocado com sucesso na section", [
-                    'product_id' => $product['product_id'],
-                    'section_ordering' => $section->ordering,
-                    'total_placements' => $placementResult['total_placements']
-                ]);
-            } else {
-                $failedProducts[] = $product;
-                Log::warning("⚠️ Produto não coube na section preferencial", [
-                    'product_id' => $product['product_id'],
-                    'section_ordering' => $section->ordering,
-                    'reason' => $placementResult['reason'] ?? 'Espaço insuficiente'
-                ]);
-            }
-        }
-        
-        Log::info("📊 Resultado do preenchimento da section", [
-            'section_ordering' => $section->ordering,
-            'products_placed' => $productsPlaced,
-            'products_failed' => count($failedProducts),
-            'total_placements' => $totalPlacements,
-            'segments_used' => $segmentsUsed
-        ]);
-        
-        return [
-            'products_placed' => $productsPlaced,
-            'segments_used' => $segmentsUsed,
-            'total_placements' => $totalPlacements,
-            'products_details' => $productsDetails,
-            'failed_products' => $failedProducts // NOVO: Retornar produtos que falharam
-        ];
-    }
-    
-    /**
-     * NOVO: Tenta colocar produto em uma section de forma inteligente
-     */
-    protected function tryPlaceProductInSection($section, array $product, int $facingTotal, $shelves): array
-    {
-        $productData = $product['product'] ?? [];
-        $productWidth = floatval($productData['width'] ?? 25);
-        $productId = $product['product_id'];
-        
-        $segmentsUsed = 0;
-        $totalPlacements = 0;
-        $successfulPlacements = [];
-        
-        // Distribuir facing entre as prateleiras da section
-        $facingPerShelf = floor($facingTotal / $shelves->count());
-        $remainder = $facingTotal % $shelves->count();
-        
-        foreach ($shelves as $index => $shelf) {
-            $facingInThisShelf = $facingPerShelf;
-            
-            // Distribuir restante nas primeiras prateleiras
-            if ($index < $remainder) {
-                $facingInThisShelf++;
-            }
-            
-            if ($facingInThisShelf > 0) {
-                // Calcular largura disponível na prateleira
-                $usedWidth = $this->calculateUsedWidthInShelf($shelf);
-                $availableWidth = 125.0 - $usedWidth;
-                
-                // Usar facing realista baseado no espaço disponível
-                $realisticFacing = $this->calculateOptimalFacing($product, $availableWidth);
-                $actualFacing = min($facingInThisShelf, $realisticFacing);
-                
-                if ($actualFacing > 0) {
-                    $success = $this->placeProductInShelfVertically($shelf, $product, $actualFacing);
-                    
-                    if ($success) {
-                        $segmentsUsed++;
-                        $totalPlacements += $actualFacing;
-                        $successfulPlacements[] = [
-                            'shelf_id' => $shelf->id,
-                            'facing' => $actualFacing
-                        ];
-                        
-                        Log::debug("✅ Produto colocado na prateleira", [
-                            'product_id' => $productId,
-                            'shelf_id' => $shelf->id,
-                            'facing_requested' => $facingInThisShelf,
-                            'facing_actual' => $actualFacing,
-                            'available_width' => $availableWidth
-                        ]);
-                    } else {
-                        Log::debug("⚠️ Falha ao colocar produto na prateleira", [
-                            'product_id' => $productId,
-                            'shelf_id' => $shelf->id,
-                            'facing_attempted' => $actualFacing
-                        ]);
-                    }
-                } else {
-                    Log::debug("⚠️ Facing zero calculado para prateleira", [
-                        'product_id' => $productId,
-                        'shelf_id' => $shelf->id,
-                        'available_width' => $availableWidth,
-                        'product_width' => $productWidth
-                    ]);
-                }
-            }
-        }
-        
-        $success = $totalPlacements > 0;
-        $reason = $success ? null : 'Nenhuma prateleira tinha espaço suficiente';
-        
-        return [
-            'success' => $success,
-            'segments_used' => $segmentsUsed,
-            'total_placements' => $totalPlacements,
-            'successful_placements' => $successfulPlacements,
-            'reason' => $reason
-        ];
-    }
-    
-    /**
-     * NOVO: Distribui produtos que falharam em outros módulos (CASCATA)
-     */
-    protected function tryCascadeDistribution($allSections, array $failedProducts, string $excludeSectionId, array $structure): array
-    {
-        $productsPlaced = 0;
-        $segmentsUsed = 0;
-        $totalPlacements = 0;
-        $stillFailed = [];
-        
-        Log::info("🔄 INICIANDO DISTRIBUIÇÃO EM CASCATA", [
-            'failed_products_count' => count($failedProducts),
-            'exclude_section_id' => $excludeSectionId,
-            'available_sections' => $allSections->count() - 1
-        ]);
-        
-        // Para cada produto que falhou, tentar em todos os outros módulos
-        foreach ($failedProducts as $product) {
-            $productPlaced = false;
-            $productId = $product['product_id'];
-            
-            // Tentar em todas as sections exceto a que já falhou
-            foreach ($allSections as $section) {
-                if ($section->id === $excludeSectionId) {
-                    continue; // Pular a section que já falhou
-                }
-                
-                Log::debug("🔍 Tentando produto em módulo alternativo", [
-                    'product_id' => $productId,
-                    'target_module' => $section->ordering + 1,
-                    'section_id' => $section->id
-                ]);
-                
-                // Calcular facing conservador para cascata
-                $conservativeFacing = $this->calculateConservativeFacing($product);
-                
-                // Tentar colocar o produto nesta section
-                $shelves = $section->shelves()->orderBy('ordering')->get();
-                $placementResult = $this->tryPlaceProductInSection($section, $product, $conservativeFacing, $shelves);
-                
-                if ($placementResult['success']) {
-                    $productsPlaced++;
-                    $segmentsUsed += $placementResult['segments_used'];
-                    $totalPlacements += $placementResult['total_placements'];
-                    $productPlaced = true;
-                    
-                    Log::info("✅ CASCATA bem-sucedida", [
-                        'product_id' => $productId,
-                        'abc_class' => $product['abc_class'],
-                        'original_module' => 'failed',
-                        'cascade_module' => $section->ordering + 1,
-                        'placements' => $placementResult['total_placements']
-                    ]);
-                    
-                    break; // Produto colocado, não tentar em outros módulos
-                }
-            }
-            
-            // Se não conseguiu colocar em nenhum módulo, adicionar à lista de falhados
-            if (!$productPlaced) {
-                $stillFailed[] = $product;
-                Log::warning("❌ Produto falhou em TODOS os módulos", [
-                    'product_id' => $productId,
-                    'abc_class' => $product['abc_class'],
-                    'product_width' => $product['product']['width'] ?? 'N/A'
-                ]);
-            }
-        }
-        
-        Log::info("🎯 CASCATA concluída", [
-            'original_failed' => count($failedProducts),
-            'cascade_placed' => $productsPlaced,
-            'still_failed' => count($stillFailed),
-            'cascade_success_rate' => count($failedProducts) > 0 ? round(($productsPlaced / count($failedProducts)) * 100, 1) . '%' : '0%'
-        ]);
-        
-        return [
-            'products_placed' => $productsPlaced,
-            'segments_used' => $segmentsUsed,
-            'total_placements' => $totalPlacements,
-            'still_failed' => $stillFailed
-        ];
-    }
-    
-    /**
-     * NOVO: Calcula facing conservador para distribuição em cascata
-     */
-    protected function calculateConservativeFacing(array $product): int
-    {
-        $abcClass = $product['abc_class'] ?? 'C';
-        
-        // Facing muito conservador para cascata (garantir que cabe)
-        $conservativeFacing = match($abcClass) {
-            'A' => 2, // Classe A: apenas 2 facing na cascata
-            'B' => 1, // Classe B: apenas 1 facing na cascata
-            'C' => 1, // Classe C: apenas 1 facing na cascata
-            default => 1
-        };
-        
-        Log::debug("🔄 Facing conservador para cascata", [
-            'product_id' => $product['product_id'],
-            'abc_class' => $abcClass,
-            'conservative_facing' => $conservativeFacing
-        ]);
-        
-        return $conservativeFacing;
-    }
+    // Método calculateConservativeFacing movido para FacingCalculatorService
     
     /**
      * NOVO: Coloca produto em prateleira específica com facing definido + VALIDAÇÃO DE LARGURA
@@ -2749,7 +832,7 @@ class AutoPlanogramController extends Controller
     {
         // 1. CALCULAR LARGURA NECESSÁRIA PARA O PRODUTO
         $productData = $product['product'] ?? [];
-        $productWidth = floatval($productData['width'] ?? 25);
+        $productWidth = $this->getProductWidth($productData);
         $requiredWidth = $productWidth * $facing;
         
         // 2. VERIFICAR LARGURA DISPONÍVEL NA PRATELEIRA
@@ -2757,39 +840,22 @@ class AutoPlanogramController extends Controller
         $usedWidth = $this->calculateUsedWidthInShelf($shelf);
         $availableWidth = $shelfWidth - $usedWidth;
         
-        Log::info("🔍 Verificando capacidade da prateleira", [
-            'shelf_id' => $shelf->id,
-            'shelf_ordering' => $shelf->ordering,
+        // Verificando capacidade da prateleira
+        
+        // 3. FACING ADAPTATIVO: Usar service para calcular
+        $adaptiveResult = $this->facingCalculator->calculateAdaptiveFacing($product, $availableWidth, $facing);
+        $adaptedFacing = $adaptiveResult['facing'];
+        $adaptedRequiredWidth = $adaptiveResult['required_width'];
+        
+        Log::info("🔧 DEBUG: Facing adaptativo", [
             'product_id' => $product['product_id'],
-            'facing' => $facing,
-            'product_width_cm' => $productWidth,
-            'required_width_cm' => $requiredWidth,
-            'shelf_width_cm' => $shelfWidth,
-            'used_width_cm' => $usedWidth,
-            'available_width_cm' => $availableWidth,
-            'fits' => $requiredWidth <= $availableWidth
+            'requested_facing' => $facing,
+            'adapted_facing' => $adaptedFacing,
+            'available_width' => $availableWidth,
+            'required_width' => $adaptedRequiredWidth
         ]);
         
-        // 3. FACING ADAPTATIVO: Reduzir facing se não cabe
-        $adaptedFacing = $facing;
-        $adaptedRequiredWidth = $requiredWidth;
-        
-        // Tentar reduzir facing até caber ou chegar a 1
-        while ($adaptedFacing > 0 && $adaptedRequiredWidth > $availableWidth) {
-            $adaptedFacing--;
-            $adaptedRequiredWidth = $productWidth * $adaptedFacing;
-        }
-        
-        Log::info("🔄 FACING ADAPTATIVO aplicado", [
-            'shelf_id' => $shelf->id,
-            'product_id' => $product['product_id'],
-            'facing_original' => $facing,
-            'facing_adapted' => $adaptedFacing,
-            'width_original' => $requiredWidth,
-            'width_adapted' => $adaptedRequiredWidth,
-            'available_width_cm' => $availableWidth,
-            'optimization' => $facing > $adaptedFacing ? 'REDUZIDO' : 'MANTIDO'
-        ]);
+        // Facing adaptativo aplicado
         
         // Se não cabe nem com 1 facing, rejeitar
         if ($adaptedFacing <= 0 || $adaptedRequiredWidth > $availableWidth) {
@@ -2881,7 +947,14 @@ class AutoPlanogramController extends Controller
                 $quantity = intval($segment->layer->quantity ?? 1);
                 
                 // Calcular largura real baseada no produto e quantidade
-                $productWidth = floatval($product->width ?? 25);
+                if (!$product->width || $product->width <= 0) {
+                    Log::warning("❌ Produto sem largura válida ignorado", [
+                        'product_id' => $product->id ?? 'unknown',
+                        'width' => $product->width ?? 'null'
+                    ]);
+                    continue;
+                }
+                $productWidth = $this->getProductWidth(['width' => $product->width]);
                 $segmentUsedWidth = $productWidth * $quantity;
                 
                 $usedWidth += $segmentUsedWidth;
@@ -2895,13 +968,7 @@ class AutoPlanogramController extends Controller
             }
         }
         
-        Log::debug("📏 Largura CORRIGIDA calculada na prateleira", [
-            'shelf_id' => $shelf->id,
-            'total_segments' => $segments->count(),
-            'segments_with_products' => count($productsFound),
-            'used_width_cm' => $usedWidth,
-            'products_details' => $productsFound
-        ]);
+        // Largura corrigida calculada na prateleira
         
         return $usedWidth;
     }
@@ -2912,27 +979,15 @@ class AutoPlanogramController extends Controller
     protected function createVerticalSegmentWithValidation($shelf, array $product, int $facing, float $availableWidth): bool
     {
         $productData = $product['product'] ?? [];
-        $productWidth = floatval($productData['width'] ?? 25);
+        $productWidth = $this->getProductWidth($productData);
         $requiredWidth = $productWidth * $facing;
         
         // FACING ADAPTATIVO também para criação de segmento
-        $adaptedFacing = $facing;
-        $adaptedRequiredWidth = $requiredWidth;
+        $adaptiveResult = $this->facingCalculator->calculateAdaptiveFacing($product, $availableWidth, $facing);
+        $adaptedFacing = $adaptiveResult['facing'];
+        $adaptedRequiredWidth = $adaptiveResult['required_width'];
         
-        // Tentar reduzir facing até caber ou chegar a 1
-        while ($adaptedFacing > 0 && $adaptedRequiredWidth > $availableWidth) {
-            $adaptedFacing--;
-            $adaptedRequiredWidth = $productWidth * $adaptedFacing;
-        }
-        
-        Log::info("🔄 FACING ADAPTATIVO no novo segmento", [
-            'shelf_id' => $shelf->id,
-            'product_id' => $product['product_id'],
-            'facing_original' => $facing,
-            'facing_adapted' => $adaptedFacing,
-            'width_adapted' => $adaptedRequiredWidth,
-            'available_width_cm' => $availableWidth
-        ]);
+        // Facing adaptativo no novo segmento
         
         // Verificar se há largura suficiente mesmo com facing reduzido
         if ($adaptedFacing <= 0 || $adaptedRequiredWidth > $availableWidth) {
@@ -2987,22 +1042,9 @@ class AutoPlanogramController extends Controller
         }
     }
     
-    /**
-     * NOVO: Cria novo segmento para verticalização quando necessário (versão legacy)
-     */
-    protected function createVerticalSegment($shelf, array $product, int $facing): bool
-    {
-        // Redirecionar para versão com validação
-        $shelfWidth = floatval($shelf->shelf_width ?? 125);
-        $usedWidth = $this->calculateUsedWidthInShelf($shelf);
-        $availableWidth = $shelfWidth - $usedWidth;
-        
-        return $this->createVerticalSegmentWithValidation($shelf, $product, $facing, $availableWidth);
-    }
     
     /**
-     * NOVO: Retorna estratégia do módulo para logs (versão balanceada)
-     * SUPORTA MÓDULOS EXTRAS (5, 6, 7...)
+     * Retorna estratégia do módulo para logs
      */
     protected function getModuleStrategy(int $moduleNumber): string
     {
@@ -3025,12 +1067,7 @@ class AutoPlanogramController extends Controller
         
         $shelves = $section->shelves()->orderBy('ordering')->get();
         
-        Log::info("🎯 INICIANDO PREENCHIMENTO OPORTUNÍSTICO", [
-            'section_id' => $section->id,
-            'section_ordering' => $section->ordering,
-            'shelves_count' => $shelves->count(),
-            'products_available' => count($products)
-        ]);
+        // Iniciando preenchimento oportunístico
         
         foreach ($shelves as $shelf) {
             // 1. EXPANDIR FACING DOS PRODUTOS EXISTENTES
@@ -3044,11 +1081,7 @@ class AutoPlanogramController extends Controller
             $totalPlacements += $fillResults['total_placements'];
         }
         
-        Log::info("🎉 PREENCHIMENTO OPORTUNÍSTICO CONCLUÍDO", [
-            'section_id' => $section->id,
-            'segments_added' => $segmentsUsed,
-            'placements_added' => $totalPlacements
-        ]);
+        // Preenchimento oportunístico concluído
         
         return [
             'segments_used' => $segmentsUsed,
@@ -3057,7 +1090,7 @@ class AutoPlanogramController extends Controller
     }
     
     /**
-     * NOVO: Expande facing de produtos já colocados se há espaço
+     * Expande facing de produtos já colocados se há espaço
      */
     protected function expandExistingFacing($shelf, array $products): array
     {
@@ -3078,7 +1111,10 @@ class AutoPlanogramController extends Controller
             if ($segment->layer && $segment->layer->product_id && $availableWidth > 0) {
                 $product = $segment->layer->product;
                 if ($product) {
-                    $productWidth = floatval($product->width ?? 25);
+                    if (!$product->width || $product->width <= 0) {
+                        continue; // Pular produtos sem largura válida
+                    }
+                    $productWidth = $this->getProductWidth(['width' => $product->width]);
                     $currentFacing = $segment->layer->quantity ?? 1;
                     
                     // Calcular quantos facings adicionais cabem
@@ -3096,14 +1132,7 @@ class AutoPlanogramController extends Controller
                             $totalPlacements += $additionalFacings;
                             $availableWidth -= $additionalWidth;
                             
-                            Log::info("📈 FACING EXPANDIDO", [
-                                'shelf_id' => $shelf->id,
-                                'product_id' => $product->id,
-                                'facing_anterior' => $currentFacing,
-                                'facing_novo' => $newFacing,
-                                'facings_adicionados' => $additionalFacings,
-                                'width_adicional' => $additionalWidth
-                            ]);
+                            // Facing expandido com sucesso
                             
                             break; // Um produto por vez
                         } catch (\Exception $e) {
@@ -3124,7 +1153,7 @@ class AutoPlanogramController extends Controller
     }
     
     /**
-     * NOVO: Preenche espaços vazios da prateleira com novos produtos
+     * Preenche espaços vazios da prateleira com novos produtos
      */
     protected function fillEmptyShelfSpace($shelf, array $products): array
     {
@@ -3142,7 +1171,7 @@ class AutoPlanogramController extends Controller
         foreach ($products as $product) {
             if ($availableWidth > 0) {
                 $productData = $product['product'] ?? [];
-                $productWidth = floatval($productData['width'] ?? 25);
+                $productWidth = $this->getProductWidth($productData);
                 
                 // Calcular quantos facings cabem
                 $possibleFacings = floor($availableWidth / $productWidth);
@@ -3156,14 +1185,7 @@ class AutoPlanogramController extends Controller
                         $usedSpace = $possibleFacings * $productWidth;
                         $availableWidth -= $usedSpace;
                         
-                        Log::info("🆕 PRODUTO ADICIONADO OPORTUNÍSTICAMENTE", [
-                            'shelf_id' => $shelf->id,
-                            'shelf_ordering' => $shelf->ordering,
-                            'product_id' => $product['product_id'],
-                            'facings_added' => $possibleFacings,
-                            'width_used' => $usedSpace,
-                            'remaining_width' => $availableWidth
-                        ]);
+                        // Produto adicionado oportunisticamente
                         
                         if ($availableWidth < 15.0) {
                             break; // Prateleira quase cheia
@@ -3179,62 +1201,645 @@ class AutoPlanogramController extends Controller
         ];
     }
 
+    // Método applyDynamicFilters não é mais necessário - usa endpoint do Products.vue
+
     /**
-     * NOVO: Aplica filtros dinâmicos vindos do modal AutoGenerateModal.vue
+     * 🧠 Geração inteligente com ABC + Target Stock
+     * 
+     * POST /api/plannerate/auto-planogram/generate-intelligent
      */
-    protected function applyDynamicFilters($productsQuery, array $filters, $gondola): void
+    public function generateIntelligent(Request $request): JsonResponse
     {
-        Log::info("🎛️ Aplicando filtros dinâmicos do modal", [
-            'filters_received' => $filters,
-            'gondola_id' => $gondola->id
-        ]);
+        $startTime = microtime(true);
         
-        // FILTRO 1: Produtos com dimensões (dimension)
-        if ($filters['dimension'] ?? true) {
-            $productsQuery->whereHas('dimensions');
-            Log::debug("✅ Filtro aplicado: apenas produtos com dimensões");
+        try {
+            // 1. VALIDAÇÃO
+            $validator = Validator::make($request->all(), [
+                'gondola_id' => 'required|exists:gondolas,id',
+                'filters' => 'array',
+                'abc_params' => 'required|array',
+                'abc_params.weights' => 'required|array',
+                'abc_params.thresholds' => 'required|array',
+                'target_stock_params' => 'required|array',
+                'facing_limits' => 'required|array',
+                'auto_distribute' => 'boolean'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Dados inválidos fornecidos',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $gondola = Gondola::with(['sections.shelves.segments.layer', 'planogram'])->findOrFail($request->gondola_id);
+            
+            // 2. BUSCAR TODOS OS PRODUTOS (SEM LIMITE)
+            $allProducts = $this->getAllProductsByPlanogramCategory($gondola, $request);
+            
+            // Filtrar apenas produtos com dimensões válidas
+            $productsWithDimensions = collect($allProducts)->filter(function($product) {
+                return isset($product['dimensions']) && 
+                       isset($product['dimensions']['width']) && 
+                       $product['dimensions']['width'] > 0;
+            })->values()->toArray();
+            
+            Log::info('🔍 Filtragem de produtos por dimensões', [
+                'produtos_total' => count($allProducts),
+                'produtos_with_dimensions' => count($productsWithDimensions),
+                'produtos_sem_dimensions' => count($allProducts) - count($productsWithDimensions)
+            ]);
+            
+            if (empty($productsWithDimensions)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Nenhum produto com dimensões válidas encontrado para análise inteligente'
+                ], 404);
+            }
+            
+            // Usar apenas produtos com dimensões válidas
+            $allProducts = $productsWithDimensions;
+            
+            Log::info("🧠 Geração inteligente iniciada", [
+                'gondola_id' => $gondola->id,
+                'total_products' => count($allProducts),
+                'abc_params' => $request->abc_params,
+                'target_stock_params' => $request->target_stock_params
+            ]);
+            
+            // 3. EXECUTAR ANÁLISE ABC
+            $abcResults = $this->executeABCAnalysis($allProducts, $request->abc_params);
+            
+            // 4. EXECUTAR ANÁLISE TARGET STOCK
+            $targetStockResults = $this->executeTargetStockAnalysis($allProducts, $request->target_stock_params);
+            
+            // 5. PROCESSAR PRODUTOS COM DADOS INTELIGENTES
+            $processedProducts = $this->processProductsIntelligently(
+                $allProducts,
+                $abcResults,
+                $targetStockResults,
+                $request->facing_limits
+            );
+            
+            // 6. DISTRIBUIR NA GÔNDOLA
+            $distributionResult = null;
+            if ($request->auto_distribute) {
+                $this->clearGondola($gondola);
+                $distributionResult = $this->distributeIntelligently($gondola, $processedProducts);
+            }
+            
+            $processingTime = round((microtime(true) - $startTime) * 1000, 2);
+            
+            Log::info("✅ Geração inteligente concluída", [
+                'gondola_id' => $gondola->id,
+                'processing_time_ms' => $processingTime,
+                'products_processed' => count($processedProducts),
+                'products_placed' => $distributionResult['products_placed'] ?? 0
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Planograma inteligente gerado com sucesso',
+                'data' => [
+                    'gondola' => [
+                        'id' => $gondola->id,
+                        'name' => $gondola->name,
+                        'sections' => $gondola->sections->count(),
+                    ],
+                    'products_processed' => count($processedProducts),
+                    'distribution_result' => $distributionResult
+                ],
+                'metadata' => [
+                    'abc_analysis' => [
+                        'products_analyzed' => count($abcResults),
+                        'class_distribution' => $this->getABCDistribution($abcResults)
+                    ],
+                    'target_stock_analysis' => [
+                        'products_analyzed' => count($targetStockResults),
+                        'urgency_distribution' => $this->getUrgencyDistribution($targetStockResults)
+                    ],
+                    'processing_time_ms' => $processingTime
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('❌ Erro na geração inteligente', [
+                'gondola_id' => $request->gondola_id,
+                'error' => $e->getMessage(),
+                'line' => $e->getLine()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro na geração inteligente: ' . $e->getMessage(),
+                'error_details' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+
+    /**
+     * 📊 Executar análise ABC
+     */
+    protected function executeABCAnalysis(array $products, array $abcParams): array
+    {
+        $productIds = collect($products)->pluck('id')->toArray();
+        
+        // Usar o ScoreEngine existente com parâmetros customizados
+        $scores = $this->scoreEngine->calculateScores(
+            $productIds,
+            $abcParams['weights'],
+            null, // start_date
+            null, // end_date
+            null  // store_id
+        );
+        
+        // Classificar em ABC baseado nos thresholds
+        $totalProducts = count($scores);
+        $classifiedProducts = [];
+        
+        foreach ($scores as $index => $scoreData) {
+            $percentile = ($index + 1) / $totalProducts * 100;
+            
+            if ($percentile <= $abcParams['thresholds']['a']) {
+                $scoreData['abc_class'] = 'A';
+            } elseif ($percentile <= $abcParams['thresholds']['b']) {
+                $scoreData['abc_class'] = 'B';
+            } else {
+                $scoreData['abc_class'] = 'C';
+            }
+            
+            $classifiedProducts[] = $scoreData;
         }
         
-        // FILTRO 2: Produtos não utilizados na gôndola (unusedOnly)  
-        if ($filters['unusedOnly'] ?? true) {
-            $productIdsInGondola = $this->getProductIdsInGondola($gondola);
-            if (!empty($productIdsInGondola)) {
-                $productsQuery->whereNotIn('id', $productIdsInGondola);
-                Log::debug("✅ Filtro aplicado: produtos não utilizados", [
-                    'produtos_na_gondola' => count($productIdsInGondola)
+        // Calcular estatísticas detalhadas da análise ABC
+        $classA = array_filter($classifiedProducts, fn($p) => $p['abc_class'] === 'A');
+        $classB = array_filter($classifiedProducts, fn($p) => $p['abc_class'] === 'B');
+        $classC = array_filter($classifiedProducts, fn($p) => $p['abc_class'] === 'C');
+
+        $scoreStats = [
+            'min_score' => min(array_column($classifiedProducts, 'final_score')),
+            'max_score' => max(array_column($classifiedProducts, 'final_score')),
+            'avg_score' => round(array_sum(array_column($classifiedProducts, 'final_score')) / count($classifiedProducts), 2)
+        ];
+
+        Log::info("📊 Análise ABC concluída", [
+            'total_products' => count($classifiedProducts),
+            'distribution' => [
+                'class_A' => count($classA),
+                'class_B' => count($classB),
+                'class_C' => count($classC)
+            ],
+            'percentages' => [
+                'class_A' => round((count($classA) / count($classifiedProducts)) * 100, 1) . '%',
+                'class_B' => round((count($classB) / count($classifiedProducts)) * 100, 1) . '%',
+                'class_C' => round((count($classC) / count($classifiedProducts)) * 100, 1) . '%'
+            ],
+            'score_stats' => $scoreStats,
+            'top_5_products' => array_slice(
+                array_map(fn($p) => ($p['product_name'] ?? 'Produto sem nome') . ' (Score: ' . $p['final_score'] . ')', 
+                    array_slice(usort($classifiedProducts, fn($a, $b) => $b['final_score'] <=> $a['final_score']) ? $classifiedProducts : $classifiedProducts, 0, 5)
+                ), 0, 5
+            )
+        ]);
+        
+        return $classifiedProducts;
+    }
+
+    /**
+     * 📦 Executar análise Target Stock
+     */
+    protected function executeTargetStockAnalysis(array $products, array $targetStockParams): array
+    {
+        $results = [];
+        
+        foreach ($products as $product) {
+            // Simular dados de vendas (em produção, buscar do banco)
+            $dailySales = $this->getDailySales($product['id']) ?: 1;
+            $currentStock = $this->getCurrentStock($product['id']) ?: 10;
+            
+            // Calcular estoque alvo
+            $targetStock = $this->calculateTargetStock(
+                $dailySales,
+                $targetStockParams['coverageDays'],
+                $targetStockParams['safetyStock'],
+                $targetStockParams['serviceLevel']
+            );
+            
+            // Calcular métricas
+            $stockRatio = $targetStock > 0 ? $currentStock / $targetStock : 1;
+            $urgency = $this->determineStockUrgency($stockRatio);
+            
+            $results[] = [
+                'product_id' => $product['id'],
+                'product_name' => $product['name'] ?? 'Produto sem nome', // Adicionar nome do produto
+                'daily_sales' => $dailySales,
+                'current_stock' => $currentStock,
+                'target_stock' => $targetStock,
+                'stock_ratio' => $stockRatio,
+                'urgency' => $urgency,
+                'coverage_days' => $dailySales > 0 ? floor($currentStock / $dailySales) : 999
+            ];
+        }
+        
+        // Calcular estatísticas detalhadas da análise Target Stock
+        $criticalProducts = array_filter($results, fn($r) => $r['urgency'] === 'CRÍTICO');
+        $lowStockProducts = array_filter($results, fn($r) => $r['urgency'] === 'BAIXO');
+        $normalProducts = array_filter($results, fn($r) => $r['urgency'] === 'NORMAL');
+
+        $stockStats = [
+            'avg_current_stock' => round(array_sum(array_column($results, 'current_stock')) / count($results), 1),
+            'avg_target_stock' => round(array_sum(array_column($results, 'target_stock')) / count($results), 1),
+            'avg_stock_ratio' => round(array_sum(array_column($results, 'stock_ratio')) / count($results), 2)
+        ];
+
+        Log::info("📦 Análise Target Stock concluída", [
+            'total_products' => count($results),
+            'urgency_distribution' => [
+                'critical' => count($criticalProducts),
+                'low_stock' => count($lowStockProducts),
+                'normal' => count($normalProducts)
+            ],
+            'urgency_percentages' => [
+                'critical' => round((count($criticalProducts) / count($results)) * 100, 1) . '%',
+                'low_stock' => round((count($lowStockProducts) / count($results)) * 100, 1) . '%',
+                'normal' => round((count($normalProducts) / count($results)) * 100, 1) . '%'
+            ],
+            'stock_stats' => $stockStats,
+            'critical_products_sample' => array_slice(
+                array_map(fn($p) => $p['product_name'] . ' (Stock: ' . $p['current_stock'] . '/' . $p['target_stock'] . ')', 
+                    $criticalProducts
+                ), 0, 3
+            )
+        ]);
+        
+        return $results;
+    }
+
+    /**
+     * 🧠 Processar produtos com inteligência
+     */
+    protected function processProductsIntelligently(array $products, array $abcResults, array $targetStockResults, array $facingLimits): array
+    {
+        Log::info("🧠 Iniciando processamento inteligente dos produtos", [
+            'total_products' => count($products),
+            'abc_results_count' => count($abcResults),
+            'target_stock_results_count' => count($targetStockResults),
+            'facing_limits' => $facingLimits
+        ]);
+
+        $processedProducts = array_map(function($product) use ($abcResults, $targetStockResults, $facingLimits) {
+            
+            // Obter dados ABC
+            $abcData = collect($abcResults)->firstWhere('product_id', $product['id']);
+            $abcClass = $abcData['abc_class'] ?? 'C';
+            
+            // Obter dados Target Stock
+            $targetStockData = collect($targetStockResults)->firstWhere('product_id', $product['id']);
+            
+            // Calcular facing inteligente
+            $facingData = $this->calculateIntelligentFacing(
+                $product,
+                $abcClass,
+                $targetStockData,
+                $facingLimits
+            );
+            
+            // Calcular prioridade
+            $priority = $this->calculateProductPriority($abcClass, $targetStockData, $product);
+            
+            return [
+                'product_id' => $product['id'],
+                'abc_class' => $abcClass,
+                'abc_score' => $abcData['final_score'] ?? 0,
+                'target_stock_data' => $targetStockData,
+                'intelligent_facing' => $facingData['final_facing'],
+                'facing_reasoning' => $facingData['reasoning'],
+                'priority_score' => $priority,
+                'remove_flag' => $product['remove_flag'] ?? false,
+                // Manter estrutura compatível com ProductPlacementService
+                'product' => [
+                    'id' => $product['id'],
+                    'name' => $product['name'],
+                    'width' => $product['dimensions']['width'] ?? null,
+                    'height' => $product['dimensions']['height'] ?? null,
+                    'depth' => $product['dimensions']['depth'] ?? null,
+                    'dimensions' => $product['dimensions'] ?? []
+                ]
+            ];
+            
+        }, $products);
+
+        // Log do resumo do processamento
+        $classDistribution = collect($processedProducts)->groupBy('abc_class')->map->count();
+        $facingStats = [
+            'min_facing' => collect($processedProducts)->min('intelligent_facing'),
+            'max_facing' => collect($processedProducts)->max('intelligent_facing'),
+            'avg_facing' => round(collect($processedProducts)->avg('intelligent_facing'), 2)
+        ];
+
+        Log::info("✅ Processamento inteligente concluído", [
+            'products_processed' => count($processedProducts),
+            'abc_distribution' => $classDistribution->toArray(),
+            'facing_stats' => $facingStats,
+            'top_priority_products' => collect($processedProducts)
+                ->sortByDesc('priority_score')
+                ->take(5)
+                ->pluck('name', 'priority_score')
+                ->toArray()
+        ]);
+
+        return $processedProducts;
+    }
+
+    /**
+     * 🔢 Calcular facing inteligente
+     */
+    protected function calculateIntelligentFacing(array $product, string $abcClass, array $targetStockData, array $facingLimits): array
+    {
+        // Facing base por classe ABC
+        $baseFacing = match($abcClass) {
+            'A' => 6,
+            'B' => 3,
+            'C' => 2,
+            default => 1
+        };
+        
+        // Ajuste por urgência de estoque
+        $urgency = $targetStockData['urgency'] ?? 'NORMAL';
+        $urgencyMultiplier = match($urgency) {
+            'CRÍTICO' => 2.0,  // Dobrar facing para produtos críticos
+            'BAIXO' => 1.5,    // Aumentar 50% para estoque baixo
+            'NORMAL' => 1.0,   // Manter normal
+            'ALTO' => 0.6,     // Reduzir 40% para estoque alto (seguindo analysisService)
+            default => 1.0
+        };
+        
+        // Log para debug da urgência
+        StepLogger::debug('Target Stock Urgency', [
+            'product_id' => $product['id'],
+            'urgency' => $urgency,
+            'stock_ratio' => $targetStockData['stock_ratio'] ?? 'N/A',
+            'multiplier' => $urgencyMultiplier
+        ]);
+        
+        // Calcular facing final
+        $calculatedFacing = ceil($baseFacing * $urgencyMultiplier);
+        
+        // Aplicar limites por classe
+        $limits = $facingLimits[$abcClass] ?? ['min' => 1, 'max' => 4];
+        $finalFacing = max($limits['min'], min($limits['max'], $calculatedFacing));
+        
+        // Produtos para remoção sempre 1 facing
+        if ($product['remove_flag'] ?? false) {
+            $finalFacing = 1;
+            $reasoning = 'Produto marcado para remoção - 1 facing fixo';
+        } else {
+            $reasoning = "Classe {$abcClass} (base: {$baseFacing}) × Urgência {$urgency} ({$urgencyMultiplier}x) = {$finalFacing} facing";
+        }
+        
+        return [
+            'base_facing' => $baseFacing,
+            'urgency_multiplier' => $urgencyMultiplier,
+            'calculated_facing' => $calculatedFacing,
+            'final_facing' => $finalFacing,
+            'reasoning' => $reasoning
+        ];
+    }
+
+    /**
+     * 🎯 Calcular prioridade do produto
+     */
+    protected function calculateProductPriority(string $abcClass, array $targetStockData, array $product): int
+    {
+        $priority = 0;
+        
+        // Prioridade por classe ABC
+        $priority += match($abcClass) {
+            'A' => 1000,
+            'B' => 500,
+            'C' => 100,
+            default => 10
+        };
+        
+        // Prioridade por urgência de estoque
+        $urgency = $targetStockData['urgency'] ?? 'NORMAL';
+        $priority += match($urgency) {
+            'CRÍTICO' => 5000,
+            'BAIXO' => 2000,
+            'NORMAL' => 500,
+            'ALTO' => 100,
+            default => 50
+        };
+        
+        // Produtos para remoção têm prioridade baixa
+        if ($product['remove_flag'] ?? false) {
+            $priority = 1;
+        }
+        
+        return $priority;
+    }
+
+    /**
+     * 🏪 Distribuir inteligentemente na gôndola
+     */
+    protected function distributeIntelligently(Gondola $gondola, array $processedProducts): array
+    {
+        // Ordenar por prioridade (maior primeiro)
+        usort($processedProducts, function($a, $b) {
+            return $b['priority_score'] - $a['priority_score'];
+        });
+        
+        // Usar o ProductPlacementService existente com produtos processados
+        $classifiedProducts = [
+            'A' => array_filter($processedProducts, fn($p) => $p['abc_class'] === 'A'),
+            'B' => array_filter($processedProducts, fn($p) => $p['abc_class'] === 'B'),
+            'C' => array_filter($processedProducts, fn($p) => $p['abc_class'] === 'C')
+        ];
+        
+        $gondolaStructure = $this->analyzeGondolaStructure($gondola);
+        $this->ensureGondolaHasSegments($gondola);
+        
+        // Distribuir usando o service existente
+        $distributionResult = $this->productPlacement->placeProductsSequentially(
+            $gondola,
+            $classifiedProducts,
+            $gondolaStructure
+        );
+        
+        Log::info("🏪 Distribuição inteligente concluída", [
+            'products_placed' => $distributionResult['products_placed'],
+            'total_placements' => $distributionResult['total_placements'],
+            'segments_used' => $distributionResult['segments_used']
+        ]);
+        
+        return $distributionResult;
+    }
+
+    // Métodos auxiliares
+    protected function getAllProductsByPlanogramCategory(Gondola $gondola, $request): array
+    {
+        Log::info("🔄 Usando endpoint do Products.vue para consistência");
+
+        // Preparar parâmetros iguais ao Products.vue
+        $filters = $request->input('filters', []);
+        
+        // CORREÇÃO: Buscar mercadologico_nivel via category_id do planogram
+        $mercadologicoNivel = null;
+        if ($gondola->planogram && $gondola->planogram->category_id) {
+            $category = \App\Models\Category::find($gondola->planogram->category_id);
+            $mercadologicoNivel = $category ? $category->nivel : null;
+            
+            Log::info("🔍 Mercadológico obtido da categoria", [
+                'planogram_id' => $gondola->planogram->id,
+                'category_id' => $gondola->planogram->category_id,
+                'mercadologico_nivel' => $mercadologicoNivel,
+                'category_name' => $category->name ?? 'N/A'
+            ]);
+        } else {
+            Log::warning("⚠️ Planograma sem categoria definida", [
+                'planogram_id' => $gondola->planogram->id ?? 'N/A',
+                'has_planogram' => !!$gondola->planogram,
+                'category_id' => $gondola->planogram->category_id ?? 'N/A'
+            ]);
+        }
+
+        // Preparar filtro de categoria no formato esperado pelo ProductController
+        $categoryFilter = null;
+        if ($gondola->planogram && $gondola->planogram->category_id) {
+            $category = \App\Models\Category::find($gondola->planogram->category_id);
+            if ($category) {
+                // Criar objeto com o nível hierárquico correto
+                $categoryFilter = json_encode([
+                    $category->level_name => $category->id
                 ]);
             }
         }
-        
-        // FILTRO 3: Produtos com histórico de vendas (sales)
-        if ($filters['sales'] ?? true) {
-            // Aqui você pode implementar a lógica de vendas quando tiver os dados
-            // Exemplo: $productsQuery->whereHas('sales');
-            Log::debug("⏳ Filtro de vendas: aguardando implementação de dados de venda");
-        }
-        
-        // FILTRO 4: Produtos penduráveis (hangable)
-        if ($filters['hangable'] ?? false) {
-            // Implementar quando tiver campo para produtos penduráveis
-            // Exemplo: $productsQuery->where('hangable', true);  
-            Log::debug("⏳ Filtro penduráveis: aguardando campo na base de dados");
-        }
-        
-        // FILTRO 5: Produtos empilháveis (stackable)
-        if ($filters['stackable'] ?? false) {
-            // Implementar quando tiver campo para produtos empilháveis
-            // Exemplo: $productsQuery->where('stackable', true);
-            Log::debug("⏳ Filtro empilháveis: aguardando campo na base de dados");
-        }
-        
-        Log::info("🎯 Filtros dinâmicos aplicados com sucesso", [
-            'dimension' => $filters['dimension'] ?? true,
-            'unusedOnly' => $filters['unusedOnly'] ?? true, 
-            'sales' => $filters['sales'] ?? true,
+
+        $params = [
+            'category' => $categoryFilter, // Usar formato JSON esperado pelo ProductController
             'hangable' => $filters['hangable'] ?? false,
             'stackable' => $filters['stackable'] ?? false,
-            'limit' => $filters['limit'] ?? 20
-        ]);
+            'dimension' => $filters['dimension'] ?? true,
+            'sales' => $filters['sales'] ?? true,
+            'planogram_id' => $gondola->planogram->id,
+            'client_id' => $gondola->planogram->client_id,
+            'page' => 1,
+            'limit' => $filters['limit'] ?? 999999, // Respeita limite dos filtros
+        ];
+
+        // Aplicar filtro de produtos não utilizados se necessário
+        if ($filters['unusedOnly'] ?? true) {
+            // Buscar produtos já na gôndola
+            $productIdsInGondola = [];
+            foreach ($gondola->sections as $section) {
+                foreach ($section->shelves as $shelf) {
+                foreach ($shelf->segments as $segment) {
+                    // Verificar se layer existe e tem produto
+                    if ($segment->layer && $segment->layer->product_id) {
+                        $productIdsInGondola[] = $segment->layer->product_id;
+                    }
+                }
+                }
+            }
+            if (!empty($productIdsInGondola)) {
+                $params['notInGondola'] = array_unique($productIdsInGondola);
+            }
+        }
+
+        try {
+            // Usar o mesmo controller do projeto principal
+            $productController = new \App\Http\Controllers\Api\ProductController();
+            $productRequest = new \Illuminate\Http\Request($params);
+            
+            Log::info("📞 Chamando ProductController->filteredProducts()", [
+                'params' => $params,
+                'expected_products' => '~999'
+            ]);
+
+            $response = $productController->filteredProducts($productRequest);
+            
+            if (method_exists($response, 'getData')) {
+                $data = $response->getData(true);
+            } else {
+                $data = $response;
+            }
+
+            $products = $data['data'] ?? [];
+            
+            Log::info("✅ Produtos obtidos via Products.vue endpoint", [
+                'total_products' => count($products),
+                'first_3_products' => array_slice(array_column($products, 'name'), 0, 3)
+            ]);
+
+            return $products;
+
+        } catch (\Exception $e) {
+            Log::error("❌ Erro ao usar endpoint do Products.vue", [
+                'error' => $e->getMessage(),
+                'fallback' => 'Usando método original'
+            ]);
+
+            // Fallback: retornar array vazio se falhar
+            Log::error("❌ Fallback: Retornando array vazio");
+            return [];
+        }
+    }
+
+    protected function getDailySales(string $productId): float
+    {
+        // TODO: Implementar busca real no banco
+        return rand(1, 10) / 10; // Simulação
+    }
+
+    protected function getCurrentStock(string $productId): int
+    {
+        // TODO: Implementar busca real no banco
+        return rand(0, 50); // Simulação
+    }
+
+    protected function calculateTargetStock(float $dailySales, int $coverageDays, int $safetyStockPercentage, int $serviceLevel): int
+    {
+        $baseStock = $dailySales * $coverageDays;
+        $safetyStock = $baseStock * ($safetyStockPercentage / 100);
+        
+        $serviceLevelMultiplier = match($serviceLevel) {
+            99 => 1.3,
+            95 => 1.1,
+            90 => 1.0,
+            default => 1.0
+        };
+        
+        return ceil(($baseStock + $safetyStock) * $serviceLevelMultiplier);
+    }
+
+    protected function determineStockUrgency(float $stockRatio): string
+    {
+        return match(true) {
+            $stockRatio < 0.3 => 'CRÍTICO',
+            $stockRatio < 0.6 => 'BAIXO',
+            $stockRatio < 0.9 => 'NORMAL',
+            default => 'ALTO'
+        };
+    }
+
+    protected function getABCDistribution(array $abcResults): array
+    {
+        return [
+            'A' => count(array_filter($abcResults, fn($p) => $p['abc_class'] === 'A')),
+            'B' => count(array_filter($abcResults, fn($p) => $p['abc_class'] === 'B')),
+            'C' => count(array_filter($abcResults, fn($p) => $p['abc_class'] === 'C'))
+        ];
+    }
+
+    protected function getUrgencyDistribution(array $targetStockResults): array
+    {
+        return [
+            'CRÍTICO' => count(array_filter($targetStockResults, fn($r) => $r['urgency'] === 'CRÍTICO')),
+            'BAIXO' => count(array_filter($targetStockResults, fn($r) => $r['urgency'] === 'BAIXO')),
+            'NORMAL' => count(array_filter($targetStockResults, fn($r) => $r['urgency'] === 'NORMAL')),
+            'ALTO' => count(array_filter($targetStockResults, fn($r) => $r['urgency'] === 'ALTO'))
+        ];
     }
 
 }

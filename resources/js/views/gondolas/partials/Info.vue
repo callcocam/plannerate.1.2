@@ -23,7 +23,8 @@ import { useEditorStore } from '@plannerate/store/editor';
 import Category from './Category.vue';
 import type { Gondola } from '@plannerate/types/gondola';
 import AnalysisPopover from './AnalysisPopover.vue';
-import AutoGenerateModal, { type AutoGenerateFilters } from './AutoGenerateModal.vue';
+import AutoGenerateModal, { type AutoGenerateFilters, type IntelligentGenerationParams } from './AutoGenerateModal.vue';
+import autoplanogramService from '@plannerate/services/autoplanogramService';
 // Definição das Props usando sintaxe padrão
 const props = defineProps({
     gondola: {
@@ -314,6 +315,72 @@ const executeAutomaticGeneration = async (filters: AutoGenerateFilters) => {
     }
 };
 
+// Novo método para geração inteligente com ABC + Target Stock
+const executeIntelligentGeneration = async (params: IntelligentGenerationParams) => {
+    const currentGondola = props.gondola as Gondola | undefined;
+    if (!currentGondola?.id) {
+        console.warn('Não é possível gerar automaticamente: Gôndola atual não definida.');
+        return;
+    }
+
+    // Fechar o modal
+    showAutoGenerateModal.value = false;
+    isGeneratingScores.value = true;
+
+    try {
+        console.log('🧠 Iniciando geração inteligente...', {
+            gondola_id: currentGondola.id,
+            abc_params: params.abcParams,
+            target_stock_params: params.targetStockParams
+        });
+        
+        const result = await autoplanogramService.generateIntelligent({
+            gondola_id: currentGondola.id,
+            filters: params.filters,
+            abc_params: params.abcParams,
+            target_stock_params: params.targetStockParams,
+            facing_limits: params.facingLimits
+        });
+        
+        // Aplicar resultado
+        if (result.success) {
+            // Mostrar estatísticas
+            showGenerationStats(result.data.stats, result.metadata);
+            
+            console.log('✅ Geração inteligente concluída!', result.data.stats);
+            
+            // Recarregar a gôndola para mostrar os produtos distribuídos
+            if (result.data.stats.successfully_placed > 0) {
+                window.location.reload();
+            }
+        }
+        
+    } catch (error: any) {
+        console.error('❌ Erro na geração inteligente:', error);
+        alert('❌ Erro na geração inteligente:\n\n' + error.message);
+    } finally {
+        isGeneratingScores.value = false;
+    }
+};
+
+const showGenerationStats = (stats: any, metadata: any) => {
+    const message = `
+🎯 GERAÇÃO INTELIGENTE CONCLUÍDA!
+
+📊 Resultados:
+• Produtos processados: ${stats.total_processed}
+• Produtos colocados: ${stats.successfully_placed}
+• Taxa de sucesso: ${stats.placement_rate.toFixed(1)}%
+
+⏱️ Performance:
+• Tempo de processamento: ${metadata.processing_time_ms}ms
+• Análise ABC: ${metadata.abc_analysis?.products_analyzed || 0} produtos
+• Target Stock: ${metadata.target_stock_analysis?.products_analyzed || 0} produtos
+    `;
+    
+    alert(message);
+};
+
 </script>
 
 <template>
@@ -460,7 +527,8 @@ const executeAutomaticGeneration = async (filters: AutoGenerateFilters) => {
             v-model:open="showAutoGenerateModal" 
             :is-loading="isGeneratingScores"
             :planogram-category="'Categoria do planograma'"
-            @confirm="executeAutomaticGeneration" 
+            @confirm="executeAutomaticGeneration"
+            @confirm-intelligent="executeIntelligentGeneration"
         />
     </div>
 </template>
