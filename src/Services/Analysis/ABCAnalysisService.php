@@ -94,7 +94,7 @@ class ABCAnalysisService
             $result[] = [
                 'id' => $product->ean, 
                 'name' => $product->name,
-                'category' => $product->category_name, //Atributo analise de sortimento
+                'category' => $product->category->full_path, //Atributo analise de sortimento
                 'quantity' => $quantity,
                 'value' => $value,
                 'margin' => $margin,
