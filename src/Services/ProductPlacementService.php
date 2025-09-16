@@ -419,133 +419,153 @@ class ProductPlacementService
                 'product_id' => $product['product_id'] ?? 'unknown',
                 'width' => $productData['width'] ?? 'null'
             ]);
-            return ['segments_used' => 0, 'total_placements' => 0, 'success' => false];
+            return ['success' => false, 'reason' => 'Produto sem largura válida'];
         }
+
+        return $this->placeProductWithConsistentPattern($product, $facingTotal, $shelves);
+    }
+
+    /**
+     * NOVO: Lógica de encontrar o padrão de facing mais vertical possível.
+     */
+    private function findOptimalPattern(int $totalFacing, int $availableShelves): int
+    {
+        if ($totalFacing <= 1 || $availableShelves <= 1) {
+             Log::info("🧠 [Debug Pattern] Calculando Padrão...", [
+                'totalFacing' => $totalFacing,
+                'availableShelves' => $availableShelves,
+                'resultado' => $totalFacing,
+                'motivo' => 'Trivial'
+            ]);
+            return $totalFacing; // Não há necessidade ou possibilidade de dividir
+        }
+
+        // Tenta encontrar o padrão mais estreito (a partir de 2) que caiba verticalmente
+        for ($pattern = 2; $pattern <= $totalFacing; $pattern++) {
+            if ($pattern == 0) continue; // Evitar divisão por zero
+            $requiredShelves = ceil($totalFacing / $pattern);
+            if ($requiredShelves <= $availableShelves) {
+                Log::info("🧠 [Debug Pattern] Calculando Padrão...", [
+                    'totalFacing' => $totalFacing,
+                    'availableShelves' => $availableShelves,
+                    'resultado' => $pattern,
+                    'motivo' => 'Encontrado padrão ideal'
+                ]);
+                return $pattern; // Encontrado o padrão ideal
+            }
+        }
+
+        // Se nenhum padrão couber, o padrão é o total (tentará caber numa só prateleira)
+        Log::info("🧠 [Debug Pattern] Calculando Padrão...", [
+            'totalFacing' => $totalFacing,
+            'availableShelves' => $availableShelves,
+            'resultado' => $totalFacing,
+            'motivo' => 'Fallback, usando total'
+        ]);
+        return $totalFacing;
+    }
+
+    /**
+     * NOVO: Tenta colocar um produto numa section usando o algoritmo de padrão consistente e arredondamento.
+     */
+    private function placeProductWithConsistentPattern($product, int $initialFacingTotal, $shelves): array
+    {
+        $productData = $product['product'] ?? [];
         $productWidth = floatval($productData['width']);
         $productId = $product['product_id'];
-        
+
         $segmentsUsed = 0;
         $totalPlacements = 0;
         $successfulPlacements = [];
         
-        // NOVA LÓGICA: Distribuição inteligente com fallback para prateleiras vazias
-        $remainingFacing = $facingTotal;
+        // 1. Calcular a capacidade e contar prateleiras disponíveis
         $shelfCapacities = [];
-        
-        // 1. PRIMEIRA PASSADA: Calcular capacidade de cada prateleira
-        foreach ($shelves as $index => $shelf) {
+        foreach ($shelves as $shelf) {
             $usedWidth = $this->calculateUsedWidthInShelf($shelf);
-            $availableWidth = 125.0 - $usedWidth;
-            $realisticFacing = $this->facingCalculator->calculateOptimalFacing($product, $availableWidth);
+            $availableWidth = floatval($shelf->shelf_width ?? 125.0) - $usedWidth;
+            $maxFacing = $productWidth > 0 ? floor($availableWidth / $productWidth) : 0;
             
-            $shelfCapacities[$index] = [
-                'shelf' => $shelf,
-                'available_width' => $availableWidth,
-                'max_facing' => $realisticFacing,
-                'used_width' => $usedWidth
-            ];
+            if ($maxFacing > 0) {
+                 $shelfCapacities[] = [
+                    'shelf' => $shelf,
+                    'available_width' => $availableWidth,
+                    'max_facing' => $maxFacing,
+                ];
+            }
         }
+
+        if (empty($shelfCapacities)) {
+            return ['success' => false, 'reason' => 'Nenhuma prateleira tem espaço para ao menos 1 facing'];
+        }
+
+        // 2. Determinar o "Padrão de Frentes" com a nova lógica dinâmica
+        $availableShelvesCount = count($shelfCapacities);
+        $patternFacing = $this->findOptimalPattern($initialFacingTotal, $availableShelvesCount);
         
-        // 2. SEGUNDA PASSADA: Distribuição inicial (lógica original)
-        $facingPerShelf = floor($facingTotal / $shelves->count());
-        $remainder = $facingTotal % $shelves->count();
-        $failedPlacements = [];
+        $facingTotal = $initialFacingTotal;
         
-        foreach ($shelves as $index => $shelf) {
-            $facingInThisShelf = $facingPerShelf;
-            
-            // Distribuir restante nas primeiras prateleiras
-            if ($index < $remainder) {
-                $facingInThisShelf++;
+        // 3. Lógica de arredondamento para "facing órfão"
+        if ($facingTotal > 1 && $patternFacing > 1 && ($facingTotal % $patternFacing) == 1) {
+            $abcClass = $product['abc_class'] ?? 'C';
+            $urgency = $product['target_stock_data']['urgency'] ?? 'NORMAL';
+            $shouldRoundUp = ($abcClass === 'A' || in_array($urgency, ['CRÍTICO', 'BAIXO']));
+
+            if ($shouldRoundUp) {
+                $facingTotal++; // Arredonda para cima
+                StepLogger::logCustomStep('ARREDONDAMENTO DE FACING', [
+                    '📦 PRODUTO' => $productId,
+                    '📊 DE' => $initialFacingTotal,
+                    'TO' => $facingTotal,
+                    '📝 RAZÃO' => "PARA CIMA - Classe {$abcClass}, Urgência {$urgency}"
+                ]);
+            } else {
+                $facingTotal--; // Arredonda para baixo
+                StepLogger::logCustomStep('ARREDONDAMENTO DE FACING', [
+                    '📦 PRODUTO' => $productId,
+                    '📊 DE' => $initialFacingTotal,
+                    'TO' => $facingTotal,
+                    '📝 RAZÃO' => "PARA BAIXO - Classe {$abcClass}, Urgência {$urgency}"
+                ]);
+            }
+        }
+
+        // 4. Distribuir o facing de cima para baixo usando o padrão
+        $remainingFacing = $facingTotal;
+        foreach ($shelfCapacities as $capacityInfo) {
+            if ($remainingFacing <= 0) {
+                break;
+            }
+
+            $shelf = $capacityInfo['shelf'];
+            // Recalcular capacidade na hora, pois prateleiras podem ser preenchidas por chamadas anteriores no loop
+            $currentUsedWidth = $this->calculateUsedWidthInShelf($shelf);
+            $currentAvailableWidth = floatval($shelf->shelf_width ?? 125.0) - $currentUsedWidth;
+            $currentMaxFacing = $productWidth > 0 ? floor($currentAvailableWidth / $productWidth) : 0;
+
+            if ($currentMaxFacing <= 0) {
+                continue;
             }
             
-            if ($facingInThisShelf > 0) {
-                $capacity = $shelfCapacities[$index];
-                $actualFacing = min($facingInThisShelf, $capacity['max_facing']);
-                
-                if ($actualFacing > 0) {
-                    $success = $this->placeProductInShelfVertically($shelf, $product, $actualFacing);
-                    
-                    if ($success) {
-                        $segmentsUsed++;
-                        $totalPlacements += $actualFacing;
-                        $remainingFacing -= $actualFacing;
-                        $successfulPlacements[] = [
-                            'shelf_id' => $shelf->id,
-                            'facing' => $actualFacing
-                        ];
-                    } else {
-                        $failedPlacements[] = ['index' => $index, 'planned_facing' => $facingInThisShelf];
-                    }
-                } else {
-                    $failedPlacements[] = ['index' => $index, 'planned_facing' => $facingInThisShelf];
+            $facingToPlace = min($remainingFacing, $patternFacing, $currentMaxFacing);
+            
+            if ($facingToPlace > 0) {
+                $success = $this->placeProductInShelfVertically($shelf, $product, $facingToPlace);
+
+                if ($success) {
+                    $segmentsUsed++;
+                    $totalPlacements += $facingToPlace;
+                    $remainingFacing -= $facingToPlace;
+                    $successfulPlacements[] = ['shelf_id' => $shelf->id, 'facing' => $facingToPlace];
                 }
             }
         }
-        
-        // 3. TERCEIRA PASSADA: Redistribuir facing das prateleiras que falharam
-        if ($remainingFacing > 0 && count($failedPlacements) > 0) {
-            Log::info("🔄 Redistribuindo facing das prateleiras que falharam", [
-                'product_id' => $productId,
-                'remaining_facing' => $remainingFacing,
-                'failed_shelves' => count($failedPlacements)
-            ]);
-            
-            // Encontrar prateleiras com capacidade disponível (incluindo as que receberam 0 facing inicial)
-            foreach ($shelves as $index => $shelf) {
-                if ($remainingFacing <= 0) break;
-                
-                $capacity = $shelfCapacities[$index];
-                
-                // Verificar se esta prateleira ainda tem capacidade
-                if ($capacity['max_facing'] > 0) {
-                    // Calcular facing atual já colocado nesta prateleira
-                    $alreadyPlaced = 0;
-                    foreach ($successfulPlacements as $placement) {
-                        if ($placement['shelf_id'] === $shelf->id) {
-                            $alreadyPlaced += $placement['facing'];
-                        }
-                    }
-                    
-                    $remainingCapacity = $capacity['max_facing'] - $alreadyPlaced;
-                    
-                    if ($remainingCapacity > 0) {
-                        $facingToPlace = min($remainingFacing, $remainingCapacity);
-                        
-                        $success = $this->placeProductInShelfVertically($shelf, $product, $facingToPlace);
-                        
-                        if ($success) {
-                            $segmentsUsed++;
-                            $totalPlacements += $facingToPlace;
-                            $remainingFacing -= $facingToPlace;
-                            
-                            Log::info("✅ FALLBACK bem-sucedido", [
-                                'product_id' => $productId,
-                                'shelf_id' => $shelf->id,
-                                'shelf_ordering' => $shelf->ordering + 1,
-                                'facing_placed' => $facingToPlace,
-                                'available_width' => $capacity['available_width']
-                            ]);
-                            
-                            $successfulPlacements[] = [
-                                'shelf_id' => $shelf->id,
-                                'facing' => $facingToPlace
-                            ];
-                        }
-                    }
-                }
-            }
-        }
-        
-        $success = $totalPlacements > 0;
-        $reason = $success ? null : 'Nenhuma prateleira tinha espaço suficiente';
-        
+
         return [
-            'success' => $success,
+            'success' => $totalPlacements > 0,
             'segments_used' => $segmentsUsed,
             'total_placements' => $totalPlacements,
             'successful_placements' => $successfulPlacements,
-            'reason' => $reason
+            'reason' => $totalPlacements > 0 ? null : 'Falha na colocação, mesmo com a nova lógica'
         ];
     }
 
