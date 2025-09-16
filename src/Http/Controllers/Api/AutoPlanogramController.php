@@ -1645,16 +1645,15 @@ class AutoPlanogramController extends Controller
      */
     protected function distributeIntelligently(Gondola $gondola, array $processedProducts): array
     {
-        // Ordenar por prioridade (maior primeiro)
-        usort($processedProducts, function($a, $b) {
-            return $b['priority_score'] - $a['priority_score'];
-        });
+        // NOVA ETAPA: Reordenar produtos por adjacência de categoria
+        $processedProducts = $this->reorderProductsByCategory($processedProducts);
         
-        // Usar o ProductPlacementService existente com produtos processados
+        // NOVA LÓGICA: Manter adjacência de categoria na distribuição
+        // Em vez de classificar por ABC globalmente, vamos tratar a lista reordenada como uma sequência única
         $classifiedProducts = [
-            'A' => array_filter($processedProducts, fn($p) => $p['abc_class'] === 'A'),
-            'B' => array_filter($processedProducts, fn($p) => $p['abc_class'] === 'B'),
-            'C' => array_filter($processedProducts, fn($p) => $p['abc_class'] === 'C')
+            'A' => $processedProducts, // Todos os produtos na ordem de categoria
+            'B' => [], // Vazio - não usaremos as classes B e C separadamente
+            'C' => []  // Vazio - todos os produtos estão em 'A' na ordem correta
         ];
         
         $gondolaStructure = $this->analyzeGondolaStructure($gondola);
@@ -1667,13 +1666,78 @@ class AutoPlanogramController extends Controller
             $gondolaStructure
         );
         
-        Log::info("🏪 Distribuição inteligente concluída", [
+        Log::info("🏪 Distribuição inteligente concluída com adjacência de categoria", [
             'products_placed' => $distributionResult['products_placed'],
             'total_placements' => $distributionResult['total_placements'],
-            'segments_used' => $distributionResult['segments_used']
+            'segments_used' => $distributionResult['segments_used'],
+            'category_order_maintained' => true
         ]);
         
         return $distributionResult;
+    }
+
+    /**
+     * 🔄 NOVO: Reordena produtos por adjacência de categoria
+     * Agrupa produtos similares (ex: todos os açúcares juntos, todos os arrozes juntos)
+     */
+    protected function reorderProductsByCategory(array $processedProducts): array
+    {
+        Log::info("🔄 Iniciando reordenação por categoria", [
+            'total_products' => count($processedProducts)
+        ]);
+
+        // 1. Agrupar produtos por categoria base (primeira palavra)
+        $categoryGroups = [];
+        
+        foreach ($processedProducts as $product) {
+            // Extrair primeira palavra do nome do produto
+            $productName = strtoupper($product['product']['name'] ?? 'OUTROS');
+            $categoryKey = explode(' ', $productName)[0]; // Primeira palavra do nome do produto
+            
+            if (!isset($categoryGroups[$categoryKey])) {
+                $categoryGroups[$categoryKey] = [];
+            }
+            
+            $categoryGroups[$categoryKey][] = $product;
+        }
+
+        Log::info("📊 Grupos de categoria criados", [
+            'total_groups' => count($categoryGroups),
+            'groups' => array_map(fn($group) => count($group), $categoryGroups)
+        ]);
+
+        // 2. Ordenar grupos por importância (baseado no melhor produto de cada grupo)
+        uksort($categoryGroups, function($groupA, $groupB) use ($categoryGroups) {
+            $maxScoreA = max(array_column($categoryGroups[$groupA], 'priority_score'));
+            $maxScoreB = max(array_column($categoryGroups[$groupB], 'priority_score'));
+            return $maxScoreB <=> $maxScoreA; // Maior score primeiro
+        });
+
+        // 3. Ordenar produtos dentro de cada grupo por priority_score
+        foreach ($categoryGroups as $categoryKey => &$products) {
+            usort($products, function($a, $b) {
+                return $b['priority_score'] - $a['priority_score'];
+            });
+        }
+
+        // 4. Achatar grupos em lista única
+        $reorderedProducts = [];
+        foreach ($categoryGroups as $categoryKey => $products) {
+            Log::info("📦 Processando grupo de categoria", [
+                'categoria' => $categoryKey,
+                'produtos_count' => count($products),
+                'primeiro_produto' => $products[0]['product']['name'] ?? 'N/A'
+            ]);
+            
+            $reorderedProducts = array_merge($reorderedProducts, $products);
+        }
+
+        Log::info("✅ Reordenação por categoria concluída", [
+            'produtos_reordenados' => count($reorderedProducts),
+            'grupos_processados' => count($categoryGroups)
+        ]);
+
+        return $reorderedProducts;
     }
 
     // Métodos auxiliares
