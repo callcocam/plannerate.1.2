@@ -99,7 +99,7 @@ class ABCAnalysisService
                 // 'category' =>  $product->category->full_path, //Atributo analise de sortimento<?php
                 // ...existing code...
                 // SUPERMERCADO > MERCEARIA TRADICIONAL > FARINÁCEOS > FARINHA > DE MILHO > MÉDIA pegar os 5 primeiros níveis
-                'category' => implode(' > ', array_slice(explode(' > ', $product->category->full_path), 0, 4)), //Atributo analise de sortimento
+                'category' => implode(' > ', array_slice(explode(' > ', $product->category->full_path), 0, 5)), //Atributo analise de sortimento
                 // ...existing code...
                 'quantity' => $quantity,
                 'value' => $value,
