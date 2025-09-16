@@ -5,9 +5,10 @@
  * User: callcocam@gmail.com, contato@sigasmart.com.br
  * https://www.sigasmart.com.br
  */
+
 namespace Callcocam\Plannerate\Services\Analysis;
 
-use App\Models\Product; 
+use App\Models\Product;
 use Illuminate\Support\Collection;
 
 class ABCAnalysisService
@@ -28,15 +29,15 @@ class ABCAnalysisService
         ?int $storeId = null
     ): array {
         // Busca os produtos
-        $products = Product::whereIn('id', $productIds)->get(); 
+        $products = Product::whereIn('id', $productIds)->get();
 
         // Classifica os produtos
         $classified = $this->classifyProducts($products, $startDate, $endDate, $storeId);
 
         return $classified;
     }
- 
- 
+
+
 
     /**
      * Calcula os totais de quantidade, valor e margem
@@ -55,14 +56,14 @@ class ABCAnalysisService
      * Classifica os produtos em A, B ou C
      */
     protected function classifyProducts(
-        Collection $products, 
+        Collection $products,
         ?string $startDate = null,
         ?string $endDate = null,
         ?int $storeId = null
     ): array {
         $result = [];
 
-        foreach ($products as $product) { 
+        foreach ($products as $product) {
             $productSales = $product->sales()->when($startDate, function ($query) use ($startDate) {
                 $query->where('sale_date', '>=', $startDate);
             })->when($endDate, function ($query) use ($endDate) {
@@ -80,8 +81,8 @@ class ABCAnalysisService
             })->when($storeId, function ($query) use ($storeId) {
                 $query->where('store_id', $storeId);
             });
-            $currentPurchases = $productPurchases->first(); 
-            $currentStock = 0; 
+            $currentPurchases = $productPurchases->first();
+            $currentStock = 0;
             $lastPurchase = null;
             $lastSale = null;
             if ($currentPurchases) {
@@ -92,9 +93,14 @@ class ABCAnalysisService
                 $lastSale = $saleDate->sale_date;
             }
             $result[] = [
-                'id' => $product->ean, 
+                'id' => $product->ean,
                 'name' => $product->name,
-                'category' => $product->category->full_path, //Atributo analise de sortimento
+                // SUPERMERCADO > MERCEARIA TRADICIONAL > FARINÁCEOS > FARINHA > DE MILHO > MÉDIA pegar os 5 primeiros níveis
+                // 'category' =>  $product->category->full_path, //Atributo analise de sortimento<?php
+                // ...existing code...
+                // SUPERMERCADO > MERCEARIA TRADICIONAL > FARINÁCEOS > FARINHA > DE MILHO > MÉDIA pegar os 5 primeiros níveis
+                'category' => implode(' > ', array_slice(explode(' > ', $product->category->full_path), 0, 5)), //Atributo analise de sortimento
+                // ...existing code...
                 'quantity' => $quantity,
                 'value' => $value,
                 'margin' => $margin,
