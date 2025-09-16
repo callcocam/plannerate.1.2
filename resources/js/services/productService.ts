@@ -86,6 +86,13 @@ export const useProductService = () => {
         return apiService.put(`/products/${productId}`, data);
     };
 
+     /**
+     * Atualiza um produto
+     */
+    const updateProductDimensions = (productId: string, data: any) => {
+        return apiService.put(`/products/${productId}/dimensions`, data);
+    };
+
 
     /**
      * Sincronizar
@@ -106,6 +113,7 @@ export const useProductService = () => {
         uploadProductImage,
         updateProduct,
         updateSalesPurchasesProduct,
-        getProductsPost
+        getProductsPost,
+        updateProductDimensions
     };
 };
