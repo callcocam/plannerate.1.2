@@ -11,6 +11,7 @@ namespace Callcocam\Plannerate\Services;
 use Illuminate\Support\Facades\Log;
 use Callcocam\Plannerate\Services\FacingCalculatorService;
 use Callcocam\Plannerate\Services\StepLogger;
+use Callcocam\Plannerate\Models\Gondola;
 
 /**
  * Serviço responsável pela colocação de produtos no planograma
@@ -27,27 +28,25 @@ class ProductPlacementService
 
     /**
      * Distribui produtos sequencialmente aproveitando todo o espaço
-     * Algoritmo Section-by-Section com verticalização por módulo
+     * 🎯 NOVO: Aceita produtos em ORDEM CATEGÓRICA (açúcar→arroz→feijão→sal)
+     * Algoritmo Section-by-Section com verticalização por módulo RESPEITANDO categoria
      */
-    public function placeProductsSequentially($gondola, array $classifiedProducts, array $structure): array
+    public function placeProductsSequentially($gondola, array $products, array $structure): array
     {
         $productsPlaced = 0;
         $segmentsUsed = 0;
         $totalProductPlacements = 0;
         $moduleUsage = [];
         
-        // PASSO 5: Iniciar algoritmo de distribuição section-by-section
-        StepLogger::logCustomStep('ALGORITMO SECTION-BY-SECTION INICIADO', [
-            '🎯 ESTRATÉGIA' => 'Verticalização por módulo com cascata',
-            '📊 PRODUTOS_POR_CLASSE' => [
-                'CLASSE_A' => count($classifiedProducts['A']),
-                'CLASSE_B' => count($classifiedProducts['B']),
-                'CLASSE_C' => count($classifiedProducts['C'])
-            ],
+        // PASSO 5: Iniciar algoritmo de distribuição section-by-section COM ORDEM CATEGÓRICA
+        StepLogger::logCustomStep('ALGORITMO SECTION-BY-SECTION INICIADO COM CATEGORIA', [
+            '🎯 ESTRATÉGIA' => 'Verticalização por módulo RESPEITANDO adjacência de categoria',
+            '📊 PRODUTOS_SEQUENCIAIS' => count($products),
             '🏗️ ESTRUTURA' => [
                 'TOTAL_MÓDULOS' => $structure['total_sections'],
                 'TOTAL_SEGMENTOS' => $structure['total_segments']
-            ]
+            ],
+            '📦 DISTRIBUIÇÃO' => 'Sequencial por categoria (açúcar→arroz→feijão→sal)'
         ]);
 
         // 1. PEGAR TODAS AS SECTIONS (MÓDULOS) DA GONDOLA EM ORDEM
@@ -62,22 +61,42 @@ class ProductPlacementService
             'section_orderings' => $allSections->pluck('ordering')->toArray()
         ]);
 
-        // 2. PROCESSAR CADA MÓDULO (SECTION) INDIVIDUALMENTE COM DISTRIBUIÇÃO EM CASCATA
+        // 2. 🎯 NOVA LÓGICA: Dividir produtos sequenciais entre módulos por categoria
         $allFailedProducts = []; // Produtos que falharam em todos os módulos
+        $totalModules = count($allSections);
+        $totalProducts = count($products);
+        $productsPerModule = ceil($totalProducts / max($totalModules, 1));
+        $productIndex = 0;
+        
+        Log::info("📦 Distribuição sequencial por categoria iniciada", [
+            'total_products' => $totalProducts,
+            'total_modules' => $totalModules,
+            'products_per_module' => $productsPerModule
+        ]);
         
         foreach ($allSections as $section) {
             $moduleNumber = $section->ordering + 1; // Módulo 1, 2, 3, 4...
             
-            // 3. DETERMINAR PRODUTOS PARA ESTE MÓDULO BASEADO NA POSIÇÃO
-            $targetProducts = $this->getProductsForModule($moduleNumber, $classifiedProducts);
+            // 3. 🎯 DETERMINAR PRODUTOS PARA ESTE MÓDULO SEQUENCIALMENTE
+            $targetProducts = array_slice($products, $productIndex, $productsPerModule);
+            $productIndex += $productsPerModule;
             
             if (empty($targetProducts)) {
-                // Nenhum produto designado para este módulo
+                Log::info("⚪ Módulo {$moduleNumber} sem produtos para processar");
                 continue;
             }
             
+            // Identificar categoria dominante neste módulo
+            $firstProduct = $targetProducts[0];
+            $categoryName = strtoupper(explode(' ', $firstProduct['product']['name'] ?? 'OUTROS')[0]);
+            
+            Log::info("📦 Módulo {$moduleNumber} processará CATEGORIA: {$categoryName}", [
+                'products_count' => count($targetProducts),
+                'products_range' => "Produto " . ($productIndex - count($targetProducts) + 1) . " até {$productIndex}"
+            ]);
+            
             // PASSO 6: Iniciar processamento do módulo
-            StepLogger::startModule($moduleNumber, $this->getModuleStrategy($moduleNumber), $targetProducts);
+            StepLogger::startModule($moduleNumber, "CATEGORIA: {$categoryName}", $targetProducts);
             
             // 4. VERTICALIZAR PRODUTOS DENTRO DO MÓDULO
             $moduleResults = $this->fillSectionVertically($section, $targetProducts, $structure);
@@ -138,14 +157,18 @@ class ProductPlacementService
             ]);
         }
         
-        Log::info("🎉 DISTRIBUIÇÃO SECTION-BY-SECTION CONCLUÍDA COM CASCATA", [
+        // 🔧 CORREÇÃO: Contar segmentos reais (incluindo criados dinamicamente)
+        $totalActualSegments = $this->countTotalSegmentsInGondola($gondola);
+        
+        Log::info("🎉 DISTRIBUIÇÃO POR ADJACÊNCIA DE CATEGORIA CONCLUÍDA", [
             'products_placed' => $productsPlaced,
             'total_placements' => $totalProductPlacements,
             'segments_used' => $segmentsUsed,
+            'segments_total_actual' => $totalActualSegments,
             'modules_used' => count($moduleUsage),
-            'space_utilization' => round(($segmentsUsed / max($structure['total_segments'], 1)) * 100, 1) . '%',
+            'space_utilization' => round(($segmentsUsed / max($totalActualSegments, 1)) * 100, 1) . '%',
             'products_still_failed' => count($allFailedProducts),
-            'placement_success_rate' => round(($productsPlaced / max(count($classifiedProducts['A']) + count($classifiedProducts['B']) + count($classifiedProducts['C']), 1)) * 100, 1) . '%'
+            'placement_success_rate' => round(($productsPlaced / max(count($products), 1)) * 100, 1) . '%'  // 🔧 CORRIGIDO: usar $products em vez de $classifiedProducts
         ]);
         
         // Log detalhado dos produtos que ainda falharam
@@ -172,6 +195,22 @@ class ProductPlacementService
     }
 
     /**
+     * 🔧 CORREÇÃO: Conta segmentos reais na gôndola (incluindo criados dinamicamente)
+     */
+    protected function countTotalSegmentsInGondola(Gondola $gondola): int
+    {
+        $totalSegments = 0;
+        
+        foreach ($gondola->sections as $section) {
+            foreach ($section->shelves as $shelf) {
+                $totalSegments += $shelf->segments()->count();
+            }
+        }
+        
+        return $totalSegments;
+    }
+
+    /**
      * Verticaliza produtos dentro de uma section específica com distribuição em cascata
      */
     public function fillSectionVertically($section, array $products, array $structure): array
@@ -190,7 +229,7 @@ class ProductPlacementService
         // Para cada produto, colocar verticalmente nas prateleiras desta section
         foreach ($products as $product) {
             // Calcular facing total usando o service
-            $facingTotal = $this->facingCalculator->calculateTotalFacingForSection($product);
+            $facingTotal = $product['intelligent_facing'] ?? 1;
             
             if ($facingTotal <= 0) {
                 continue;
@@ -250,9 +289,10 @@ class ProductPlacementService
     }
 
     /**
+     * 🚫 MÉTODO OBSOLETO - Não usado mais no novo fluxo por categoria
      * Determina quais produtos devem ser colocados em cada módulo com balanceamento
      */
-    protected function getProductsForModule(int $moduleNumber, array $classifiedProducts): array
+    protected function getProductsForModule_OBSOLETO(int $moduleNumber, array $classifiedProducts): array
     {
         $totalProducts = count($classifiedProducts['A']) + count($classifiedProducts['B']) + count($classifiedProducts['C']);
         $avgProductsPerModule = $totalProducts > 0 ? ceil($totalProducts / 6) : 0; // Assumindo 6 módulos
@@ -425,45 +465,8 @@ class ProductPlacementService
         return $this->placeProductWithConsistentPattern($product, $facingTotal, $shelves);
     }
 
-    /**
-     * NOVO: Lógica de encontrar o padrão de facing mais vertical possível.
-     */
-    private function findOptimalPattern(int $totalFacing, int $availableShelves): int
-    {
-        if ($totalFacing <= 1 || $availableShelves <= 1) {
-             Log::info("🧠 [Debug Pattern] Calculando Padrão...", [
-                'totalFacing' => $totalFacing,
-                'availableShelves' => $availableShelves,
-                'resultado' => $totalFacing,
-                'motivo' => 'Trivial'
-            ]);
-            return $totalFacing; // Não há necessidade ou possibilidade de dividir
-        }
-
-        // Tenta encontrar o padrão mais estreito (a partir de 2) que caiba verticalmente
-        for ($pattern = 2; $pattern <= $totalFacing; $pattern++) {
-            if ($pattern == 0) continue; // Evitar divisão por zero
-            $requiredShelves = ceil($totalFacing / $pattern);
-            if ($requiredShelves <= $availableShelves) {
-                Log::info("🧠 [Debug Pattern] Calculando Padrão...", [
-                    'totalFacing' => $totalFacing,
-                    'availableShelves' => $availableShelves,
-                    'resultado' => $pattern,
-                    'motivo' => 'Encontrado padrão ideal'
-                ]);
-                return $pattern; // Encontrado o padrão ideal
-            }
-        }
-
-        // Se nenhum padrão couber, o padrão é o total (tentará caber numa só prateleira)
-        Log::info("🧠 [Debug Pattern] Calculando Padrão...", [
-            'totalFacing' => $totalFacing,
-            'availableShelves' => $availableShelves,
-            'resultado' => $totalFacing,
-            'motivo' => 'Fallback, usando total'
-        ]);
-        return $totalFacing;
-    }
+    // 🚫 REMOVIDO: findOptimalPattern() - Método sabotador que reduzia facing arbitrariamente
+    // O facing agora é respeitado conforme calculado pelo FacingCalculatorService
 
     /**
      * NOVO: Tenta colocar um produto numa section usando o algoritmo de padrão consistente e arredondamento.
@@ -498,9 +501,9 @@ class ProductPlacementService
             return ['success' => false, 'reason' => 'Nenhuma prateleira tem espaço para ao menos 1 facing'];
         }
 
-        // 2. Determinar o "Padrão de Frentes" com a nova lógica dinâmica
-        $availableShelvesCount = count($shelfCapacities);
-        $patternFacing = $this->findOptimalPattern($initialFacingTotal, $availableShelvesCount);
+        // 2. 🎯 RESPEITAR O FACING CALCULADO PELO FacingCalculatorService
+        // (Removido Debug Pattern que reduzia facing arbitrariamente)
+        $patternFacing = $initialFacingTotal; // Usar facing inteligente original
         
         $facingTotal = $initialFacingTotal;
         

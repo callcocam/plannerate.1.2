@@ -10,7 +10,8 @@ namespace Callcocam\Plannerate\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Callcocam\Plannerate\Models\Gondola;
-use Callcocam\Plannerate\Services\Engine\ScoreEngineService;
+use Callcocam\Plannerate\Services\Analysis\ABCAnalysisService;
+use Callcocam\Plannerate\Services\Analysis\TargetStockAnalysisService;
 use Callcocam\Plannerate\Services\FacingCalculatorService;
 use Callcocam\Plannerate\Services\ProductDataExtractorService;
 use Callcocam\Plannerate\Services\ProductPlacementService;
@@ -27,18 +28,21 @@ use Illuminate\Support\Facades\Validator;
  */
 class AutoPlanogramController extends Controller
 {
-    protected ScoreEngineService $scoreEngine;
+    protected ABCAnalysisService $abcAnalysisService;
+    protected TargetStockAnalysisService $targetStockAnalysisService;
     protected FacingCalculatorService $facingCalculator;
     protected ProductDataExtractorService $productDataExtractor;
     protected ProductPlacementService $productPlacement;
 
     public function __construct(
-        ScoreEngineService $scoreEngine,
+        ABCAnalysisService $abcAnalysisService,
+        TargetStockAnalysisService $targetStockAnalysisService,
         FacingCalculatorService $facingCalculator,
         ProductDataExtractorService $productDataExtractor,
         ProductPlacementService $productPlacement
     ) {
-        $this->scoreEngine = $scoreEngine;
+        $this->abcAnalysisService = $abcAnalysisService;
+        $this->targetStockAnalysisService = $targetStockAnalysisService;
         $this->facingCalculator = $facingCalculator;
         $this->productDataExtractor = $productDataExtractor;
         $this->productPlacement = $productPlacement;
@@ -153,32 +157,49 @@ class AutoPlanogramController extends Controller
         // Usar apenas produtos com dimensões válidas
         $productsData = $productsWithDimensions;
         
-        // Extrair IDs dos produtos filtrados para o ScoreEngine
-        $productIds = collect($productsData)->pluck('id')->toArray();
+        // 🎯 NOVO FLUXO: ABC + Target Stock + Facing Inteligente (sem ScoreEngine)
+        
+        // 1. EXECUTAR ANÁLISE ABC - 🎯 USAR PARÂMETROS DO MODAL
+        $abcParams = $request->input('abc_params', [
+            'weights' => [
+                'quantity' => 0.3,
+                'value' => 0.5, 
+                'margin' => 0.2
+            ],
+            'thresholds' => [
+                'a' => 80,
+                'b' => 95
+            ]
+        ]);
+        $abcResults = $this->executeABCAnalysis($productsData, $abcParams);
+        
+        // 2. EXECUTAR ANÁLISE TARGET STOCK - 🎯 USAR PARÂMETROS DO MODAL
+        $targetStockParams = $request->input('target_stock_params', [
+            'coverageDays' => 7,
+            'safetyStock' => 20,
+            'serviceLevel' => 95
+        ]);
+        $targetStockResults = $this->executeTargetStockAnalysis($productsData, $targetStockParams);
+        
+        // 3. PROCESSAR COM FACING INTELIGENTE
+        $scores = $this->processProductsWithNewLogic($productsData, $abcResults, $targetStockResults, $gondola);
 
-            // Calcular scores usando o ScoreEngine
-            $scores = $this->scoreEngine->calculateScores(
-                $productIds,
-                $request->input('weights', []),
-                $request->input('start_date'),
-                $request->input('end_date'),
-                $request->input('store_id')
-            );
-
-            // Aplicar distribuição automática se solicitado
+            // 4. APLICAR DISTRIBUIÇÃO AUTOMÁTICA SE SOLICITADO
             $autoDistribute = $request->boolean('auto_distribute', false);
             $distributionResult = null;
             
             if ($autoDistribute) {
-                $distributionResult = $this->distributeProductsInGondola($gondola, $scores, $productsData);
+                // Usar o novo método distributeIntelligently
+                $this->clearGondola($gondola);
+                $distributionResult = $this->distributeIntelligently($gondola, $scores);
             }
 
-            // Preparar resposta estruturada
+            // 5. PREPARAR RESPOSTA ESTRUTURADA COM NOVO FLUXO
             $response = [
                 'success' => true,
                 'message' => $autoDistribute 
-                    ? 'Scores calculados e produtos distribuídos automaticamente'
-                    : 'Scores calculados com sucesso',
+                    ? '🎯 Análise ABC + Target Stock + Facing calculados e produtos distribuídos automaticamente'
+                    : '🎯 Análise ABC + Target Stock + Facing calculados com sucesso',
                 'data' => [
                     'gondola' => [
                         'id' => $gondola->id,
@@ -186,28 +207,40 @@ class AutoPlanogramController extends Controller
                         'planogram_id' => $gondola->planogram_id,
                     ],
                     'calculation_info' => [
-                        'products_analyzed' => count($productIds),
-                        'products_scored' => count($scores),
+                        'products_analyzed' => count($productsData),
+                        'products_processed' => count($scores),
                         'calculation_date' => now()->toISOString(),
+                        'method' => 'ABC + Target Stock + Facing Inteligente',
                         'period' => [
                             'start_date' => $request->input('start_date'),
                             'end_date' => $request->input('end_date'),
                         ],
-                        'weights_used' => $request->input('weights', []),
+                        'abc_params' => $abcParams,
+                        'target_stock_params' => $targetStockParams,
                     ],
-                    'scores' => $scores,
-                    'summary' => $this->generateSummary($scores),
+                    'abc_analysis' => [
+                        'total_analyzed' => count($abcResults),
+                        'distribution' => $this->getABCDistribution($abcResults)
+                    ],
+                    'target_stock_analysis' => [
+                        'total_analyzed' => count($targetStockResults),
+                        'urgency_distribution' => $this->getUrgencyDistribution($targetStockResults)
+                    ],
+                    'intelligent_scores' => $scores,
+                    'summary' => $this->generateIntelligentSummary($scores),
                     'distribution' => $distributionResult
                 ]
             ];
 
-            Log::info('AutoPlanogram: Cálculo concluído', [
+            Log::info('AutoPlanogram: Novo fluxo inteligente concluído', [
                 'gondola_id' => $gondola->id,
-                'produtos_analisados' => count($productIds),
-                'produtos_com_score' => count($scores),
-                'score_medio' => $response['data']['summary']['average_score'],
+                'produtos_analisados' => count($productsData),
+                'produtos_processados' => count($scores),
+                'abc_distribution' => $this->getABCDistribution($abcResults),
+                'target_stock_analyzed' => count($targetStockResults),
                 'auto_distribute' => $autoDistribute,
-                'produtos_distribuidos' => $distributionResult['products_placed'] ?? 0
+                'produtos_distribuidos' => $distributionResult['products_placed'] ?? 0,
+                'method' => 'ABC + Target Stock + Facing Inteligente'
             ]);
 
             return response()->json($response);
@@ -675,7 +708,62 @@ class AutoPlanogramController extends Controller
 
 
     /**
-     * Gera resumo estatístico dos scores
+     * 🎯 NOVO: Gera resumo estatístico do fluxo inteligente (ABC + Target Stock + Facing)
+     */
+    protected function generateIntelligentSummary(array $scores): array
+    {
+        if (empty($scores)) {
+            return [
+                'total_products' => 0,
+                'average_priority_score' => 0,
+                'average_facing' => 0,
+                'coverage_efficiency' => 0,
+                'abc_distribution' => [],
+                'urgency_distribution' => [],
+                'facing_distribution' => []
+            ];
+        }
+
+        $priorityScores = array_column($scores, 'priority_score');
+        $facings = array_column($scores, 'intelligent_facing');
+        $abcClasses = array_column($scores, 'abc_class');
+        
+        // Extrair dados de urgência dos facing_details
+        $urgencies = [];
+        $coverageEfficiencies = [];
+        foreach ($scores as $score) {
+            if (isset($score['facing_details']['urgency'])) {
+                $urgencies[] = $score['facing_details']['urgency'];
+            }
+            if (isset($score['facing_details']['coverage_efficiency'])) {
+                $coverageEfficiencies[] = $score['facing_details']['coverage_efficiency'];
+            }
+        }
+
+        return [
+            'total_products' => count($scores),
+            'average_priority_score' => round(array_sum($priorityScores) / count($priorityScores), 4),
+            'average_facing' => round(array_sum($facings) / count($facings), 2),
+            'average_coverage_efficiency' => !empty($coverageEfficiencies) ? 
+                round(array_sum($coverageEfficiencies) / count($coverageEfficiencies), 1) : 0,
+            'facing_distribution' => [
+                'high' => count(array_filter($facings, fn($f) => $f >= 4)), // 4+ facings
+                'medium' => count(array_filter($facings, fn($f) => $f >= 2 && $f < 4)), // 2-3 facings
+                'low' => count(array_filter($facings, fn($f) => $f < 2)), // 1 facing
+            ],
+            'abc_distribution' => array_count_values($abcClasses),
+            'urgency_distribution' => !empty($urgencies) ? array_count_values($urgencies) : [],
+            'performance_metrics' => [
+                'max_facing' => !empty($facings) ? max($facings) : 0,
+                'min_facing' => !empty($facings) ? min($facings) : 0,
+                'products_with_high_efficiency' => count(array_filter($coverageEfficiencies, fn($e) => $e > 80)),
+                'products_needing_attention' => count(array_filter($coverageEfficiencies, fn($e) => $e < 50))
+            ]
+        ];
+    }
+
+    /**
+     * 🔄 LEGADO: Gera resumo estatístico dos scores (mantido para compatibilidade)
      */
     protected function generateSummary(array $scores): array
     {
@@ -1275,12 +1363,15 @@ class AutoPlanogramController extends Controller
             $targetStockResults = $this->executeTargetStockAnalysis($allProducts, $request->target_stock_params);
             
             // 5. PROCESSAR PRODUTOS COM DADOS INTELIGENTES
-            $processedProducts = $this->processProductsIntelligently(
+            $processedProducts = $this->processProductsWithNewLogic(
                 $allProducts,
                 $abcResults,
                 $targetStockResults,
-                $request->facing_limits
+                $gondola
             );
+            
+            // 🔒 VALIDAÇÃO: Consistência após processamento
+            $this->validateProductCount('After Processing', count($allProducts), count($processedProducts));
             
             // 6. DISTRIBUIR NA GÔNDOLA
             $distributionResult = null;
@@ -1345,62 +1436,60 @@ class AutoPlanogramController extends Controller
     {
         $productIds = collect($products)->pluck('id')->toArray();
         
-        // Usar o ScoreEngine existente com parâmetros customizados
-        $scores = $this->scoreEngine->calculateScores(
-            $productIds,
-            $abcParams['weights'],
-            null, // start_date
-            null, // end_date
-            null  // store_id
-        );
+        // Usar o ABCAnalysisService para obter dados brutos
+        $analysisData = $this->abcAnalysisService->analyze($productIds);
+        
+        // Calcular score composto para ordenação
+        $weights = $abcParams['weights'];
+        $scoredData = array_map(function($productData) use ($weights) {
+            $productData['composite_score'] = 
+                ($productData['quantity'] * $weights['quantity']) +
+                ($productData['value'] * $weights['value']) +
+                ($productData['margin'] * $weights['margin']);
+            return $productData;
+        }, $analysisData);
+
+        // Ordenar produtos pelo score composto (maior primeiro)
+        usort($scoredData, fn($a, $b) => $b['composite_score'] <=> $a['composite_score']);
         
         // Classificar em ABC baseado nos thresholds
-        $totalProducts = count($scores);
+        $totalProducts = count($scoredData);
+        if ($totalProducts === 0) {
+            return [];
+        }
+
         $classifiedProducts = [];
         
-        foreach ($scores as $index => $scoreData) {
+        foreach ($scoredData as $index => $productData) {
             $percentile = ($index + 1) / $totalProducts * 100;
             
             if ($percentile <= $abcParams['thresholds']['a']) {
-                $scoreData['abc_class'] = 'A';
+                $productData['abc_class'] = 'A';
             } elseif ($percentile <= $abcParams['thresholds']['b']) {
-                $scoreData['abc_class'] = 'B';
+                $productData['abc_class'] = 'B';
             } else {
-                $scoreData['abc_class'] = 'C';
+                $productData['abc_class'] = 'C';
             }
             
-            $classifiedProducts[] = $scoreData;
+            // Compatibilizar a estrutura de dados (product_id vs id)
+            $productModel = \App\Models\Product::where('ean', $productData['id'])->first();
+            $productData['product_id'] = $productModel ? $productModel->id : null;
+
+            $classifiedProducts[] = $productData;
         }
         
-        // Calcular estatísticas detalhadas da análise ABC
+        // Log para resumo da análise
         $classA = array_filter($classifiedProducts, fn($p) => $p['abc_class'] === 'A');
         $classB = array_filter($classifiedProducts, fn($p) => $p['abc_class'] === 'B');
         $classC = array_filter($classifiedProducts, fn($p) => $p['abc_class'] === 'C');
 
-        $scoreStats = [
-            'min_score' => min(array_column($classifiedProducts, 'final_score')),
-            'max_score' => max(array_column($classifiedProducts, 'final_score')),
-            'avg_score' => round(array_sum(array_column($classifiedProducts, 'final_score')) / count($classifiedProducts), 2)
-        ];
-
-        Log::info("📊 Análise ABC concluída", [
+        Log::info("📊 Análise ABC (Novo Fluxo) concluída", [
             'total_products' => count($classifiedProducts),
             'distribution' => [
                 'class_A' => count($classA),
                 'class_B' => count($classB),
                 'class_C' => count($classC)
-            ],
-            'percentages' => [
-                'class_A' => round((count($classA) / count($classifiedProducts)) * 100, 1) . '%',
-                'class_B' => round((count($classB) / count($classifiedProducts)) * 100, 1) . '%',
-                'class_C' => round((count($classC) / count($classifiedProducts)) * 100, 1) . '%'
-            ],
-            'score_stats' => $scoreStats,
-            'top_5_products' => array_slice(
-                array_map(fn($p) => ($p['product_name'] ?? 'Produto sem nome') . ' (Score: ' . $p['final_score'] . ')', 
-                    array_slice(usort($classifiedProducts, fn($a, $b) => $b['final_score'] <=> $a['final_score']) ? $classifiedProducts : $classifiedProducts, 0, 5)
-                ), 0, 5
-            )
+            ]
         ]);
         
         return $classifiedProducts;
@@ -1414,9 +1503,27 @@ class AutoPlanogramController extends Controller
         $results = [];
         
         foreach ($products as $product) {
-            // Simular dados de vendas (em produção, buscar do banco)
-            $dailySales = $this->getDailySales($product['id']) ?: 1;
-            $currentStock = $this->getCurrentStock($product['id']) ?: 10;
+            // Simular dados de vendas mais realistas (em produção, buscar do banco)
+            $dailySales = $this->getDailySales($product['id']);
+            $currentStock = $this->getCurrentStock($product['id']);
+            
+            // Se não há dados de vendas reais, simular baseado no produto
+            if (!$dailySales) {
+                // Simular vendas baseadas no nome/categoria do produto
+                $productName = strtolower($product['name'] ?? '');
+                
+                if (str_contains($productName, 'sal') || str_contains($productName, 'açúcar')) {
+                    $dailySales = rand(50, 200) / 100; // 0.5 - 2.0 unidades/dia (produtos básicos)
+                } elseif (str_contains($productName, 'óleo') || str_contains($productName, 'azeite')) {
+                    $dailySales = rand(20, 80) / 100;  // 0.2 - 0.8 unidades/dia (produtos premium)
+                } else {
+                    $dailySales = rand(30, 150) / 100; // 0.3 - 1.5 unidades/dia (geral)
+                }
+            }
+            
+            if (!$currentStock) {
+                $currentStock = rand(5, 25); // 5-25 unidades em estoque
+            }
             
             // Calcular estoque alvo
             $targetStock = $this->calculateTargetStock(
@@ -1426,13 +1533,16 @@ class AutoPlanogramController extends Controller
                 $targetStockParams['serviceLevel']
             );
             
+            // Garantir que o target stock seja pelo menos 2 para produtos com vendas
+            $targetStock = max(2, $targetStock);
+            
             // Calcular métricas
             $stockRatio = $targetStock > 0 ? $currentStock / $targetStock : 1;
             $urgency = $this->determineStockUrgency($stockRatio);
             
             $results[] = [
                 'product_id' => $product['id'],
-                'product_name' => $product['name'] ?? 'Produto sem nome', // Adicionar nome do produto
+                'product_name' => $product['name'] ?? 'Produto sem nome',
                 'daily_sales' => $dailySales,
                 'current_stock' => $currentStock,
                 'target_stock' => $targetStock,
@@ -1440,6 +1550,18 @@ class AutoPlanogramController extends Controller
                 'urgency' => $urgency,
                 'coverage_days' => $dailySales > 0 ? floor($currentStock / $dailySales) : 999
             ];
+            
+            // Log individual para debug
+            Log::info("📦 Target Stock calculado para produto", [
+                'product_id' => $product['id'],
+                'product_name' => $product['name'] ?? 'N/A',
+                'daily_sales' => $dailySales,
+                'coverage_days' => $targetStockParams['coverageDays'],
+                'safety_stock' => $targetStockParams['safetyStock'],
+                'target_stock_calculated' => $targetStock,
+                'current_stock' => $currentStock,
+                'urgency' => $urgency
+            ]);
         }
         
         // Calcular estatísticas detalhadas da análise Target Stock
@@ -1477,47 +1599,101 @@ class AutoPlanogramController extends Controller
     }
 
     /**
-     * 🧠 Processar produtos com inteligência
+     * 🧠 NOVO: Processa produtos com a nova lógica transparente
      */
-    protected function processProductsIntelligently(array $products, array $abcResults, array $targetStockResults, array $facingLimits): array
+    protected function processProductsWithNewLogic(
+        array $products, 
+        array $abcResults, 
+        array $targetStockResults,
+        Gondola $gondola
+    ): array
     {
-        Log::info("🧠 Iniciando processamento inteligente dos produtos", [
-            'total_products' => count($products),
-            'abc_results_count' => count($abcResults),
-            'target_stock_results_count' => count($targetStockResults),
-            'facing_limits' => $facingLimits
+        Log::info("🧠 Iniciando processamento de produtos (Novo Fluxo)", [
+            'total_products' => count($products)
         ]);
+        
+        // Obter dados da primeira prateleira para usar como referência de dimensões
+        $firstShelf = $gondola->sections()->first()->shelves()->first();
+        $shelfData = [
+            'height' => $firstShelf->shelf_height ?? 40,
+            'depth' => $firstShelf->shelf_depth ?? 40,
+        ];
 
-        $processedProducts = array_map(function($product) use ($abcResults, $targetStockResults, $facingLimits) {
+        $processedProducts = array_map(function($product) use ($abcResults, $targetStockResults, $shelfData) {
             
-            // Obter dados ABC
-            $abcData = collect($abcResults)->firstWhere('product_id', $product['id']);
-            $abcClass = $abcData['abc_class'] ?? 'C';
+            // 1. OBTER DADOS ABC
+            $abcData = collect($abcResults)->firstWhere('product_id', $product['id']) ?? [
+                'abc_class' => 'C',
+                'composite_score' => 0,
+                'id' => $product['ean'] ?? $product['id']
+            ];
             
-            // Obter dados Target Stock
-            $targetStockData = collect($targetStockResults)->firstWhere('product_id', $product['id']);
+            // 2. OBTER DADOS TARGET STOCK (CORRIGIDO)
+            $productId = $product['id'];
+            $targetStockData = collect($targetStockResults)->firstWhere('product_id', $productId);
             
-            // Calcular facing inteligente
-            $facingData = $this->calculateIntelligentFacing(
-                $product,
-                $abcClass,
+            if (!$targetStockData) {
+                // Se não encontrou, tentar por EAN
+                $productEan = $product['ean'] ?? null;
+                if ($productEan) {
+                    $targetStockData = collect($targetStockResults)->firstWhere('product_id', $productEan);
+                }
+                
+                // Log do problema e usar dados padrão mais conservadores
+                Log::warning("❌ Target Stock não encontrado para produto", [
+                    'product_id' => $productId,
+                    'product_ean' => $productEan,
+                    'product_name' => $product['name'] ?? 'N/A',
+                    'target_stock_results_count' => count($targetStockResults),
+                    'first_target_result_id' => $targetStockResults[0]['product_id'] ?? 'N/A'
+                ]);
+                
+                // Fallback mais inteligente baseado na classe ABC
+                $abcClass = $abcData['abc_class'] ?? 'C';
+                $defaultTargetStock = match($abcClass) {
+                    'A' => 10, // Produtos A: estoque maior
+                    'B' => 6,  // Produtos B: estoque médio
+                    'C' => 3,  // Produtos C: estoque menor
+                    default => 2
+                };
+                
+                $targetStockData = [
+                    'target_stock' => $defaultTargetStock,
+                    'current_stock' => 0,
+                    'urgency' => 'NORMAL'
+                ];
+            }
+            
+            // 3. 🎯 CALCULAR FACING INTELIGENTE (ABC + Target Stock + Dimensões)
+            // Log para debug da integração
+            Log::info("🔧 DEBUG: Dados antes do facing calculator", [
+                'product_id' => $productId,
+                'product_name' => $product['name'] ?? 'N/A',
+                'abc_class' => $abcData['abc_class'] ?? 'N/A',
+                'target_stock' => $targetStockData['target_stock'] ?? 'N/A',
+                'current_stock' => $targetStockData['current_stock'] ?? 'N/A',
+                'urgency' => $targetStockData['urgency'] ?? 'N/A'
+            ]);
+            
+            $facingResult = $this->facingCalculator->calculateIntelligentFacing(
+                $product, 
+                $abcData,
                 $targetStockData,
-                $facingLimits
+                $shelfData
             );
             
-            // Calcular prioridade
-            $priority = $this->calculateProductPriority($abcClass, $targetStockData, $product);
+            // 4. CALCULAR PRIORIDADE BASEADA NO FACING INTELIGENTE E ABC
+            $priority = ($facingResult['coverage_efficiency'] * 0.6) + 
+                       ($abcData['composite_score'] * 0.4);
             
             return [
                 'product_id' => $product['id'],
-                'abc_class' => $abcClass,
-                'abc_score' => $abcData['final_score'] ?? 0,
+                'abc_class' => $facingResult['abc_class'],
+                'composite_score' => $abcData['composite_score'] ?? 0,
                 'target_stock_data' => $targetStockData,
-                'intelligent_facing' => $facingData['final_facing'],
-                'facing_reasoning' => $facingData['reasoning'],
+                'intelligent_facing' => $facingResult['facing'],
+                'facing_details' => $facingResult, // 🆕 Dados completos do facing inteligente
                 'priority_score' => $priority,
-                'remove_flag' => $product['remove_flag'] ?? false,
-                // Manter estrutura compatível com ProductPlacementService
                 'product' => [
                     'id' => $product['id'],
                     'name' => $product['name'],
@@ -1530,114 +1706,11 @@ class AutoPlanogramController extends Controller
             
         }, $products);
 
-        // Log do resumo do processamento
-        $classDistribution = collect($processedProducts)->groupBy('abc_class')->map->count();
-        $facingStats = [
-            'min_facing' => collect($processedProducts)->min('intelligent_facing'),
-            'max_facing' => collect($processedProducts)->max('intelligent_facing'),
-            'avg_facing' => round(collect($processedProducts)->avg('intelligent_facing'), 2)
-        ];
-
-        Log::info("✅ Processamento inteligente concluído", [
-            'products_processed' => count($processedProducts),
-            'abc_distribution' => $classDistribution->toArray(),
-            'facing_stats' => $facingStats,
-            'top_priority_products' => collect($processedProducts)
-                ->sortByDesc('priority_score')
-                ->take(5)
-                ->pluck('name', 'priority_score')
-                ->toArray()
+        Log::info("✅ Processamento de produtos (Novo Fluxo) concluído", [
+            'products_processed' => count($processedProducts)
         ]);
 
         return $processedProducts;
-    }
-
-    /**
-     * 🔢 Calcular facing inteligente
-     */
-    protected function calculateIntelligentFacing(array $product, string $abcClass, array $targetStockData, array $facingLimits): array
-    {
-        // Facing base por classe ABC
-        $baseFacing = match($abcClass) {
-            'A' => 6,
-            'B' => 3,
-            'C' => 2,
-            default => 1
-        };
-        
-        // Ajuste por urgência de estoque
-        $urgency = $targetStockData['urgency'] ?? 'NORMAL';
-        $urgencyMultiplier = match($urgency) {
-            'CRÍTICO' => 2.0,  // Dobrar facing para produtos críticos
-            'BAIXO' => 1.5,    // Aumentar 50% para estoque baixo
-            'NORMAL' => 1.0,   // Manter normal
-            'ALTO' => 0.6,     // Reduzir 40% para estoque alto (seguindo analysisService)
-            default => 1.0
-        };
-        
-        // Log para debug da urgência
-        StepLogger::debug('Target Stock Urgency', [
-            'product_id' => $product['id'],
-            'urgency' => $urgency,
-            'stock_ratio' => $targetStockData['stock_ratio'] ?? 'N/A',
-            'multiplier' => $urgencyMultiplier
-        ]);
-        
-        // Calcular facing final
-        $calculatedFacing = ceil($baseFacing * $urgencyMultiplier);
-        
-        // Aplicar limites por classe
-        $limits = $facingLimits[$abcClass] ?? ['min' => 1, 'max' => 4];
-        $finalFacing = max($limits['min'], min($limits['max'], $calculatedFacing));
-        
-        // Produtos para remoção sempre 1 facing
-        if ($product['remove_flag'] ?? false) {
-            $finalFacing = 1;
-            $reasoning = 'Produto marcado para remoção - 1 facing fixo';
-        } else {
-            $reasoning = "Classe {$abcClass} (base: {$baseFacing}) × Urgência {$urgency} ({$urgencyMultiplier}x) = {$finalFacing} facing";
-        }
-        
-        return [
-            'base_facing' => $baseFacing,
-            'urgency_multiplier' => $urgencyMultiplier,
-            'calculated_facing' => $calculatedFacing,
-            'final_facing' => $finalFacing,
-            'reasoning' => $reasoning
-        ];
-    }
-
-    /**
-     * 🎯 Calcular prioridade do produto
-     */
-    protected function calculateProductPriority(string $abcClass, array $targetStockData, array $product): int
-    {
-        $priority = 0;
-        
-        // Prioridade por classe ABC
-        $priority += match($abcClass) {
-            'A' => 1000,
-            'B' => 500,
-            'C' => 100,
-            default => 10
-        };
-        
-        // Prioridade por urgência de estoque
-        $urgency = $targetStockData['urgency'] ?? 'NORMAL';
-        $priority += match($urgency) {
-            'CRÍTICO' => 5000,
-            'BAIXO' => 2000,
-            'NORMAL' => 500,
-            'ALTO' => 100,
-            default => 50
-        };
-        
-        // Produtos para remoção têm prioridade baixa
-        if ($product['remove_flag'] ?? false) {
-            $priority = 1;
-        }
-        
-        return $priority;
     }
 
     /**
@@ -1648,21 +1721,20 @@ class AutoPlanogramController extends Controller
         // NOVA ETAPA: Reordenar produtos por adjacência de categoria
         $processedProducts = $this->reorderProductsByCategory($processedProducts);
         
-        // NOVA LÓGICA: Manter adjacência de categoria na distribuição
-        // Em vez de classificar por ABC globalmente, vamos tratar a lista reordenada como uma sequência única
-        $classifiedProducts = [
-            'A' => $processedProducts, // Todos os produtos na ordem de categoria
-            'B' => [], // Vazio - não usaremos as classes B e C separadamente
-            'C' => []  // Vazio - todos os produtos estão em 'A' na ordem correta
-        ];
+        // 🎯 NOVA LÓGICA: Manter adjacência de categoria por módulo
+        // Em vez de reclassificar por ABC, manter ordem categórica e distribuir sequencialmente
+        Log::info("🏪 Preparando distribuição por CATEGORIA (não por ABC)", [
+            'total_products' => count($processedProducts),
+            'order_maintained' => 'Sequencial por categoria'
+        ]);
         
         $gondolaStructure = $this->analyzeGondolaStructure($gondola);
         $this->ensureGondolaHasSegments($gondola);
         
-        // Distribuir usando o service existente
+        // Distribuir usando o service existente - MAS COM ORDEM CATEGÓRICA
         $distributionResult = $this->productPlacement->placeProductsSequentially(
             $gondola,
-            $classifiedProducts,
+            $processedProducts, // 🎯 PRODUTOS NA ORDEM CATEGÓRICA (açúcar→arroz→feijão→sal)
             $gondolaStructure
         );
         
@@ -1738,6 +1810,27 @@ class AutoPlanogramController extends Controller
         ]);
 
         return $reorderedProducts;
+    }
+    
+    /**
+     * 🔒 VALIDAÇÃO: Verifica consistência de contagem de produtos entre etapas
+     */
+    protected function validateProductCount(string $stage, int $expected, int $actual): void
+    {
+        if ($expected !== $actual) {
+            Log::warning("🚨 INCONSISTÊNCIA DE PRODUTOS DETECTADA", [
+                'stage' => $stage,
+                'expected_count' => $expected,
+                'actual_count' => $actual,
+                'difference' => $actual - $expected,
+                'error_type' => $actual > $expected ? 'DUPLICAÇÃO' : 'PERDA'
+            ]);
+        } else {
+            Log::info("✅ Validação de contagem aprovada", [
+                'stage' => $stage,
+                'product_count' => $actual
+            ]);
+        }
     }
 
     // Métodos auxiliares

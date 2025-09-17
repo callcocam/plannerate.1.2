@@ -378,8 +378,9 @@ async function executeTargetStockAnalysisWithParams(serviceLevels: ServiceLevel[
     editorStore.getCurrentGondola?.sections.forEach(section => {
         section.shelves.forEach(shelf => {
             shelf.segments.forEach(segment => {
-                const product = segment.layer.product as any;
-                if (product) {
+                // 🔒 VERIFICAÇÃO DE SEGURANÇA: Verificar se layer e product existem
+                const product = segment.layer?.product as any;
+                if (product && segment.layer) {
                     products.push({
                         id: product.id,
                         ean: product.ean,

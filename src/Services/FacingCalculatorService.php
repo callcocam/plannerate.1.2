@@ -18,73 +18,6 @@ use Callcocam\Plannerate\Services\StepLogger;
 class FacingCalculatorService
 {
     /**
-     * Calcula facing otimizado baseado no espaço disponível
-     * Prioriza garantir que o produto SEMPRE cabe, mesmo que com facing menor
-     */
-    public function calculateOptimalFacing(array $product, float $availableWidth): int
-    {
-        $productData = $product['product'] ?? [];
-        $productWidth = $this->getProductWidth($productData);
-        $abcClass = $product['abc_class'] ?? 'C';
-        $finalScore = floatval($product['final_score'] ?? 0);
-        
-        // Cálculo de facing realista
-        
-        // 1. PRIMEIRO: Verificar se o produto tem largura válida
-        if ($productWidth <= 0) {
-            Log::warning("⚠️ Produto com largura inválida", [
-                'product_id' => $product['product_id'] ?? 'unknown',
-                'product_width' => $productWidth,
-                'available_width' => $availableWidth
-            ]);
-            return 0; // Largura inválida, não pode ser colocado
-        }
-        
-        // 2. Verificar se o produto cabe pelo menos 1 vez
-        if ($productWidth > $availableWidth) {
-            Log::warning("⚠️ Produto não cabe nem 1 vez no espaço disponível", [
-                'product_id' => $product['product_id'] ?? 'unknown',
-                'product_width' => $productWidth,
-                'available_width' => $availableWidth,
-                'deficit' => $productWidth - $availableWidth
-            ]);
-            return 0; // Não cabe
-        }
-        
-        // 3. Calcular facing máximo possível fisicamente
-        $maxPhysicalFacing = floor($availableWidth / $productWidth);
-        
-        // 4. Facing desejado baseado na classe ABC (MAIS CONSERVADOR)
-        $desiredFacing = match($abcClass) {
-            'A' => min(4, $maxPhysicalFacing), // Classe A: máximo 4 facing (mais conservador)
-            'B' => min(3, $maxPhysicalFacing), // Classe B: máximo 3 facing
-            'C' => min(2, $maxPhysicalFacing), // Classe C: máximo 2 facing
-            default => min(1, $maxPhysicalFacing)
-        };
-        
-        // 5. Ajuste baseado no score (bonus mais moderado)
-        $normalizedScore = max(0, min(1, $finalScore));
-        if ($normalizedScore > 0.7) {
-            $desiredFacing = min($desiredFacing + 1, $maxPhysicalFacing); // Score alto: +1 facing
-        } elseif ($normalizedScore < 0.3) {
-            $desiredFacing = max(1, $desiredFacing - 1); // Score baixo: -1 facing
-        }
-        
-        // 6. Garantir que sempre cabe pelo menos 1 facing
-        $finalFacing = max(1, min($desiredFacing, $maxPhysicalFacing));
-        
-        // Calcular eficiência de uso do espaço
-        $usedWidth = $finalFacing * $productWidth;
-        $widthEfficiency = round(($usedWidth / $availableWidth) * 100, 1);
-        
-        StepLogger::logFacingCalculation($product, $desiredFacing, $finalFacing, 
-            "Classe $abcClass, Eficiência: {$widthEfficiency}%, Score: " . 
-            ($normalizedScore > 0.7 ? '+1' : ($normalizedScore < 0.3 ? '-1' : '0')));
-        
-        return $finalFacing;
-    }
-
-    /**
      * Calcula facing conservador para distribuição em cascata
      */
     public function calculateConservativeFacing(array $product): int
@@ -102,35 +35,6 @@ class FacingCalculatorService
         // Facing conservador para cascata calculado
         
         return $conservativeFacing;
-    }
-
-    /**
-     * Calcula facing total baseado na classe ABC e score do produto
-     * Usado na verticalização por section
-     */
-    public function calculateTotalFacingForSection(array $product): int
-    {
-        $abcClass = $product['abc_class'] ?? 'C';
-        $score = $product['final_score'] ?? 0;
-        
-        // Facing base por classe ABC
-        $facingTotal = match($abcClass) {
-            'A' => 6, // Produtos A: facing alto
-            'B' => 4, // Produtos B: facing médio  
-            'C' => 2, // Produtos C: facing baixo
-            default => 1
-        };
-        
-        // Ajustar baseado no score dentro da classe
-        if ($score > 0.5) {
-            $facingTotal = ceil($facingTotal * 1.5); // Score alto = +50%
-        } elseif ($score > 0.3) {
-            $facingTotal = ceil($facingTotal * 1.2); // Score médio = +20%
-        }
-        
-        $facingTotal = min($facingTotal, 10); // Máximo 10 faces total
-        
-        return $facingTotal;
     }
 
     /**
@@ -172,5 +76,208 @@ class FacingCalculatorService
             'fits' => $adaptedFacing > 0 && $adaptedRequiredWidth <= $availableWidth,
             'optimization' => $requestedFacing > $adaptedFacing ? 'REDUZIDO' : 'MANTIDO'
         ];
+    }
+    
+    /**
+     * 🎯 FUNÇÃO PRINCIPAL: Calcula facing inteligente baseado nos resultados das análises ABC e Target Stock
+     * 
+     * Esta função integra os resultados dos serviços existentes:
+     * - ABCAnalysisService: fornece classificação ABC (A, B, C)  
+     * - TargetStockAnalysis: fornece estoque alvo necessário
+     * - Dimensões do produto: calcula capacidade por facing
+     * 
+     * @param array $productData Dados do produto com dimensões
+     * @param array $abcResult Resultado da análise ABC para este produto
+     * @param array $targetStockResult Resultado da análise de estoque alvo 
+     * @param array $shelfData Dados da prateleira (altura, profundidade)
+     * @return array Dados completos do facing calculado
+     */
+    public function calculateIntelligentFacing(
+        array $productData, 
+        array $abcResult, 
+        array $targetStockResult, 
+        array $shelfData
+    ): array {
+        // 1. EXTRAIR DADOS NECESSÁRIOS
+        $targetStock = $targetStockResult['target_stock'] ?? 1;
+        $currentStock = $targetStockResult['current_stock'] ?? 0;
+        $abcClass = $abcResult['abc_class'] ?? 'C';
+        $urgency = $targetStockResult['urgency'] ?? 'NORMAL';
+        
+        $productHeight = data_get($productData, 'dimensions.height', 0) ?: data_get($productData, 'height', 0);
+        $productDepth = data_get($productData, 'dimensions.depth', 0) ?: data_get($productData, 'depth', 0);
+        $productWidth = data_get($productData, 'dimensions.width', 0) ?: data_get($productData, 'width', 0);
+        
+        $shelfHeight = $shelfData['height'] ?? 40;
+        $shelfDepth = $shelfData['depth'] ?? 40;
+
+        // 2. VALIDAÇÕES E FALLBACKS
+        if ($targetStock <= 0) {
+            return [
+                'facing' => 1,
+                'target_stock' => $targetStock,
+                'units_per_facing' => 1,
+                'coverage_efficiency' => 100,
+                'abc_class' => $abcClass,
+                'urgency' => $urgency,
+                'reason' => 'Estoque alvo zero ou negativo'
+            ];
+        }
+
+        if ($productHeight <= 0 || $productDepth <= 0) {
+            Log::warning("⚠️ Produto sem dimensões válidas - usando facing baseado em classe ABC", [
+                'product_name' => $productData['name'] ?? 'N/A',
+                'abc_class' => $abcClass,
+                'height' => $productHeight,
+                'depth' => $productDepth
+            ]);
+            
+            // Fallback baseado apenas na classe ABC
+            return [
+                'facing' => $this->getFacingByABCClass($abcClass),
+                'target_stock' => $targetStock,
+                'units_per_facing' => 1,
+                'coverage_efficiency' => 0,
+                'abc_class' => $abcClass,
+                'urgency' => $urgency,
+                'reason' => 'Dimensões inválidas - usando facing por classe ABC'
+            ];
+        }
+
+        // 3. CALCULAR CAPACIDADE POR FACING
+        $unitsPerVerticalLayer = max(1, floor($shelfHeight / $productHeight));
+        $layersOfDepth = max(1, floor($shelfDepth / $productDepth));
+        $unitsPerFacing = $unitsPerVerticalLayer * $layersOfDepth;
+
+        // 4. CALCULAR FACING NECESSÁRIO PARA ATINGIR ESTOQUE ALVO
+        // 🎯 NOVA LÓGICA: Para estoques baixos, priorizar exposição visual
+        if ($targetStock <= 3 && $unitsPerFacing >= $targetStock) {
+            // Se target stock é baixo e cada facing comporta mais que o target, 
+            // usar facing = target stock para melhor exposição
+            $facingByTarget = max(1, $targetStock);
+            $facingMethod = "Visual exposure priority (low target stock)";
+        } else {
+            // Lógica tradicional: calcular facing baseado na capacidade necessária
+            $facingByTarget = ceil($targetStock / $unitsPerFacing);
+            $facingMethod = "Capacity-based calculation";
+        }
+        
+        // 5. APLICAR AJUSTES BASEADOS EM ABC E URGÊNCIA
+        // 🔒 IMPORTANTE: O facing nunca pode ser menor que o necessário para o estoque alvo
+        $facingAdjusted = $this->adjustFacingByContext($facingByTarget, $abcClass, $urgency, $currentStock, $targetStock);
+        $facing = max($facingByTarget, $facingAdjusted); // Garantir que sempre atenda o estoque alvo
+        
+        // 6. CALCULAR EFICIÊNCIA DE COBERTURA
+        $totalUnitsWithFacing = $facing * $unitsPerFacing;
+        $coverageEfficiency = ($totalUnitsWithFacing > 0) ? 
+            min(100, round(($targetStock / $totalUnitsWithFacing) * 100, 1)) : 0;
+
+        $result = [
+            'facing' => max(1, $facing),
+            'target_stock' => $targetStock,
+            'current_stock' => $currentStock,
+            'units_per_facing' => $unitsPerFacing,
+            'total_capacity' => $totalUnitsWithFacing,
+            'coverage_efficiency' => $coverageEfficiency,
+            'abc_class' => $abcClass,
+            'urgency' => $urgency,
+            'dimensions' => [
+                'product_height' => $productHeight,
+                'product_depth' => $productDepth,
+                'product_width' => $productWidth,
+                'shelf_height' => $shelfHeight,
+                'shelf_depth' => $shelfDepth,
+                'units_vertical' => $unitsPerVerticalLayer,
+                'layers_depth' => $layersOfDepth
+            ],
+            'reason' => 'Cálculo inteligente ABC + Target Stock + Dimensões'
+        ];
+
+        Log::info("🧠 Facing Inteligente Calculado", [
+            'product' => $productData['name'] ?? 'N/A',
+            'abc_class' => $abcClass,
+            'urgency' => $urgency,
+            'target_stock' => $targetStock,
+            'current_stock' => $currentStock,
+            'facing_by_target' => $facingByTarget,
+            'facing_adjusted' => $facingAdjusted,
+            'facing_final' => $facing,
+            'units_per_facing' => $unitsPerFacing,
+            'coverage_efficiency' => $coverageEfficiency . '%',
+            'total_capacity' => $totalUnitsWithFacing,
+            'facing_method' => $facingMethod,
+            'adjustment_applied' => $facing > $facingByTarget ? 'Yes (ABC/Urgency)' : 'No'
+        ]);
+
+        return $result;
+    }
+
+    /**
+     * 🔄 FUNÇÃO LEGADA: Mantida para compatibilidade (usa a nova função internamente)
+     */
+    public function calculateFacingFromTargetStock(array $productData, int $targetStock, array $shelfData): int
+    {
+        // Simular dados para usar a nova função
+        $abcResult = ['abc_class' => 'B']; // Classe média como padrão
+        $targetStockResult = [
+            'target_stock' => $targetStock,
+            'current_stock' => 0,
+            'urgency' => 'NORMAL'
+        ];
+        
+        $result = $this->calculateIntelligentFacing($productData, $abcResult, $targetStockResult, $shelfData);
+        
+        return $result['facing'];
+    }
+
+    /**
+     * 🎨 Ajusta facing baseado no contexto ABC + urgência + situação do estoque
+     */
+    protected function adjustFacingByContext(int $baseFacing, string $abcClass, string $urgency, int $currentStock, int $targetStock): int
+    {
+        $adjustedFacing = $baseFacing;
+        
+        // 1. AJUSTE POR CLASSE ABC
+        $abcMultiplier = match($abcClass) {
+            'A' => 1.2, // Produtos A: +20% facing
+            'B' => 1.0, // Produtos B: manter facing  
+            'C' => 0.8, // Produtos C: -20% facing
+            default => 1.0
+        };
+        
+        // 2. AJUSTE POR URGÊNCIA DE REPOSIÇÃO
+        $urgencyMultiplier = match($urgency) {
+            'CRÍTICO' => 1.5, // Urgência crítica: +50% facing
+            'BAIXO' => 1.2,   // Estoque baixo: +20% facing
+            'NORMAL' => 1.0,  // Normal: manter
+            'ALTO' => 0.8,    // Estoque alto: -20% facing
+            default => 1.0
+        };
+        
+        // 3. APLICAR MULTIPLICADORES
+        $adjustedFacing = ceil($baseFacing * $abcMultiplier * $urgencyMultiplier);
+        
+        // 4. LIMITES MÍNIMOS E MÁXIMOS POR CLASSE
+        $limits = match($abcClass) {
+            'A' => ['min' => 2, 'max' => 8], // Classe A: 2-8 facings
+            'B' => ['min' => 1, 'max' => 5], // Classe B: 1-5 facings  
+            'C' => ['min' => 1, 'max' => 3], // Classe C: 1-3 facings
+            default => ['min' => 1, 'max' => 2]
+        };
+        
+        return max($limits['min'], min($limits['max'], $adjustedFacing));
+    }
+
+    /**
+     * 📊 Facing baseado apenas na classe ABC (fallback)
+     */
+    protected function getFacingByABCClass(string $abcClass): int
+    {
+        return match($abcClass) {
+            'A' => 3, // Produtos A: 3 facings por padrão
+            'B' => 2, // Produtos B: 2 facings por padrão
+            'C' => 1, // Produtos C: 1 facing por padrão
+            default => 1
+        };
     }
 }

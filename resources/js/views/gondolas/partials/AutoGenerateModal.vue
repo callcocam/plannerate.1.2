@@ -350,24 +350,24 @@ const filters = reactive<AutoGenerateFilters>({
     limit: 20            // Limite padrão da sidebar (LIST_LIMIT)
 });
 
-// Novos parâmetros ABC
+// Novos parâmetros ABC (valores da foto)
 const abcParams = reactive({
     weights: {
-        quantity: 0.3,
-        value: 0.5,
-        margin: 0.2
+        quantity: 0.3,  // Peso Qtd
+        value: 0.5,     // Peso Valor
+        margin: 0.2     // Peso Margem
     },
     thresholds: {
-        a: 80,
-        b: 95
+        a: 80,          // Limite Classe A (%)
+        b: 95           // Limite Classe B (%)
     }
 });
 
-// Parâmetros Target Stock
+// Parâmetros Target Stock (valores da foto)
 const targetStockParams = reactive({
-    coverageDays: 7,
-    safetyStock: 20,
-    serviceLevel: 95
+    coverageDays: 7,    // Dias de Cobertura
+    safetyStock: 20,    // Estoque Segurança (%)
+    serviceLevel: 95    // Service Level: 95% - Padrão
 });
 
 // Limites de Facing por classe
@@ -480,16 +480,16 @@ const resetFilters = () => {
     generationMode.value = 'basic';
     intelligentLimit.value = 100;
     
-    // Reset dos parâmetros inteligentes
-    abcParams.weights.quantity = 0.3;
-    abcParams.weights.value = 0.5;
-    abcParams.weights.margin = 0.2;
-    abcParams.thresholds.a = 80;
-    abcParams.thresholds.b = 95;
+    // Reset dos parâmetros inteligentes (valores da foto)
+    abcParams.weights.quantity = 0.3;  // Peso Qtd
+    abcParams.weights.value = 0.5;     // Peso Valor  
+    abcParams.weights.margin = 0.2;    // Peso Margem
+    abcParams.thresholds.a = 80;       // Limite Classe A (%)
+    abcParams.thresholds.b = 95;       // Limite Classe B (%)
     
-    targetStockParams.coverageDays = 7;
-    targetStockParams.safetyStock = 20;
-    targetStockParams.serviceLevel = 95;
+    targetStockParams.coverageDays = 7;     // Dias de Cobertura
+    targetStockParams.safetyStock = 20;     // Estoque Segurança (%)
+    targetStockParams.serviceLevel = 95;    // Service Level: 95% - Padrão
     
     facingLimits.A = { min: 2, max: 12 };
     facingLimits.B = { min: 1, max: 8 };
