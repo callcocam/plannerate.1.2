@@ -1503,27 +1503,9 @@ class AutoPlanogramController extends Controller
         $results = [];
         
         foreach ($products as $product) {
-            // Simular dados de vendas mais realistas (em produção, buscar do banco)
+            // ✅ DADOS REAIS: Buscar do banco de dados
             $dailySales = $this->getDailySales($product['id']);
             $currentStock = $this->getCurrentStock($product['id']);
-            
-            // Se não há dados de vendas reais, simular baseado no produto
-            if (!$dailySales) {
-                // Simular vendas baseadas no nome/categoria do produto
-                $productName = strtolower($product['name'] ?? '');
-                
-                if (str_contains($productName, 'sal') || str_contains($productName, 'açúcar')) {
-                    $dailySales = rand(50, 200) / 100; // 0.5 - 2.0 unidades/dia (produtos básicos)
-                } elseif (str_contains($productName, 'óleo') || str_contains($productName, 'azeite')) {
-                    $dailySales = rand(20, 80) / 100;  // 0.2 - 0.8 unidades/dia (produtos premium)
-                } else {
-                    $dailySales = rand(30, 150) / 100; // 0.3 - 1.5 unidades/dia (geral)
-                }
-            }
-            
-            if (!$currentStock) {
-                $currentStock = rand(5, 25); // 5-25 unidades em estoque
-            }
             
             // Calcular estoque alvo
             $targetStock = $this->calculateTargetStock(
@@ -1614,6 +1596,26 @@ class AutoPlanogramController extends Controller
         
         // Obter dados da primeira prateleira para usar como referência de dimensões
         $firstShelf = $gondola->sections()->first()->shelves()->first();
+        
+        // 🔍 DEBUG: Verificar profundidades de todas as prateleiras
+        $allShelfDepths = [];
+        foreach ($gondola->sections as $section) {
+            foreach ($section->shelves as $shelf) {
+                $allShelfDepths[] = [
+                    'section' => $section->ordering,
+                    'shelf' => $shelf->ordering,
+                    'depth' => $shelf->shelf_depth
+                ];
+            }
+        }
+        
+        Log::info("🔍 Verificando profundidades das prateleiras", [
+            'total_shelves' => count($allShelfDepths),
+            'shelf_depths' => $allShelfDepths,
+            'first_shelf_depth' => $firstShelf->shelf_depth ?? 40,
+            'all_same_depth' => count(array_unique(array_column($allShelfDepths, 'depth'))) === 1
+        ]);
+        
         $shelfData = [
             'height' => $firstShelf->shelf_height ?? 40,
             'depth' => $firstShelf->shelf_depth ?? 40,
@@ -1945,14 +1947,87 @@ class AutoPlanogramController extends Controller
 
     protected function getDailySales(string $productId): float
     {
-        // TODO: Implementar busca real no banco
-        return rand(1, 10) / 10; // Simulação
+        try {
+            // ✅ Buscar dados reais da tabela Sales (últimos 30 dias)
+            $sales = \App\Models\Sale::where('product_id', $productId)
+                ->where('sale_date', '>=', now()->subDays(30))
+                ->selectRaw('
+                    SUM(total_sale_quantity) as total_quantity,
+                    COUNT(DISTINCT DATE(sale_date)) as days_with_sales,
+                    AVG(total_sale_quantity) as avg_per_transaction,
+                    MIN(sale_date) as first_sale_date,
+                    MAX(sale_date) as last_sale_date
+                ')
+                ->first();
+            
+            if ($sales && $sales->total_quantity > 0) {
+                // Calcular vendas diárias = total vendido / 30 dias
+                $dailySales = $sales->total_quantity / 30;
+                
+                Log::info("📊 Daily sales calculado de dados reais", [
+                    'product_id' => $productId,
+                    'total_quantity_30d' => $sales->total_quantity,
+                    'days_with_sales' => $sales->days_with_sales,
+                    'avg_per_transaction' => $sales->avg_per_transaction,
+                    'period' => $sales->first_sale_date . ' até ' . $sales->last_sale_date,
+                    'daily_sales_calculated' => $dailySales,
+                    'source' => 'sales_table_real_data'
+                ]);
+                
+                return round($dailySales, 2);
+            }
+            
+            // ✅ SEM DADOS = SEM VENDAS = ZERO
+            Log::info("ℹ️ Produto sem vendas nos últimos 30 dias", [
+                'product_id' => $productId,
+                'daily_sales' => 0
+            ]);
+            return 0.0; // Zero vendas = zero mesmo
+            
+        } catch (\Exception $e) {
+            Log::error("❌ Erro ao buscar daily sales", [
+                'product_id' => $productId,
+                'error' => $e->getMessage(),
+                'daily_sales' => 0
+            ]);
+            return 0.0; // Erro = zero vendas
+        }
     }
 
     protected function getCurrentStock(string $productId): int
     {
-        // TODO: Implementar busca real no banco
-        return rand(0, 50); // Simulação
+        try {
+            // ✅ DADOS REAIS: Buscar da tabela purchases.current_stock
+            $purchase = \App\Models\Purchase::where('product_id', $productId)
+                ->whereNotNull('current_stock')
+                ->orderBy('entry_date', 'desc')
+                ->first();
+            
+            if ($purchase && $purchase->current_stock >= 0) {
+                Log::info("📦 Current stock REAL da tabela purchases", [
+                    'product_id' => $productId,
+                    'current_stock' => $purchase->current_stock,
+                    'entry_date' => $purchase->entry_date,
+                    'source' => 'purchase_table_real_data'
+                ]);
+                return (int) $purchase->current_stock;
+            }
+            
+            // ✅ SEM DADOS = ZERO (sem estimativas)
+            Log::info("ℹ️ Produto sem registro de purchase - estoque zero", [
+                'product_id' => $productId,
+                'current_stock' => 0
+            ]);
+            return 0; // Sem dados reais = zero
+            
+        } catch (\Exception $e) {
+            Log::error("❌ Erro ao buscar current stock", [
+                'product_id' => $productId,
+                'error' => $e->getMessage(),
+                'current_stock' => 0
+            ]);
+            return 0; // Erro = zero
+        }
     }
 
     protected function calculateTargetStock(float $dailySales, int $coverageDays, int $safetyStockPercentage, int $serviceLevel): int

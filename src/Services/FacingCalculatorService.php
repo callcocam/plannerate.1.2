@@ -150,22 +150,30 @@ class FacingCalculatorService
         $unitsPerFacing = $unitsPerVerticalLayer * $layersOfDepth;
 
         // 4. CALCULAR FACING NECESSÁRIO PARA ATINGIR ESTOQUE ALVO
-        // 🎯 NOVA LÓGICA: Para estoques baixos, priorizar exposição visual
-        if ($targetStock <= 3 && $unitsPerFacing >= $targetStock) {
-            // Se target stock é baixo e cada facing comporta mais que o target, 
-            // usar facing = target stock para melhor exposição
-            $facingByTarget = max(1, $targetStock);
-            $facingMethod = "Visual exposure priority (low target stock)";
-        } else {
-            // Lógica tradicional: calcular facing baseado na capacidade necessária
-            $facingByTarget = ceil($targetStock / $unitsPerFacing);
-            $facingMethod = "Capacity-based calculation";
-        }
+        // 🎯 LÓGICA CORRIGIDA: Sempre calcular baseado na capacidade real necessária
+        $facingByTarget = max(1, ceil($targetStock / $unitsPerFacing));
+        $facingMethod = "Optimized capacity calculation";
         
-        // 5. APLICAR AJUSTES BASEADOS EM ABC E URGÊNCIA
-        // 🔒 IMPORTANTE: O facing nunca pode ser menor que o necessário para o estoque alvo
-        $facingAdjusted = $this->adjustFacingByContext($facingByTarget, $abcClass, $urgency, $currentStock, $targetStock);
-        $facing = max($facingByTarget, $facingAdjusted); // Garantir que sempre atenda o estoque alvo
+        // Log para debug
+        Log::info("🔧 Facing calculation", [
+            'product_name' => $productData['name'] ?? 'N/A',
+            'target_stock' => $targetStock,
+            'units_per_facing' => $unitsPerFacing,
+            'facing_calculated' => $facingByTarget,
+            'total_capacity' => $facingByTarget * $unitsPerFacing
+        ]);
+        
+        // 5. 🎯 USAR FACING OTIMIZADO SEM AJUSTES ARBITRÁRIOS
+        // Priorizar eficiência de espaço baseada no target stock real
+        $facing = $facingByTarget; // Usar apenas o facing necessário para o estoque alvo
+        
+        Log::info("🎯 Facing otimizado aplicado", [
+            'product_name' => $productData['name'] ?? 'N/A',
+            'target_stock' => $targetStock,
+            'facing_optimal' => $facingByTarget,
+            'facing_applied' => $facing,
+            'space_efficiency' => 'Optimized (no ABC forcing)'
+        ]);
         
         // 6. CALCULAR EFICIÊNCIA DE COBERTURA
         $totalUnitsWithFacing = $facing * $unitsPerFacing;
@@ -199,14 +207,13 @@ class FacingCalculatorService
             'urgency' => $urgency,
             'target_stock' => $targetStock,
             'current_stock' => $currentStock,
-            'facing_by_target' => $facingByTarget,
-            'facing_adjusted' => $facingAdjusted,
+            'facing_calculated' => $facingByTarget,
             'facing_final' => $facing,
             'units_per_facing' => $unitsPerFacing,
             'coverage_efficiency' => $coverageEfficiency . '%',
             'total_capacity' => $totalUnitsWithFacing,
             'facing_method' => $facingMethod,
-            'adjustment_applied' => $facing > $facingByTarget ? 'Yes (ABC/Urgency)' : 'No'
+            'space_optimization' => 'Enabled (target-based only)'
         ]);
 
         return $result;
