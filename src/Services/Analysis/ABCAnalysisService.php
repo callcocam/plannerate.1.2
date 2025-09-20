@@ -9,6 +9,7 @@
 namespace Callcocam\Plannerate\Services\Analysis;
 
 use App\Models\Product;
+use App\Services\OptimizedSummarySales;
 use Illuminate\Support\Collection;
 
 class ABCAnalysisService
@@ -44,11 +45,21 @@ class ABCAnalysisService
      */
     protected function calculateTotals(Collection $sales, Collection $purchases): array
     {
+
+        // Retorna os totais
+        //acquisition_cost -> Custo de aquisição do produto
+        //sale_price -> Preço de venda do produto
+        //total_profit_margin -> Margem de lucro unitária
+        //sale_date -> Data da venda
+        //promotion -> Promoção
+        //total_sale_quantity -> Quantidade vendida
+        //total_sale_value -> Valor total da venda
+        //current_stock -> Estoque atual
         return [
-            'quantity' => $sales->sum('total_sale_quantity'),
-            'value' => $sales->sum('total_sale_value'),
-            'margin' => $sales->sum('total_profit_margin'),
-            'current_stock' => $purchases->sum('current_stock')
+            'quantity' => $sales->sum('total_sale_quantity'), // Quantidade vendida
+            'value' => $sales->sum('sale_price'), // Valor total da venda
+            'margin' => $sales->sum('total_profit_margin'), // Margem de lucro unitária
+            'current_stock' => $purchases->sum('current_stock') // Estoque atual
         ];
     }
 
@@ -64,6 +75,7 @@ class ABCAnalysisService
         $result = [];
 
         foreach ($products as $product) {
+            // 7896508200041
             $productSales = $product->sales()->when($startDate, function ($query) use ($startDate) {
                 $query->where('sale_date', '>=', $startDate);
             })->when($endDate, function ($query) use ($endDate) {
@@ -71,9 +83,22 @@ class ABCAnalysisService
             })->when($storeId, function ($query) use ($storeId) {
                 $query->where('store_id', $storeId);
             });
+
             $quantity = $productSales->sum('total_sale_quantity');
             $value = $productSales->sum('total_sale_value');
             $margin = $productSales->sum('total_profit_margin');
+            $salesWithAccessors = $productSales->get();
+            $totalCustoMedio = 0;
+            $totalImpostos = 0;
+            foreach ($salesWithAccessors as $sale) {
+                // Usar os accessors do modelo Sale
+                $totalCustoMedio += $sale->custo_medio_loja;
+                $totalImpostos += $sale->impostos_sale;
+            }
+            $totalMargem = round($value - $totalImpostos - $totalCustoMedio, 2);
+
+            $margemAbsoluta = round($value - $totalImpostos - $totalCustoMedio, 2);
+
             $productPurchases = $product->purchases()->when($startDate, function ($query) use ($startDate) {
                 $query->where('entry_date', '>=', $startDate);
             })->when($endDate, function ($query) use ($endDate) {
@@ -103,7 +128,7 @@ class ABCAnalysisService
                 // ...existing code...
                 'quantity' => $quantity,
                 'value' => $value,
-                'margin' => $margin,
+                'margin' => $totalMargem,
                 'currentStock' => $currentStock,
                 'lastPurchase' => $lastPurchase,
                 'lastSale' => $lastSale,
