@@ -106,7 +106,7 @@ class ABCAnalysisService
             })->when($storeId, function ($query) use ($storeId) {
                 $query->where('store_id', $storeId);
             });
-            $currentPurchases = $productPurchases->first();
+            $currentPurchases = $productPurchases->orderBy('entry_date', 'desc')->first();
             $currentStock = 0;
             $lastPurchase = null;
             $lastSale = null;
@@ -114,7 +114,7 @@ class ABCAnalysisService
                 $lastPurchase = $currentPurchases->entry_date;
                 $currentStock = $currentPurchases->current_stock;
             }
-            if ($saleDate = $productSales->first()) {
+            if ($saleDate = $productSales->orderBy('sale_date', 'desc')->first()) {
                 $lastSale = $saleDate->sale_date;
             }
             $result[] = [
