@@ -20,8 +20,7 @@ export const useAnalysisResultStore = defineStore('analysisResult', {
     clearResult() {
       this.result = null;
     },
-    requestRecalculation() {
-      console.log('requestRecalculation');
+    requestRecalculation() { 
       // This action will be used to signal that a recalculation is needed
       this.loading = true; // Set loading to true when recalculation is requested
     }

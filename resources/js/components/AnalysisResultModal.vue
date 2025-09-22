@@ -262,7 +262,7 @@ async function executeABCAnalysisWithParams(weights: any, thresholds: any) {
     editorStore.getCurrentGondola?.sections.forEach(section => {
         section.shelves.forEach(shelf => {
             shelf.segments.forEach(segment => {
-                const product = segment.layer.product as any;
+                const product = segment.layer.product as any; 
                 if (product) {
                     products.push({
                         id: product.id,

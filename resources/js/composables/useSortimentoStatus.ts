@@ -193,8 +193,7 @@ export function useAssortmentStatus(
     }
     prod.status = status;
     prod.statusDetail = statusDetail;
-  }
-  console.log(analyzed);
+  } 
   // Próximas etapas virão aqui
   return analyzed;
 } 

@@ -32,7 +32,7 @@ class TargetStockAnalysisService
         ?int $storeId = null, 
     ): array {
         // Busca os produtos
-        $products = Product::whereIn('id', $productIds)->get();
+        // $products = Product::whereIn('id', $productIds)->get();
 
         // Busca as vendas no período
         $sales = $this->getSales($productIds, $startDate, $endDate, $storeId);
