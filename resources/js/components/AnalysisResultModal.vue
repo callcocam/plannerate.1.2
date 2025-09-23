@@ -263,7 +263,7 @@ async function executeABCAnalysisWithParams(weights: any, thresholds: any) {
         section.shelves.forEach(shelf => {
             shelf.segments.forEach(segment => {
                 // 🔒 VERIFICAÇÃO DE SEGURANÇA: Verificar se layer e product existem
-                const product = segment.layer?.product as any;
+                const product = segment.layer?.product as any; 
                 if (product && segment.layer) {
                     products.push({
                         id: product.id,

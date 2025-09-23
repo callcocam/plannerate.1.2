@@ -2,12 +2,12 @@
   <div class="flex gap-2 justify-between">
     <div class="flex gap-2">
       <!-- Botão para limpar resultado se houver -->
-      <Button v-if="analysisResultStore.result" @click="analysisResultStore.setResult(null);" variant="destructive">
+      <Button v-if="analysisResultStore.result" @click="clearAnalysisResult" variant="destructive">
         <Paintbrush class="mr-1 h-4 w-4" />
         <span class="hidden xl:block">Limpar Resultado</span>
       </Button>
     </div>
-    
+
     <div class="flex gap-2">
       <!-- Popover principal de cálculos -->
       <Popover v-model:open="showCalculos">
@@ -20,18 +20,19 @@
         <PopoverContent class="w-auto max-w-lg z-[1000]">
           <div class="flex flex-col gap-2">
             <Button variant="outline" @click="handleOpenABCParams">Calculos ABC</Button>
-            <Button variant="outline" @click="handleOpenTargetStockParams">Calculos Estoque Alvo Prateleira</Button>
+            <Button v-if="isAbcCalculating" variant="outline" @click="handleOpenTargetStockParams">Calculos Estoque Alvo
+              Prateleira</Button>
             <Button variant="outline" @click="handleOpenBCGParams">Calculos Matriz BCG</Button>
           </div>
         </PopoverContent>
       </Popover>
-      
+
       <!-- Botão de imprimir -->
       <Button variant="outline" size="sm" title="Imprimir" @click="showPrintModal = true">
         <PrinterIcon class="h-4 w-4" />
         <span class="hidden xl:block">Imprimir</span>
       </Button>
-      
+
       <!-- Popover de Gerar Relatório -->
       <Popover v-model:open="showReportOptions">
         <PopoverTrigger as-child>
@@ -51,10 +52,10 @@
               <FileTextIcon class="h-4 w-4 mr-2" />
               Relatório Reposição (PDF)
             </Button>
-            
+
             <!-- Divisor -->
             <div class="border-t border-gray-200 dark:border-gray-700 my-2"></div>
-            
+
             <!-- Novos relatórios -->
             <Button variant="outline" @click="generateReport('compra')" :disabled="isGeneratingReport">
               <FileSpreadsheetIcon class="h-4 w-4 mr-2" />
@@ -81,12 +82,8 @@
       <DialogDescription>
         Ajuste os pesos e limites para a análise ABC conforme sua estratégia.
       </DialogDescription>
-      <ABCParamsPopover
-        v-model:weights="abcParams.weights"
-        v-model:thresholds="abcParams.thresholds"
-        @show-result-modal="showResultModal = true"
-        @close="showABCParams = false"
-      />
+      <ABCParamsPopover v-model:weights="abcParams.weights" v-model:thresholds="abcParams.thresholds"
+        @show-result-modal="showResultModal = true" @close="showABCParams = false" />
     </DialogContent>
   </Dialog>
 
@@ -96,11 +93,8 @@
       <DialogDescription>
         Configure os níveis de serviço e parâmetros de reposição para calcular o estoque ideal.
       </DialogDescription>
-      <TargetStockParamsPopover 
-        :service-levels="targetStockParams.serviceLevels"
-        :replenishment-params="targetStockParams.replenishmentParams"
-        @show-result-modal="openTargetStockResultModal" 
-      />
+      <TargetStockParamsPopover :service-levels="targetStockParams.serviceLevels"
+        :replenishment-params="targetStockParams.replenishmentParams" @show-result-modal="openTargetStockResultModal" />
     </DialogContent>
   </Dialog>
 
@@ -111,32 +105,20 @@
         Defina os parâmetros de participação de mercado e taxa de crescimento para análise BCG.
       </DialogDescription>
       <BCGConfigurationPopover v-model:x-axis="bcgConfig.xAxis" v-model:y-axis="bcgConfig.yAxis"
-      @show-result-modal="handleShowBCGResultModal" @close="showBCGParams = false" />
+        @show-result-modal="handleShowBCGResultModal" @close="showBCGParams = false" />
     </DialogContent>
   </Dialog>
 
-  
+
   <!-- Modais de resultado -->
-  <AnalysisResultModal 
-    :open="showResultModal" 
-    @close="closeResultModal"
-    @remove-from-gondola="removeFromGondola" 
-  />
-  
-  <TargetStockResultModal 
-    :open="showTargetStockResultModal" 
-    @close="showTargetStockResultModal = false" 
-  /> 
-  
-  <BCGResultModalImproved 
-  v-model:open="showBCGResultModal" 
-  />
+  <AnalysisResultModal :open="showResultModal" @close="closeResultModal" @remove-from-gondola="removeFromGondola" />
+
+  <TargetStockResultModal :open="showTargetStockResultModal" @close="showTargetStockResultModal = false" />
+
+  <BCGResultModalImproved v-model:open="showBCGResultModal" />
 
   <!-- Modal de Impressão -->
-  <PrintModal 
-    v-model:open="showPrintModal"
-    @close="showPrintModal = false"
-  />
+  <PrintModal v-model:open="showPrintModal" @close="showPrintModal = false" />
 </template>
 
 <script setup lang="ts">
@@ -144,17 +126,17 @@ import { ref, watch } from 'vue';
 import { NutIcon, PrinterIcon, Paintbrush, FileTextIcon, FileSpreadsheetIcon } from 'lucide-vue-next';
 
 // Componentes UI
-import { 
-  Popover, 
-  PopoverContent, 
-  PopoverTrigger 
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger
 } from '@plannerate/components/ui/popover';
 import { Button } from '@plannerate/components/ui/button';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogTitle 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle
 } from '@plannerate/components/ui/dialog';
 
 // Componente de impressão
@@ -163,7 +145,7 @@ import PrintModal from '@plannerate/components/PrintModal.vue';
 // Imports dos componentes de análise
 import ABCParamsPopover from '@plannerate/components/ABCParamsPopover.vue';
 import AnalysisResultModal from '@plannerate/components/AnalysisResultModal.vue';
-import TargetStockParamsPopover from '@plannerate/components/TargetStockParamsPopover.vue'; 
+import TargetStockParamsPopover from '@plannerate/components/TargetStockParamsPopover.vue';
 import TargetStockResultModal from '@plannerate/components/TargetStockResultModal.vue';
 import BCGConfigurationPopover from '@plannerate/components/bcg/BCGConfigurationPopover.vue';
 import BCGResultModalImproved from '@plannerate/components/bcg/BCGResultModalImproved.vue';
@@ -176,9 +158,11 @@ import { useEditorStore } from '@plannerate/store/editor';
 const analysisResultStore = useAnalysisResultStore();
 const editorStore = useEditorStore();
 
+console.log('AnalysisResultStore:', analysisResultStore);
+
 // Estados dos popovers e modais
 const showCalculos = ref(false);
-const showABCParams = ref(false); 
+const showABCParams = ref(false);
 const showTargetStockParams = ref(false);
 const showBCGParams = ref(false);
 const showResultModal = ref(false);
@@ -186,7 +170,9 @@ const showBCGResultModal = ref(false);
 const showTargetStockResultModal = ref(false);
 const showReportOptions = ref(false);
 const isGeneratingReport = ref(false);
-const showPrintModal = ref(false);  
+const showPrintModal = ref(false);
+
+const isAbcCalculating = ref(false);
 
 // Watchers para fechar popover principal quando abrir parâmetros
 watch(showABCParams, (newVal) => {
@@ -237,7 +223,7 @@ const targetStockParams = ref({
     { classification: 'C', coverageDays: 7 }
   ],
 });
- 
+
 
 // Métodos
 const closeResultModal = () => {
@@ -251,17 +237,17 @@ function openTargetStockResultModal() {
 
 function removeFromGondola(selectedItemId: string | null) {
   if (selectedItemId) {
-    const record = editorStore.getCurrentGondola?.sections.flatMap((section: any) => 
-      section.shelves.flatMap((shelf: any) => 
+    const record = editorStore.getCurrentGondola?.sections.flatMap((section: any) =>
+      section.shelves.flatMap((shelf: any) =>
         shelf.segments.flatMap((segment: any) => segment.layer.product)
       )
     ).find((product: any) => product?.ean === selectedItemId);
-    
+
     if (record) {
       let sectionId = null;
       let shelfId = null;
       let segmentId = null;
-      
+
       if (editorStore.getCurrentGondola) {
         editorStore.getCurrentGondola?.sections.forEach((section: any) => {
           section.shelves.forEach((shelf: any) => {
@@ -274,12 +260,12 @@ function removeFromGondola(selectedItemId: string | null) {
             });
           });
         });
-        
+
         if (sectionId && shelfId && segmentId) {
           editorStore.removeSegmentFromShelf(
-            editorStore.getCurrentGondola?.id, 
-            sectionId, 
-            shelfId, 
+            editorStore.getCurrentGondola?.id,
+            sectionId,
+            shelfId,
             segmentId
           );
         }
@@ -297,6 +283,7 @@ const handleShowBCGResultModal = () => {
 function handleOpenABCParams() {
   showCalculos.value = false;
   showABCParams.value = true;
+  isAbcCalculating.value = true;
 }
 
 function handleOpenTargetStockParams() {
@@ -321,12 +308,12 @@ async function generateReport(format: 'excel' | 'pdf' | 'compra' | 'dimensao' | 
 
   try {
     const gondolaId = editorStore.getCurrentGondola.id;
-    
+
     // Definir endpoint baseado no formato
     let endpoint: string;
     let acceptHeader: string;
     let fileExtension: string;
-    
+
     switch (format) {
       case 'excel':
         endpoint = `/api/plannerate/gondola-report/${gondolaId}/excel`;
@@ -373,7 +360,7 @@ async function generateReport(format: 'excel' | 'pdf' | 'compra' | 'dimensao' | 
     // Obter o nome do arquivo do header ou usar um padrão
     const contentDisposition = response.headers.get('content-disposition');
     let filename = `relatorio-gondola-${gondolaId}.${fileExtension}`;
-    
+
     if (contentDisposition) {
       const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
       if (filenameMatch) {
@@ -399,4 +386,9 @@ async function generateReport(format: 'excel' | 'pdf' | 'compra' | 'dimensao' | 
     isGeneratingReport.value = false;
   }
 }
+
+const clearAnalysisResult = () => {
+  analysisResultStore.setResult(null);
+  isAbcCalculating.value = false;
+};
 </script>

@@ -1,11 +1,21 @@
 <template>
     <div v-if="layer.product" class="layer group flex cursor-pointer" :style="layerStyle" @click="handleLayerClick"
-        @keydown="handleKeyDown" :class="{ 'layer--selected': isSelected, 'layer--focused': !isSelected }">
-
+        @keydown="handleKeyDown" :class="{
+            'layer--selected': isSelected, 'layer--focused': !isSelected
+        }">
+        <div class="absolute -top-4 -left-2 m-1 px-1 text-xs font-bold text-white rounded" :class="{
+            'bg-blue-500': abcClass === 'A',
+            'bg-green-500': abcClass === 'B',
+            'bg-red-500': abcClass === 'C'
+        }">
+            {{ abcClass }}
+        </div>
         <ProductNormal v-for="index in layer.quantity" :key="index" :product="layer.product" :scale-factor="scaleFactor"
             :index="index" :shelf-depth="props.shelfDepth" :layer="layer">
             <template #depth-count v-if="index === 1">
-                <slot name="depth-count"></slot>
+                <slot name="depth-count">
+
+                </slot>
 
             </template>
         </ProductNormal>
@@ -15,6 +25,7 @@
 <script setup lang="ts">
 import { computed, CSSProperties, onMounted, onUnmounted, ref } from 'vue';
 import { useEditorStore } from '@plannerate/store/editor';
+import { useAnalysisResultStore } from '@plannerate/store/editor/analysisResult';
 import ProductNormal from '@plannerate/views/gondolas/sections/shelves/Product.vue';
 import { Layer as LayerType, Segment as SegmentType } from '@/types/segment';
 import { Shelf } from '@plannerate/types/shelves';
@@ -48,7 +59,14 @@ const segmentSelected = ref(false);
 const editorGondola = computed(() => editorStore.getCurrentGondola);
 const currentSectionId = computed(() => props.shelf.section_id);
 
+const analysisResultStore = useAnalysisResultStore();
 
+const abcClass = computed(() => {
+    if (!props.layer?.product) return 'B'; // Default para evitar erros
+    const productEan = props.layer.product.ean;
+    const classificationEntry = analysisResultStore.result?.find((p: any) => p.id === productEan);
+    return classificationEntry?.abcClass ; // Default para evitar erros
+});
 /**
  * Computed style para o layer baseado em alinhamento e dimensões
  */
@@ -314,5 +332,17 @@ onUnmounted(() => {
 .layer--focused:focus {
     outline: 1px solid blue;
     outline-offset: 2px;
+}
+
+.A {
+    background-color: #00ff00;
+}
+
+.B {
+    background-color: #0000ff;
+}
+
+.C {
+    background-color: #ff0000;
 }
 </style>

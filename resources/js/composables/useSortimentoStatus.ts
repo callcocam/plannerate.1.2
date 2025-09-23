@@ -41,7 +41,7 @@ export function useAssortmentStatus(
   today: Date = new Date()
 ): ProductAnalysis[] {
   // Step 1: Calculate weighted average for each product
-  const analyzed: ProductAnalysis[] = products.map((product) => { 
+  const analyzed: ProductAnalysis[] = products.map((product) => {
     const quantity = Number(product.quantity) || 0;
     const value = Number(product.value) || 0;
     const margin = Number(product.margin) || 0;
@@ -193,8 +193,7 @@ export function useAssortmentStatus(
     }
     prod.status = status;
     prod.statusDetail = statusDetail;
-  }
-
+  } 
   // Próximas etapas virão aqui
   return analyzed;
 } 

@@ -183,16 +183,4 @@ const productStyle = computed(() => {
     font-weight: bold;
     font-size: 16px;
 }
-
-.A {
-    background-color: #00ff00;
-}
-
-.B {
-    background-color: #0000ff;
-}
-
-.C {
-    background-color: #ff0000;
-}
 </style>
