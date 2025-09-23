@@ -158,26 +158,52 @@
                     <h4 class="text-sm font-medium">📦 Target Stock & Facing</h4>
                     
                     <div class="space-y-3">
-                        <div>
-                            <Label class="text-xs">Dias de Cobertura</Label>
-                            <Input v-model.number="targetStockParams.coverageDays" 
-                                   type="number" min="1" max="30" />
+                        <!-- Níveis de Serviço por Classe -->
+                        <div class="space-y-2">
+                            <Label class="text-xs font-medium">Níveis de Serviço por Classe</Label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <div>
+                                    <Label class="text-xs">Classe A</Label>
+                                    <Input v-model.number="targetStockParams.serviceLevels[0].level" 
+                                           type="number" step="0.01" min="0.5" max="0.99" class="text-xs" />
+                                </div>
+                                <div>
+                                    <Label class="text-xs">Classe B</Label>
+                                    <Input v-model.number="targetStockParams.serviceLevels[1].level" 
+                                           type="number" step="0.01" min="0.5" max="0.99" class="text-xs" />
+                                </div>
+                                <div>
+                                    <Label class="text-xs">Classe C</Label>
+                                    <Input v-model.number="targetStockParams.serviceLevels[2].level" 
+                                           type="number" step="0.01" min="0.5" max="0.99" class="text-xs" />
+                                </div>
+                            </div>
                         </div>
                         
-                        <div>
-                            <Label class="text-xs">Estoque Segurança (%)</Label>
-                            <Input v-model.number="targetStockParams.safetyStock" 
-                                   type="number" min="0" max="50" />
+                        <!-- Dias de Cobertura por Classe -->
+                        <div class="space-y-2">
+                            <Label class="text-xs font-medium">Dias de Cobertura por Classe</Label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <div>
+                                    <Label class="text-xs">Classe A</Label>
+                                    <Input v-model.number="targetStockParams.replenishmentParams[0].coverageDays" 
+                                           type="number" min="1" max="30" class="text-xs" />
+                                </div>
+                                <div>
+                                    <Label class="text-xs">Classe B</Label>
+                                    <Input v-model.number="targetStockParams.replenishmentParams[1].coverageDays" 
+                                           type="number" min="1" max="30" class="text-xs" />
+                                </div>
+                                <div>
+                                    <Label class="text-xs">Classe C</Label>
+                                    <Input v-model.number="targetStockParams.replenishmentParams[2].coverageDays" 
+                                           type="number" min="1" max="30" class="text-xs" />
+                                </div>
+                            </div>
                         </div>
                         
-                        <div>
-                            <Label class="text-xs">Service Level</Label>
-                            <select v-model="targetStockParams.serviceLevel" 
-                                    class="w-full p-2 border rounded">
-                                <option value="90">90% - Básico</option>
-                                <option value="95">95% - Padrão</option>
-                                <option value="99">99% - Premium</option>
-                            </select>
+                        <div class="bg-blue-50 p-3 rounded-md text-xs text-blue-700">
+                            <strong>ℹ️ Estoque de Segurança:</strong> Calculado automaticamente usando a fórmula Z-Score × Desvio Padrão baseado no Service Level configurado.
                         </div>
                         
                         <!-- Limites de Facing -->
@@ -217,8 +243,9 @@
                         <strong>Thresholds:</strong> A:{{ abcParams.thresholds.a }}%, B:{{ abcParams.thresholds.b }}%
                     </div>
                     <div>
-                        <strong>Target Stock:</strong> {{ targetStockParams.coverageDays }}d, {{ targetStockParams.safetyStock }}% seg<br>
-                        <strong>Service Level:</strong> {{ targetStockParams.serviceLevel }}%
+                        <strong>Target Stock:</strong> A:{{ targetStockParams.replenishmentParams[0].coverageDays }}d, B:{{ targetStockParams.replenishmentParams[1].coverageDays }}d, C:{{ targetStockParams.replenishmentParams[2].coverageDays }}d<br>
+                        <strong>Service Level:</strong> A:{{ Math.round(targetStockParams.serviceLevels[0].level * 100) }}%, B:{{ Math.round(targetStockParams.serviceLevels[1].level * 100) }}%, C:{{ Math.round(targetStockParams.serviceLevels[2].level * 100) }}%<br>
+                        <strong>Estoque Segurança:</strong> Calculado automaticamente
                     </div>
                 </div>
                 
@@ -329,9 +356,8 @@ export interface IntelligentGenerationParams {
         thresholds: { a: number; b: number; };
     };
     targetStockParams: {
-        coverageDays: number;
-        safetyStock: number;
-        serviceLevel: number;
+        serviceLevels: { classification: string; level: number; }[];
+        replenishmentParams: { classification: string; coverageDays: number; }[];
     };
     facingLimits: {
         A: { min: number; max: number; };
@@ -354,8 +380,8 @@ const filters = reactive<AutoGenerateFilters>({
 const abcParams = reactive({
     weights: {
         quantity: 0.3,  // Peso Qtd
-        value: 0.5,     // Peso Valor
-        margin: 0.2     // Peso Margem
+        value: 0.3,     // Peso Valor
+        margin: 0.4     // Peso Margem
     },
     thresholds: {
         a: 80,          // Limite Classe A (%)
@@ -363,11 +389,19 @@ const abcParams = reactive({
     }
 });
 
-// Parâmetros Target Stock (valores da foto)
+// Parâmetros Target Stock (valores do TargetStockParamsPopover.vue)
 const targetStockParams = reactive({
-    coverageDays: 7,    // Dias de Cobertura
-    safetyStock: 20,    // Estoque Segurança (%)
-    serviceLevel: 95    // Service Level: 95% - Padrão
+    serviceLevels: [
+        { classification: 'A', level: 0.70 }, // 70% como no TargetStockResultModal
+        { classification: 'B', level: 0.80 }, // 80% como no TargetStockResultModal
+        { classification: 'C', level: 0.90 }  // 90% como no TargetStockResultModal
+    ],
+    replenishmentParams: [
+        { classification: 'A', coverageDays: 2 }, // 2 dias como no TargetStockResultModal
+        { classification: 'B', coverageDays: 5 }, // 5 dias como no TargetStockResultModal
+        { classification: 'C', coverageDays: 7 }  // 7 dias como no TargetStockResultModal
+    ]
+    // Estoque Segurança: Calculado automaticamente (Z-Score × Desvio Padrão)
 });
 
 // Limites de Facing por classe
@@ -482,14 +516,22 @@ const resetFilters = () => {
     
     // Reset dos parâmetros inteligentes (valores da foto)
     abcParams.weights.quantity = 0.3;  // Peso Qtd
-    abcParams.weights.value = 0.5;     // Peso Valor  
-    abcParams.weights.margin = 0.2;    // Peso Margem
+    abcParams.weights.value = 0.3;     // Peso Valor  
+    abcParams.weights.margin = 0.4;    // Peso Margem
     abcParams.thresholds.a = 80;       // Limite Classe A (%)
     abcParams.thresholds.b = 95;       // Limite Classe B (%)
     
-    targetStockParams.coverageDays = 7;     // Dias de Cobertura
-    targetStockParams.safetyStock = 20;     // Estoque Segurança (%)
-    targetStockParams.serviceLevel = 95;    // Service Level: 95% - Padrão
+    targetStockParams.serviceLevels = [
+        { classification: 'A', level: 0.70 }, // 70% como no TargetStockResultModal
+        { classification: 'B', level: 0.80 }, // 80% como no TargetStockResultModal
+        { classification: 'C', level: 0.90 }  // 90% como no TargetStockResultModal
+    ];
+    targetStockParams.replenishmentParams = [
+        { classification: 'A', coverageDays: 2 }, // 2 dias como no TargetStockResultModal
+        { classification: 'B', coverageDays: 5 }, // 5 dias como no TargetStockResultModal
+        { classification: 'C', coverageDays: 7 }  // 7 dias como no TargetStockResultModal
+    ];
+    // Estoque Segurança: Calculado automaticamente
     
     facingLimits.A = { min: 2, max: 12 };
     facingLimits.B = { min: 1, max: 8 };

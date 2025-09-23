@@ -179,7 +179,7 @@ class AutoPlanogramController extends Controller
             'safetyStock' => 20,
             'serviceLevel' => 95
         ]);
-        $targetStockResults = $this->executeTargetStockAnalysis($productsData, $targetStockParams);
+        $targetStockResults = $this->executeTargetStockAnalysis($productsData, $targetStockParams, $gondola->planogram_id);
         
         // 3. PROCESSAR COM FACING INTELIGENTE
         $scores = $this->processProductsWithNewLogic($productsData, $abcResults, $targetStockResults, $gondola);
@@ -742,8 +742,8 @@ class AutoPlanogramController extends Controller
 
         return [
             'total_products' => count($scores),
-            'average_priority_score' => round(array_sum($priorityScores) / count($priorityScores), 4),
-            'average_facing' => round(array_sum($facings) / count($facings), 2),
+            'average_priority_score' => count($priorityScores) > 0 ? round(array_sum($priorityScores) / count($priorityScores), 4) : 0,
+            'average_facing' => count($facings) > 0 ? round(array_sum($facings) / count($facings), 2) : 0,
             'average_coverage_efficiency' => !empty($coverageEfficiencies) ? 
                 round(array_sum($coverageEfficiencies) / count($coverageEfficiencies), 1) : 0,
             'facing_distribution' => [
@@ -783,7 +783,7 @@ class AutoPlanogramController extends Controller
 
         return [
             'total_products' => count($scores),
-            'average_score' => round(array_sum($finalScores) / count($finalScores), 4),
+            'average_score' => count($finalScores) > 0 ? round(array_sum($finalScores) / count($finalScores), 4) : 0,
             'min_score' => min($finalScores),
             'max_score' => max($finalScores),
             'score_distribution' => [
@@ -1360,7 +1360,7 @@ class AutoPlanogramController extends Controller
             $abcResults = $this->executeABCAnalysis($allProducts, $request->abc_params);
             
             // 4. EXECUTAR ANÁLISE TARGET STOCK
-            $targetStockResults = $this->executeTargetStockAnalysis($allProducts, $request->target_stock_params);
+            $targetStockResults = $this->executeTargetStockAnalysis($allProducts, $request->target_stock_params, $gondola->planogram_id);
             
             // 5. PROCESSAR PRODUTOS COM DADOS INTELIGENTES
             $processedProducts = $this->processProductsWithNewLogic(
@@ -1498,52 +1498,140 @@ class AutoPlanogramController extends Controller
     /**
      * 📦 Executar análise Target Stock
      */
-    protected function executeTargetStockAnalysis(array $products, array $targetStockParams): array
+    protected function executeTargetStockAnalysis(array $products, array $targetStockParams, string $planogramId): array
     {
         $results = [];
         
+        // ✅ USAR TARGETSTOCKANALYSISSERVICE (mesmo do TargetStockResultModal)
+        $productIds = array_column($products, 'id');
+        
+        // Buscar período do planograma
+        $planogram = \App\Models\Planogram::find($planogramId);
+        if (!$planogram) {
+            Log::error("❌ Planograma não encontrado para análise target stock", ['planogram_id' => $planogramId]);
+            return [];
+        }
+        
+        // ✅ USAR O MESMO SERVIÇO QUE O TARGETSTOCKRESULTMODAL
+        $analysisResults = $this->targetStockAnalysisService->analyze(
+            $productIds,
+            $planogram->start_date,
+            $planogram->end_date,
+            null // store_id
+        );
+        
+        Log::info("🔍 DEBUG: TargetStockAnalysisService retornou", [
+            'total_results' => count($analysisResults),
+            'first_result_keys' => array_keys(array_slice($analysisResults, 0, 3)),
+            'sample_product_ids' => array_slice($productIds, 0, 3)
+        ]);
+        
+        // Converter resultado para formato esperado pelo AutoPlanogramController
+        // O TargetStockAnalysisService retorna array indexado numericamente, então vamos converter
+        $analysisByProductId = [];
+        foreach ($analysisResults as $analysis) {
+            $analysisByProductId[$analysis['product_id']] = $analysis;
+        }
+        
         foreach ($products as $product) {
-            // ✅ DADOS REAIS: Buscar do banco de dados
-            $dailySales = $this->getDailySales($product['id']);
-            $currentStock = $this->getCurrentStock($product['id']);
+            $productId = $product['id'];
+            $analysis = $analysisByProductId[$productId] ?? null;
             
-            // Calcular estoque alvo
-            $targetStock = $this->calculateTargetStock(
-                $dailySales,
-                $targetStockParams['coverageDays'],
-                $targetStockParams['safetyStock'],
-                $targetStockParams['serviceLevel']
-            );
-            
-            // Garantir que o target stock seja pelo menos 2 para produtos com vendas
-            $targetStock = max(2, $targetStock);
-            
-            // Calcular métricas
+            if ($analysis) {
+                // ✅ APLICAR A MESMA FÓRMULA DO USETARGETSTOCK (FRONTEND)
+                $averageSales = $analysis['average_sales'] ?? 0;
+                $standardDeviation = $analysis['standard_deviation'] ?? 0;
+                $currentStock = $analysis['currentStock'] ?? 0;
+                $classification = $product['abc_class'] ?? 'A';
+                
+                // ✅ USAR PARÂMETROS POR CLASSE ABC (igual ao TargetStockParamsPopover.vue)
+                $serviceLevels = [
+                    ['classification' => 'A', 'level' => 0.70], // 70% como no TargetStockResultModal
+                    ['classification' => 'B', 'level' => 0.80], // 80% como no TargetStockResultModal  
+                    ['classification' => 'C', 'level' => 0.90]  // 90% como no TargetStockResultModal
+                ];
+                $replenishmentParams = [
+                    ['classification' => 'A', 'coverageDays' => 2], // 2 dias como no TargetStockResultModal
+                    ['classification' => 'B', 'coverageDays' => 5], // 5 dias como no TargetStockResultModal
+                    ['classification' => 'C', 'coverageDays' => 7]  // 7 dias como no TargetStockResultModal
+                ];
+                
+                Log::info("📋 Parâmetros por classe ABC (igual ao TargetStockParamsPopover)", [
+                    'serviceLevels' => $serviceLevels,
+                    'replenishmentParams' => $replenishmentParams
+                ]);
+                
+                // Encontrar parâmetros para a classificação específica
+                $serviceLevel = 70; // padrão
+                $coverageDays = 2; // padrão
+                
+                foreach ($serviceLevels as $sl) {
+                    if ($sl['classification'] === $classification) {
+                        $serviceLevel = $sl['level'] * 100;
+                        break;
+                    }
+                }
+                
+                foreach ($replenishmentParams as $rp) {
+                    if ($rp['classification'] === $classification) {
+                        $coverageDays = $rp['coverageDays'];
+                        break;
+                    }
+                }
+                
+                // ✅ CALCULAR TARGET STOCK COM A MESMA FÓRMULA DO FRONTEND
+                // 1. Calcular Z-Score baseado no Service Level
+                $zScore = $this->calculateZScore($serviceLevel);
+                
+                // 2. Calcular Estoque de Segurança dinamicamente (Z-Score × Desvio Padrão)
+                $safetyStock = $zScore * $standardDeviation;
+                
+                // 3. Calcular Estoque Mínimo (Demanda Média × Dias de Cobertura)
+                $minimumStock = $averageSales * $coverageDays;
+                
+                // 4. Calcular Estoque Alvo (Mínimo + Segurança)
+                $targetStock = $minimumStock + $safetyStock;
+                
+                Log::info("🧮 Cálculo detalhado do Target Stock", [
+                    'product_id' => $productId,
+                    'product_name' => $product['name'],
+                    'average_sales' => $averageSales,
+                    'standard_deviation' => $standardDeviation,
+                    'service_level' => $serviceLevel,
+                    'coverage_days' => $coverageDays,
+                    'z_score' => round($zScore, 3),
+                    'safety_stock_calculated' => round($safetyStock, 2),
+                    'minimum_stock' => round($minimumStock, 2),
+                    'target_stock_final' => round($targetStock, 2),
+                    'formula' => "($averageSales × $coverageDays) + ($zScore × $standardDeviation) = $minimumStock + $safetyStock = $targetStock"
+                ]);
+                
             $stockRatio = $targetStock > 0 ? $currentStock / $targetStock : 1;
             $urgency = $this->determineStockUrgency($stockRatio);
             
             $results[] = [
-                'product_id' => $product['id'],
-                'product_name' => $product['name'] ?? 'Produto sem nome',
-                'daily_sales' => $dailySales,
+                    'product_id' => $productId,
+                    'product_name' => $product['name'] ?? 'Produto sem nome',
+                    'daily_sales' => $averageSales,
                 'current_stock' => $currentStock,
-                'target_stock' => $targetStock,
+                    'target_stock' => round($targetStock),
                 'stock_ratio' => $stockRatio,
                 'urgency' => $urgency,
-                'coverage_days' => $dailySales > 0 ? floor($currentStock / $dailySales) : 999
-            ];
-            
-            // Log individual para debug
-            Log::info("📦 Target Stock calculado para produto", [
-                'product_id' => $product['id'],
-                'product_name' => $product['name'] ?? 'N/A',
-                'daily_sales' => $dailySales,
-                'coverage_days' => $targetStockParams['coverageDays'],
-                'safety_stock' => $targetStockParams['safetyStock'],
-                'target_stock_calculated' => $targetStock,
-                'current_stock' => $currentStock,
-                'urgency' => $urgency
-            ]);
+                    'coverage_days' => $averageSales > 0 ? floor($currentStock / $averageSales) : 999
+                ];
+                
+                Log::info("📦 Target Stock calculado via TargetStockAnalysisService", [
+                    'product_id' => $productId,
+                    'product_name' => $product['name'],
+                    'target_stock' => round($targetStock),
+                    'current_stock' => $currentStock,
+                    'urgency' => $urgency,
+                    'source' => 'targetStockAnalysisService_unified',
+                    'z_score' => $zScore,
+                    'safety_stock' => $safetyStock,
+                    'minimum_stock' => $minimumStock
+                ]);
+            }
         }
         
         // Calcular estatísticas detalhadas da análise Target Stock
@@ -1551,10 +1639,11 @@ class AutoPlanogramController extends Controller
         $lowStockProducts = array_filter($results, fn($r) => $r['urgency'] === 'BAIXO');
         $normalProducts = array_filter($results, fn($r) => $r['urgency'] === 'NORMAL');
 
+        $resultsCount = count($results);
         $stockStats = [
-            'avg_current_stock' => round(array_sum(array_column($results, 'current_stock')) / count($results), 1),
-            'avg_target_stock' => round(array_sum(array_column($results, 'target_stock')) / count($results), 1),
-            'avg_stock_ratio' => round(array_sum(array_column($results, 'stock_ratio')) / count($results), 2)
+            'avg_current_stock' => $resultsCount > 0 ? round(array_sum(array_column($results, 'current_stock')) / $resultsCount, 1) : 0,
+            'avg_target_stock' => $resultsCount > 0 ? round(array_sum(array_column($results, 'target_stock')) / $resultsCount, 1) : 0,
+            'avg_stock_ratio' => $resultsCount > 0 ? round(array_sum(array_column($results, 'stock_ratio')) / $resultsCount, 2) : 0
         ];
 
         Log::info("📦 Análise Target Stock concluída", [
@@ -1565,9 +1654,9 @@ class AutoPlanogramController extends Controller
                 'normal' => count($normalProducts)
             ],
             'urgency_percentages' => [
-                'critical' => round((count($criticalProducts) / count($results)) * 100, 1) . '%',
-                'low_stock' => round((count($lowStockProducts) / count($results)) * 100, 1) . '%',
-                'normal' => round((count($normalProducts) / count($results)) * 100, 1) . '%'
+                'critical' => $resultsCount > 0 ? round((count($criticalProducts) / $resultsCount) * 100, 1) . '%' : '0%',
+                'low_stock' => $resultsCount > 0 ? round((count($lowStockProducts) / $resultsCount) * 100, 1) . '%' : '0%',
+                'normal' => $resultsCount > 0 ? round((count($normalProducts) / $resultsCount) * 100, 1) . '%' : '0%'
             ],
             'stock_stats' => $stockStats,
             'critical_products_sample' => array_slice(
@@ -1716,35 +1805,219 @@ class AutoPlanogramController extends Controller
     }
 
     /**
-     * 🏪 Distribuir inteligentemente na gôndola
+     * 🏪 Distribuir inteligentemente na gôndola baseado em ABC por categoria
      */
     protected function distributeIntelligently(Gondola $gondola, array $processedProducts): array
     {
-        // NOVA ETAPA: Reordenar produtos por adjacência de categoria
-        $processedProducts = $this->reorderProductsByCategory($processedProducts);
-        
-        // 🎯 NOVA LÓGICA: Manter adjacência de categoria por módulo
-        // Em vez de reclassificar por ABC, manter ordem categórica e distribuir sequencialmente
-        Log::info("🏪 Preparando distribuição por CATEGORIA (não por ABC)", [
-            'total_products' => count($processedProducts),
-            'order_maintained' => 'Sequencial por categoria'
+        Log::info("🏪 Iniciando distribuição ABC por categoria", [
+            'total_products' => count($processedProducts)
         ]);
         
         $gondolaStructure = $this->analyzeGondolaStructure($gondola);
         $this->ensureGondolaHasSegments($gondola);
         
-        // Distribuir usando o service existente - MAS COM ORDEM CATEGÓRICA
-        $distributionResult = $this->productPlacement->placeProductsSequentially(
-            $gondola,
-            $processedProducts, // 🎯 PRODUTOS NA ORDEM CATEGÓRICA (açúcar→arroz→feijão→sal)
-            $gondolaStructure
-        );
+        // 🎯 NOVA LÓGICA: ABC por categoria
+        $distributionResult = $this->distributeByCategoryABC($gondola, $processedProducts, $gondolaStructure);
         
-        Log::info("🏪 Distribuição inteligente concluída com adjacência de categoria", [
+        Log::info("🏪 Distribuição ABC por categoria concluída", [
             'products_placed' => $distributionResult['products_placed'],
             'total_placements' => $distributionResult['total_placements'],
             'segments_used' => $distributionResult['segments_used'],
-            'category_order_maintained' => true
+            'categories_processed' => $distributionResult['categories_processed'] ?? 0
+        ]);
+        
+        return $distributionResult;
+    }
+
+    /**
+     * 🎯 NOVO: Distribuição baseada em ABC por categoria
+     * 1. Analisa TODOS os produtos e aplica ABC
+     * 2. Identifica categoria prioritária (maior valor ABC)
+     * 3. Coleta TODOS os produtos dessa categoria
+     * 4. Aplica ABC dentro da categoria
+     * 5. Distribui por módulos respeitando ABC interno
+     * 6. Repete para próxima categoria
+     */
+    protected function distributeByCategoryABC(Gondola $gondola, array $processedProducts, array $gondolaStructure): array
+    {
+        $totalProductsPlaced = 0;
+        $totalPlacements = 0;
+        $segmentsUsed = 0;
+        $categoriesProcessed = 0;
+        
+        // 1. 📊 ANÁLISE ABC GERAL - Identificar categoria prioritária
+        $categoryPriority = $this->analyzeCategoryPriority($processedProducts);
+        
+        Log::info("📊 Categoria prioritária identificada", [
+            'priority_category' => $categoryPriority['category'],
+            'total_abc_value' => $categoryPriority['total_abc_value'],
+            'products_count' => $categoryPriority['products_count']
+        ]);
+        
+        // 2. 🔄 PROCESSAR CATEGORIAS POR ORDEM DE PRIORIDADE ABC
+        $remainingProducts = $processedProducts;
+        
+        foreach ($categoryPriority['categories_ordered'] as $categoryInfo) {
+            $categoryName = $categoryInfo['category'];
+            $categoryProducts = $categoryInfo['products'];
+            
+            Log::info("🎯 Processando categoria: {$categoryName}", [
+                'products_count' => count($categoryProducts),
+                'category_abc_value' => $categoryInfo['total_abc_value']
+            ]);
+            
+            // 3. 📈 APLICAR ABC DENTRO DA CATEGORIA
+            $categoryProductsABC = $this->applyABCWithinCategory($categoryProducts);
+            
+            // 4. 🏪 DISTRIBUIR CATEGORIA NOS MÓDULOS
+            $categoryResult = $this->distributeCategoryInModules($gondola, $categoryProductsABC, $gondolaStructure, $categoryName);
+            
+            // 5. 📊 CONSOLIDAR RESULTADOS
+            $totalProductsPlaced += $categoryResult['products_placed'];
+            $totalPlacements += $categoryResult['total_placements'];
+            $segmentsUsed += $categoryResult['segments_used'];
+            $categoriesProcessed++;
+            
+            Log::info("✅ Categoria {$categoryName} processada", [
+                'products_placed' => $categoryResult['products_placed'],
+                'total_placements' => $categoryResult['total_placements'],
+                'segments_used' => $categoryResult['segments_used']
+            ]);
+            
+            // 6. 🧹 REMOVER PRODUTOS JÁ PROCESSADOS
+            $remainingProducts = array_filter($remainingProducts, function($product) use ($categoryProducts) {
+                $productId = $product['product']['id'];
+                return !collect($categoryProducts)->contains('product.id', $productId);
+            });
+        }
+        
+        return [
+            'products_placed' => $totalProductsPlaced,
+            'total_placements' => $totalPlacements,
+            'segments_used' => $segmentsUsed,
+            'categories_processed' => $categoriesProcessed,
+            'remaining_products' => count($remainingProducts)
+        ];
+    }
+
+    /**
+     * 📊 Analisa prioridade das categorias baseado em ABC
+     */
+    protected function analyzeCategoryPriority(array $processedProducts): array
+    {
+        // 1. Agrupar produtos por categoria
+        $categoryGroups = [];
+        
+        foreach ($processedProducts as $product) {
+            $productName = strtoupper($product['product']['name'] ?? 'OUTROS');
+            $categoryKey = explode(' ', $productName)[0]; // Primeira palavra
+            
+            if (!isset($categoryGroups[$categoryKey])) {
+                $categoryGroups[$categoryKey] = [
+                    'category' => $categoryKey,
+                    'products' => [],
+                    'total_abc_value' => 0,
+                    'total_quantity' => 0,
+                    'total_margin' => 0
+                ];
+            }
+            
+            $categoryGroups[$categoryKey]['products'][] = $product;
+            
+            // Somar valores ABC da categoria
+            $categoryGroups[$categoryKey]['total_abc_value'] += $product['priority_score'] ?? 0;
+            $categoryGroups[$categoryKey]['total_quantity'] += $product['abc_data']['quantity'] ?? 0;
+            $categoryGroups[$categoryKey]['total_margin'] += $product['abc_data']['margin'] ?? 0;
+        }
+        
+        // 2. Ordenar categorias por valor ABC total (descrescente)
+        $categoriesOrdered = collect($categoryGroups)->sortByDesc('total_abc_value')->values()->toArray();
+        
+        // 3. Identificar categoria prioritária
+        $priorityCategory = $categoriesOrdered[0] ?? null;
+        
+        Log::info("📊 Análise de prioridade das categorias", [
+            'total_categories' => count($categoriesOrdered),
+            'priority_category' => $priorityCategory['category'] ?? 'NENHUMA',
+            'priority_abc_value' => $priorityCategory['total_abc_value'] ?? 0,
+            'categories_summary' => array_map(function($cat) {
+                return [
+                    'category' => $cat['category'],
+                    'products_count' => count($cat['products']),
+                    'total_abc_value' => round($cat['total_abc_value'], 2)
+                ];
+            }, $categoriesOrdered)
+        ]);
+        
+        return [
+            'category' => $priorityCategory['category'] ?? 'OUTROS',
+            'total_abc_value' => $priorityCategory['total_abc_value'] ?? 0,
+            'products_count' => count($priorityCategory['products'] ?? []),
+            'categories_ordered' => $categoriesOrdered
+        ];
+    }
+
+    /**
+     * 📈 Aplica análise ABC dentro de uma categoria específica
+     */
+    protected function applyABCWithinCategory(array $categoryProducts): array
+    {
+        if (empty($categoryProducts)) {
+            return [];
+        }
+        
+        // Usar priority_score como base para ordenação ABC dentro da categoria
+        $sortedProducts = collect($categoryProducts)->sortByDesc(function($product) {
+            return $product['priority_score'] ?? 0;
+        })->values()->toArray();
+        
+        // Aplicar classificação ABC dentro da categoria
+        $totalProducts = count($sortedProducts);
+        $thresholdA = ceil($totalProducts * 0.2); // Top 20% = Classe A
+        $thresholdB = ceil($totalProducts * 0.5); // Próximos 30% = Classe B
+        
+        foreach ($sortedProducts as $index => &$product) {
+            if ($index < $thresholdA) {
+                $product['category_abc_class'] = 'A';
+            } elseif ($index < $thresholdB) {
+                $product['category_abc_class'] = 'B';
+            } else {
+                $product['category_abc_class'] = 'C';
+            }
+        }
+        
+        Log::info("📈 ABC aplicado dentro da categoria", [
+            'total_products' => $totalProducts,
+            'class_a_count' => $thresholdA,
+            'class_b_count' => $thresholdB - $thresholdA,
+            'class_c_count' => $totalProducts - $thresholdB
+        ]);
+        
+        return $sortedProducts;
+    }
+
+    /**
+     * 🏪 Distribui uma categoria específica nos módulos
+     */
+    protected function distributeCategoryInModules(Gondola $gondola, array $categoryProducts, array $gondolaStructure, string $categoryName): array
+    {
+        Log::info("🏪 Distribuindo categoria {$categoryName} nos módulos", [
+            'products_count' => count($categoryProducts),
+            'category_name' => $categoryName
+        ]);
+        
+        // 🎯 LÓGICA SEQUENCIAL: Colocar produtos sequencialmente com TODOS os facings
+        // O ProductPlacementService já está configurado para distribuir multi-prateleira
+        $distributionResult = $this->productPlacement->placeProductsSequentially(
+            $gondola,
+            $categoryProducts, // Produtos da categoria já ordenados por ABC interno
+            $gondolaStructure
+        );
+        
+        Log::info("✅ Categoria {$categoryName} distribuída sequencialmente", [
+            'products_placed' => $distributionResult['products_placed'],
+            'total_placements' => $distributionResult['total_placements'],
+            'segments_used' => $distributionResult['segments_used']
         ]);
         
         return $distributionResult;
@@ -1945,105 +2218,11 @@ class AutoPlanogramController extends Controller
         }
     }
 
-    protected function getDailySales(string $productId): float
-    {
-        try {
-            // ✅ Buscar dados reais da tabela Sales (últimos 30 dias)
-            $sales = \App\Models\Sale::where('product_id', $productId)
-                ->where('sale_date', '>=', now()->subDays(30))
-                ->selectRaw('
-                    SUM(total_sale_quantity) as total_quantity,
-                    COUNT(DISTINCT DATE(sale_date)) as days_with_sales,
-                    AVG(total_sale_quantity) as avg_per_transaction,
-                    MIN(sale_date) as first_sale_date,
-                    MAX(sale_date) as last_sale_date
-                ')
-                ->first();
-            
-            if ($sales && $sales->total_quantity > 0) {
-                // Calcular vendas diárias = total vendido / 30 dias
-                $dailySales = $sales->total_quantity / 30;
-                
-                Log::info("📊 Daily sales calculado de dados reais", [
-                    'product_id' => $productId,
-                    'total_quantity_30d' => $sales->total_quantity,
-                    'days_with_sales' => $sales->days_with_sales,
-                    'avg_per_transaction' => $sales->avg_per_transaction,
-                    'period' => $sales->first_sale_date . ' até ' . $sales->last_sale_date,
-                    'daily_sales_calculated' => $dailySales,
-                    'source' => 'sales_table_real_data'
-                ]);
-                
-                return round($dailySales, 2);
-            }
-            
-            // ✅ SEM DADOS = SEM VENDAS = ZERO
-            Log::info("ℹ️ Produto sem vendas nos últimos 30 dias", [
-                'product_id' => $productId,
-                'daily_sales' => 0
-            ]);
-            return 0.0; // Zero vendas = zero mesmo
-            
-        } catch (\Exception $e) {
-            Log::error("❌ Erro ao buscar daily sales", [
-                'product_id' => $productId,
-                'error' => $e->getMessage(),
-                'daily_sales' => 0
-            ]);
-            return 0.0; // Erro = zero vendas
-        }
-    }
+    // ✅ REMOVIDO: getDailySales() - agora usa TargetStockAnalysisService
 
-    protected function getCurrentStock(string $productId): int
-    {
-        try {
-            // ✅ DADOS REAIS: Buscar da tabela purchases.current_stock
-            $purchase = \App\Models\Purchase::where('product_id', $productId)
-                ->whereNotNull('current_stock')
-                ->orderBy('entry_date', 'desc')
-                ->first();
-            
-            if ($purchase && $purchase->current_stock >= 0) {
-                Log::info("📦 Current stock REAL da tabela purchases", [
-                    'product_id' => $productId,
-                    'current_stock' => $purchase->current_stock,
-                    'entry_date' => $purchase->entry_date,
-                    'source' => 'purchase_table_real_data'
-                ]);
-                return (int) $purchase->current_stock;
-            }
-            
-            // ✅ SEM DADOS = ZERO (sem estimativas)
-            Log::info("ℹ️ Produto sem registro de purchase - estoque zero", [
-                'product_id' => $productId,
-                'current_stock' => 0
-            ]);
-            return 0; // Sem dados reais = zero
-            
-        } catch (\Exception $e) {
-            Log::error("❌ Erro ao buscar current stock", [
-                'product_id' => $productId,
-                'error' => $e->getMessage(),
-                'current_stock' => 0
-            ]);
-            return 0; // Erro = zero
-        }
-    }
+    // ✅ REMOVIDO: getCurrentStock() - agora usa TargetStockAnalysisService
 
-    protected function calculateTargetStock(float $dailySales, int $coverageDays, int $safetyStockPercentage, int $serviceLevel): int
-    {
-        $baseStock = $dailySales * $coverageDays;
-        $safetyStock = $baseStock * ($safetyStockPercentage / 100);
-        
-        $serviceLevelMultiplier = match($serviceLevel) {
-            99 => 1.3,
-            95 => 1.1,
-            90 => 1.0,
-            default => 1.0
-        };
-        
-        return ceil(($baseStock + $safetyStock) * $serviceLevelMultiplier);
-    }
+    // ✅ REMOVIDO: calculateTargetStock() - agora usa TargetStockAnalysisService
 
     protected function determineStockUrgency(float $stockRatio): string
     {
@@ -2072,6 +2251,59 @@ class AutoPlanogramController extends Controller
             'NORMAL' => count(array_filter($targetStockResults, fn($r) => $r['urgency'] === 'NORMAL')),
             'ALTO' => count(array_filter($targetStockResults, fn($r) => $r['urgency'] === 'ALTO'))
         ];
+    }
+    
+    /**
+     * Calcula o Z-Score baseado no nível de serviço
+     * Usando a mesma fórmula do frontend (useTargetStock.ts)
+     */
+    private function calculateZScore(float $serviceLevel): float
+    {
+        $p = $serviceLevel / 100;
+        
+        // Coeficientes da aproximação
+        $a1 = -39.6968302866538;
+        $a2 = 220.946098424521;
+        $a3 = -275.928510446969;
+        $a4 = 138.357751867269;
+        $a5 = -30.6647980661472;
+        $a6 = 2.50662827745924;
+        
+        $b1 = -54.4760987982241;
+        $b2 = 161.585836858041;
+        $b3 = -155.698979859887;
+        $b4 = 66.8013118877197;
+        $b5 = -13.2806815528857;
+        
+        $c1 = -7.78489400243029E-03;
+        $c2 = -0.322396458041136;
+        $c3 = -2.40075827716184;
+        $c4 = -2.54973253934373;
+        $c5 = 4.37466414146497;
+        $c6 = 2.93816398269878;
+        
+        $d1 = 7.78469570904146E-03;
+        $d2 = 0.32246712907004;
+        $d3 = 2.445134137143;
+        $d4 = 3.75440866190746;
+        
+        $pLow = 0.02425;
+        $pHigh = 1 - $pLow;
+        
+        if ($p < $pLow) {
+            $q = sqrt(-2 * log($p));
+            return ((((($c1 * $q + $c2) * $q + $c3) * $q + $c4) * $q + $c5) * $q + $c6) / 
+                   (((($d1 * $q + $d2) * $q + $d3) * $q + $d4) * $q + 1);
+        } elseif ($p <= $pHigh) {
+            $q = $p - 0.5;
+            $r = $q * $q;
+            return ((((($a1 * $r + $a2) * $r + $a3) * $r + $a4) * $r + $a5) * $r + $a6) * $q / 
+                   ((((($b1 * $r + $b2) * $r + $b3) * $r + $b4) * $r + $b5) * $r + 1);
+        } else {
+            $q = sqrt(-2 * log(1 - $p));
+            return -((((($c1 * $q + $c2) * $q + $c3) * $q + $c4) * $q + $c5) * $q + $c6) / 
+                    (((($d1 * $q + $d2) * $q + $d3) * $q + $d4) * $q + 1);
+        }
     }
 
 }
