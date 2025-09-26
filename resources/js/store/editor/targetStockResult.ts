@@ -16,11 +16,16 @@ export const useTargetStockResultStore = defineStore('targetStockResult', () => 
         loading.value = true;        
     }
 
+    function setLoading(value: boolean) {
+        loading.value = value;
+    }
+
     return {
         result,
         replenishmentParams,
         loading,
         setResult,
-        requestRecalculation
+        requestRecalculation,
+        setLoading
     };
 }); 

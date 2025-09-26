@@ -48,6 +48,8 @@ interface Product {
     dimensions?: Dimensions;
     additional_data?: AdditionalData;
     summary?: any;
+    coverageDays?: number;
+    classification?: string;
 }
 
 // Interface para o objeto Layer dentro do Segment
@@ -67,6 +69,8 @@ interface Layer extends LayerType {
     status?: 'published' | 'draft' | string;
     product: Product;
     segment?: Segment;
+    created_at?: string;
+    updated_at?: string;
 }
 
 // Interface para configurações do segmento (se necessário)

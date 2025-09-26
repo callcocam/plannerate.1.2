@@ -153,9 +153,11 @@ import BCGResultModalImproved from '@plannerate/components/bcg/BCGResultModalImp
 // Stores
 import { useAnalysisResultStore } from '@plannerate/store/editor/analysisResult';
 import { useEditorStore } from '@plannerate/store/editor';
+import { useTargetStockResultStore } from '@plannerate/store/editor/targetStockResult';
 
 // Stores
 const analysisResultStore = useAnalysisResultStore();
+const targetStockResultStore = useTargetStockResultStore();
 const editorStore = useEditorStore();
 
 console.log('AnalysisResultStore:', analysisResultStore);
@@ -389,6 +391,7 @@ async function generateReport(format: 'excel' | 'pdf' | 'compra' | 'dimensao' | 
 
 const clearAnalysisResult = () => {
   analysisResultStore.setResult(null);
+  targetStockResultStore.setResult([], []);
   isAbcCalculating.value = false;
 };
 </script>

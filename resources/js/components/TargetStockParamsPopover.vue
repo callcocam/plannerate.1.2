@@ -57,6 +57,7 @@ function updateCoverageDays(classification: string, value: number) {
 }
 
 function handleCalculate() {
+    targetStockResultStore.setLoading(true);
     // Emitir evento customizado para que a modal execute o cálculo
     window.dispatchEvent(new CustomEvent('execute-target-stock-analysis', {
         detail: {

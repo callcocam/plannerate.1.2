@@ -1,23 +1,33 @@
 <template>
-    <div class="segment drag-segment-handle group relative flex flex-col items-start" :style="outerSegmentStyle"
-        @dragstart="onDragStart" @dragend="onDragEnd" draggable="true" :tabindex="segment.tabindex"
-        @dragenter.prevent="handleDragEnter" @dragover.prevent="handleDragOver" @dragleave="handleDragLeave"
-        @drop.prevent="handleDrop"
-         v-if="segment.layer && segment.layer.product">
+    <div class="segment drag-segment-handle group relative flex flex-col items-start" :class="{
+        'segment--selected': isSelected, 'segment--focused': !isSelected
+    }" :style="outerSegmentStyle" @dragstart="onDragStart" @dragend="onDragEnd" draggable="true"
+        :tabindex="segment.tabindex" @dragenter.prevent="handleDragEnter" @dragover.prevent="handleDragOver"
+        @dragleave="handleDragLeave" @drop.prevent="handleDrop" v-if="segment.layer && segment.layer.product">
         <div :style="innerSegmentStyle">
             <LayerComponent v-for="(_, index) in segmentQuantity" :key="index" :shelf="shelf" :segment="segment"
                 :layer="segment.layer" :scale-factor="scaleFactor" :section-width="sectionWidth"
-                :shelf-depth="shelf.shelf_depth"
-                @increase="onIncreaseQuantity" @decrease="onDecreaseQuantity"
+                :shelf-depth="shelf.shelf_depth" @increase="onIncreaseQuantity" @decrease="onDecreaseQuantity"
                 @update-layer-quantity="updateLayerQuantity">
             </LayerComponent>
+        </div>
+        <div v-if="coverageDays" @click="handleLayerClick"
+            class="coverage-indicator absolute inset-0 w-full top-0 left-0 right-0 bottom-0 opacity-85" :class="{
+                'border-2 border-red-500 bg-red-200': coverageDays > 5,
+                'border-2 border-blue-500 bg-blue-300': coverageDays > 2 && coverageDays <= 5,
+                'border-2 border-green-500 bg-green-200': coverageDays <= 2,
+            }">
+            <div
+                class="absolute top-1 right-1 rounded bg-white bg-opacity-75 px-1 text-xs font-bold text-gray-800 shadow">
+                {{ coverageDays }} dias
+            </div>
         </div>
     </div>
 </template>
 <script setup lang="ts">
 import { useEditorStore } from '@plannerate/store/editor';
 import { Gondola } from '@plannerate/types/gondola';
-import type { Layer, Segment, Product } from '@plannerate/types/segment';
+import type { Layer, Segment } from '@plannerate/types/segment';
 import type { Shelf } from '@plannerate/types/shelves';
 import { validateShelfWidth } from '@plannerate/utils/validation';
 import { computed, defineProps, ref, type CSSProperties, watch } from 'vue';
@@ -60,6 +70,21 @@ const segmentQuantity = computed(() => {
 });
 // const alignment = computed(() => editorStore.getCurrentGondola?.alignment);
 
+const coverageDays = computed(() => {
+    if (!props.segment?.layer?.product?.coverageDays) {
+        return false; // Valor padrão se o produto não estiver definido
+    }
+    return props.segment?.layer?.product?.coverageDays || 14; // Valor padrão de 14 dias se não definido
+});
+
+/**
+ * Verifica se o layer está selecionado
+ */
+const isSelected = computed(() => {
+    const layerId = props.segment.layer.id;
+    // Usa selectedLayerIds (nome corrigido e agora existente)
+    return editorStore.isSelectedLayer(String(layerId));
+});
 // Estilo para o container interno (conteúdo visual - Normal Shelf)
 const innerSegmentStyle = computed(() => {
     // Verificações de segurança para evitar erros de null/undefined
@@ -390,12 +415,67 @@ const onDragEnd = (event: DragEvent) => {
     // Emitir evento para informar que o drag do segment terminou 
     emit('segment-drag-end', props.segment, props.shelf);
 };
+const segmentSelected = ref(false);
+/**
+ * Manipula o clique no layer
+ */
+const handleLayerClick = (event: MouseEvent) => {
+    event.stopPropagation();
+    const productId = props.segment.layer.product?.id;
+    const layerId = props.segment.layer.id;
+    if (!productId) {
+        console.error('Layer clicked, but product ID is missing.');
+        return;
+    }
+    handleSelectedLayer(productId, layerId);
+    // emit('layer-click', props.layer);
+};
 
+/**
+ * Gerencia a seleção do layer
+ */
+const handleSelectedLayer = (productId: string, layerId: string) => {
+    if (!productId) return;
+
+    const layerIdAsString = String(layerId);
+    const compositeId = layerIdAsString;
+
+    const isCurrentlySelected = editorStore.isSelectedLayer(compositeId); // Usa selectedLayerIds
+    const selectionSize = editorStore.getSelectedLayerIds.size; // Usa selectedLayerIds 
+    if (isCurrentlySelected && selectionSize === 1) {
+        // Desselecionar se já for o único item selecionado
+        // Ação clearSelection ainda não existe, comentando por enquanto
+        editorStore.clearLayerSelection();
+        segmentSelected.value = false;
+    } else {
+        // Limpar seleção anterior e selecionar apenas este
+        // Ações clearSelection e selectLayer ainda não existem, comentando por enquanto
+        editorStore.clearLayerSelection();
+        editorStore.selectLayer(layerIdAsString);
+        segmentSelected.value = true;
+    }
+};
 
 </script>
 
 <style scoped>
 .segment {
     position: relative;
+}
+
+.segment--selected {
+    border: 2px solid blue;
+    box-shadow: 0 0 5px rgba(0, 0, 255, 0.5);
+    box-sizing: border-;
+}
+
+.segment--focused {
+    outline: 1px solid transparent;
+    outline-offset: 2px;
+}
+
+.segment--focused:focus {
+    outline: 1px solid blue;
+    outline-offset: 2px;
 }
 </style>
