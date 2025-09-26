@@ -15,127 +15,15 @@
 
         <div class="flex-1 overflow-hidden flex flex-col">
           <!-- Resumo -->
-          <div v-if="summary" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 flex-shrink-0">
-            <!-- Card Total de Itens -->
-            <div class="bg-white p-4 rounded-lg border-l-4 border-gray-400 shadow-sm flex items-center">
-              <Package class="h-8 w-8 text-gray-400 mr-4 flex-shrink-0" />
-              <div>
-                <h3 class="text-sm font-medium text-gray-500">Total de Itens</h3>
-                <p class="text-2xl font-bold">{{ formatNumber.format(summary.totalItems) }}</p>
-              </div>
-            </div>
-
-            <!-- Card Classificação A -->
-            <div class="bg-white p-4 rounded-lg border-l-4 border-green-500 shadow-sm flex items-center">
-              <Star class="h-8 w-8 text-green-500 mr-4 flex-shrink-0" />
-              <div>
-                <h3 class="text-sm font-medium text-gray-500">Classificação A</h3>
-                <p class="text-2xl font-bold">
-                  {{ formatNumber.format(summary.classificationCounts.A) }}
-                  <span class="text-sm font-normal text-gray-500">({{ summary.percentageA }}%)</span>
-                </p>
-              </div>
-            </div>
-
-            <!-- Card Classificação B -->
-            <div class="bg-white p-4 rounded-lg border-l-4 border-yellow-500 shadow-sm flex items-center">
-              <Circle class="h-8 w-8 text-yellow-500 mr-4 flex-shrink-0" />
-              <div>
-                <h3 class="text-sm font-medium text-gray-500">Classificação B</h3>
-                <p class="text-2xl font-bold">
-                  {{ formatNumber.format(summary.classificationCounts.B) }}
-                  <span class="text-sm font-normal text-gray-500">({{ summary.percentageB }}%)</span>
-                </p>
-              </div>
-            </div>
-
-            <!-- Card Classificação C -->
-            <div class="bg-white p-4 rounded-lg border-l-4 border-red-500 shadow-sm flex items-center">
-              <Triangle class="h-8 w-8 text-red-500 mr-4 flex-shrink-0" />
-              <div>
-                <h3 class="text-sm font-medium text-gray-500">Classificação C</h3>
-                <p class="text-2xl font-bold">
-                  {{ formatNumber.format(summary.classificationCounts.C) }}
-                  <span class="text-sm font-normal text-gray-500">({{ summary.percentageC }}%)</span>
-                </p>
-              </div>
-            </div>
-          </div>
+          <SummarySection :summary="summary" />
 
           <!-- Filtros -->
-          <div class="mb-4 flex flex-col sm:flex-row gap-4 flex-shrink-0">
-            <div class="flex-1">
-              <div class="relative">
-                <Search class="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
-                <Input v-model="searchText" placeholder="Buscar por EAN ou nome..." class="pl-8" />
-                <button v-if="searchText" @click="searchText = ''"
-                  class="absolute right-2 top-2.5 text-gray-500 hover:text-gray-700">
-                  <X class="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-            <div class="flex gap-2">
-              <Button v-for="classification in ['A', 'B', 'C']" :key="classification"
-                :variant="activeClassificationFilters.has(classification) ? 'default' : 'outline'" :class="{
-                  'bg-green-600 hover:bg-green-700': classification === 'A' && activeClassificationFilters.has(classification),
-                  'bg-yellow-600 hover:bg-yellow-700': classification === 'B' && activeClassificationFilters.has(classification),
-                  'bg-red-600 hover:bg-red-700': classification === 'C' && activeClassificationFilters.has(classification)
-                }" @click="toggleClassificationFilter(classification)">
-                {{ classification }}
-              </Button>
-              <Button variant="outline" @click="clearFilters">
-                Limpar Filtros
-              </Button>
-            </div>
-          </div>
+          <FiltersSection v-model:searchText="searchText" v-model:activeClassificationFilters="activeClassificationFilters" />
 
           <!-- Tabela -->
-          <div class="flex-1 overflow-auto border rounded-lg min-h-96">
-            <table class="text-sm border-collapse w-full">
-              <thead class="sticky top-0 bg-white z-10">
-                <tr class="bg-gray-100">
-                  <th v-for="(label, key) in headers" :key="key"
-                    class="px-2 py-1 border cursor-pointer hover:bg-gray-200 text-left"
-                    @click="toggleSort(key as keyof StockAnalysis)">
-                    <Tooltip :delay-duration="100">
-                      <TooltipTrigger class="w-full flex items-center justify-between">
-                        <span :class="{ 'truncate max-w-20': key !== 'name' }">{{ label }}</span>
-                        <span class="ml-1">
-                          <ArrowUpDown v-if="sortConfig.key !== key" class="h-4 w-4" />
-                          <ArrowUp v-else-if="sortConfig.direction === 'asc'" class="h-4 w-4" />
-                          <ArrowDown v-else class="h-4 w-4" />
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{{ label }}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="item in filteredResults" :key="item.ean"
-                  @click="selectedItemId = selectedItemId === item.ean ? null : item.ean"
-                  :class="{ 'bg-blue-100 dark:bg-blue-900/50': selectedItemId === item.ean, 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50': true }">
-                  <td class="px-2 py-1 border">{{ item.ean }}</td>
-                  <td class="px-2 py-1 border">{{ item.name }}</td>
-                  <td class="px-2 py-1 border text-right">{{ formatNumber.format(item.averageSales) }}</td>
-                  <td class="px-2 py-1 border text-right">{{ formatNumber.format(item.standardDeviation) }}</td>
-                  <td class="px-2 py-1 border text-right">{{ getCoverageDays(item.classification) }}</td>
-                  <td class="px-2 py-1 border text-right">{{ item.serviceLevel }}</td>
-                  <td class="px-2 py-1 border text-right">{{ item.zScore }}</td>
-                  <td class="px-2 py-1 border text-right">{{ item.safetyStock }}</td>
-                  <td class="px-2 py-1 border text-right">{{ item.minimumStock }}</td>
-                  <td class="px-2 py-1 border text-right">{{ item.targetStock }}</td>
-                  <td class="px-2 py-1 border">{{ item.allowsFacing ? 'Sim' : 'Não' }}</td>
-                  <td class="px-2 py-1 border">{{ item.currentStock }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <ResultsTable :results="filteredResults" :headers="headers" :sort-config="sortConfig"
+            v-model:selectedItemId="selectedItemId" @toggle-sort="toggleSort" />
 
-          <div v-if="filteredResults.length === 0" class="text-gray-500 mt-4 text-center">Nenhum resultado encontrado.
-          </div>
         </div>
 
         <DialogFooter class="mt-4 flex-shrink-0">
@@ -173,8 +61,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { Button } from '@/components/ui/button';
-import { ArrowUpDown, ArrowUp, ArrowDown, Search, X, Download, RefreshCw, Package, Star, Circle, Triangle } from 'lucide-vue-next';
-import { Input } from '@/components/ui/input';
+import { Download, RefreshCw } from 'lucide-vue-next';
 import {
   Dialog,
   DialogContent,
@@ -184,18 +71,14 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import * as XLSX from 'xlsx';
-import type { StockAnalysis, Replenishment } from '@plannerate/composables/useTargetStock';
+import type { Replenishment } from '@plannerate/composables/useTargetStock';
 import { useTargetStockResultStore } from '@plannerate/store/editor/targetStockResult';
-import { useEditorStore } from '@plannerate/store/editor';
-import { useAnalysisService } from '@plannerate/services/analysisService';
-import { useTargetStock, type ServiceLevel } from '@plannerate/composables/useTargetStock';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { useAnalysisResultStore } from '@plannerate/store/editor/analysisResult';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import SummarySection from './SummarySection.vue';
+import FiltersSection from './FiltersSection.vue';
+import ResultsTable from './ResultsTable.vue';
+import { useTableFunctionality } from '@plannerate/composables/useTableFunctionality';
+import { useTargetStockAnalysis } from '@plannerate/composables/useTargetStockAnalysis';
 
 const headers = {
   ean: 'EAN',
@@ -212,24 +95,20 @@ const headers = {
   currentStock: 'Estoque Atual',
 };
 
-const props = defineProps<{
+defineProps<{
   open: boolean;
 }>();
 const emit = defineEmits(['close', 'update:open']);
 
 const targetStockResultStore = useTargetStockResultStore();
-const analysisResultStore = useAnalysisResultStore();
-const editorStore = useEditorStore();
-const analysisService = useAnalysisService();
-// Estado de ordenação
-const sortConfig = ref({
-  key: 'ean' as keyof StockAnalysis,
-  direction: 'asc' as 'asc' | 'desc'
-});
-
-// Estado dos filtros
-const searchText = ref('');
-const activeClassificationFilters = ref<Set<string>>(new Set(['A', 'B', 'C']));
+const { executeTargetStockAnalysisWithParams } = useTargetStockAnalysis();
+const {
+  sortConfig,
+  searchText,
+  activeClassificationFilters,
+  filteredResults,
+  toggleSort
+} = useTableFunctionality();
 
 // Parâmetros para recálculo
 const targetStockParams = ref({
@@ -237,7 +116,7 @@ const targetStockParams = ref({
     { classification: 'A', level: 0.95 },
     { classification: 'B', level: 0.90 },
     { classification: 'C', level: 0.85 }
-  ] as ServiceLevel[],
+  ] as any[], // ServiceLevel[] is removed, so use 'any' or define a type if needed
   replenishmentParams: [
     { classification: 'A', coverageDays: 7 },
     { classification: 'B', coverageDays: 14 },
@@ -274,82 +153,15 @@ function exportToExcel() {
   XLSX.writeFile(wb, fileName);
 }
 
-// Função para alternar filtro de classificação
-function toggleClassificationFilter(classification: string) {
-  if (activeClassificationFilters.value.has(classification)) {
-    activeClassificationFilters.value.delete(classification);
-  } else {
-    activeClassificationFilters.value.add(classification);
-  }
-}
-
-// Função para limpar todos os filtros
-function clearFilters() {
-  searchText.value = '';
-  activeClassificationFilters.value = new Set(['A', 'B', 'C']);
-}
-
-// Ordenação
-const sortedResults = computed(() => {
-  if (!targetStockResultStore.result) return [];
-  return [...targetStockResultStore.result].sort((a, b) => {
-    const aValue = a[sortConfig.value.key];
-    const bValue = b[sortConfig.value.key];
-    if (typeof aValue === 'string' && typeof bValue === 'string') {
-      return sortConfig.value.direction === 'asc'
-        ? aValue.localeCompare(bValue)
-        : bValue.localeCompare(aValue);
-    }
-    return sortConfig.value.direction === 'asc'
-      ? (aValue as number) - (bValue as number)
-      : (bValue as number) - (aValue as number);
-  });
-});
-
-// Filtro
-const filteredResults = computed(() => {
-  return sortedResults.value.filter(item => {
-    // Filtro por classificação
-    if (activeClassificationFilters.value.size > 0 && !activeClassificationFilters.value.has(item.classification)) {
-      return false;
-    }
-    // Filtro por texto
-    if (searchText.value) {
-      const searchLower = searchText.value.toLowerCase();
-      return (
-        item.ean.toLowerCase().includes(searchLower) ||
-        item.name.toLowerCase().includes(searchLower)
-      );
-    }
-    return true;
-  });
-});
-
-function toggleSort(key: keyof StockAnalysis) {
-  if (sortConfig.value.key === key) {
-    sortConfig.value.direction = sortConfig.value.direction === 'asc' ? 'desc' : 'asc';
-  } else {
-    sortConfig.value.key = key;
-    sortConfig.value.direction = 'asc';
-  }
-}
-
 function handleClose() {
   emit('close');
   emit('update:open', false);
 }
 
 function getCoverageDays(classification: string) {
-
-
   const param = targetStockResultStore.replenishmentParams.find(p => p.classification === classification);
   return param?.coverageDays || 0;
 }
-
-const formatNumber = new Intl.NumberFormat('pt-BR', {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2
-});
 
 // Cálculos do resumo
 const summary = computed(() => {
@@ -374,70 +186,6 @@ const summary = computed(() => {
     percentageC,
   };
 });
-
-// Função para executar análise de estoque alvo com parâmetros específicos
-async function executeTargetStockAnalysisWithParams(serviceLevels: ServiceLevel[], replenishmentParams: Replenishment[]) {
-  targetStockResultStore.loading = true;
-  const products: any[] = [];
-  const analysisResult = analysisResultStore.result;
-  editorStore.getCurrentGondola?.sections.forEach(section => {
-    section.shelves.forEach(shelf => {
-      shelf.segments.forEach(segment => {
-        const product = segment.layer.product as any;
-        const classification = analysisResult?.find((p: any) => p.id === product.ean);
-        const { abcClass } = classification || { abcClass: 'B' };
-        product.classification = abcClass;
-        if (product) {
-          products.push({
-            id: product.id,
-            ean: product.ean,
-            name: product.name,
-            classification: product.classification || 'B',
-          });
-        }
-      });
-    });
-  });
-
-  try {
-    if (products.length > 0) {
-      const sales = await analysisService.getTargetStockData(
-        products.map(p => p.id),
-        {
-          planogram: editorStore.currentState?.id
-        }
-      ) as any;
-
-      // Transformar os dados de vendas no formato esperado
-      const productsWithSales = products.map(product => {
-        const productSales = sales.find((sale: any) => sale.product_id === product.id);
-        return {
-          ...product,
-          standard_deviation: productSales?.standard_deviation,
-          average_sales: productSales?.average_sales,
-          currentStock: productSales?.currentStock,
-          variability: productSales?.variability,
-          sales: productSales ? Object.values(productSales.sales_by_day) : []
-        };
-      });
-
-      const analyzed = useTargetStock(
-        productsWithSales,
-        serviceLevels,
-        replenishmentParams
-      );
-
-      // Atualizar o store com os resultados
-      targetStockResultStore.setResult(analyzed, replenishmentParams);
-    } else {
-      console.log('Nenhum produto encontrado na gôndola para análise de estoque alvo.');
-    }
-  } catch (error) {
-    console.error('Erro ao executar Análise de Estoque Alvo:', error);
-  } finally {
-    targetStockResultStore.loading = false;
-  }
-}
 
 // Listener para executar análise quando solicitado pelo TargetStockParamsPopover
 window.addEventListener('execute-target-stock-analysis', (event: any) => {

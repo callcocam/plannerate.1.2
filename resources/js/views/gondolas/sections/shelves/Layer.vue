@@ -1,7 +1,7 @@
 <template>
     <div v-if="layer.product" class="layer group flex cursor-pointer" :style="layerStyle" @click="handleLayerClick"
         @keydown="handleKeyDown" >
-        <div class="absolute -top-4 -left-2 m-1 px-1 text-xs font-bold text-white rounded" :class="{
+        <div   class="absolute -top-4 -left-2 m-1 px-1 text-xs font-bold text-white rounded z-50" :class="{
             'bg-blue-500': abcClass === 'A',
             'bg-green-500': abcClass === 'B',
             'bg-red-500': abcClass === 'C'
@@ -36,6 +36,7 @@ const props = defineProps<{
     scaleFactor: number;
     sectionWidth: number;
     shelfDepth: number;
+    isTargetStockViewActive?: boolean;
 }>();
 
 const emit = defineEmits<{

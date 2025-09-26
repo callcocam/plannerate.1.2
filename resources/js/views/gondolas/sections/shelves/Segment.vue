@@ -7,21 +7,12 @@
         <div :style="innerSegmentStyle">
             <LayerComponent v-for="(_, index) in segmentQuantity" :key="index" :shelf="shelf" :segment="segment"
                 :layer="segment.layer" :scale-factor="scaleFactor" :section-width="sectionWidth"
-                :shelf-depth="shelf.shelf_depth" @increase="onIncreaseQuantity" @decrease="onDecreaseQuantity"
+                :shelf-depth="shelf.shelf_depth" :is-target-stock-view-active="isTargetStockViewActive"
+                @increase="onIncreaseQuantity" @decrease="onDecreaseQuantity"
                 @update-layer-quantity="updateLayerQuantity">
             </LayerComponent>
         </div>
-        <div v-if="coverageDays" @click="handleLayerClick"
-            class="coverage-indicator absolute inset-0 w-full top-0 left-0 right-0 bottom-0 opacity-85" :class="{
-                'border-2 border-red-500 bg-red-200': coverageDays > 5,
-                'border-2 border-blue-500 bg-blue-300': coverageDays > 2 && coverageDays <= 5,
-                'border-2 border-green-500 bg-green-200': coverageDays <= 2,
-            }">
-            <div
-                class="absolute top-1 right-1 rounded bg-white bg-opacity-75 px-1 text-xs font-bold text-gray-800 shadow">
-                {{ coverageDays }} dias
-            </div>
-        </div>
+        <StockIndicator :segment="segment" :shelf="shelf" @click="(e) => handleLayerClick(e)" />
     </div>
 </template>
 <script setup lang="ts">
@@ -30,9 +21,12 @@ import { Gondola } from '@plannerate/types/gondola';
 import type { Layer, Segment } from '@plannerate/types/segment';
 import type { Shelf } from '@plannerate/types/shelves';
 import { validateShelfWidth } from '@plannerate/utils/validation';
-import { computed, defineProps, ref, type CSSProperties, watch } from 'vue';
+import { computed, defineProps, ref, type CSSProperties } from 'vue';
 import { toast } from 'vue-sonner';
 import LayerComponent from './Layer.vue';
+import StockIndicator from './StockIndicator.vue';  
+import { useSegmentDragAndDrop } from '@plannerate/composables/useSegmentDragAndDrop';
+import { useTargetStockAnalysis } from '@plannerate/composables/useTargetStockAnalysis';
 
 // Definir Props
 const props = defineProps<{
@@ -48,33 +42,19 @@ const props = defineProps<{
 const emit = defineEmits(['drop-product', 'drop-products-multiple', 'drop-segment', 'drop-segment-copy', 'segment-drag-start', 'segment-drag-end', 'segment-drag-over']);
 
 const editorStore = useEditorStore();
+const { targetStockResultStore } = useTargetStockAnalysis();
 
+const {
+    onDragStart,
+    onDragEnd,
+    handleDragEnter,
+    handleDragOver,
+    handleDragLeave,
+    handleDrop
+} = useSegmentDragAndDrop(props, emit);
 
-// Variáveis para drag and drop
-const dragEnterCount = ref(0);
-const dragSegmentActive = ref(false);
-const segmentText = ref(`Arrastando Prateleira (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`);
-watch(dragSegmentActive, (newValue) => {
-    if (newValue) {
-        segmentText.value = `Arrastando Prateleira (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`;
-    } else {
-        segmentText.value = `Arrastando Prateleira (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`;
-    }
-});
-
-const currentSectionId = computed(() => props.shelf.section_id);
-
-/** Segment quantity (number of layers) */
-const segmentQuantity = computed(() => {
-    return props.segment?.quantity ?? 0;
-});
-// const alignment = computed(() => editorStore.getCurrentGondola?.alignment);
-
-const coverageDays = computed(() => {
-    if (!props.segment?.layer?.product?.coverageDays) {
-        return false; // Valor padrão se o produto não estiver definido
-    }
-    return props.segment?.layer?.product?.coverageDays || 14; // Valor padrão de 14 dias se não definido
+const isTargetStockViewActive = computed(() => {
+    return !!targetStockResultStore.result && !!props.segment?.layer?.product?.ean;
 });
 
 /**
@@ -85,6 +65,8 @@ const isSelected = computed(() => {
     // Usa selectedLayerIds (nome corrigido e agora existente)
     return editorStore.isSelectedLayer(String(layerId));
 });
+
+const currentSectionId = computed(() => props.shelf.section_id);
 // Estilo para o container interno (conteúdo visual - Normal Shelf)
 const innerSegmentStyle = computed(() => {
     // Verificações de segurança para evitar erros de null/undefined
@@ -102,6 +84,10 @@ const innerSegmentStyle = computed(() => {
         width: '100%',
         ...selectedStyle,
     } as CSSProperties;
+});
+
+const segmentQuantity = computed(() => {
+    return props.segment?.quantity ?? 0;
 });
 
 // Estilo para o container externo (manipulado pelo draggable - Normal Shelf)
@@ -232,188 +218,6 @@ const onDecreaseQuantity = ({ quantity }: any) => {
             newQuantity,
         );
     }
-};
-// --- Lógica de Drag and Drop (para receber drops) ---
-
-// Verifica apenas se o TIPO de dado arrastado é aceitável
-const isAcceptedDataType = (dataTransfer: DataTransfer | null): boolean => {
-    if (!dataTransfer) return false;
-    const types = dataTransfer.types;
-    return types.includes('text/product') ||
-        types.includes('text/products-multiple') ||
-        types.includes('text/segment') ||
-        types.includes('text/segment/copy');
-};
-
-// Verifica especificamente se é um segment sendo arrastado
-const isSegmentBeingDragged = (dataTransfer: DataTransfer | null): boolean => {
-    if (!dataTransfer) return false;
-    const types = dataTransfer.types;
-    return types.includes('text/segment') || types.includes('text/segment/copy');
-};
-
-const handleDragEnter = (event: DragEvent) => {
-    if (!isAcceptedDataType(event.dataTransfer)) {
-        return;
-    }
-
-    event.preventDefault();
-    dragEnterCount.value++;
-    dragSegmentActive.value = true;
-    segmentText.value = `Arrastando Prateleira (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`;
-
-    // Verificar se é um segment sendo arrastado
-    if (isSegmentBeingDragged(event.dataTransfer)) {
-        emit('segment-drag-over', props.segment, props.shelf, true);
-    }
-
-    if (event.currentTarget) {
-        (event.currentTarget as HTMLElement).classList.add('drag-over-segment');
-    }
-};
-
-const handleDragOver = (event: DragEvent) => {
-    if (!isAcceptedDataType(event.dataTransfer)) {
-        if (event.dataTransfer) event.dataTransfer.dropEffect = 'none';
-        if (dragSegmentActive.value) {
-            dragSegmentActive.value = false;
-            dragEnterCount.value = 0;
-            if (event.currentTarget) {
-                (event.currentTarget as HTMLElement).classList.remove('drag-over-segment');
-            }
-        }
-        return;
-    }
-
-    event.preventDefault();
-
-    if (!dragSegmentActive.value) {
-        dragSegmentActive.value = true;
-        segmentText.value = `Arrastando Prateleira (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`;
-        if (event.currentTarget) {
-            (event.currentTarget as HTMLElement).classList.add('drag-over-segment');
-        }
-    }
-
-    if (event.dataTransfer) {
-        let effect: DataTransfer["dropEffect"] = 'move';
-        if (event.dataTransfer.types.includes('text/segment/copy') ||
-            event.dataTransfer.types.includes('text/product') ||
-            event.dataTransfer.types.includes('text/products-multiple')) {
-            effect = 'copy';
-        }
-        event.dataTransfer.dropEffect = effect;
-    }
-};
-
-const handleDragLeave = (event: DragEvent) => {
-    if (dragEnterCount.value > 0) {
-        dragEnterCount.value--;
-        if (dragEnterCount.value === 0) {
-            if (dragSegmentActive.value) {
-                dragSegmentActive.value = false;
-                // Emitir que o drag saiu do segment
-                if (event.dataTransfer && isSegmentBeingDragged(event.dataTransfer)) {
-                    emit('segment-drag-over', props.segment, props.shelf, false);
-                }
-                if (event.currentTarget) {
-                    (event.currentTarget as HTMLElement).classList.remove('drag-over-segment');
-                }
-            }
-        }
-    }
-};
-
-const handleDrop = (event: DragEvent) => {
-    event.preventDefault();
-
-    // const currentTargetElement = event.currentTarget as HTMLElement | null;
-
-    // const resetVisualState = () => {
-    //     dragEnterCount.value = 0;
-    //     if (dragSegmentActive.value) {
-    //         dragSegmentActive.value = false;
-    //     }
-    //     segmentText.value = `Arrastando Prateleira (Pos: ${props.shelf.shelf_position.toFixed(1)}cm)`;
-    //     if (currentTargetElement) {
-    //         currentTargetElement.classList.remove('drag-over-segment');
-    //     }
-    // };
-
-    // if (!isAcceptedDataType(event.dataTransfer) || !event.dataTransfer) {
-    //     resetVisualState();
-    //     return;
-    // }
-
-    // try {
-    //     const types = event.dataTransfer.types;
-    //     const position = { x: event.offsetX, y: event.offsetY };
-
-    //     if (types.includes('text/products-multiple')) {
-    //         const productsData = event.dataTransfer.getData('text/products-multiple');
-    //         if (!productsData) { console.error('handleDrop: productsData is empty!'); return; }
-    //         const products = JSON.parse(productsData) as Product[];
-    //         emit('drop-products-multiple', products, props.shelf, position);
-
-    //     } else if (types.includes('text/product')) {
-    //         const productData = event.dataTransfer.getData('text/product');
-    //         if (!productData) { console.error('handleDrop: productData is empty!'); return; }
-    //         const product = JSON.parse(productData) as Product;
-    //         emit('drop-product', product, props.shelf, position);
-
-    //     } else if (types.includes('text/segment')) {
-    //         const segmentDataString = event.dataTransfer.getData('text/segment');
-    //         if (!segmentDataString) { console.error('handleDrop: segmentData is empty!'); return; }
-    //         const segmentData = JSON.parse(segmentDataString) as Segment;
-    //         const originShelfId = segmentData?.shelf_id;
-
-    //         if (originShelfId && originShelfId !== props.shelf.id) {
-    //             emit('drop-segment', segmentData, props.shelf, position);
-    //         }
-
-    //     } else if (types.includes('text/segment/copy')) {
-    //         const segmentDataCopy = event.dataTransfer.getData('text/segment/copy');
-    //         if (!segmentDataCopy) { console.error('handleDrop: segmentDataCopy is empty!'); return; }
-    //         const segment = JSON.parse(segmentDataCopy) as Segment;
-    //         emit('drop-segment-copy', segment, props.shelf, position);
-    //     }
-
-    // } catch (e) {
-    //     console.error("handleDrop: Error processing dropped data:", e);
-    // } finally {
-    //     resetVisualState();
-    // }
-};
-
-const onDragStart = (event: DragEvent) => {
-    if (!event.dataTransfer) return;
-
-    const isCtrlOrMetaPressed = event.ctrlKey || event.metaKey;
-
-    // Incluir explicitamente o shelf_id da origem
-    const segmentData = {
-        ...props.segment,
-        shelf_id: props.shelf.id, // Garantir que o shelf_id está incluído
-    };
-
-    if (isCtrlOrMetaPressed) {
-        // Copiar (quando Ctrl/Meta está pressionado)
-        event.dataTransfer.effectAllowed = 'copy';
-        // Use o tipo MIME correto para cópia
-        event.dataTransfer.setData('text/segment/copy', JSON.stringify(segmentData));
-    } else {
-        // Mover (comportamento padrão)
-        event.dataTransfer.effectAllowed = 'move';
-        event.dataTransfer.setData('text/segment', JSON.stringify(segmentData));
-    }
-
-    // Emitir evento para informar que o segment está sendo arrastado 
-    emit('segment-drag-start', props.segment, props.shelf);
-};
-
-const onDragEnd = (event: DragEvent) => {
-    // Emitir evento para informar que o drag do segment terminou 
-    emit('segment-drag-end', props.segment, props.shelf);
 };
 const segmentSelected = ref(false);
 /**
