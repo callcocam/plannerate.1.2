@@ -306,7 +306,8 @@ class StepLogger
         // Mesclar dados específicos
         $logData = array_merge($logData, $data);
         
-        Log::info("PASSO " . self::$stepCounter . ": $title", $logData);
+        // Log removido - informação desnecessária para debug
+        // Log::info("PASSO " . self::$stepCounter . ": $title", $logData);
     }
 
     /**

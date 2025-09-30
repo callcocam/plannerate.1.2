@@ -1185,8 +1185,7 @@ class AutoPlanogramController extends Controller
         $segmentsUsed = 0;
         $totalPlacements = 0;
         
-        $usedWidth = $this->calculateUsedWidthInShelf($shelf);
-        $availableWidth = 125.0 - $usedWidth;
+        $availableWidth = $this->getShelfAvailableWidth($shelf);
         
         if ($availableWidth < 15.0) { // Menos que um produto pequeno
             return ['segments_used' => 0, 'total_placements' => 0];
@@ -1248,8 +1247,7 @@ class AutoPlanogramController extends Controller
         $segmentsUsed = 0;
         $totalPlacements = 0;
         
-        $usedWidth = $this->calculateUsedWidthInShelf($shelf);
-        $availableWidth = 125.0 - $usedWidth;
+        $availableWidth = $this->getShelfAvailableWidth($shelf);
         
         if ($availableWidth < 15.0) { // Menos que um produto pequeno
             return ['segments_used' => 0, 'total_placements' => 0];
@@ -1471,9 +1469,23 @@ class AutoPlanogramController extends Controller
                 $productData['abc_class'] = 'C';
             }
             
-            // Compatibilizar a estrutura de dados (product_id vs id)
-            $productModel = \App\Models\Product::where('ean', $productData['id'])->first();
-            $productData['product_id'] = $productModel ? $productModel->id : null;
+            // 🎯 CORRIGIDO: Mapeamento consistente de IDs
+            // O 'id' do ABCAnalysisService é o EAN do produto
+            $productEan = $productData['id'];
+            $productModel = \App\Models\Product::where('ean', $productEan)->first();
+            
+            if ($productModel) {
+                // Adicionar ID interno para compatibilidade
+                $productData['product_id'] = $productModel->id;
+                // Manter o EAN como 'id' para compatibilidade com TargetStockAnalysisService
+                $productData['id'] = $productEan;
+            } else {
+                Log::warning("⚠️ Produto não encontrado no banco", [
+                    'ean' => $productEan,
+                    'abc_class' => $productData['abc_class'] ?? 'N/A'
+                ]);
+                $productData['product_id'] = null;
+            }
 
             $classifiedProducts[] = $productData;
         }
@@ -1542,7 +1554,10 @@ class AutoPlanogramController extends Controller
                 $averageSales = $analysis['average_sales'] ?? 0;
                 $standardDeviation = $analysis['standard_deviation'] ?? 0;
                 $currentStock = $analysis['currentStock'] ?? 0;
-                $classification = $product['abc_class'] ?? 'A';
+                
+                // 🎯 SIMPLIFICADO: Usar classificação padrão 'A' para Target Stock
+                // A classificação ABC específica será aplicada no FacingCalculatorService
+                $classification = 'A'; // Padrão para Target Stock - ABC será aplicado no facing
                 
                 // ✅ USAR PARÂMETROS POR CLASSE ABC (igual ao TargetStockParamsPopover.vue)
                 $serviceLevels = [
@@ -1556,10 +1571,7 @@ class AutoPlanogramController extends Controller
                     ['classification' => 'C', 'coverageDays' => 7]  // 7 dias como no TargetStockResultModal
                 ];
                 
-                Log::info("📋 Parâmetros por classe ABC (igual ao TargetStockParamsPopover)", [
-                    'serviceLevels' => $serviceLevels,
-                    'replenishmentParams' => $replenishmentParams
-                ]);
+                // Log removido - informação desnecessária
                 
                 // Encontrar parâmetros para a classificação específica
                 $serviceLevel = 70; // padrão
@@ -1712,25 +1724,45 @@ class AutoPlanogramController extends Controller
 
         $processedProducts = array_map(function($product) use ($abcResults, $targetStockResults, $shelfData) {
             
-            // 1. OBTER DADOS ABC
-            $abcData = collect($abcResults)->firstWhere('product_id', $product['id']) ?? [
-                'abc_class' => 'C',
-                'composite_score' => 0,
-                'id' => $product['ean'] ?? $product['id']
-            ];
-            
-            // 2. OBTER DADOS TARGET STOCK (CORRIGIDO)
+            // 1. OBTER DADOS ABC - CORRIGIDO: Buscar por ID interno e EAN
             $productId = $product['id'];
+            $productEan = $product['ean'] ?? null;
+            
+            // Primeiro tentar por ID interno
+            $abcData = collect($abcResults)->firstWhere('product_id', $productId);
+            
+            // Se não encontrou, tentar por EAN (que é o 'id' original do ABCAnalysisService)
+            if (!$abcData && $productEan) {
+                $abcData = collect($abcResults)->firstWhere('id', $productEan);
+            }
+            
+            // Se ainda não encontrou, usar dados padrão
+            if (!$abcData) {
+                Log::warning("⚠️ Dados ABC não encontrados para produto", [
+                    'product_id' => $productId,
+                    'product_ean' => $productEan,
+                    'product_name' => $product['name'] ?? 'N/A',
+                    'abc_results_count' => count($abcResults)
+                ]);
+                
+                $abcData = [
+                    'abc_class' => 'C',
+                    'composite_score' => 0,
+                    'id' => $productEan ?? $productId,
+                    'product_id' => $productId
+                ];
+            }
+            
+            // 2. OBTER DADOS TARGET STOCK - CORRIGIDO: Buscar por ID interno
             $targetStockData = collect($targetStockResults)->firstWhere('product_id', $productId);
             
             if (!$targetStockData) {
-                // Se não encontrou, tentar por EAN
-                $productEan = $product['ean'] ?? null;
+                // Se não encontrou, tentar por EAN (fallback)
                 if ($productEan) {
                     $targetStockData = collect($targetStockResults)->firstWhere('product_id', $productEan);
                 }
                 
-                // Log do problema e usar dados padrão mais conservadores
+                // Log do problema e usar dados padrão baseados na classe ABC
                 Log::warning("❌ Target Stock não encontrado para produto", [
                     'product_id' => $productId,
                     'product_ean' => $productEan,
@@ -1739,7 +1771,7 @@ class AutoPlanogramController extends Controller
                     'first_target_result_id' => $targetStockResults[0]['product_id'] ?? 'N/A'
                 ]);
                 
-                // Fallback mais inteligente baseado na classe ABC
+                // Fallback inteligente baseado na classe ABC
                 $abcClass = $abcData['abc_class'] ?? 'C';
                 $defaultTargetStock = match($abcClass) {
                     'A' => 10, // Produtos A: estoque maior
@@ -1805,32 +1837,83 @@ class AutoPlanogramController extends Controller
     }
 
     /**
-     * 🏪 Distribuir inteligentemente na gôndola baseado em ABC por categoria
+     * 🎯 NOVO SISTEMA: Distribuição Linear de Produtos
+     * 
+     * Distribui produtos sequencialmente por prateleiras, eliminando desperdício de espaço.
+     * 
+     * ALGORITMO:
+     * 1. Manter lógica ABC por categoria
+     * 2. Distribuir categoria completa por prateleiras lineares
+     * 3. Nunca alterar facing calculado
+     * 4. Falha em vez de adaptação
      */
     protected function distributeIntelligently(Gondola $gondola, array $processedProducts): array
     {
-        Log::info("🏪 Iniciando distribuição ABC por categoria", [
+        Log::info("🎯 Iniciando distribuição linear de produtos", [
             'total_products' => count($processedProducts)
         ]);
         
         $gondolaStructure = $this->analyzeGondolaStructure($gondola);
         $this->ensureGondolaHasSegments($gondola);
         
-        // 🎯 NOVA LÓGICA: ABC por categoria
-        $distributionResult = $this->distributeByCategoryABC($gondola, $processedProducts, $gondolaStructure);
+        // 🎯 NOVO SISTEMA: Distribuição Linear de Produtos
+        $distributionResult = $this->productPlacement->placeProductsSequentially($gondola, $processedProducts, $gondolaStructure);
         
-        Log::info("🏪 Distribuição ABC por categoria concluída", [
+        Log::info("🏪 Distribuição linear por categoria concluída", [
             'products_placed' => $distributionResult['products_placed'],
             'total_placements' => $distributionResult['total_placements'],
             'segments_used' => $distributionResult['segments_used'],
-            'categories_processed' => $distributionResult['categories_processed'] ?? 0
+            'products_failed' => count($distributionResult['failed_products'] ?? [])
         ]);
         
         return $distributionResult;
     }
 
     /**
-     * 🎯 NOVO: Distribuição baseada em ABC por categoria
+     * 🎯 NOVO SISTEMA: Planejamento Sequencial por Categoria
+     * 
+     * FASE 1: Análise e Ordenação
+     * - Executar ABC geral nos produtos
+     * - Ordenar categorias por prioridade: Açúcar → Arroz → Feijão → Sal
+     * - Para cada categoria, aplicar ABC interno e calcular facing inteligente
+     * 
+     * FASE 2: Cálculo de Capacidade Total
+     * - Para cada categoria, calcular exatamente quanto espaço ela precisa
+     * - Considerar que cada módulo tem 4 prateleiras de 125cm = 500cm total por módulo
+     * 
+     * FASE 3: Alocação Sequencial
+     * - Categoria Açúcar precisa 1.200cm → Alocar módulos 1-3 (1.500cm disponível)
+     * - Categoria Arroz precisa 800cm → Alocar módulos 4-5 (1.000cm disponível)
+     * - Zero mistura de categorias em módulos diferentes
+     */
+    protected function distributeSequentiallyByCategory(Gondola $gondola, array $processedProducts, array $gondolaStructure): array
+    {
+        Log::info("🎯 Iniciando Planejamento Sequencial por Categoria", [
+            'total_products' => count($processedProducts),
+            'total_modules' => $gondolaStructure['total_sections']
+        ]);
+        
+        // FASE 1: Análise e Ordenação
+        $categoryAnalysis = $this->analyzeCategoryCapacity($processedProducts, $gondolaStructure);
+        
+        // FASE 2: Cálculo de Capacidade Total
+        $moduleAllocation = $this->calculateModuleAllocation($categoryAnalysis, $gondolaStructure);
+        
+        // FASE 3: Alocação Sequencial
+        $distributionResult = $this->executeSequentialAllocation($gondola, $moduleAllocation, $gondolaStructure);
+        
+        Log::info("✅ Planejamento Sequencial por Categoria concluído", [
+            'categories_processed' => count($categoryAnalysis['categories']),
+            'modules_allocated' => count($moduleAllocation['allocations']),
+            'products_placed' => $distributionResult['products_placed'],
+            'total_placements' => $distributionResult['total_placements']
+        ]);
+        
+        return $distributionResult;
+    }
+
+    /**
+     * 🎯 NOVO: Distribuição baseada em ABC por categoria (MÉTODO LEGADO - MANTIDO PARA COMPATIBILIDADE)
      * 1. Analisa TODOS os produtos e aplica ABC
      * 2. Identifica categoria prioritária (maior valor ABC)
      * 3. Coleta TODOS os produtos dessa categoria
@@ -1901,7 +1984,95 @@ class AutoPlanogramController extends Controller
     }
 
     /**
-     * 📊 Analisa prioridade das categorias baseado em ABC
+     * 🎯 FASE 1: Análise e Ordenação - Calcula capacidade necessária por categoria
+     * 
+     * Para cada categoria:
+     * - Agrupa produtos por primeira palavra do nome
+     * - Aplica ABC interno dentro da categoria
+     * - Calcula largura total necessária baseada em facing × dimensões
+     * - Ordena categorias por prioridade ABC
+     */
+    protected function analyzeCategoryCapacity(array $processedProducts, array $gondolaStructure): array
+    {
+        Log::info("📊 FASE 1: Iniciando análise de capacidade por categoria", [
+            'total_products' => count($processedProducts)
+        ]);
+        
+        // 1. Agrupar produtos por categoria (primeira palavra do nome)
+        $categoryGroups = [];
+        
+        foreach ($processedProducts as $product) {
+            $productName = strtoupper($product['product']['name'] ?? 'OUTROS');
+            $categoryKey = explode(' ', $productName)[0]; // Primeira palavra
+            
+            if (!isset($categoryGroups[$categoryKey])) {
+                $categoryGroups[$categoryKey] = [
+                    'category' => $categoryKey,
+                    'products' => [],
+                    'total_abc_value' => 0,
+                    'total_width_needed' => 0,
+                    'total_facings' => 0
+                ];
+            }
+            
+            $categoryGroups[$categoryKey]['products'][] = $product;
+            
+            // ✅ CORRIGIDO: Calcular largura necessária baseada no facing otimizado
+            $productWidth = $product['product']['width'] ?? 20; // cm
+            $facing = $product['intelligent_facing'] ?? 1;
+            
+            // ✅ NOVA LÓGICA: Calcular largura real considerando distribuição uniforme
+            // Em vez de usar facing × largura, usar largura média por prateleira
+            $shelvesPerModule = 4; // Assumindo 4 prateleiras por módulo
+            $facingsPerShelf = ceil($facing / $shelvesPerModule);
+            $widthNeeded = $productWidth * $facingsPerShelf; // Largura por prateleira, não total
+            
+            $categoryGroups[$categoryKey]['total_abc_value'] += $product['priority_score'] ?? 0;
+            $categoryGroups[$categoryKey]['total_width_needed'] += $widthNeeded;
+            $categoryGroups[$categoryKey]['total_facings'] += $facing;
+        }
+        
+        // 2. Aplicar ABC interno dentro de cada categoria
+        foreach ($categoryGroups as $categoryKey => &$category) {
+            $category['products'] = $this->applyABCWithinCategory($category['products']);
+        }
+        
+        // 3. Ordenar categorias por prioridade ABC (maior valor primeiro)
+        $categoriesOrdered = collect($categoryGroups)->sortByDesc('total_abc_value')->values()->toArray();
+        
+        // 4. Calcular estatísticas finais
+        $totalWidthNeeded = array_sum(array_column($categoriesOrdered, 'total_width_needed'));
+        $totalModules = $gondolaStructure['total_sections'];
+        $moduleCapacity = $this->calculateModuleCapacity($gondolaStructure);
+        $totalCapacity = $totalModules * $moduleCapacity;
+        
+        Log::info("📊 FASE 1: Análise de capacidade concluída", [
+            'categories_found' => count($categoriesOrdered),
+            'total_width_needed_cm' => round($totalWidthNeeded, 1),
+            'total_capacity_cm' => $totalCapacity,
+            'capacity_utilization_percent' => round(($totalWidthNeeded / $totalCapacity) * 100, 1),
+            'categories_summary' => array_map(function($cat) {
+                return [
+                    'category' => $cat['category'],
+                    'products_count' => count($cat['products']),
+                    'total_width_cm' => round($cat['total_width_needed'], 1),
+                    'total_facings' => $cat['total_facings'],
+                    'abc_value' => round($cat['total_abc_value'], 2)
+                ];
+            }, $categoriesOrdered)
+        ]);
+        
+        return [
+            'categories' => $categoriesOrdered,
+            'total_width_needed' => $totalWidthNeeded,
+            'total_capacity' => $totalCapacity,
+            'capacity_utilization' => $totalWidthNeeded / $totalCapacity,
+            'module_capacity' => $moduleCapacity
+        ];
+    }
+
+    /**
+     * 📊 Analisa prioridade das categorias baseado em ABC (MÉTODO LEGADO - MANTIDO PARA COMPATIBILIDADE)
      */
     protected function analyzeCategoryPriority(array $processedProducts): array
     {
@@ -1958,6 +2129,121 @@ class AutoPlanogramController extends Controller
     }
 
     /**
+     * 🏗️ Calcula capacidade de um módulo baseado na estrutura da gôndola
+     * Cada módulo = 4 prateleiras × 125cm = 500cm total
+     */
+    protected function calculateModuleCapacity(array $gondolaStructure): float
+    {
+        // Assumir que cada prateleira tem 125cm de largura (padrão)
+        $shelfWidth = 125.0; // cm
+        
+        // Contar prateleiras por módulo (assumindo 4 prateleiras por módulo)
+        $shelvesPerModule = 4;
+        
+        $moduleCapacity = $shelfWidth * $shelvesPerModule;
+        
+        Log::info("🏗️ Capacidade do módulo calculada", [
+            'shelf_width_cm' => $shelfWidth,
+            'shelves_per_module' => $shelvesPerModule,
+            'module_capacity_cm' => $moduleCapacity
+        ]);
+        
+        return $moduleCapacity;
+    }
+
+    /**
+     * 🎯 FASE 2: Cálculo de Capacidade Total - Aloca módulos por categoria
+     * 
+     * Para cada categoria:
+     * - Calcula quantos módulos completos precisa
+     * - Calcula módulo parcial se necessário
+     * - Aloca módulos sequencialmente (1, 2, 3, 4...)
+     * - Garante que categorias não se misturem
+     */
+    protected function calculateModuleAllocation(array $categoryAnalysis, array $gondolaStructure): array
+    {
+        Log::info("🎯 FASE 2: Iniciando cálculo de alocação de módulos", [
+            'total_categories' => count($categoryAnalysis['categories']),
+            'module_capacity_cm' => $categoryAnalysis['module_capacity']
+        ]);
+        
+        $allocations = [];
+        $currentModuleIndex = 0; // ✅ CORRIGIDO: Começar do módulo 0 (corresponde ao ordering das sections)
+        $totalModules = $gondolaStructure['total_sections'];
+        $moduleCapacity = $categoryAnalysis['module_capacity'];
+        
+        foreach ($categoryAnalysis['categories'] as $category) {
+            $categoryName = $category['category'];
+            $widthNeeded = $category['total_width_needed'];
+            
+            // Calcular quantos módulos completos a categoria precisa
+            $fullModulesNeeded = floor($widthNeeded / $moduleCapacity);
+            $remainingWidth = $widthNeeded % $moduleCapacity;
+            
+            // Calcular módulos alocados
+            $allocatedModules = [];
+            $totalAllocatedCapacity = 0;
+            
+            // Alocar módulos completos
+            for ($i = 0; $i < $fullModulesNeeded && $currentModuleIndex < $totalModules; $i++) {
+                $allocatedModules[] = [
+                    'module_index' => $currentModuleIndex,
+                    'capacity_used' => $moduleCapacity,
+                    'capacity_available' => $moduleCapacity,
+                    'is_full' => true
+                ];
+                $totalAllocatedCapacity += $moduleCapacity;
+                $currentModuleIndex++;
+            }
+            
+            // Alocar módulo parcial se necessário e se há módulos disponíveis
+            if ($remainingWidth > 0 && $currentModuleIndex < $totalModules) {
+                $allocatedModules[] = [
+                    'module_index' => $currentModuleIndex,
+                    'capacity_used' => $remainingWidth,
+                    'capacity_available' => $moduleCapacity,
+                    'is_full' => false
+                ];
+                $totalAllocatedCapacity += $remainingWidth;
+                $currentModuleIndex++;
+            }
+            
+            $allocations[] = [
+                'category' => $categoryName,
+                'width_needed' => $widthNeeded,
+                'allocated_modules' => $allocatedModules,
+                'total_allocated_capacity' => $totalAllocatedCapacity,
+                'efficiency_percent' => $widthNeeded > 0 ? round(($totalAllocatedCapacity / $widthNeeded) * 100, 1) : 0,
+                'products' => $category['products']
+            ];
+            
+            Log::info("📦 Módulos alocados para categoria", [
+                'category' => $categoryName,
+                'width_needed_cm' => round($widthNeeded, 1),
+                'full_modules' => $fullModulesNeeded,
+                'partial_module_width' => round($remainingWidth, 1),
+                'total_allocated_cm' => round($totalAllocatedCapacity, 1),
+                'modules_allocated' => count($allocatedModules),
+                'efficiency_percent' => $widthNeeded > 0 ? round(($totalAllocatedCapacity / $widthNeeded) * 100, 1) : 0
+            ]);
+        }
+        
+        Log::info("🎯 FASE 2: Alocação de módulos concluída", [
+            'total_allocations' => count($allocations),
+            'modules_used' => $currentModuleIndex,
+            'modules_available' => $totalModules,
+            'modules_remaining' => max(0, $totalModules - $currentModuleIndex)
+        ]);
+        
+        return [
+            'allocations' => $allocations,
+            'modules_used' => $currentModuleIndex,
+            'modules_available' => $totalModules,
+            'modules_remaining' => max(0, $totalModules - $currentModuleIndex)
+        ];
+    }
+
+    /**
      * 📈 Aplica análise ABC dentro de uma categoria específica
      */
     protected function applyABCWithinCategory(array $categoryProducts): array
@@ -1997,7 +2283,160 @@ class AutoPlanogramController extends Controller
     }
 
     /**
-     * 🏪 Distribui uma categoria específica nos módulos
+     * 🎯 FASE 3: Alocação Sequencial - Executa distribuição respeitando limites de módulos
+     * 
+     * Para cada categoria:
+     * - Coloca TODOS os produtos da categoria nos módulos alocados
+     * - Respeita limite de capacidade de cada módulo
+     * - Quebra facing dentro do módulo se necessário
+     * - Zero mistura de categorias
+     */
+    protected function executeSequentialAllocation(Gondola $gondola, array $moduleAllocation, array $gondolaStructure): array
+    {
+        Log::info("🎯 FASE 3: Iniciando alocação sequencial", [
+            'total_allocations' => count($moduleAllocation['allocations'])
+        ]);
+        
+        $totalProductsPlaced = 0;
+        $totalPlacements = 0;
+        $segmentsUsed = 0;
+        $categoriesProcessed = 0;
+        
+        // Obter todas as sections (módulos) da gôndola
+        $allSections = $gondola->sections()
+            ->with(['shelves.segments.layer'])
+            ->orderBy('ordering')
+            ->get();
+        
+        foreach ($moduleAllocation['allocations'] as $allocation) {
+            $categoryName = $allocation['category'];
+            $products = $allocation['products'];
+            $allocatedModules = $allocation['allocated_modules'];
+            
+            Log::info("📦 Processando categoria sequencialmente", [
+                'category' => $categoryName,
+                'products_count' => count($products),
+                'modules_allocated' => count($allocatedModules)
+            ]);
+            
+            // Distribuir produtos da categoria nos módulos alocados
+            $categoryResult = $this->distributeCategoryInAllocatedModules(
+                $gondola,
+                $allSections,
+                $products,
+                $allocatedModules,
+                $categoryName
+            );
+            
+            // Consolidar resultados
+            $totalProductsPlaced += $categoryResult['products_placed'];
+            $totalPlacements += $categoryResult['total_placements'];
+            $segmentsUsed += $categoryResult['segments_used'];
+            $categoriesProcessed++;
+            
+            Log::info("✅ Categoria processada sequencialmente", [
+                'category' => $categoryName,
+                'products_placed' => $categoryResult['products_placed'],
+                'total_placements' => $categoryResult['total_placements'],
+                'segments_used' => $categoryResult['segments_used']
+            ]);
+        }
+        
+        Log::info("🎯 FASE 3: Alocação sequencial concluída", [
+            'categories_processed' => $categoriesProcessed,
+            'total_products_placed' => $totalProductsPlaced,
+            'total_placements' => $totalPlacements,
+            'segments_used' => $segmentsUsed
+        ]);
+        
+        return [
+            'products_placed' => $totalProductsPlaced,
+            'total_placements' => $totalPlacements,
+            'segments_used' => $segmentsUsed,
+            'categories_processed' => $categoriesProcessed
+        ];
+    }
+
+    /**
+     * 🏪 Distribui uma categoria específica nos módulos alocados
+     */
+    protected function distributeCategoryInAllocatedModules(Gondola $gondola, $allSections, array $products, array $allocatedModules, string $categoryName): array
+    {
+        $productsPlaced = 0;
+        $totalPlacements = 0;
+        $segmentsUsed = 0;
+        $remainingProducts = $products;
+        
+        Log::info("🏪 Distribuindo categoria nos módulos alocados", [
+            'category' => $categoryName,
+            'products_count' => count($products),
+            'modules_count' => count($allocatedModules)
+        ]);
+        
+        foreach ($allocatedModules as $moduleAllocation) {
+            $moduleIndex = $moduleAllocation['module_index'];
+            $moduleCapacity = $moduleAllocation['capacity_available'];
+            $capacityUsed = $moduleAllocation['capacity_used'];
+            
+            // Encontrar a section correspondente ao módulo
+            $section = $allSections->where('ordering', $moduleIndex)->first();
+            
+            if (!$section) {
+                Log::warning("⚠️ Section não encontrada para módulo", [
+                    'module_index' => $moduleIndex,
+                    'category' => $categoryName
+                ]);
+                continue;
+            }
+            
+            Log::info("📦 Processando módulo para categoria", [
+                'category' => $categoryName,
+                'module_index' => $moduleIndex,
+                'module_capacity_cm' => $moduleCapacity,
+                'capacity_used_cm' => $capacityUsed,
+                'remaining_products' => count($remainingProducts)
+            ]);
+            
+            // Distribuir produtos restantes neste módulo
+            $moduleResult = $this->distributeProductsInModule(
+                $section,
+                $remainingProducts,
+                $moduleCapacity,
+                $categoryName
+            );
+            
+            // Atualizar contadores
+            $productsPlaced += $moduleResult['products_placed'];
+            $totalPlacements += $moduleResult['total_placements'];
+            $segmentsUsed += $moduleResult['segments_used'];
+            
+            // Remover produtos colocados da lista restante
+            $remainingProducts = $moduleResult['remaining_products'];
+            
+            Log::info("✅ Módulo processado para categoria", [
+                'category' => $categoryName,
+                'module_index' => $moduleIndex,
+                'products_placed' => $moduleResult['products_placed'],
+                'total_placements' => $moduleResult['total_placements'],
+                'remaining_products' => count($remainingProducts)
+            ]);
+            
+            // Se não há mais produtos para colocar, parar
+            if (empty($remainingProducts)) {
+                break;
+            }
+        }
+        
+        return [
+            'products_placed' => $productsPlaced,
+            'total_placements' => $totalPlacements,
+            'segments_used' => $segmentsUsed,
+            'remaining_products' => $remainingProducts
+        ];
+    }
+
+    /**
+     * 🏪 Distribui uma categoria específica nos módulos (MÉTODO LEGADO - MANTIDO PARA COMPATIBILIDADE)
      */
     protected function distributeCategoryInModules(Gondola $gondola, array $categoryProducts, array $gondolaStructure, string $categoryName): array
     {
@@ -2024,7 +2463,186 @@ class AutoPlanogramController extends Controller
     }
 
     /**
-     * 🔄 NOVO: Reordena produtos por adjacência de categoria
+     * 🏪 Distribui produtos de uma categoria dentro de um módulo específico
+     * 
+     * Respeita a capacidade do módulo e quebra facing se necessário
+     * Exemplo: 20 faces = 5 por prateleira em 4 prateleiras
+     */
+    protected function distributeProductsInModule($section, array $products, float $moduleCapacity, string $categoryName): array
+    {
+        $productsPlaced = 0;
+        $totalPlacements = 0;
+        $segmentsUsed = 0;
+        $remainingProducts = [];
+        $usedCapacity = 0;
+        
+        Log::info("🏪 Distribuindo produtos no módulo", [
+            'category' => $categoryName,
+            'module_capacity_cm' => $moduleCapacity,
+            'products_count' => count($products)
+        ]);
+        
+        // Obter prateleiras do módulo em ordem
+        $shelves = $section->shelves()->orderBy('ordering')->get();
+        
+        foreach ($products as $product) {
+            $productWidth = $product['product']['width'] ?? 20;
+            $desiredFacing = $product['intelligent_facing'] ?? 1;
+            $totalWidthNeeded = $productWidth * $desiredFacing;
+            
+            // Verificar se o produto cabe no módulo
+            if ($usedCapacity + $totalWidthNeeded > $moduleCapacity) {
+                // Produto não cabe, adicionar à lista de restantes
+                $remainingProducts[] = $product;
+                continue;
+            }
+            
+            // Tentar colocar o produto nas prateleiras do módulo
+            $placementResult = $this->placeProductInModuleShelves(
+                $shelves,
+                $product,
+                $desiredFacing,
+                $categoryName
+            );
+            
+            if ($placementResult['success']) {
+                $productsPlaced++;
+                $totalPlacements += $placementResult['placements'];
+                $segmentsUsed += $placementResult['segments_used'];
+                $usedCapacity += $placementResult['width_used'];
+                
+                Log::info("✅ Produto colocado no módulo", [
+                    'category' => $categoryName,
+                    'product_id' => $product['product_id'],
+                    'product_name' => $product['product']['name'] ?? 'N/A',
+                    'facing_placed' => $placementResult['placements'],
+                    'width_used_cm' => $placementResult['width_used']
+                ]);
+            } else {
+                // Produto não conseguiu ser colocado, adicionar à lista de restantes
+                $remainingProducts[] = $product;
+                
+                Log::warning("⚠️ Produto não conseguiu ser colocado no módulo", [
+                    'category' => $categoryName,
+                    'product_id' => $product['product_id'],
+                    'product_name' => $product['product']['name'] ?? 'N/A',
+                    'reason' => $placementResult['reason'] ?? 'Desconhecido'
+                ]);
+            }
+        }
+        
+        Log::info("🏪 Distribuição no módulo concluída", [
+            'category' => $categoryName,
+            'products_placed' => $productsPlaced,
+            'total_placements' => $totalPlacements,
+            'segments_used' => $segmentsUsed,
+            'capacity_used_cm' => round($usedCapacity, 1),
+            'capacity_available_cm' => round($moduleCapacity - $usedCapacity, 1),
+            'remaining_products' => count($remainingProducts)
+        ]);
+        
+        return [
+            'products_placed' => $productsPlaced,
+            'total_placements' => $totalPlacements,
+            'segments_used' => $segmentsUsed,
+            'remaining_products' => $remainingProducts,
+            'capacity_used' => $usedCapacity
+        ];
+    }
+
+    /**
+     * 🏪 Coloca um produto nas prateleiras de um módulo
+     * 
+     * ✅ CORRIGIDO: Distribui uniformemente entre todas as prateleiras
+     * Exemplo: 20 faces = 5 faces por prateleira em 4 prateleiras
+     */
+    protected function placeProductInModuleShelves($shelves, array $product, int $desiredFacing, string $categoryName): array
+    {
+        $productWidth = $product['product']['width'] ?? 20;
+        $remainingFacing = $desiredFacing;
+        $totalPlacements = 0;
+        $segmentsUsed = 0;
+        $widthUsed = 0;
+        
+        Log::info("🏪 Colocando produto nas prateleiras do módulo (DISTRIBUIÇÃO UNIFORME)", [
+            'category' => $categoryName,
+            'product_id' => $product['product_id'],
+            'desired_facing' => $desiredFacing,
+            'product_width_cm' => $productWidth,
+            'shelves_count' => $shelves->count()
+        ]);
+        
+        // ✅ NOVA ESTRATÉGIA: Distribuir uniformemente entre todas as prateleiras
+        $totalShelves = $shelves->count();
+        $facingsPerShelf = ceil($desiredFacing / $totalShelves);
+        
+        foreach ($shelves as $shelfIndex => $shelf) {
+            if ($remainingFacing <= 0) {
+                break; // Todos os facings foram colocados
+            }
+            
+            // Calcular quantos facings cabem nesta prateleira
+            $shelfWidth = floatval($shelf->shelf_width ?? 125.0);
+            $availableWidth = $this->getShelfAvailableWidth($shelf);
+            $facingsThatFit = floor($availableWidth / $productWidth);
+            
+            if ($facingsThatFit <= 0) {
+                Log::info("⚠️ Prateleira sem espaço", [
+                    'category' => $categoryName,
+                    'shelf_ordering' => $shelf->ordering,
+                    'available_width' => $availableWidth,
+                    'product_width' => $productWidth
+                ]);
+                continue; // Prateleira não tem espaço suficiente
+            }
+            
+            // ✅ DISTRIBUIÇÃO UNIFORME: Calcular facings para esta prateleira
+            $facingsForThisShelf = min($remainingFacing, $facingsThatFit, $facingsPerShelf);
+            
+            if ($facingsForThisShelf <= 0) {
+                continue;
+            }
+            
+            // Tentar colocar o produto nesta prateleira
+            $placementResult = $this->placeProductInShelfVertically($shelf, $product, $facingsForThisShelf);
+            
+            if ($placementResult) {
+                $remainingFacing -= $facingsForThisShelf;
+                $totalPlacements += $facingsForThisShelf;
+                $segmentsUsed++;
+                $widthUsed += $facingsForThisShelf * $productWidth;
+                
+                Log::info("✅ Facings colocados na prateleira (UNIFORME)", [
+                    'category' => $categoryName,
+                    'product_id' => $product['product_id'],
+                    'shelf_ordering' => $shelf->ordering,
+                    'facings_placed' => $facingsForThisShelf,
+                    'facings_remaining' => $remainingFacing,
+                    'distribution_strategy' => 'uniform'
+                ]);
+            } else {
+                Log::warning("⚠️ Falha ao colocar produto na prateleira", [
+                    'category' => $categoryName,
+                    'product_id' => $product['product_id'],
+                    'shelf_ordering' => $shelf->ordering,
+                    'facings_tried' => $facingsForThisShelf
+                ]);
+            }
+        }
+        
+        $success = $remainingFacing <= 0; // Sucesso se todos os facings foram colocados
+        
+        return [
+            'success' => $success,
+            'placements' => $totalPlacements,
+            'segments_used' => $segmentsUsed,
+            'width_used' => $widthUsed,
+            'reason' => $success ? 'Produto colocado com sucesso' : 'Não foi possível colocar todos os facings'
+        ];
+    }
+
+    /**
+     * 🔄 NOVO: Reordena produtos por adjacência de categoria (MÉTODO LEGADO - MANTIDO PARA COMPATIBILIDADE)
      * Agrupa produtos similares (ex: todos os açúcares juntos, todos os arrozes juntos)
      */
     protected function reorderProductsByCategory(array $processedProducts): array
@@ -2106,6 +2724,16 @@ class AutoPlanogramController extends Controller
                 'product_count' => $actual
             ]);
         }
+    }
+
+    /**
+     * 📏 HELPER: Calcula largura disponível na prateleira usando dados do banco
+     */
+    protected function getShelfAvailableWidth($shelf): float 
+    {
+        $shelfWidth = floatval($shelf->shelf_width ?? 125.0);
+        $usedWidth = $this->calculateUsedWidthInShelf($shelf);
+        return $shelfWidth - $usedWidth;
     }
 
     // Métodos auxiliares

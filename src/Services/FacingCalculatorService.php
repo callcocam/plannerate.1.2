@@ -237,43 +237,6 @@ class FacingCalculatorService
         return $result['facing'];
     }
 
-    /**
-     * 🎨 Ajusta facing baseado no contexto ABC + urgência + situação do estoque
-     */
-    protected function adjustFacingByContext(int $baseFacing, string $abcClass, string $urgency, int $currentStock, int $targetStock): int
-    {
-        $adjustedFacing = $baseFacing;
-        
-        // 1. AJUSTE POR CLASSE ABC
-        $abcMultiplier = match($abcClass) {
-            'A' => 1.2, // Produtos A: +20% facing
-            'B' => 1.0, // Produtos B: manter facing  
-            'C' => 0.8, // Produtos C: -20% facing
-            default => 1.0
-        };
-        
-        // 2. AJUSTE POR URGÊNCIA DE REPOSIÇÃO
-        $urgencyMultiplier = match($urgency) {
-            'CRÍTICO' => 1.5, // Urgência crítica: +50% facing
-            'BAIXO' => 1.2,   // Estoque baixo: +20% facing
-            'NORMAL' => 1.0,  // Normal: manter
-            'ALTO' => 0.8,    // Estoque alto: -20% facing
-            default => 1.0
-        };
-        
-        // 3. APLICAR MULTIPLICADORES
-        $adjustedFacing = ceil($baseFacing * $abcMultiplier * $urgencyMultiplier);
-        
-        // 4. LIMITES MÍNIMOS E MÁXIMOS POR CLASSE
-        $limits = match($abcClass) {
-            'A' => ['min' => 2, 'max' => 8], // Classe A: 2-8 facings
-            'B' => ['min' => 1, 'max' => 5], // Classe B: 1-5 facings  
-            'C' => ['min' => 1, 'max' => 3], // Classe C: 1-3 facings
-            default => ['min' => 1, 'max' => 2]
-        };
-        
-        return max($limits['min'], min($limits['max'], $adjustedFacing));
-    }
 
     /**
      * 📊 Facing baseado apenas na classe ABC (fallback)
