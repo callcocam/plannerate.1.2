@@ -20,20 +20,22 @@ class ABCAnalysisService
      * @param array $productIds
      * @param string|null $startDate
      * @param string|null $endDate
-     * @param int|null $storeId 
+     * @param int|null $storeId
+     * @param array|null $weights - Pesos para ABC (quantity, value, margin) 
      * @return array
      */
     public function analyze(
         array $productIds,
         ?string $startDate = null,
         ?string $endDate = null,
-        ?int $storeId = null
+        ?int $storeId = null,
+        ?array $weights = null
     ): array {
         // Busca os produtos
         $products = Product::whereIn('id', $productIds)->get();
 
         // Classifica os produtos
-        $classified = $this->classifyProducts($products, $startDate, $endDate, $storeId);
+        $classified = $this->classifyProducts($products, $startDate, $endDate, $storeId, $weights);
 
         return $classified;
     }
@@ -70,7 +72,8 @@ class ABCAnalysisService
         Collection $products,
         ?string $startDate = null,
         ?string $endDate = null,
-        ?int $storeId = null
+        ?int $storeId = null,
+        ?array $weights = null
     ): array {
         $result = [];
 
@@ -135,6 +138,57 @@ class ABCAnalysisService
             ];
         }
 
-        return $result;
+        // CLASSIFICAR EM A, B, C baseado em Pareto
+        return $this->classifyABC($result, $weights);
+    }
+
+    /**
+     * Classifica produtos em A, B, C baseado na curva ABC (Pareto 80/20)
+     * 
+     * Classe A: 20% dos produtos que representam 80% do valor
+     * Classe B: 30% dos produtos que representam 15% do valor
+     * Classe C: 50% dos produtos que representam 5% do valor
+     */
+    protected function classifyABC(array $products, ?array $weights = null): array
+    {
+        if (empty($products)) {
+            return $products;
+        }
+
+        // Usar pesos fornecidos ou padrões
+        $weightQty = $weights['quantity'] ?? 0.3;
+        $weightValue = $weights['value'] ?? 0.3;
+        $weightMargin = $weights['margin'] ?? 0.4;
+
+        // Calcular score composto
+        foreach ($products as &$product) {
+            $product['composite_score'] = 
+                ($product['quantity'] * $weightQty) + 
+                ($product['value'] * $weightValue) + 
+                ($product['margin'] * $weightMargin);
+        }
+
+        // Ordenar por score descendente
+        usort($products, function($a, $b) {
+            return $b['composite_score'] <=> $a['composite_score'];
+        });
+
+        // Classificar baseado em percentis
+        $total = count($products);
+        $limitA = (int) ceil($total * 0.20); // Top 20%
+        $limitB = (int) ceil($total * 0.50); // Próximos 30% (total 50%)
+
+        foreach ($products as $index => &$product) {
+            if ($index < $limitA) {
+                $product['abc_class'] = 'A';
+            } elseif ($index < $limitB) {
+                $product['abc_class'] = 'B';
+            } else {
+                $product['abc_class'] = 'C';
+            }
+            $product['product_id'] = $product['id']; // Para compatibilidade
+        }
+
+        return $products;
     }
 }

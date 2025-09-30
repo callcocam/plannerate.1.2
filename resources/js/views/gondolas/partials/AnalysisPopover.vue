@@ -23,6 +23,14 @@
             <Button v-if="isAbcCalculating" variant="outline" @click="handleOpenTargetStockParams">Calculos Estoque Alvo
               Prateleira</Button>
             <Button variant="outline" @click="handleOpenBCGParams">Calculos Matriz BCG</Button>
+            
+            <!-- Divisor -->
+            <div class="border-t border-gray-200 dark:border-gray-700 my-2"></div>
+            
+            <!-- Botão de Distribuição Hierárquica -->
+            <Button variant="default" @click="handleOpenHierarchicalDistribution">
+              🚀 Distribuição Hierárquica Auto
+            </Button>
           </div>
         </PopoverContent>
       </Popover>
@@ -119,6 +127,98 @@
 
   <!-- Modal de Impressão -->
   <PrintModal v-model:open="showPrintModal" @close="showPrintModal = false" />
+  
+  <!-- Dialog de Distribuição Hierárquica -->
+  <Dialog v-model:open="showHierarchicalDistribution">
+    <DialogContent class="w-auto max-w-xl z-[1000]">
+      <DialogTitle>Distribuição Hierárquica por Categoria</DialogTitle>
+      <DialogDescription>
+        Distribui produtos automaticamente respeitando a hierarquia mercadológica com facing baseado no target stock.
+      </DialogDescription>
+      <div class="space-y-4">
+        <!-- Parâmetros ABC -->
+        <div>
+          <h4 class="font-medium text-sm mb-2">Pesos ABC</h4>
+          <div class="grid grid-cols-3 gap-2">
+            <div>
+              <label class="text-xs text-gray-600">Quantidade</label>
+              <input type="number" v-model.number="hierarchicalParams.weights.quantity" 
+                step="0.1" min="0" max="1" class="w-full px-2 py-1 border rounded" />
+            </div>
+            <div>
+              <label class="text-xs text-gray-600">Valor</label>
+              <input type="number" v-model.number="hierarchicalParams.weights.value" 
+                step="0.1" min="0" max="1" class="w-full px-2 py-1 border rounded" />
+            </div>
+            <div>
+              <label class="text-xs text-gray-600">Margem</label>
+              <input type="number" v-model.number="hierarchicalParams.weights.margin" 
+                step="0.1" min="0" max="1" class="w-full px-2 py-1 border rounded" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Parâmetros de Target Stock -->
+        <div>
+          <h4 class="font-medium text-sm mb-2">Parâmetros de Estoque Alvo</h4>
+          
+          <!-- Níveis de Serviço -->
+          <div class="mb-3">
+            <label class="text-xs text-gray-600 font-medium block mb-1">Níveis de Serviço</label>
+            <div class="grid grid-cols-3 gap-2">
+              <div>
+                <label class="text-xs text-gray-500">Classe A</label>
+                <input type="number" v-model.number="hierarchicalParams.targetStock.serviceLevel.A" 
+                  step="0.01" min="0" max="1" class="w-full px-2 py-1 border rounded text-sm" />
+              </div>
+              <div>
+                <label class="text-xs text-gray-500">Classe B</label>
+                <input type="number" v-model.number="hierarchicalParams.targetStock.serviceLevel.B" 
+                  step="0.01" min="0" max="1" class="w-full px-2 py-1 border rounded text-sm" />
+              </div>
+              <div>
+                <label class="text-xs text-gray-500">Classe C</label>
+                <input type="number" v-model.number="hierarchicalParams.targetStock.serviceLevel.C" 
+                  step="0.01" min="0" max="1" class="w-full px-2 py-1 border rounded text-sm" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Dias de Cobertura -->
+          <div>
+            <label class="text-xs text-gray-600 font-medium block mb-1">Dias de Cobertura</label>
+            <div class="grid grid-cols-3 gap-2">
+              <div>
+                <label class="text-xs text-gray-500">Classe A</label>
+                <input type="number" v-model.number="hierarchicalParams.targetStock.coverageDays.A" 
+                  step="1" min="1" class="w-full px-2 py-1 border rounded text-sm" />
+              </div>
+              <div>
+                <label class="text-xs text-gray-500">Classe B</label>
+                <input type="number" v-model.number="hierarchicalParams.targetStock.coverageDays.B" 
+                  step="1" min="1" class="w-full px-2 py-1 border rounded text-sm" />
+              </div>
+              <div>
+                <label class="text-xs text-gray-500">Classe C</label>
+                <input type="number" v-model.number="hierarchicalParams.targetStock.coverageDays.C" 
+                  step="1" min="1" class="w-full px-2 py-1 border rounded text-sm" />
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Botões de ação -->
+        <div class="flex justify-end gap-2">
+          <Button variant="outline" @click="showHierarchicalDistribution = false">
+            Cancelar
+          </Button>
+          <Button variant="default" @click="executeHierarchicalDistribution" :disabled="isExecutingDistribution">
+            {{ isExecutingDistribution ? 'Distribuindo...' : 'Executar Distribuição' }}
+          </Button>
+        </div>
+      </div>
+    </DialogContent>
+  </Dialog>
 </template>
 
 <script setup lang="ts">
@@ -173,6 +273,8 @@ const showTargetStockResultModal = ref(false);
 const showReportOptions = ref(false);
 const isGeneratingReport = ref(false);
 const showPrintModal = ref(false);
+const showHierarchicalDistribution = ref(false);
+const isExecutingDistribution = ref(false);
 
 const isAbcCalculating = ref(false);
 
@@ -224,6 +326,27 @@ const targetStockParams = ref({
     { classification: 'B', coverageDays: 5 },
     { classification: 'C', coverageDays: 7 }
   ],
+});
+
+// Parâmetros da distribuição hierárquica
+const hierarchicalParams = ref({
+  weights: {
+    quantity: 0.30,
+    value: 0.30,
+    margin: 0.40,
+  },
+  targetStock: {
+    serviceLevel: {
+      A: 0.70,  // Igual ao modal de Target Stock
+      B: 0.80,
+      C: 0.90   // Igual ao modal de Target Stock
+    },
+    coverageDays: {
+      A: 2,
+      B: 5,
+      C: 7
+    }
+  }
 });
 
 
@@ -394,4 +517,69 @@ const clearAnalysisResult = () => {
   targetStockResultStore.setResult([], []);
   isAbcCalculating.value = false;
 };
+
+// Função para abrir modal de distribuição hierárquica
+function handleOpenHierarchicalDistribution() {
+  showCalculos.value = false;
+  showHierarchicalDistribution.value = true;
+}
+
+// Função para executar distribuição hierárquica
+async function executeHierarchicalDistribution() {
+  if (!editorStore.currentState) {
+    alert('Nenhum planograma selecionado.');
+    return;
+  }
+
+  const gondola = editorStore.getCurrentGondola;
+  if (!gondola) {
+    alert('Nenhuma gôndola selecionada.');
+    return;
+  }
+
+  // Validar pesos
+  const totalWeight = hierarchicalParams.value.weights.quantity + 
+                      hierarchicalParams.value.weights.value + 
+                      hierarchicalParams.value.weights.margin;
+  
+  if (Math.abs(totalWeight - 1.0) > 0.01) {
+    alert('A soma dos pesos deve ser igual a 1.0');
+    return;
+  }
+
+  isExecutingDistribution.value = true;
+
+  try {
+    // Usar apiService para garantir que o CSRF token seja enviado
+    const { apiService } = await import('@plannerate/services');
+    
+    const result = await apiService.post('/analysis/hierarchical-distribution', {
+      gondola_id: gondola.id,
+      planogram: editorStore.currentState.id,
+      // Enviar array vazio para o backend buscar todos os produtos automaticamente
+      products: [],
+      weights: hierarchicalParams.value.weights,
+      targetStock: hierarchicalParams.value.targetStock,
+      storeId: editorStore.currentState.store_id ? parseInt(editorStore.currentState.store_id) : undefined
+    });
+
+    if (result.success) {
+      alert(`✅ Distribuição concluída!\n\n` +
+            `Total: ${result.data.placed_products}/${result.data.total_products} produtos\n` +
+            `Falhas: ${result.data.failed_products}\n\n` +
+            `A página será recarregada para exibir as mudanças.`);
+      
+      // Recarregar planograma
+      window.location.reload();
+    } else {
+      alert('❌ Erro na distribuição: ' + result.message);
+    }
+  } catch (error: any) {
+    console.error('Erro ao executar distribuição hierárquica:', error);
+    alert('❌ Erro ao executar distribuição: ' + (error?.message || 'Erro desconhecido'));
+  } finally {
+    isExecutingDistribution.value = false;
+    showHierarchicalDistribution.value = false;
+  }
+}
 </script>

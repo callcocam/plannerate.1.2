@@ -13,9 +13,46 @@ use Spatie\LaravelPackageTools\PackageServiceProvider;
 use Callcocam\Plannerate\Commands\PlannerateCommand;
 use Callcocam\Plannerate\Commands\InstallFrontendCommand;
 use Spatie\LaravelPackageTools\Commands\InstallCommand;
+use Callcocam\Plannerate\Services\Engine\CategoryHierarchyService;
+use Callcocam\Plannerate\Services\Engine\ABCHierarchicalService;
+use Callcocam\Plannerate\Services\Engine\FacingCalculatorService;
+use Callcocam\Plannerate\Services\Engine\HierarchicalDistributionService;
 
 class PlannerateServiceProvider extends PackageServiceProvider
 {
+    /**
+     * Register services.
+     */
+    public function register(): void
+    {
+        parent::register();
+
+        // Registrar os services de distribuição hierárquica
+        $this->app->singleton(CategoryHierarchyService::class, function ($app) {
+            return new CategoryHierarchyService();
+        });
+
+        $this->app->singleton(ABCHierarchicalService::class, function ($app) {
+            return new ABCHierarchicalService(
+                $app->make(\Callcocam\Plannerate\Services\Analysis\ABCAnalysisService::class),
+                $app->make(CategoryHierarchyService::class)
+            );
+        });
+
+        $this->app->singleton(FacingCalculatorService::class, function ($app) {
+            return new FacingCalculatorService();
+        });
+
+        $this->app->singleton(HierarchicalDistributionService::class, function ($app) {
+            return new HierarchicalDistributionService(
+                $app->make(CategoryHierarchyService::class),
+                $app->make(ABCHierarchicalService::class),
+                $app->make(FacingCalculatorService::class),
+                $app->make(\Callcocam\Plannerate\Services\Analysis\TargetStockAnalysisService::class)
+            );
+        });
+    }
+
     public function configurePackage(Package $package): void
     {
         /*

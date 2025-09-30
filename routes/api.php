@@ -54,6 +54,10 @@ Route::middleware(['api'])
 
             Route::post('/target-stock', [AnalysisControllerUpdated::class, 'targetStockAnalysis'])
                 ->name('analysis.target-stock');
+
+            // Distribuição Hierárquica por Categoria Mercadológica
+            Route::post('/hierarchical-distribution', [AnalysisController::class, 'hierarchicalDistribution'])
+                ->name('analysis.hierarchical-distribution');
         });
     });
 //Plannerate

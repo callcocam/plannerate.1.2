@@ -236,10 +236,23 @@ return [
   - Alinhamento visual dos furos aprimorado para perfeita centralização na cremalheira
   - Sincronização entre estado local e backend garantida após edições
 
+- ✅ **Sistema de Distribuição Hierárquica por Categoria Mercadológica**: Implementado sistema completo de auto-distribuição inteligente de produtos em planogramas
+  - **CategoryHierarchyService.php**: Gerenciamento de hierarquia mercadológica com suporte a 7 níveis (segmento varejista → subsegmento)
+  - **ABCHierarchicalService.php**: Execução de ABC Global e ABC Local por categoria com priorização pelo maior score A
+  - **FacingCalculatorService.php**: Cálculo inteligente de facing baseado no target stock e dimensões da prateleira
+  - **HierarchicalDistributionService.php**: Distribuição automática respeitando hierarquia de categorias
+  - Integração completa com ABCAnalysisService e TargetStockAnalysisService existentes
+  - Categorias não se misturam - cada categoria ocupa seus módulos de forma sequencial
+  - Produtos ordenados por ABC Local dentro de cada categoria
+  - Facing calculado dinamicamente: `facing = ceil(target_stock / (shelf_depth / product_depth))`
+  - Logs detalhados em cada etapa para monitoramento e debugging
+  - Rota API: `POST /api/analysis/hierarchical-distribution`
+  - Suporte a gôndolas com múltiplas seções e prateleiras
+
 ### Próximas Melhorias ⏳
 
-- ⏳ Implementação de novos recursos de análise
-- ⏳ Otimização de performance
+- ⏳ Interface frontend para configuração de distribuição hierárquica
+- ⏳ Otimização de performance para grandes volumes de produtos
 - ⏳ Melhorias de acessibilidade
 
 ### Melhorias de Debug e Monitoramento ✅
