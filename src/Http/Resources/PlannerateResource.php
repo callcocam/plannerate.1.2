@@ -27,7 +27,7 @@ class PlannerateResource extends JsonResource
             // 'store' => $this->whenLoaded('store', function () {
             //     return  $this->store->name;
             // }),
-            // 'store'=>$this->store,
+            'store'=>$this->store,
             'client_id' => $this->client_id,
             // 'client' => $this->whenLoaded('client'),
             'cluster_id' => $this->cluster_id,

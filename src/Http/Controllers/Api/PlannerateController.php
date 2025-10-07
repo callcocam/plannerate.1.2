@@ -59,6 +59,7 @@ class PlannerateController extends Controller
             //         }
             //     }
             // ]);
+            
 
             return response()->json(new PlannerateResource($planogram));
         } catch (ModelNotFoundException $e) {
