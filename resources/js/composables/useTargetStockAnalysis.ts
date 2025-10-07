@@ -17,6 +17,9 @@ export function useTargetStockAnalysis() {
         editorStore.getCurrentGondola?.sections.forEach(section => {
             section.shelves.forEach(shelf => {
                 shelf.segments.forEach(segment => {
+                    if (!segment.layer || !segment.layer.product) {
+                        return;
+                    }
                     const product = segment.layer.product as any;
                     const classification = analysisResult?.find((p: any) => p.id === product.ean);
                     const { abcClass } = classification || { abcClass: 'B' };

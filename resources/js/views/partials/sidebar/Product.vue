@@ -6,7 +6,7 @@
                 <div v-for="layer in selectedLayers" :key="layer.id" class="relative mb-2 flex items-center gap-2">
                     <template v-if="layer.product">
                         <div class="flex flex-col w-full">
-                            <div class="flex flex-col items-center gap-3 p-4 border rounded-lg dark:border-gray-600">
+                            <div class="flex flex-col items-center gap-3 p-1">
                                 <!-- Imagem do produto -->
                                 <img :src="layer.product.image_url" alt=""
                                     class="h-20 w-20 rounded-lg border object-contain shadow-sm dark:border-gray-600"
@@ -22,9 +22,86 @@
                                         <div><span class="font-medium">Frentes:</span> {{ layer.quantity || 0 }}</div>
                                     </div>
                                 </div>
+                                <div v-if="getStockInfo(layer.product?.ean) || getProductAnalysis(layer.product?.ean)"
+                                    class="w-full bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
+                                    <h5
+                                        class="text-sm font-semibold text-green-700 dark:text-green-300 mb-3 text-center flex items-center justify-center gap-1">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                        </svg>
+                                        Análise de Estoque
+                                    </h5>
+
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <!-- Classificação ABC -->
+                                        <div v-if="getProductAnalysis(layer.product?.ean)"
+                                            class="bg-white dark:bg-gray-800 rounded-md p-3 text-center">
+                                            <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">Classificação
+                                            </div>
+                                            <div class="text-lg font-bold"
+                                                :class="getAbcClassColor(getProductAnalysis(layer.product?.ean)?.abcClass)">
+                                                {{ getProductAnalysis(layer.product?.ean)?.abcClass }}
+                                            </div>
+                                        </div>
+
+                                        <!-- Estoque Alvo -->
+                                        <div v-if="getStockInfo(layer.product?.ean)"
+                                            class="bg-white dark:bg-gray-800 rounded-md p-3 text-center">
+                                            <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">Estoque Alvo
+                                            </div>
+                                            <div class="text-lg font-bold text-blue-600 dark:text-blue-400">
+                                                {{ getStockInfo(layer.product?.ean)?.targetStock }}
+                                            </div>
+                                            <div class="text-xs text-gray-500 dark:text-gray-400">unidades</div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Informações adicionais de estoque -->
+                                    <div v-if="getStockInfo(layer.product?.ean)" class="mt-3 grid grid-cols-3 gap-2">
+                                        <div class="bg-white dark:bg-gray-800 rounded-md p-2 text-center">
+                                            <div class="text-xs text-gray-500 dark:text-gray-400">Estoque Atual</div>
+                                            <div class="text-sm font-bold text-gray-700 dark:text-gray-300">
+                                                {{ getStockInfo(layer.product?.ean)?.currentStock || 0 }}
+                                            </div>
+                                        </div>
+                                        <div class="bg-white dark:bg-gray-800 rounded-md p-2 text-center">
+                                            <div class="text-xs text-gray-500 dark:text-gray-400">Estoque Mínimo</div>
+                                            <div class="text-sm font-bold text-orange-600 dark:text-orange-400">
+                                                {{ getStockInfo(layer.product?.ean)?.minimumStock || 0 }}
+                                            </div>
+                                        </div>
+                                        <div class="bg-white dark:bg-gray-800 rounded-md p-2 text-center">
+                                            <div class="text-xs text-gray-500 dark:text-gray-400">Estoque Segurança
+                                            </div>
+                                            <div class="text-sm font-bold text-purple-600 dark:text-purple-400">
+                                                {{ getStockInfo(layer.product?.ean)?.safetyStock || 0 }}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Indicadores de Performance -->
+                                    <div v-if="getStockInfo(layer.product?.ean)" class="mt-3 grid grid-cols-2 gap-2">
+                                        <div class="bg-white dark:bg-gray-800 rounded-md p-2 text-center">
+                                            <div class="text-xs text-gray-500 dark:text-gray-400">Nível de Serviço</div>
+                                            <div class="text-sm font-bold text-green-600 dark:text-green-400">
+                                                {{ ((getStockInfo(layer.product?.ean)?.serviceLevel || 0) *
+                                                    100).toFixed(1) }}%
+                                            </div>
+                                        </div>
+                                        <div class="bg-white dark:bg-gray-800 rounded-md p-2 text-center">
+                                            <div class="text-xs text-gray-500 dark:text-gray-400">Variabilidade</div>
+                                            <div class="text-sm font-bold"
+                                                :class="getStockInfo(layer.product?.ean)?.highVariability ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'">
+                                                {{ ((getStockInfo(layer.product?.ean)?.variability || 0) *
+                                                    100).toFixed(1) }}%
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
 
                                 <!-- Dimensões -->
-                                <div class="w-full bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mb-3">
+                                <div class="w-full bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mb-3" v-else>
                                     <h5 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 text-center">
                                         Dimensões</h5>
                                     <div class="grid grid-cols-3 gap-2 text-xs">
@@ -120,6 +197,9 @@
                                     </div>
                                 </div>
 
+                                <!-- Análise de Estoque e Classificação -->
+
+
                                 <!-- Botões de ação -->
                                 <div
                                     class="absolute top-2 right-2 flex items-center justify-end rounded-md p-2 flex-row gap-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
@@ -159,6 +239,8 @@ import { Layer } from '@/types/segment';
 import { Product } from '@plannerate/types/segment';
 import { useEditorStore } from '@plannerate/store/editor';
 import EditProduct from './EditProduct.vue';
+import { useTargetStockAnalysis } from '@plannerate/composables/useTargetStockAnalysis';
+import { useAnalysisResultStore } from '@plannerate/store/editor/analysisResult';
 
 const editorStore = useEditorStore();
 
@@ -167,7 +249,11 @@ const isLoadingDetails = ref(false);
 const emit = defineEmits<{
     (e: 'remove-layer', layer: Layer): void;
 }>();
-
+const { targetStockResultStore } = useTargetStockAnalysis();
+const analysisResultStore = useAnalysisResultStore();
+console.log('editorStore ', editorStore.currentState);
+const start_date = editorStore?.currentState?.start_date || '';
+const end_date = editorStore?.currentState?.end_date || '';
 watch(
     editorStore.getSelectedLayerIds,
     async (newIdsSet) => {
@@ -180,8 +266,14 @@ watch(
 
         isLoadingDetails.value = true;
         try {
+            // Replace with correct source for start_date and end_date  
             const productDetailsPromises = idsToFetch.map((productId) => {
-                return apiService.get<Layer>(`layers/${productId}`);
+                return apiService.get<Layer>(`layers/${productId}`, {
+                    params: {
+                        start_date,
+                        end_date,
+                    },
+                });
             });
             const fetchedProducts = await Promise.all(productDetailsPromises);
             selectedLayers.value = fetchedProducts.filter((p): p is Layer => !!p);
@@ -195,6 +287,14 @@ watch(
     { deep: true, immediate: true },
 );
 
+
+// Função para obter informações de estoque de um produto específico
+const getStockInfo = (ean: string | undefined) => {
+    if (!targetStockResultStore.result || !ean) {
+        return null;
+    }
+    return targetStockResultStore.result.find(item => item.ean === ean);
+};
 const showDeleteConfirm = ref(false);
 const confirmDelete = (record: any) => {
     if (!record) {
@@ -274,5 +374,23 @@ const getMarginColor = (margin: number): string => {
     if (margin >= 20) return 'text-green-600 dark:text-green-400';
     if (margin >= 10) return 'text-yellow-600 dark:text-yellow-400';
     return 'text-red-600 dark:text-red-400';
+}
+
+const getProductAnalysis = (ean: string | undefined) => {
+    if (!analysisResultStore.result || !ean) return null;
+    return analysisResultStore.result.find((item: any) => item.id === ean);
+}
+
+const getAbcClassColor = (abcClass: string | undefined): string => {
+    switch (abcClass) {
+        case 'A':
+            return 'text-green-600 dark:text-green-400';
+        case 'B':
+            return 'text-yellow-600 dark:text-yellow-400';
+        case 'C':
+            return 'text-red-600 dark:text-red-400';
+        default:
+            return 'text-gray-600 dark:text-gray-400';
+    }
 }
 </script>

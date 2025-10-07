@@ -1,29 +1,14 @@
 <template>
-    <div v-if="layer.product" class="layer group flex cursor-pointer" :style="layerStyle" @click="handleLayerClick"
-        @keydown="handleKeyDown" >
-        <div   class="absolute -top-4 -left-2 m-1 px-1 text-xs font-bold text-white rounded z-50" :class="{
-            'bg-blue-500': abcClass === 'A',
-            'bg-green-500': abcClass === 'B',
-            'bg-red-500': abcClass === 'C'
-        }">
-            {{ abcClass }}
-        </div>
-        <ProductNormal v-for="index in layer.quantity" :key="index" :product="layer.product" :scale-factor="scaleFactor"
-            :index="index" :shelf-depth="props.shelfDepth" :layer="layer">
-            <template #depth-count v-if="index === 1">
-                <slot name="depth-count">
-
-                </slot>
-
-            </template>
-        </ProductNormal>
+    <div v-if="layer.product && getQuantity" class="layer group flex cursor-pointer" :style="layerStyle" @click="handleLayerClick"
+        @keydown="handleKeyDown">
+        <ProductNormal v-for="index in getQuantity" :key="index" :product="layer.product" :scale-factor="scaleFactor"
+            :index="index" :shelf-depth="props.shelfDepth" :layer="layer" />
     </div>
 </template>
 
 <script setup lang="ts">
 import { computed, CSSProperties, onMounted, onUnmounted, ref } from 'vue';
 import { useEditorStore } from '@plannerate/store/editor';
-import { useAnalysisResultStore } from '@plannerate/store/editor/analysisResult';
 import ProductNormal from '@plannerate/views/gondolas/sections/shelves/Product.vue';
 import { Layer as LayerType, Segment as SegmentType } from '@/types/segment';
 import { Shelf } from '@plannerate/types/shelves';
@@ -37,7 +22,7 @@ const props = defineProps<{
     sectionWidth: number;
     shelfDepth: number;
     isTargetStockViewActive?: boolean;
-}>();
+}>(); 
 
 const emit = defineEmits<{
     (e: 'increase', layer: LayerType): void;
@@ -50,6 +35,10 @@ const emit = defineEmits<{
 //  
 const editorStore = useEditorStore();
 
+const getQuantity = computed(() => {
+    return props.layer?.quantity || 1;
+});
+
 // Refs 
 const layerQuantity = ref(props.layer.quantity || 1);
 const segmentQuantity = ref(props.segment.quantity || 1);
@@ -57,31 +46,24 @@ const debounceTimer = ref<ReturnType<typeof setTimeout> | null>(null);
 const segmentSelected = ref(false);
 const editorGondola = computed(() => editorStore.getCurrentGondola);
 const currentSectionId = computed(() => props.shelf.section_id);
-
-const analysisResultStore = useAnalysisResultStore();
-
-const abcClass = computed(() => {
-    if (!props.layer?.product) return 'B'; // Default para evitar erros
-    const productEan = props.layer.product.ean;
-    const classificationEntry = analysisResultStore.result?.find((p: any) => p.id === productEan);
-    return classificationEntry?.abcClass ; // Default para evitar erros
-});
 /**
  * Computed style para o layer baseado em alinhamento e dimensões
  */
 const layerStyle = computed(() => {
     // Verificações de segurança para evitar erros de null/undefined
-    if (!props.layer?.product) {
-        console.warn('Layer.vue: layer.product está null/undefined', props.layer);
-        return {
-            width: '0px',
-            height: '0px',
-            zIndex: '0',
-        };
+    if (props.layer) {
+        if (!props.layer?.product) {
+            console.warn('Layer.vue: layer.product está null/undefined', props.layer);
+            return {
+                width: '0px',
+                height: '0px',
+                zIndex: '0',
+            };
+        }
     }
 
-    const layerHeight = props.layer.product.height || 0;
-    const productWidth = (props.layer.product.width || 0) * props.scaleFactor;
+    const layerHeight = props.layer?.product?.height || 0;
+    const productWidth = (props.layer?.product?.width || 0) * props.scaleFactor;
     const quantity = props.layer.quantity || 1;
     let layerWidthFinal = `100%`; // Default para justify ou se não houver gôndola/alinhamento
 
@@ -190,7 +172,7 @@ const onIncreaseQuantity = async () => {
     // Usa selectedLayerIds
     if (editorStore.getSelectedLayerIds.size > 1) return;
     const newQuantity = (layerQuantity.value += 1);
-    const validation = validateShelfWidth(props.shelf, props.sectionWidth, props.layer.product.id, newQuantity, null);
+    const validation = validateShelfWidth(props.shelf, props.sectionWidth, props.layer?.product?.id, newQuantity, null);
     if (!validation.isValid) {
         toast.error('Limite de Largura Excedido', {
             description: `A largura total (${validation.totalWidth.toFixed(1)}cm) excederia a largura da seção (${validation.sectionWidth}cm).`,

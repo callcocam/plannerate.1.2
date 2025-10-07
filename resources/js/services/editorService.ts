@@ -24,8 +24,9 @@ export const useEditorService = () => {
   /**
    * Carrega o planograma
    */
-  const fetchPlanogram = (planogramId: string) => {
-    return apiService.get(`/plannerate/${planogramId}`);
+  const fetchPlanogram = (planogramId: string, params = {}) => {
+    console.log('Fetching planogram with params:', params);
+    return apiService.get(`/plannerate/${planogramId}`, {params});
   };
 
   return {

@@ -91,7 +91,7 @@ const sortConfig = ref({
 
 // Estado dos filtros
 const searchText = ref('');
-const activeStatusFilters = ref<Set<'Ativo' | 'Inativo' >>(new Set(['Ativo', 'Inativo' ]));
+const activeStatusFilters = ref<Set<'Ativo' | 'Inativo'>>(new Set(['Ativo', 'Inativo']));
 
 // Função para exportar para Excel
 function exportToExcel() {
@@ -106,7 +106,7 @@ function exportToExcel() {
     'Classe ABC': item.abcClass,
     'Ranking': item.ranking,
     'Retirar?': item.removeFromMix,
-    'Status': item.status, 
+    'Status': item.status,
     'Detalhe do Status': item.statusDetail
   }));
 
@@ -136,7 +136,7 @@ function exportToExcel() {
 }
 
 // Função para alternar filtro de status
-function toggleStatusFilter(status: 'Ativo' | 'Inativo'  ) {
+function toggleStatusFilter(status: 'Ativo' | 'Inativo') {
   if (activeStatusFilters.value.has(status)) {
     activeStatusFilters.value.delete(status);
   } else {
@@ -152,23 +152,23 @@ function clearFilters() {
 
 // Função para ordenar os resultados
 const sortedResults = computed(() => {
-  if (!analysisResultStore.result) return []; 
+  if (!analysisResultStore.result) return [];
   return [...analysisResultStore.result].sort((a, b) => {
     const aValue = a[sortConfig.value.key];
     const bValue = b[sortConfig.value.key];
-    
+
     if (sortConfig.value.key === 'status') {
       const statusOrder = { 'Ativo': 0, 'Inativo': 1 };
-      const comparison = statusOrder[aValue as 'Ativo' | 'Inativo' ] - statusOrder[bValue as 'Ativo' | 'Inativo' ];
+      const comparison = statusOrder[aValue as 'Ativo' | 'Inativo'] - statusOrder[bValue as 'Ativo' | 'Inativo'];
       return sortConfig.value.direction === 'asc' ? comparison : -comparison;
     }
-    
+
     if (typeof aValue === 'string' && typeof bValue === 'string') {
-      return sortConfig.value.direction === 'asc' 
+      return sortConfig.value.direction === 'asc'
         ? aValue.localeCompare(bValue)
         : bValue.localeCompare(aValue);
     }
-    
+
     return sortConfig.value.direction === 'asc'
       ? (aValue as number) - (bValue as number)
       : (bValue as number) - (aValue as number);
@@ -214,7 +214,7 @@ const formatNumber = new Intl.NumberFormat('pt-BR', {
   minimumFractionDigits: 0,
   maximumFractionDigits: 0
 });
- 
+
 
 // Cálculos do resumo
 const summary = computed(() => {
@@ -256,58 +256,60 @@ function removeFromGondola(selectedItemId: string | null) {
 
 // Função para executar análise ABC com parâmetros específicos
 async function executeABCAnalysisWithParams(weights: any, thresholds: any) {
-    analysisResultStore.loading = true;
-    const products: any[] = [];
-    
-    editorStore.getCurrentGondola?.sections.forEach(section => {
-        section.shelves.forEach(shelf => {
-            shelf.segments.forEach(segment => {
-                const product = segment.layer.product as any; 
-                if (product) {
-                    products.push({
-                        id: product.id,
-                        ean: product.ean,
-                        name: product.name,
-                        classification: product.classification,
-                        currentStock: product.current_stock || 0
-                    });
-                }
-            });
-        });
-    });
+  analysisResultStore.loading = true;
+  const products: any[] = [];
 
-    try {
-        if (products.length > 0) {
-            const { getABCAnalysis } = useAnalysisService();
-            const analysisData = await getABCAnalysis(
-                products.map(p => p.id),
-                {
-                    planogram: editorStore.currentState?.id 
-                }
-            ) as any;
-            const analyzed = useAssortmentStatus(analysisData, weights, thresholds);
-            analysisResultStore.setResult(analyzed);
-        } else {
-            console.log('Nenhum produto encontrado na gôndola para análise.');
+  editorStore.getCurrentGondola?.sections.forEach(section => {
+    section.shelves.forEach(shelf => {
+      shelf.segments.forEach(segment => {
+        if (segment.layer) {
+          const product = segment?.layer?.product as any;
+          if (product) {
+            products.push({
+              id: product.id,
+              ean: product.ean,
+              name: product.name,
+              classification: product.classification,
+              currentStock: product.current_stock || 0
+            });
+          }
         }
-    } catch (error) {
-        console.error('Erro ao executar Análise ABC:', error);
-    } finally {
-        analysisResultStore.loading = false;
+      });
+    });
+  });
+
+  try {
+    if (products.length > 0) {
+      const { getABCAnalysis } = useAnalysisService();
+      const analysisData = await getABCAnalysis(
+        products.map(p => p.id),
+        {
+          planogram: editorStore.currentState?.id
+        }
+      ) as any;
+      const analyzed = useAssortmentStatus(analysisData, weights, thresholds);
+      analysisResultStore.setResult(analyzed);
+    } else {
+      console.log('Nenhum produto encontrado na gôndola para análise.');
     }
+  } catch (error) {
+    console.error('Erro ao executar Análise ABC:', error);
+  } finally {
+    analysisResultStore.loading = false;
+  }
 }
 
 // Listener para executar análise quando solicitado pelo ABCParamsPopover
 window.addEventListener('execute-abc-analysis', (event: any) => {
-    const { weights, thresholds } = event.detail;
-    abcParams.value.weights = weights;
-    abcParams.value.thresholds = thresholds;
-    executeABCAnalysisWithParams(weights, thresholds);
+  const { weights, thresholds } = event.detail;
+  abcParams.value.weights = weights;
+  abcParams.value.thresholds = thresholds;
+  executeABCAnalysisWithParams(weights, thresholds);
 });
 analysisResultStore.$onAction(({ name }) => {
-    if (name === 'requestRecalculation') {
-        executeABCAnalysisWithParams(abcParams.value.weights, abcParams.value.thresholds);
-    }
+  if (name === 'requestRecalculation') {
+    executeABCAnalysisWithParams(abcParams.value.weights, abcParams.value.thresholds);
+  }
 });
 </script>
 
@@ -426,12 +428,9 @@ analysisResultStore.$onAction(({ name }) => {
                 </tr>
               </thead>
               <tbody class="min-h-52 overflow-y-auto">
-                <tr 
-                  v-for="item in filteredResults" 
-                  :key="item.id"
+                <tr v-for="item in filteredResults" :key="item.id"
                   @click="selectedItemId = selectedItemId === item.id ? null : item.id"
-                  :class="{'bg-blue-100 dark:bg-blue-900/50': selectedItemId === item.id, 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50': true}"
-                >
+                  :class="{ 'bg-blue-100 dark:bg-blue-900/50': selectedItemId === item.id, 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50': true }">
                   <td class="px-2 py-1 border">{{ item.id }}</td>
                   <td class="px-2 py-1 border">{{ item.category }}</td>
                   <td class="px-2 py-1 border">{{ item.name }}</td>
@@ -452,7 +451,8 @@ analysisResultStore.$onAction(({ name }) => {
             </table>
           </div>
 
-          <div v-if="filteredResults.length === 0" class="text-gray-500 mt-4 text-center">Nenhum resultado encontrado.</div>
+          <div v-if="filteredResults.length === 0" class="text-gray-500 mt-4 text-center">Nenhum resultado encontrado.
+          </div>
         </div>
 
         <DialogFooter class="mt-4 flex-shrink-0">
@@ -490,7 +490,7 @@ analysisResultStore.$onAction(({ name }) => {
       </DialogContent>
     </Dialog>
   </TooltipProvider>
-</template> 
+</template>
 
 
 <style scoped>

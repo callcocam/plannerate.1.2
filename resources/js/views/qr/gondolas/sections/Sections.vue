@@ -1,18 +1,20 @@
 <template>
-    <div class="flex flex-col md:flex-row">
+    <div class="flex flex-col md:flex-row h-screen overflow-hidden items-end">
         <slot name="flow-direction" />
 
-        <div class="mt-28 flex md:flex-row" ref="sectionsContainer">
+        <div id="planogram-container-full" class="mt-0 flex md:flex-row" ref="sectionsContainer">
             <draggable v-model="draggableSections" item-key="id" handle=".drag-handle" class="flex md:flex-row"
                 :animation="200" :disabled="!canReorder">
                 <template #item="{ element: section, index }">
                     <SectionWrapper :key="section.id" :section="section" :index="index" :scale-factor="scaleFactor"
-                        :sections-container="sectionsContainer" :gondola="gondola" @segment-select="$emit('segment-select', $event)" />
+                        :sections-container="sectionsContainer" :gondola="gondola"
+                        @segment-select="$emit('segment-select', $event)" />
                 </template>
             </draggable>
 
             <!-- Última cremalheira -->
-            <LastRack v-if="lastSection" :section="lastSection" :scale-factor="scaleFactor" />
+            <LastRack v-if="lastSection" :section="lastSection" :scale-factor="scaleFactor"
+                :index="gondola.sections.length" />
         </div>
     </div>
 </template>
@@ -28,7 +30,7 @@ import SectionWrapper from '@plannerate/views/qr/gondolas/components/sections/Se
 
 
 // ===== Componentes Internos ===== 
- 
+
 
 // ===== Props & Emits =====
 const props = defineProps<{

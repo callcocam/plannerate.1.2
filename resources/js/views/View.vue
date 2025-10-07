@@ -45,8 +45,10 @@ const planogramData = computed(() => editorStore.currentState);
 onMounted(async () => {
     // Inicializa sidebarOpen com o valor salvo no localStorage
     sidebarOpen.value = getSidebarState();
+
+   const { gondolaId } = route.params;
     propertiesOpen.value = getPropertiesState();
-    const response = await editorService.fetchPlanogram(route.params.id); 
+    const response = await editorService.fetchPlanogram(route.params.id, {gondolaId}); 
     editorStore.initialize(response); 
 });
 

@@ -1,8 +1,7 @@
 <template>
     <div class="flex items-center relative">
-        <Cremalheira :section="section" :scale-factor="scaleFactor" @delete-section="$emit('delete', section)">
-           
-        </Cremalheira>
+        <Cremalheira :section="section" :scale-factor="scaleFactor" @delete-section="$emit('delete', section)"
+            :index="index" />
 
         <SectionComponent :gondola="gondola" :section-index="index" :section="section" :scale-factor="scaleFactor"
             :sections-container="sectionsContainer" @segment-select="$emit('segment-select', $event)" />
@@ -13,8 +12,7 @@ import Cremalheira from '@plannerate/views/qr/gondolas/sections/Cremalheira.vue'
 import SectionComponent from '@plannerate/views/qr/gondolas/sections/Section.vue';
 import { Section } from '@plannerate/types/sections';
 import { Gondola } from '@plannerate/types/gondola';
-
-const props = defineProps<{
+defineProps<{
     section: Section,
     gondola: Gondola,
     index: number,

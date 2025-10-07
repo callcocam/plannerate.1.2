@@ -7,8 +7,7 @@
 
 <script setup lang="ts">
 import { Layer } from '@/types/segment';
-import { computed, onMounted, ref } from 'vue';
-import { useEditorStore } from '@plannerate/store/editor';
+import { computed, ref } from 'vue'; 
 import { useAnalysisResultStore } from '@plannerate/store/editor/analysisResult';
 const props = defineProps<{
     product: any;
@@ -16,9 +15,7 @@ const props = defineProps<{
     index: number;
     shelfDepth: number;
     layer: Layer;
-}>();
-
-const editorStore = useEditorStore();
+}>(); 
 const analysisResultStore = useAnalysisResultStore();
 const productRef = ref<HTMLDivElement | null>(null);
 

@@ -1,5 +1,5 @@
 <template>
-    <div :style="gramalheiraStyle" class="group relative bg-gray-800 dark:bg-gray-600 z-10 border border-gray-600 dark:border-gray-500">
+    <div :style="gramalheiraStyle" class="group relative bg-gray-800 dark:bg-gray-600 z-10 border border-gray-600 dark:border-gray-500" data-cremalheira="true" :data-cremalheira-index="index">
         <!-- Furos na gramalheira -->
         <div v-for="(hole, index) in holes" :key="index" class="absolute bg-gray-300 dark:bg-gray-400 border border-gray-400 dark:border-gray-500" :style="{
             width: `${hole.width * scaleFactor}px`,
@@ -39,6 +39,10 @@ const props = defineProps({
     isFirstSection: {
         type: Boolean,
         default: false,
+    },
+    index: {
+        type: Number,
+        default: 0,
     },
 });
 

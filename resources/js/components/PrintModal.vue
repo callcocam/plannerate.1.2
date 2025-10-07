@@ -308,7 +308,7 @@ import { toast } from 'vue-sonner';
 
 // Props & Emits
 const props = defineProps<{
-  open: boolean;
+  open: boolean; 
 }>();
 
 const emit = defineEmits<{
@@ -363,7 +363,7 @@ const printConfig = ref({
 
 // Métodos
 const detectModules = () => {
-  const modules = printService.detectModules();
+  const modules = printService.detectModules( );
   availableModules.value = modules;
   
   if (modules.length === 0) {
