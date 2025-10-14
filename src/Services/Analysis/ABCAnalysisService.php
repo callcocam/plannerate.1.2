@@ -143,11 +143,11 @@ class ABCAnalysisService
     }
 
     /**
-     * Classifica produtos em A, B, C baseado na curva ABC (Pareto 80/20)
+     * Classifica produtos em A, B, C baseado na curva ABC por categoria
      * 
-     * Classe A: 20% dos produtos que representam 80% do valor
-     * Classe B: 30% dos produtos que representam 15% do valor
-     * Classe C: 50% dos produtos que representam 5% do valor
+     * Classe A: % acumulada ≤ 80% (dentro da categoria)
+     * Classe B: % acumulada ≤ 85% (dentro da categoria)
+     * Classe C: % acumulada > 85% (dentro da categoria)
      */
     protected function classifyABC(array $products, ?array $weights = null): array
     {
@@ -168,27 +168,50 @@ class ABCAnalysisService
                 ($product['margin'] * $weightMargin);
         }
 
-        // Ordenar por score descendente
-        usort($products, function($a, $b) {
-            return $b['composite_score'] <=> $a['composite_score'];
-        });
-
-        // Classificar baseado em percentis
-        $total = count($products);
-        $limitA = (int) ceil($total * 0.20); // Top 20%
-        $limitB = (int) ceil($total * 0.50); // Próximos 30% (total 50%)
-
-        foreach ($products as $index => &$product) {
-            if ($index < $limitA) {
-                $product['abc_class'] = 'A';
-            } elseif ($index < $limitB) {
-                $product['abc_class'] = 'B';
-            } else {
-                $product['abc_class'] = 'C';
+        // 1. Agrupar por categoria
+        $categories = [];
+        foreach ($products as $product) {
+            $category = $product['category'] ?? 'SEM_CATEGORIA';
+            if (!isset($categories[$category])) {
+                $categories[$category] = [];
             }
-            $product['product_id'] = $product['id']; // Para compatibilidade
+            $categories[$category][] = $product;
         }
 
-        return $products;
+        // 2. Para cada categoria, classificar ABC
+        $result = [];
+        foreach ($categories as $categoryName => $categoryProducts) {
+            // Ordenar por score descendente dentro da categoria
+            usort($categoryProducts, function($a, $b) {
+                return $b['composite_score'] <=> $a['composite_score'];
+            });
+
+            // Calcular % individual e acumulada
+            $totalScore = array_sum(array_column($categoryProducts, 'composite_score'));
+            $accumulated = 0;
+
+            foreach ($categoryProducts as &$product) {
+                $individualPercent = $totalScore > 0 ? $product['composite_score'] / $totalScore : 0;
+                $accumulated += $individualPercent;
+                
+                $product['individual_percent'] = $individualPercent;
+                $product['accumulated_percent'] = $accumulated;
+
+                // Classificar baseado na % acumulada
+                if ($accumulated <= 0.80) {
+                    $product['abc_class'] = 'A';
+                } elseif ($accumulated <= 0.85) {
+                    $product['abc_class'] = 'B';
+                } else {
+                    $product['abc_class'] = 'C';
+                }
+
+                $product['product_id'] = $product['id']; // Para compatibilidade
+            }
+
+            $result = array_merge($result, $categoryProducts);
+        }
+
+        return $result;
     }
 }

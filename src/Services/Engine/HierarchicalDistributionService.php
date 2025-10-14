@@ -92,9 +92,25 @@ class HierarchicalDistributionService
                 'category_id' => $categoryId
             ]);
 
-            // 5. Buscar TODOS os produtos dessa categoria
+            // 5. FILTRAR produtos dessa categoria a partir de $allProducts
+            // IMPORTANTE: Usar $allProducts (que já foi filtrado pelo controller)
+            // em vez de buscar novamente do banco (que ignoraria filtros de "já usados")
             if ($categoryId) {
-                $categoryProducts = $this->categoryService->getAllProductsFromCategory($categoryId);
+                // Buscar IDs da categoria e descendentes
+                $category = \App\Models\Category::find($categoryId);
+                $descendantIds = $category ? $category->getAllDescendantIds() : [];
+                $allCategoryIds = array_merge([$categoryId], $descendantIds);
+                
+                // Filtrar $allProducts para incluir apenas produtos desta categoria
+                $categoryProducts = array_filter($allProducts, function($p) use ($allCategoryIds) {
+                    return in_array($p['category_id'] ?? null, $allCategoryIds);
+                });
+                
+                Log::info("🔍 Produtos filtrados da categoria (usando allProducts)", [
+                    'category_id' => $categoryId,
+                    'category_ids_searched' => count($allCategoryIds),
+                    'products_found' => count($categoryProducts)
+                ]);
             } else {
                 // Categoria sem ID (ex: "SEM_CATEGORIA")
                 $categoryProducts = array_filter($allProducts, function($p) use ($categoryName) {
@@ -118,8 +134,20 @@ class HierarchicalDistributionService
                 $storeId
             );
 
-            // 7. Ordenar por ABC local (A primeiro, depois B, depois C)
+            // 7. Ordenar por ABC local (A primeiro, depois B, depois C) + Tamanho
             $categoryProducts = $this->abcHierarchical->sortProductsByABC($categoryProducts, $abcLocal);
+            
+            // Log dos primeiros produtos ordenados para debug
+            Log::info("📊 Produtos ordenados por ABC + Tamanho", [
+                'category' => $categoryName,
+                'total_products' => count($categoryProducts),
+                'primeiros_5' => array_slice(array_map(fn($p) => [
+                    'name' => $p['name'] ?? 'N/A',
+                    'ean' => $p['ean'] ?? 'N/A',
+                    'abc_local' => collect($abcLocal)->firstWhere('product_id', $p['ean'] ?? $p['id'])['abc_class'] ?? 'N/A',
+                    'volume' => $this->categoryService->extractVolumeFromName($p['name'] ?? '')
+                ], $categoryProducts), 0, 5)
+            ]);
 
             // 8. Calcular Target Stock para todos os produtos da categoria
             $productIds = array_column($categoryProducts, 'id');
@@ -146,6 +174,13 @@ class HierarchicalDistributionService
             $stats['placed_products'] += $categoryStats['placed'];
             $stats['failed_products'] += $categoryStats['failed'];
             $stats['categories_processed'][$categoryName] = $categoryStats;
+            
+            // Log do índice APÓS distribuir a categoria
+            Log::info("📍 Índice de prateleira APÓS categoria", [
+                'category' => $categoryName,
+                'current_shelf_index' => $currentShelfIndex,
+                'products_placed' => $categoryStats['placed']
+            ]);
         }
 
         Log::info("✅ Distribuição hierárquica concluída", $stats);
@@ -297,7 +332,8 @@ class HierarchicalDistributionService
             'total' => count($products),
             'placed' => $placed,
             'failed' => $failed,
-            'success_rate' => $successRate . '%'
+            'success_rate' => $successRate . '%',
+            'current_shelf_index_FINAL' => $currentShelfIndex
         ]);
 
         return [

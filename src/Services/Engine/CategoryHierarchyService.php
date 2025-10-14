@@ -61,6 +61,32 @@ class CategoryHierarchyService
     }
 
     /**
+     * Extrai o ID da categoria genérica de um produto
+     * 
+     * @param array $product - Produto
+     * @return string|null - ID da categoria genérica
+     */
+    public function extractGenericCategoryId(array $product): ?string
+    {
+        // Se não tem categoria, retornar null
+        if (empty($product['category_id'])) {
+            return null;
+        }
+        
+        // Buscar a categoria do produto
+        $category = Category::find($product['category_id']);
+        
+        if (!$category) {
+            return null;
+        }
+        
+        // Buscar a categoria genérica (level_name = 'categoria')
+        $genericCategory = $this->getGenericCategory($category);
+        
+        return $genericCategory->id;
+    }
+
+    /**
      * Busca a categoria genérica (level_name = 'categoria' - REFRI, SUCO, AÇUCAR, etc.)
      * 
      * @param Category $category - Categoria do produto
@@ -97,6 +123,40 @@ class CategoryHierarchyService
         
         // Se não encontrou 'categoria', retornar a categoria original
         return $category;
+    }
+
+    /**
+     * Extrai o tamanho/volume do nome do produto
+     * 
+     * @param string $productName - Nome do produto
+     * @return float - Volume em litros (para comparação)
+     */
+    public function extractVolumeFromName(string $productName): float
+    {
+        // Regex para capturar número + unidade (2L, 3.5Lt, 500ML, 5KG, etc.)
+        if (preg_match('/(\d+(?:[.,]\d+)?)\s*(L|LT|ML|G|KG|UN)/i', $productName, $matches)) {
+            $value = (float) str_replace(',', '.', $matches[1]);
+            $unit = strtoupper($matches[2]);
+            
+            // Converter tudo para litros (ou kg) para comparação
+            switch ($unit) {
+                case 'L':
+                case 'LT':
+                    return $value;
+                case 'ML':
+                    return $value / 1000; // 500ml = 0.5L
+                case 'KG':
+                    return $value;
+                case 'G':
+                    return $value / 1000; // 500g = 0.5kg
+                case 'UN':
+                    return $value;
+                default:
+                    return 0;
+            }
+        }
+        
+        return 0; // Sem tamanho identificado
     }
 
     /**

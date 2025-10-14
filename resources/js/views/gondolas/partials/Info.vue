@@ -13,6 +13,7 @@ import {
     SaveIcon,
     Undo2Icon,
     Redo2Icon,
+    Sparkles,
 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
@@ -22,6 +23,7 @@ import { useEditorStore } from '@plannerate/store/editor';
 import Category from './Category.vue';
 import type { Gondola } from '@plannerate/types/gondola'; 
 import AnalysisPopover from './AnalysisPopover.vue';
+import AutoGenerateModal from '@plannerate/components/AutoGenerateModal.vue';
 // Definição das Props usando sintaxe padrão
 const props = defineProps({
     gondola: {
@@ -52,6 +54,9 @@ const editorStore = useEditorStore(); // Instanciar editorStore
 const filters = ref({
     category: null as any | null, // Tipar o filtro de categoria
 });
+
+/** Controle do modal de geração automática */
+const showAutoGenerateModal = ref(false);
 
 // Propriedades Computadas (Ligadas aos Stores)
 /** Fator de escala atual do editor. */
@@ -301,6 +306,11 @@ const saveChanges = () => editorStore.saveChanges();
                             title="Remover Gôndola">
                             <Trash2 class="mr-1 h-4 w-4" /> <span class="hidden xl:inline">Remover Gôndola</span>
                         </Button>
+                        <Button type="button" variant="default" size="sm" @click="showAutoGenerateModal = true"
+                            title="Gerar Planograma Automaticamente"
+                            class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+                            <Sparkles class="mr-1 h-4 w-4" /> <span class="hidden xl:inline">Gerar Planograma</span>
+                        </Button>
                     </div>
 
                     <!-- Divisor Vertical -->
@@ -345,5 +355,8 @@ const saveChanges = () => editorStore.saveChanges();
             message="Tem certeza que deseja excluir este produto? Esta ação não pode ser desfeita."
             confirmButtonText="Excluir" cancelButtonText="Cancelar" :isDangerous="true" @confirm="confirmDeleteShelf"
             @cancel="cancelDelete" />
+        
+        <!-- Modal de Geração Automática -->
+        <AutoGenerateModal v-model:open="showAutoGenerateModal" />
     </div>
 </template>

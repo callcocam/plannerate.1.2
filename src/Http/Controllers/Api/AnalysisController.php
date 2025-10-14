@@ -170,14 +170,18 @@ class AnalysisController extends Controller
             'targetStock.coverageDays' => 'required|array',
             'targetStock.coverageDays.A' => 'required|integer|min:1',
             'targetStock.coverageDays.B' => 'required|integer|min:1',
-            'targetStock.coverageDays.C' => 'required|integer|min:1'
+            'targetStock.coverageDays.C' => 'required|integer|min:1',
+            'filters' => 'nullable|array',
+            'filters.usageStatus' => 'nullable|string|in:all,unused,used',
+            'filters.includeDimensionless' => 'nullable|boolean'
         ]);
 
         Log::info('🚀 Distribuição Hierárquica - Parâmetros recebidos:', [
             'gondola_id' => $request->gondola_id,
             'products_count' => count($request->products),
             'weights' => $request->weights,
-            'targetStock' => $request->targetStock
+            'targetStock' => $request->targetStock,
+            'filters' => $request->filters ?? []
         ]);
 
         try {
@@ -198,15 +202,56 @@ class AnalysisController extends Controller
                 'products_received' => count($request->products ?? [])
             ]);
 
-            // Buscar produtos completos (com dimensões) FILTRADOS pela categoria do planogram
+            // Obter filtros (valores padrão se não fornecidos)
+            $filters = $request->filters ?? [];
+            $usageStatus = $filters['usageStatus'] ?? 'all';
+            $includeDimensionless = $filters['includeDimensionless'] ?? false;
+
+            // Buscar IDs de produtos já usados em TODAS as gôndolas do planograma (se necessário para filtros)
+            $usedProductIds = [];
+            if ($usageStatus !== 'all') {
+                // Buscar todas as gôndolas do planograma
+                $allGondolas = Gondola::where('planogram_id', $request->planogram)
+                    ->with(['sections.shelves.segments.layer'])
+                    ->get();
+
+                $usedProductIds = $allGondolas->flatMap(function($g) {
+                    return $g->sections->flatMap(function($section) {
+                        return $section->shelves->flatMap(function($shelf) {
+                            return $shelf->segments->map(function($segment) {
+                                return $segment->layer?->product_id;
+                            })->filter();
+                        });
+                    });
+                })->unique()->values()->toArray();
+
+                Log::info('🔍 Produtos já usados no PLANOGRAMA:', [
+                    'planogram_id' => $request->planogram,
+                    'gondolas_count' => $allGondolas->count(),
+                    'used_products_count' => count($usedProductIds),
+                    'sample_ids' => array_slice($usedProductIds, 0, 10) // Apenas 10 primeiros
+                ]);
+            }
+
+            // Buscar produtos completos FILTRADOS pela categoria do planogram
             $query = \App\Models\Product::query()
-                ->where('status', 'published') // Status correto no banco é 'published'
-                ->whereHas('dimensions', function($q) {
+                ->where('status', 'published'); // Status correto no banco é 'published'
+
+            // Aplicar filtro de dimensões condicionalmente
+            if (!$includeDimensionless) {
+                // Apenas produtos COM dimensões válidas (comportamento padrão)
+                $query->whereHas('dimensions', function($q) {
                     $q->where('width', '>', 0)
                       ->where('height', '>', 0)
                       ->where('depth', '>', 0);
-                })
-                ->with('dimensions');
+                });
+                Log::info('✅ Filtro de dimensões aplicado: apenas produtos COM dimensões válidas');
+            } else {
+                // Incluir todos os produtos, mesmo sem dimensões
+                Log::info('⚠️ Incluindo produtos SEM dimensões válidas');
+            }
+
+            $query->with('dimensions');
 
             // Se foram passados produtos específicos, filtrar por eles
             if (!empty($request->products)) {
@@ -216,6 +261,26 @@ class AnalysisController extends Controller
                 ]);
             } else {
                 Log::info('📦 Buscando TODOS os produtos do planograma');
+            }
+
+            // Aplicar filtro de status de uso
+            if ($usageStatus === 'unused') {
+                // Apenas produtos NÃO usados na gôndola
+                if (!empty($usedProductIds)) {
+                    $query->whereNotIn('id', $usedProductIds);
+                }
+                Log::info('✅ Filtro de uso aplicado: apenas produtos NÃO usados');
+            } elseif ($usageStatus === 'used') {
+                // Apenas produtos JÁ usados na gôndola
+                if (!empty($usedProductIds)) {
+                    $query->whereIn('id', $usedProductIds);
+                } else {
+                    // Se não há produtos usados, retornar vazio
+                    $query->whereRaw('1 = 0');
+                }
+                Log::info('✅ Filtro de uso aplicado: apenas produtos JÁ usados');
+            } else {
+                Log::info('✅ Filtro de uso: TODOS os produtos (sem filtro)');
             }
 
             // FILTRO IMPORTANTE: Se o planograma tem categoria definida,

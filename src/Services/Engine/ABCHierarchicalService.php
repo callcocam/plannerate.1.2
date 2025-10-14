@@ -91,8 +91,11 @@ class ABCHierarchicalService
             $categoryName = $this->categoryService->extractCategoryFromProduct($product);
             
             if (!isset($categoriesMap[$categoryName])) {
+                // 🔧 CORREÇÃO: Usar o ID da categoria GENÉRICA, não da subcategoria do produto
+                $genericCategoryId = $this->categoryService->extractGenericCategoryId($product);
+                
                 $categoriesMap[$categoryName] = [
-                    'category_id' => $product['category_id'] ?? null,
+                    'category_id' => $genericCategoryId,
                     'category_name' => $categoryName,
                     'products' => [],
                     'max_score' => 0,
@@ -152,6 +155,7 @@ class ABCHierarchicalService
             Log::info("📦 Categoria priorizada", [
                 'category' => $categoryName,
                 'category_id' => $data['category_id'],
+                'category_id_type' => 'GENÉRICO (level_name=categoria)',
                 'max_score_A' => round($data['max_score'], 3),
                 'count_A' => $data['count_A'],
                 'avg_score' => round($data['avg_score'], 3),
@@ -215,7 +219,7 @@ class ABCHierarchicalService
     }
 
     /**
-     * Ordena produtos por score ABC (decrescente)
+     * Ordena produtos por score ABC (decrescente) e depois por tamanho (decrescente)
      * 
      * @param array $products - Lista de produtos
      * @param array $abcResults - Resultados do ABC
@@ -224,9 +228,19 @@ class ABCHierarchicalService
     public function sortProductsByABC(array $products, array $abcResults): array
     {
         usort($products, function($a, $b) use ($abcResults) {
-            $scoreA = collect($abcResults)->firstWhere('product_id', $a['id'])['composite_score'] ?? 0;
-            $scoreB = collect($abcResults)->firstWhere('product_id', $b['id'])['composite_score'] ?? 0;
-            return $scoreB <=> $scoreA;
+            // 1. Ordenar por composite_score (ABC)
+            $scoreA = collect($abcResults)->firstWhere('product_id', $a['ean'] ?? $a['id'])['composite_score'] ?? 0;
+            $scoreB = collect($abcResults)->firstWhere('product_id', $b['ean'] ?? $b['id'])['composite_score'] ?? 0;
+            
+            if ($scoreA !== $scoreB) {
+                return $scoreB <=> $scoreA; // Maior score primeiro
+            }
+            
+            // 2. Se scores iguais, ordenar por tamanho (maior volume primeiro)
+            $volumeA = $this->categoryService->extractVolumeFromName($a['name'] ?? '');
+            $volumeB = $this->categoryService->extractVolumeFromName($b['name'] ?? '');
+            
+            return $volumeB <=> $volumeA; // Maior volume primeiro (3L antes de 2L antes de 500ml)
         });
         
         return $products;
