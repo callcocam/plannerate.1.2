@@ -1,9 +1,11 @@
 // Info.vue - Componente Principal (Versão QR Code - Apenas Escala)
 <script setup lang="ts">
-import { Minus, Plus } from 'lucide-vue-next';
-import { computed } from 'vue';
+import { Minus, Plus, Printer } from 'lucide-vue-next';
+import { computed, ref } from 'vue';
 import { useEditorStore } from '@plannerate/store/editor';
 import type { Gondola } from '@plannerate/types/gondola';
+// Componente de impressão
+import PrintModal from '@plannerate/components/PrintModal.vue';
 
 const props = defineProps({
     gondola: {
@@ -16,8 +18,12 @@ const props = defineProps({
     },
 });
 
+const showPrintModal = ref(false);
+
 const editorStore = useEditorStore();
 const scaleFactor = computed(() => editorStore.currentScaleFactor);
+
+const sections: any[] = [];//computed(() => editorStore.currentGondola?.sections.map(section => section.id) || []);
 
 const updateScale = (newScale: number) => {
     const clampedScale = Math.max(2, Math.min(10, newScale));
@@ -39,9 +45,14 @@ const updateScale = (newScale: number) => {
                         📱 Visualização via QR Code
                     </div>
                 </div>
-                
+                <div class="flex items-center space-x-4">
+                </div>
                 <!-- Apenas Controle de Escala -->
                 <div class="flex items-center space-x-2">
+
+                    <Button @click="showPrintModal = true" type="button" variant="outline">
+                        <Printer class="w-4 h-4" />
+                    </Button>
                     <label class="text-sm text-gray-600 dark:text-gray-400">Escala:</label>
                     <div class="flex items-center space-x-2">
                         <Button type="button" variant="outline" size="sm" :disabled="scaleFactor <= 2"
@@ -59,5 +70,6 @@ const updateScale = (newScale: number) => {
                 </div>
             </div>
         </div>
+        <PrintModal v-model:open="showPrintModal" @close="showPrintModal = false" :section-ids="sections" />
     </div>
 </template>

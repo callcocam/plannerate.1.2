@@ -1,9 +1,9 @@
 <template>
     <div v-if="stockInfo" @click="($event) => $emit('click', $event)"
-        class="coverage-indicator absolute inset-0 w-full top-0 left-0 right-0 bottom-0 opacity-90 flex items-center justify-center"
+        class="coverage-indicator absolute inset-0 w-full top-0 left-0 right-0 bottom-0 opacity-90 flex items-center justify-center z-30"
         :class="{
             'border-2 border-red-500 bg-red-100': stockStatus === 'increase',
-            'border-2 border-blue-500 bg-blue-100': stockStatus === 'decrease',
+            'border-2 border-yellow-500 bg-blue-100': stockStatus === 'decrease',
             'border-2 border-green-500 bg-green-100': stockStatus === 'ok',
         }">
         <TooltipProvider>
@@ -13,13 +13,13 @@
                         class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-lg p-1 cursor-pointer hover:scale-110 transition-transform"
                         :class="{
                             'border-2 border-red-500': stockStatus === 'increase',
-                            'border-2 border-blue-500': stockStatus === 'decrease',
+                            'border-2 border-yellow-500': stockStatus === 'decrease',
                             'border-2 border-green-500': stockStatus === 'ok',
                         }">
                         <span v-if="stockStatus === 'increase'" class="text-red-600">
                             <TrendingUp class="w-4 h-4" />
                         </span>
-                        <span v-if="stockStatus === 'decrease'" class="text-blue-600">
+                        <span v-if="stockStatus === 'decrease'" class="text-yellow-600">
                             <TrendingDown class="w-4 h-4" />
                         </span>
                         <span v-if="stockStatus === 'ok'" class="text-green-600">
@@ -95,7 +95,7 @@ defineEmits(['click']);
 const { targetStockResultStore } = useTargetStockAnalysis();
 
 // Margem de tolerância configurável (20% por padrão para ser mais realista)
-const tolerancePercentage = computed(() => 0.20);
+const tolerancePercentage = computed(() => 0.10);
 
 const stockInfo = computed(() => {
     if (!targetStockResultStore.result || !props.segment?.layer?.product?.ean) {

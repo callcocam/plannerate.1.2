@@ -12,6 +12,14 @@
                 @update-layer-quantity="updateLayerQuantity">
             </LayerComponent>
         </div>
+
+        <div class="absolute -top-4 -left-2 m-1 px-1 text-xs font-bold text-white rounded z-50" :class="{
+            'bg-green-500': abcClass === 'A',
+            'bg-yellow-500': abcClass === 'B',
+            'bg-red-500': abcClass === 'C'
+        }">
+            {{ abcClass }}
+        </div>
         <StockIndicator :segment="segment" :shelf="shelf" @click="(e) => handleLayerClick(e)" />
     </div>
 </template>
@@ -24,9 +32,10 @@ import { validateShelfWidth } from '@plannerate/utils/validation';
 import { computed, defineProps, ref, type CSSProperties } from 'vue';
 import { toast } from 'vue-sonner';
 import LayerComponent from './Layer.vue';
-import StockIndicator from './StockIndicator.vue';  
+import StockIndicator from './StockIndicator.vue';
 import { useSegmentDragAndDrop } from '@plannerate/composables/useSegmentDragAndDrop';
 import { useTargetStockAnalysis } from '@plannerate/composables/useTargetStockAnalysis';
+import { useAnalysisResultStore } from '@plannerate/store/editor/analysisResult';
 
 // Definir Props
 const props = defineProps<{
@@ -57,6 +66,15 @@ const isTargetStockViewActive = computed(() => {
     return !!targetStockResultStore.result && !!props.segment?.layer?.product?.ean;
 });
 
+
+const analysisResultStore = useAnalysisResultStore();
+
+const abcClass = computed(() => {
+    if (!props.segment?.layer?.product) return null; // Default para evitar erros
+    const productEan = props.segment.layer.product.ean;
+    const classificationEntry = analysisResultStore.result?.find((p: any) => p.id === productEan);
+    return classificationEntry?.abcClass; // Default para evitar erros
+});
 /**
  * Verifica se o layer está selecionado
  */

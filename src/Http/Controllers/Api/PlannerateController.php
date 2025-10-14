@@ -34,7 +34,7 @@ class PlannerateController extends Controller
      * @param Planogram $planogram
      * @return PlannerateResource|JsonResponse
      */
-    public function show(string $id)
+    public function show(Request $request, string $id)
     {
         try {
             $planogram = $this->getModel()::query()->with([
@@ -51,6 +51,15 @@ class PlannerateController extends Controller
                 'gondolas.sections.shelves.segments.layer.product.sales',
                 'gondolas.sections.shelves.segments.layer.product.purchases'
             ])->findOrFail($id); 
+
+            // $planogram->load([
+            //     'gondolas' => function ($query) use ($request) {
+            //         if ($request->has('gondolaId')) {
+            //             $query->where('id', $request->get('gondolaId'));
+            //         }
+            //     }
+            // ]);
+            
 
             return response()->json(new PlannerateResource($planogram));
         } catch (ModelNotFoundException $e) {

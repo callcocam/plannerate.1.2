@@ -23,7 +23,7 @@ class SegmentResource extends JsonResource
             'width' => $this->width,
             'ordering' => $this->ordering,
             'position' => $this->position,
-            'quantity' => $this->quantity,
+            'quantity' => (int)$this->quantity ? $this->quantity : 0,
             'spacing' => $this->spacing,
             'settings' => $this->settings,
             'alignment' => $this->alignment,
