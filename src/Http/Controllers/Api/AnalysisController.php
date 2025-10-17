@@ -173,7 +173,8 @@ class AnalysisController extends Controller
             'targetStock.coverageDays.C' => 'required|integer|min:1',
             'filters' => 'nullable|array',
             'filters.usageStatus' => 'nullable|string|in:all,unused,used',
-            'filters.includeDimensionless' => 'nullable|boolean'
+            'filters.includeDimensionless' => 'nullable|boolean',
+            'useZones' => 'nullable|boolean' // Flag para habilitar/desabilitar uso de zonas
         ]);
 
         Log::info('🚀 Distribuição Hierárquica - Parâmetros recebidos:', [
@@ -181,12 +182,28 @@ class AnalysisController extends Controller
             'products_count' => count($request->products),
             'weights' => $request->weights,
             'targetStock' => $request->targetStock,
-            'filters' => $request->filters ?? []
+            'filters' => $request->filters ?? [],
+            'useZones' => $request->useZones ?? false
         ]);
 
         try {
-            // Buscar gôndola
-            $gondola = Gondola::with(['sections.shelves'])->findOrFail($request->gondola_id);
+            // Buscar gôndola com zonas
+            $gondola = Gondola::with(['sections.shelves', 'zones'])->findOrFail($request->gondola_id);
+            
+            // Carregar zonas configuradas (se existirem)
+            $zones = $gondola->zones()->ordered()->get();
+            if ($zones->isNotEmpty()) {
+                Log::info('📍 Zonas configuradas encontradas:', [
+                    'gondola_id' => $gondola->id,
+                    'zones_count' => $zones->count(),
+                    'zones' => $zones->map(fn($z) => [
+                        'name' => $z->name,
+                        'shelves' => $z->shelf_indexes,
+                        'multiplier' => $z->performance_multiplier,
+                        'rules' => $z->rules
+                    ])->toArray()
+                ]);
+            }
 
             // Buscar planograma para datas E categoria mercadológica
             $planogram = Planogram::find($request->planogram);
@@ -350,7 +367,32 @@ class AnalysisController extends Controller
                 'category_filter_applied' => $categoryId ? 'Sim' : 'Não'
             ]);
 
-            // Executar distribuição hierárquica
+            // Preparar configuração de zonas (se existirem E se useZones = true)
+            $useZones = $request->useZones ?? false;
+            $zonesConfig = null;
+            
+            if ($useZones && $zones->isNotEmpty()) {
+                $zonesConfig = $zones->map(function ($zone) {
+                    return [
+                        'name' => $zone->name,
+                        'shelf_indexes' => $zone->shelf_indexes,
+                        'performance_multiplier' => $zone->performance_multiplier,
+                        'rules' => $zone->rules
+                    ];
+                })->toArray();
+                
+                Log::info('✅ Zonas HABILITADAS - Passando para o motor de distribuição', [
+                    'zones_count' => count($zonesConfig)
+                ]);
+            } elseif (!$useZones && $zones->isNotEmpty()) {
+                Log::info('⚠️ Zonas existem mas estão DESABILITADAS pelo parâmetro useZones', [
+                    'zones_available' => $zones->count()
+                ]);
+            } else {
+                Log::info('📍 Nenhuma zona configurada para esta gôndola');
+            }
+
+            // Executar distribuição hierárquica (com zonas apenas se habilitadas)
             $result = $this->hierarchicalDistribution->distributeByHierarchy(
                 $gondola,
                 $allProducts,
@@ -358,7 +400,8 @@ class AnalysisController extends Controller
                 $request->targetStock,
                 $startDate,
                 $endDate,
-                $request->storeId
+                $request->storeId,
+                $zonesConfig // Passa as zonas APENAS se useZones = true
             );
 
             return response()->json([

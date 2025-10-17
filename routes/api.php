@@ -8,6 +8,7 @@ use Callcocam\Plannerate\Http\Controllers\Api\PlannerateController;
 use Callcocam\Plannerate\Http\Controllers\Api\SectionController;
 use Callcocam\Plannerate\Http\Controllers\Api\SegmentController;
 use Callcocam\Plannerate\Http\Controllers\Api\ShelfController;
+use Callcocam\Plannerate\Http\Controllers\Api\ZoneController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['api'])
@@ -21,7 +22,14 @@ Route::middleware(['api'])
 
         Route::resource('gondolas', GondolaController::class);
 
-
+        // Rotas de Zonas de Gôndolas
+        Route::prefix('gondolas/{gondola}/zones')->group(function () {
+            Route::get('/', [ZoneController::class, 'index'])->name('gondolas.zones.index');
+            Route::post('/', [ZoneController::class, 'store'])->name('gondolas.zones.store');
+            Route::put('/{zone}', [ZoneController::class, 'update'])->name('gondolas.zones.update');
+            Route::delete('/{zone}', [ZoneController::class, 'destroy'])->name('gondolas.zones.destroy');
+            Route::delete('/', [ZoneController::class, 'destroyAll'])->name('gondolas.zones.destroyAll');
+        });
 
         Route::resource('sections', SectionController::class);
         Route::resource('shelves', ShelfController::class);

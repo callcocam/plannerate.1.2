@@ -50,6 +50,11 @@ class Gondola extends Model
         return $this->hasMany(Section::class)->orderBy('ordering');
     }
 
+    public function zones(): HasMany
+    {
+        return $this->hasMany(GondolaZone::class)->orderBy('order');
+    }
+
     public function scopePublished($query)
     {
         return $query->where('status', GondolaStatus::Published);

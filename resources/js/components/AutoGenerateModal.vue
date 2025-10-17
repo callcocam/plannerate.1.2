@@ -1,7 +1,10 @@
 <template>
   <Dialog v-model:open="isOpen">
-    <DialogContent class="max-w-2xl z-[1000]">
-      <DialogHeader>
+    <DialogContent :class="[
+      'z-[1000] transition-all duration-300',
+      activeTab === 'zones' ? 'max-w-7xl h-full p-4 flex flex-col' : 'max-w-2xl'
+    ]">
+      <DialogHeader :class="activeTab === 'zones' ? 'mb-2 flex-shrink-0' : ''">
         <DialogTitle>Gerar Planograma Automaticamente</DialogTitle>
         <DialogDescription>
           Configure os parâmetros para distribuição automática de produtos ou defina zonas personalizadas.
@@ -9,8 +12,8 @@
       </DialogHeader>
 
       <!-- Sistema de Abas -->
-      <Tabs v-model="activeTab" class="w-full">
-        <TabsList class="grid w-full grid-cols-2">
+      <Tabs v-model="activeTab" :class="activeTab === 'zones' ? 'w-full -mt-2 flex-1 flex flex-col overflow-hidden' : 'w-full'">
+        <TabsList :class="activeTab === 'zones' ? 'grid w-full grid-cols-2 flex-shrink-0' : 'grid w-full grid-cols-2'">
           <TabsTrigger value="auto">🚀 Gerar Auto</TabsTrigger>
           <TabsTrigger value="zones">📍 Definir Zonas</TabsTrigger>
         </TabsList>
@@ -122,6 +125,21 @@
             </div>
           </div>
 
+          <!-- Opções de Zonas -->
+          <div class="border-t pt-4">
+            <h4 class="font-medium text-sm mb-2">📍 Zonas de Performance</h4>
+            <div class="flex items-start space-x-2">
+              <input id="use-zones" type="checkbox" v-model="params.useZones"
+                class="h-4 w-4 border-gray-300 text-primary focus:ring-2 focus:ring-primary rounded mt-0.5" />
+              <div>
+                <label for="use-zones" class="text-sm font-normal block">Usar zonas configuradas</label>
+                <p class="text-xs text-gray-500 mt-0.5">
+                  Distribui produtos seguindo as regras de cada zona definida (ABC, margem, prioridade, etc.)
+                </p>
+              </div>
+            </div>
+          </div>
+
           <!-- Botões de ação -->
           <div class="flex justify-end gap-2 pt-4">
             <Button variant="outline" @click="closeModal">
@@ -134,25 +152,24 @@
         </TabsContent>
 
         <!-- Tab 2: Definir Zonas -->
-        <TabsContent value="zones" class="space-y-4 mt-4">
-          <div class="text-center py-8">
-            <div class="mb-4 text-4xl">📍</div>
-            <h3 class="text-lg font-medium mb-2">Sistema de Zonas</h3>
-            <p class="text-sm text-gray-600 mb-4">
-              Configure zonas de performance para distribuição inteligente baseada em altura e visibilidade.
-            </p>
-            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left">
-              <h4 class="font-medium text-sm mb-2">📋 Funcionalidades Futuras:</h4>
-              <ul class="text-sm text-gray-700 space-y-1">
-                <li>• <strong>Zona Premium</strong> (altura dos olhos): Marcas de referência, maior margem</li>
-                <li>• <strong>Zona Topo</strong>: Produtos complementares, cross-sell</li>
-                <li>• <strong>Zona Base</strong>: Preços combate, baixa margem</li>
-                <li>• <strong>Exposição Vertical/Horizontal</strong>: Por zona configurável</li>
-                <li>• <strong>Consideração de Fluxo</strong>: Direção do cliente na loja</li>
-              </ul>
-            </div>
-            <Button variant="outline" class="mt-4" disabled>
-              Em desenvolvimento
+        <TabsContent value="zones" class="mt-2 flex-1 flex flex-col overflow-hidden">
+          <!-- Área de conteúdo com scroll -->
+          <div class="flex-1 overflow-y-auto pr-1 pb-2">
+            <ZoneConfiguration
+              :shelf-count="totalShelvesCount"
+              :zones="zoneConfiguration"
+              :modules="modulesStructure"
+              @update:zones="handleZonesUpdate"
+            />
+          </div>
+
+          <!-- Botões de ação FIXOS -->
+          <div class="flex justify-end gap-2 pt-3 border-t bg-white dark:bg-gray-900 flex-shrink-0">
+            <Button variant="outline" @click="closeModal" :disabled="isExecuting">
+              Cancelar
+            </Button>
+            <Button variant="default" @click="saveZoneConfiguration" :disabled="zoneConfiguration.length === 0 || isExecuting">
+              {{ isExecuting ? 'Salvando...' : '💾 Salvar Configuração de Zonas' }}
             </Button>
           </div>
         </TabsContent>
@@ -162,7 +179,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import {
   Dialog,
   DialogContent,
@@ -173,6 +190,24 @@ import {
 import { Button } from '@plannerate/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@plannerate/components/ui/tabs';
 import { useEditorStore } from '@plannerate/store/editor';
+import ZoneConfiguration from '@plannerate/components/zones/ZoneConfiguration.vue';
+
+// Tipos
+interface ZoneRules {
+  priority: string;
+  exposure_type: string;
+  abc_filter?: string[];
+  min_margin_percent?: number;
+  max_margin_percent?: number;
+}
+
+interface Zone {
+  id: string;
+  name: string;
+  shelf_indexes: number[];
+  performance_multiplier: number;
+  rules: ZoneRules;
+}
 
 // Props
 const props = defineProps<{
@@ -188,11 +223,33 @@ const emit = defineEmits<{
 const editorStore = useEditorStore();
 const activeTab = ref('auto');
 const isExecuting = ref(false);
+const zoneConfiguration = ref<Zone[]>([]);
 
 // Computed
 const isOpen = computed({
   get: () => props.open,
   set: (value) => emit('update:open', value)
+});
+
+const totalShelvesCount = computed(() => {
+  const gondola = editorStore.getCurrentGondola;
+  if (!gondola) return 0;
+  
+  // Contar total de prateleiras em todas as seções
+  return gondola.sections.reduce((total: number, section: any) => {
+    return total + (section.shelves?.length || 0);
+  }, 0);
+});
+
+const modulesStructure = computed(() => {
+  const gondola = editorStore.getCurrentGondola;
+  if (!gondola) return [];
+  
+  // Converter sections para estrutura de módulos
+  return gondola.sections.map((section: any) => ({
+    id: section.id,
+    shelves: section.shelves || []
+  }));
 });
 
 // Parâmetros de geração automática
@@ -217,12 +274,97 @@ const params = ref({
   filters: {
     usageStatus: 'unused',
     includeDimensionless: false
+  },
+  useZones: false // Usar zonas configuradas na distribuição
+});
+
+// Watchers
+watch(() => props.open, (newValue) => {
+  if (newValue && activeTab.value === 'zones') {
+    // Carregar zonas existentes quando o modal for aberto na aba de zonas
+    loadZoneConfiguration();
+  }
+});
+
+watch(activeTab, (newTab) => {
+  if (newTab === 'zones' && props.open) {
+    // Carregar zonas quando alternar para a aba de zonas
+    loadZoneConfiguration();
   }
 });
 
 // Métodos
 const closeModal = () => {
   isOpen.value = false;
+};
+
+const handleZonesUpdate = (zones: Zone[]) => {
+  zoneConfiguration.value = zones;
+};
+
+const saveZoneConfiguration = async () => {
+  const gondola = editorStore.getCurrentGondola;
+  if (!gondola) {
+    alert('Nenhuma gôndola selecionada.');
+    return;
+  }
+
+  if (zoneConfiguration.value.length === 0) {
+    alert('Nenhuma zona configurada para salvar.');
+    return;
+  }
+
+  isExecuting.value = true;
+
+  try {
+    // Usar apiService para garantir autenticação correta
+    const { apiService } = await import('@plannerate/services');
+    
+    const data = await apiService.post(`/gondolas/${gondola.id}/zones`, {
+      zones: zoneConfiguration.value.map((zone) => ({
+        name: zone.name,
+        shelf_indexes: zone.shelf_indexes,
+        performance_multiplier: zone.performance_multiplier,
+        rules: zone.rules,
+      })),
+    });
+
+    console.log('Zonas salvas com sucesso:', data);
+    
+    const zonesText = zoneConfiguration.value.length === 1 ? 'zona' : 'zonas';
+    alert(`✅ Configuração de ${zoneConfiguration.value.length} ${zonesText} salva com sucesso!\n\n` +
+          `Esta configuração será usada na próxima geração automática do planograma.`);
+    
+    closeModal();
+  } catch (error: any) {
+    console.error('Erro ao salvar configuração de zonas:', error);
+    const errorMessage = error?.message || error?.response?.data?.message || 'Erro desconhecido';
+    alert('❌ Erro ao salvar configuração: ' + errorMessage);
+  } finally {
+    isExecuting.value = false;
+  }
+};
+
+const loadZoneConfiguration = async () => {
+  const gondola = editorStore.getCurrentGondola;
+  if (!gondola) {
+    return;
+  }
+
+  try {
+    // Usar apiService para garantir autenticação correta
+    const { apiService } = await import('@plannerate/services');
+    
+    const data = await apiService.get(`/gondolas/${gondola.id}/zones`);
+
+    if (data.data && Array.isArray(data.data) && data.data.length > 0) {
+      zoneConfiguration.value = data.data;
+      console.log('Zonas carregadas:', data.data);
+    }
+  } catch (error: any) {
+    console.error('Erro ao carregar configuração de zonas:', error);
+    // Não mostrar erro ao usuário, apenas manter configuração vazia
+  }
 };
 
 const executeAutoGeneration = async () => {
@@ -260,6 +402,7 @@ const executeAutoGeneration = async () => {
       weights: params.value.weights,
       targetStock: params.value.targetStock,
       filters: params.value.filters,
+      useZones: params.value.useZones, // Parâmetro para habilitar/desabilitar zonas
       storeId: editorStore.currentState.store_id ? parseInt(editorStore.currentState.store_id) : undefined
     });
 

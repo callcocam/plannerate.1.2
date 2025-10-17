@@ -94,6 +94,13 @@ class ABCHierarchicalService
                 // 🔧 CORREÇÃO: Usar o ID da categoria GENÉRICA, não da subcategoria do produto
                 $genericCategoryId = $this->categoryService->extractGenericCategoryId($product);
                 
+                Log::info("📦 Nova categoria detectada", [
+                    'category_name' => $categoryName,
+                    'generic_category_id' => $genericCategoryId,
+                    'first_product' => $product['name'] ?? 'N/A',
+                    'product_category_id' => $product['category_id'] ?? 'N/A'
+                ]);
+                
                 $categoriesMap[$categoryName] = [
                     'category_id' => $genericCategoryId,
                     'category_name' => $categoryName,
@@ -105,6 +112,15 @@ class ABCHierarchicalService
             }
             
             $categoriesMap[$categoryName]['products'][] = $product;
+        }
+        
+        // DEBUG: Log após adicionar todos os produtos
+        foreach ($categoriesMap as $catName => $catData) {
+            Log::info("🔍 DEBUG: Categoria após agrupamento", [
+                'category_name' => $catName,
+                'category_id' => $catData['category_id'],
+                'products_count' => count($catData['products'])
+            ]);
         }
         
         // 2. Para cada categoria, encontrar o maior score A e contabilizar
@@ -146,6 +162,15 @@ class ABCHierarchicalService
             }
             return $b['avg_score'] <=> $a['avg_score'];
         });
+        
+        // DEBUG: Log após ordenamento
+        foreach ($categoriesMap as $catName => $catData) {
+            Log::info("🔍 DEBUG: Categoria após ordenamento", [
+                'category_name' => $catName,
+                'category_id' => $catData['category_id'],
+                'products_count' => count($catData['products'])
+            ]);
+        }
         
         // 4. Retornar apenas nome => category_id
         $result = [];

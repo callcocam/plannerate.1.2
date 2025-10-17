@@ -33,9 +33,11 @@ class HierarchicalDistributionService
      * @param Gondola $gondola - Gôndola a ser preenchida
      * @param array $allProducts - TODOS os produtos
      * @param array $weights - Pesos ABC
+     * @param array $targetStockParams - Parâmetros de estoque alvo
      * @param string|null $startDate - Data inicial
      * @param string|null $endDate - Data final
      * @param int|null $storeId - ID da loja
+     * @param array|null $zonesConfig - Configuração de zonas de performance (opcional)
      * @return array - Resultado da distribuição
      */
     public function distributeByHierarchy(
@@ -45,8 +47,17 @@ class HierarchicalDistributionService
         array $targetStockParams,
         ?string $startDate = null,
         ?string $endDate = null,
-        ?int $storeId = null
+        ?int $storeId = null,
+        ?array $zonesConfig = null
     ): array {
+        // Log sobre zonas configuradas
+        if ($zonesConfig) {
+            Log::info("📍 Motor recebeu configuração de zonas", [
+                'zones_count' => count($zonesConfig),
+                'zones' => $zonesConfig
+            ]);
+        }
+
         Log::info("🚀 Iniciando distribuição hierárquica por categoria", [
             'gondola_id' => $gondola->id,
             'gondola_name' => $gondola->name,
@@ -54,6 +65,7 @@ class HierarchicalDistributionService
             'weights' => $weights,
             'targetStockParams' => $targetStockParams,
             'date_range' => ['start' => $startDate, 'end' => $endDate],
+            'zones_enabled' => $zonesConfig !== null,
             'store_id' => $storeId
         ]);
 
@@ -76,12 +88,29 @@ class HierarchicalDistributionService
         $linearShelves = $this->getAllShelvesInLinearOrder($gondola);
         $currentShelfIndex = 0;
 
+        // 3.1 Se há zonas configuradas, separar prateleiras por zona
+        $zonesData = null;
+        if ($zonesConfig) {
+            $zonesData = $this->separateShelvesByZones($linearShelves, $zonesConfig);
+            Log::info("🎯 Prateleiras separadas por zonas", [
+                'zones_count' => count($zonesData['zones']),
+                'unassigned_shelves' => count($zonesData['unassigned']),
+                'zones_details' => array_map(fn($z) => [
+                    'name' => $z['config']['name'],
+                    'shelves_count' => count($z['shelves']),
+                    'multiplier' => $z['config']['performance_multiplier'],
+                    'priority' => $z['config']['rules']['priority'] ?? 'N/A'
+                ], $zonesData['zones'])
+            ]);
+        }
+
         $stats = [
             'total_products' => 0,
             'placed_products' => 0,
             'failed_products' => 0,
             'categories_processed' => [],
-            'gondola_id' => $gondola->id
+            'gondola_id' => $gondola->id,
+            'zones_enabled' => $zonesConfig !== null
         ];
 
         // 4. Para cada categoria (em ordem de prioridade)
@@ -137,16 +166,17 @@ class HierarchicalDistributionService
             // 7. Ordenar por ABC local (A primeiro, depois B, depois C) + Tamanho
             $categoryProducts = $this->abcHierarchical->sortProductsByABC($categoryProducts, $abcLocal);
             
-            // Log dos primeiros produtos ordenados para debug
-            Log::info("📊 Produtos ordenados por ABC + Tamanho", [
+            // 7.5. AGRUPAR POR SUBCATEGORIA (2º nível de organização)
+            $subcategoriesGrouped = $this->groupProductsBySubcategory($categoryProducts, $abcLocal, $categoryId);
+            
+            Log::info("📂 Produtos agrupados por subcategoria", [
                 'category' => $categoryName,
                 'total_products' => count($categoryProducts),
-                'primeiros_5' => array_slice(array_map(fn($p) => [
-                    'name' => $p['name'] ?? 'N/A',
-                    'ean' => $p['ean'] ?? 'N/A',
-                    'abc_local' => collect($abcLocal)->firstWhere('product_id', $p['ean'] ?? $p['id'])['abc_class'] ?? 'N/A',
-                    'volume' => $this->categoryService->extractVolumeFromName($p['name'] ?? '')
-                ], $categoryProducts), 0, 5)
+                'subcategories_count' => count($subcategoriesGrouped),
+                'subcategories' => array_map(fn($sg) => [
+                    'name' => $sg['subcategory_name'],
+                    'products_count' => count($sg['products'])
+                ], $subcategoriesGrouped)
             ]);
 
             // 8. Calcular Target Stock para todos os produtos da categoria
@@ -158,17 +188,54 @@ class HierarchicalDistributionService
                 $storeId
             );
 
-            // 9. Distribuir categoria (usar ABC GLOBAL para target stock, ABC LOCAL para ordenação)
-            $categoryStats = $this->distributeCategorySequentially(
-                $categoryProducts,
-                $abcLocal,        // ABC Local para ordenação
-                $abcGlobal,       // ABC Global para target stock (mesma classificação do modal)
-                $targetStockResults,
-                $targetStockParams,
-                $linearShelves,
-                $currentShelfIndex,
-                $categoryName
-            );
+            // 9. Distribuir categoria SUBCATEGORIA POR SUBCATEGORIA
+            $categoryStats = [
+                'total' => 0,
+                'placed' => 0,
+                'failed' => 0
+            ];
+            
+            foreach ($subcategoriesGrouped as $subcategoryData) {
+                $subcategoryName = $subcategoryData['subcategory_name'];
+                $subcategoryProducts = $subcategoryData['products'];
+                
+                Log::info("📦 Distribuindo subcategoria", [
+                    'category' => $categoryName,
+                    'subcategory' => $subcategoryName,
+                    'products_count' => count($subcategoryProducts)
+                ]);
+                
+                // Distribuir subcategoria
+                if ($zonesData) {
+                    $subcategoryStats = $this->distributeCategoryByZones(
+                        $subcategoryProducts,
+                        $abcLocal,
+                        $abcGlobal,
+                        $targetStockResults,
+                        $targetStockParams,
+                        $zonesData,
+                        $linearShelves,
+                        $currentShelfIndex,
+                        "$categoryName → $subcategoryName"
+                    );
+                } else {
+                    $subcategoryStats = $this->distributeCategorySequentially(
+                        $subcategoryProducts,
+                        $abcLocal,
+                        $abcGlobal,
+                        $targetStockResults,
+                        $targetStockParams,
+                        $linearShelves,
+                        $currentShelfIndex,
+                        "$categoryName → $subcategoryName"
+                    );
+                }
+                
+                // Acumular estatísticas
+                $categoryStats['total'] += $subcategoryStats['total'];
+                $categoryStats['placed'] += $subcategoryStats['placed'];
+                $categoryStats['failed'] += $subcategoryStats['failed'];
+            }
 
             $stats['total_products'] += $categoryStats['total'];
             $stats['placed_products'] += $categoryStats['placed'];
@@ -573,5 +640,557 @@ class HierarchicalDistributionService
             'width' => $totalWidth . 'cm',
             'shelf_id' => $shelf->id
         ]);
+    }
+
+    /**
+     * Distribui produtos de uma categoria considerando zonas configuradas
+     * 
+     * @param array $products - Produtos ordenados por ABC local
+     * @param array $abcLocal - Resultados do ABC LOCAL
+     * @param array $abcGlobal - Resultados do ABC GLOBAL
+     * @param array $targetStockResults - Resultados da análise de vendas
+     * @param array $targetStockParams - Parâmetros de target stock
+     * @param array $zonesData - Dados das zonas separadas
+     * @param array &$linearShelves - Prateleiras (por referência)
+     * @param int &$currentShelfIndex - Índice atual (por referência)
+     * @param string $categoryName - Nome da categoria
+     * @return array - Estatísticas da distribuição
+     */
+    protected function distributeCategoryByZones(
+        array $products,
+        array $abcLocal,
+        array $abcGlobal,
+        array $targetStockResults,
+        array $targetStockParams,
+        array $zonesData,
+        array &$linearShelves,
+        int &$currentShelfIndex,
+        string $categoryName
+    ): array {
+        Log::info("🎯 Distribuindo categoria por zonas", [
+            'category' => $categoryName,
+            'products_count' => count($products),
+            'zones_count' => count($zonesData['zones'])
+        ]);
+
+        $placed = 0;
+        $failed = 0;
+        $productsUsed = []; // Rastrear produtos já alocados
+
+        // Processar cada zona (já ordenadas por performance_multiplier)
+        foreach ($zonesData['zones'] as $zoneData) {
+            $zoneConfig = $zoneData['config'];
+            $zoneShelves = $zoneData['shelves'];
+            
+            Log::info("📍 Processando zona", [
+                'zone_name' => $zoneConfig['name'],
+                'shelves_count' => count($zoneShelves),
+                'multiplier' => $zoneConfig['performance_multiplier'],
+                'priority' => $zoneConfig['rules']['priority'] ?? 'N/A'
+            ]);
+
+            // Filtrar produtos que atendem às regras desta zona
+            $zoneProducts = $this->filterProductsByZoneRules($products, $zoneConfig, $abcLocal);
+            
+            // Remover produtos já usados em outras zonas
+            $zoneProducts = array_filter($zoneProducts, function($p) use ($productsUsed) {
+                $ean = $p['ean'] ?? $p['id'];
+                return !in_array($ean, $productsUsed);
+            });
+
+            // Ordenar produtos pela prioridade da zona
+            $priority = $zoneConfig['rules']['priority'] ?? 'high_margin';
+            $zoneProducts = $this->sortProductsByZonePriority(array_values($zoneProducts), $priority, $abcLocal);
+
+            Log::info("🔍 Produtos filtrados para zona", [
+                'zone_name' => $zoneConfig['name'],
+                'products_count' => count($zoneProducts),
+                'first_3_products' => array_slice(array_column($zoneProducts, 'name'), 0, 3)
+            ]);
+
+            // Distribuir produtos nas prateleiras desta zona
+            foreach ($zoneProducts as $product) {
+                // Buscar prateleira disponível na zona
+                $shelfFound = false;
+                foreach ($zoneShelves as $zoneShelf) {
+                    $globalIndex = $zoneShelf['global_index'];
+                    
+                    // Buscar ABC GLOBAL e Target Stock
+                    $productEan = $product['ean'] ?? $product['id'];
+                    $abcDataGlobal = collect($abcGlobal)->firstWhere('product_id', $productEan);
+                    $abcClassGlobal = $abcDataGlobal['abc_class'] ?? 'C';
+                    $targetStock = $this->getTargetStockForProduct($product, $targetStockResults, $targetStockParams, $abcClassGlobal);
+
+                    // Calcular facing baseado no target stock (SEM aplicar multiplicador de zona)
+                    $shelfDepth = $linearShelves[$globalIndex]['shelf_depth'] ?? 40;
+                    $facing = $this->facingCalculator->calculateFacing(
+                        $product,
+                        $targetStock,
+                        $shelfDepth
+                    );
+
+                    // Tentar colocar na prateleira desta zona
+                    $placedSuccessfully = $this->tryPlaceProduct(
+                        $product,
+                        $facing,
+                        $linearShelves,
+                        $globalIndex
+                    );
+
+                    if ($placedSuccessfully) {
+                        $placed++;
+                        $productsUsed[] = $productEan;
+                        $shelfFound = true;
+                        
+                        Log::debug("✅ Produto alocado na zona", [
+                            'product' => $product['name'] ?? 'N/A',
+                            'zone' => $zoneConfig['name'],
+                            'shelf_index' => $globalIndex,
+                            'facing' => $facing
+                        ]);
+                        
+                        break; // Produto alocado, próximo produto
+                    }
+                }
+
+                if (!$shelfFound) {
+                    $failed++;
+                }
+            }
+        }
+
+        // Distribuir produtos restantes nas prateleiras não atribuídas
+        $remainingProducts = array_filter($products, function($p) use ($productsUsed) {
+            $ean = $p['ean'] ?? $p['id'];
+            return !in_array($ean, $productsUsed);
+        });
+
+        if (count($remainingProducts) > 0 && count($zonesData['unassigned']) > 0) {
+            Log::info("📦 Distribuindo produtos restantes em prateleiras não atribuídas", [
+                'remaining_products' => count($remainingProducts),
+                'unassigned_shelves' => count($zonesData['unassigned'])
+            ]);
+
+            // Distribuir em prateleiras não atribuídas
+            foreach (array_values($remainingProducts) as $product) {
+                foreach ($zonesData['unassigned'] as $unassignedShelf) {
+                    $globalIndex = $unassignedShelf['global_index'];
+                    
+                    $productEan = $product['ean'] ?? $product['id'];
+                    $abcDataGlobal = collect($abcGlobal)->firstWhere('product_id', $productEan);
+                    $abcClassGlobal = $abcDataGlobal['abc_class'] ?? 'C';
+                    $targetStock = $this->getTargetStockForProduct($product, $targetStockResults, $targetStockParams, $abcClassGlobal);
+
+                    $shelfDepth = $linearShelves[$globalIndex]['shelf_depth'] ?? 40;
+                    $facing = $this->facingCalculator->calculateFacing(
+                        $product,
+                        $targetStock,
+                        $shelfDepth
+                    );
+
+                    $placedSuccessfully = $this->tryPlaceProduct(
+                        $product,
+                        $facing,
+                        $linearShelves,
+                        $globalIndex
+                    );
+
+                    if ($placedSuccessfully) {
+                        $placed++;
+                        break;
+                    }
+                }
+            }
+        }
+
+        $successRate = count($products) > 0 ? round(($placed / count($products)) * 100, 1) : 0;
+
+        Log::info("✅ Categoria distribuída por zonas", [
+            'category' => $categoryName,
+            'total' => count($products),
+            'placed' => $placed,
+            'failed' => $failed,
+            'success_rate' => $successRate . '%'
+        ]);
+
+        return [
+            'total' => count($products),
+            'placed' => $placed,
+            'failed' => $failed,
+            'success_rate' => $successRate
+        ];
+    }
+
+    /**
+     * Filtra produtos que atendem às regras de uma zona
+     * 
+     * @param array $products - Produtos a filtrar
+     * @param array $zone - Configuração da zona
+     * @param array $abcLocal - Resultados ABC local
+     * @return array - Produtos filtrados
+     */
+    protected function filterProductsByZoneRules(array $products, array $zone, array $abcLocal): array
+    {
+        $rules = $zone['rules'] ?? [];
+        
+        // Calcular estatísticas para filtros baseados em prioridade
+        $margins = array_filter(array_column($products, 'margin_percent'));
+        $prices = array_filter(array_column($products, 'sale_price'));
+        $sales = array_filter(array_column($products, 'total_sales'));
+        
+        $avgMargin = !empty($margins) ? array_sum($margins) / count($margins) : 0;
+        $avgPrice = !empty($prices) ? array_sum($prices) / count($prices) : 0;
+        $avgSales = !empty($sales) ? array_sum($sales) / count($sales) : 0;
+        
+        return array_filter($products, function($product) use ($rules, $abcLocal, $avgMargin, $avgPrice, $avgSales) {
+            $productEan = $product['ean'] ?? $product['id'];
+            $abcData = collect($abcLocal)->firstWhere('product_id', $productEan);
+            $abcClass = $abcData['abc_class'] ?? 'C';
+            
+            // Filtro por Priority - TODOS os tipos funcionam como FILTRO
+            if (isset($rules['priority'])) {
+                $priority = $rules['priority'];
+                
+                switch ($priority) {
+                    case 'class_a':
+                    case 'class_b':
+                    case 'class_c':
+                        // Filtrar APENAS pela classe ABC
+                        $targetClass = strtoupper(substr($priority, -1));
+                        if ($abcClass !== $targetClass) {
+                            return false;
+                        }
+                        break;
+                        
+                    case 'high_margin':
+                        // Filtrar apenas produtos com margem acima da média
+                        $productMargin = $product['margin_percent'] ?? 0;
+                        if ($productMargin < $avgMargin) {
+                            return false;
+                        }
+                        break;
+                        
+                    case 'low_price':
+                        // Filtrar apenas produtos com preço abaixo da média
+                        $productPrice = $product['sale_price'] ?? PHP_FLOAT_MAX;
+                        if ($productPrice > $avgPrice) {
+                            return false;
+                        }
+                        break;
+                        
+                    case 'high_rotation':
+                        // Filtrar apenas produtos com vendas acima da média
+                        $productSales = $product['total_sales'] ?? 0;
+                        if ($productSales < $avgSales) {
+                            return false;
+                        }
+                        break;
+                        
+                    case 'reference_brand':
+                        // Filtrar apenas marcas de referência (usar array de marcas se definido)
+                        if (!empty($rules['reference_brands'])) {
+                            $productBrand = $product['brand'] ?? '';
+                            if (!in_array($productBrand, $rules['reference_brands'])) {
+                                return false;
+                            }
+                        }
+                        break;
+                        
+                    case 'new_products':
+                        // Filtrar produtos com poucas ou nenhuma venda (produtos novos)
+                        $productSales = $product['total_sales'] ?? 0;
+                        if ($productSales > ($avgSales * 0.5)) { // Menos da metade da média
+                            return false;
+                        }
+                        break;
+                        
+                    case 'complementary':
+                        // Produtos complementares - aceitar todos (comportamento neutro)
+                        // Não aplica filtro adicional
+                        break;
+                }
+            }
+            
+            // Filtro ABC (array de classes permitidas - adicional ao priority)
+            if (!empty($rules['abc_filter'])) {
+                if (!in_array($abcClass, $rules['abc_filter'])) {
+                    return false;
+                }
+            }
+            
+            // Filtro de margem mínima
+            if (isset($rules['min_margin_percent']) && isset($product['margin_percent'])) {
+                if ($product['margin_percent'] < $rules['min_margin_percent']) {
+                    return false;
+                }
+            }
+            
+            // Filtro de margem máxima
+            if (isset($rules['max_margin_percent']) && isset($product['margin_percent'])) {
+                if ($product['margin_percent'] > $rules['max_margin_percent']) {
+                    return false;
+                }
+            }
+            
+            // Filtro de marcas de referência (adicional - usado quando não é priority)
+            if (!empty($rules['reference_brands']) && (!isset($rules['priority']) || $rules['priority'] !== 'reference_brand')) {
+                $productBrand = $product['brand'] ?? '';
+                if (!in_array($productBrand, $rules['reference_brands'])) {
+                    return false;
+                }
+            }
+            
+            return true; // Produto passou em todos os filtros
+        });
+    }
+
+    /**
+     * Ordena produtos de acordo com a prioridade da zona
+     * 
+     * @param array $products - Produtos a ordenar
+     * @param string $priority - Tipo de prioridade
+     * @param array $abcLocal - Resultados ABC local
+     * @return array - Produtos ordenados
+     */
+    protected function sortProductsByZonePriority(array $products, string $priority, array $abcLocal): array
+    {
+        $sortedProducts = $products;
+        
+        usort($sortedProducts, function($a, $b) use ($priority, $abcLocal) {
+            switch ($priority) {
+                case 'high_margin':
+                    $marginA = $a['margin_percent'] ?? 0;
+                    $marginB = $b['margin_percent'] ?? 0;
+                    return $marginB <=> $marginA; // Maior margem primeiro
+                    
+                case 'low_price':
+                    $priceA = $a['sale_price'] ?? PHP_FLOAT_MAX;
+                    $priceB = $b['sale_price'] ?? PHP_FLOAT_MAX;
+                    return $priceA <=> $priceB; // Menor preço primeiro
+                    
+                case 'high_rotation':
+                    $salesA = $a['total_sales'] ?? 0;
+                    $salesB = $b['total_sales'] ?? 0;
+                    return $salesB <=> $salesA; // Maior venda primeiro
+                    
+                case 'class_a':
+                case 'class_b':
+                case 'class_c':
+                    $targetClass = strtoupper(substr($priority, -1));
+                    $eanA = $a['ean'] ?? $a['id'];
+                    $eanB = $b['ean'] ?? $b['id'];
+                    $abcA = collect($abcLocal)->firstWhere('product_id', $eanA)['abc_class'] ?? 'C';
+                    $abcB = collect($abcLocal)->firstWhere('product_id', $eanB)['abc_class'] ?? 'C';
+                    
+                    // Priorizar produtos da classe alvo
+                    if ($abcA === $targetClass && $abcB !== $targetClass) return -1;
+                    if ($abcA !== $targetClass && $abcB === $targetClass) return 1;
+                    return 0;
+                    
+                default:
+                    return 0; // Manter ordem atual
+            }
+        });
+        
+        return $sortedProducts;
+    }
+
+    /**
+     * Separa prateleiras lineares por zonas
+     * 
+     * @param array $linearShelves - Todas as prateleiras
+     * @param array $zonesConfig - Configuração de zonas
+     * @return array - ['zones' => [...], 'unassigned' => [...]]
+     */
+    protected function separateShelvesByZones(array $linearShelves, array $zonesConfig): array
+    {
+        $zonesShelves = [];
+        $usedShelfIndexes = [];
+        
+        // Ordenar zonas por performance_multiplier (maior primeiro)
+        usort($zonesConfig, function($a, $b) {
+            $multA = $a['performance_multiplier'] ?? 1.0;
+            $multB = $b['performance_multiplier'] ?? 1.0;
+            return $multB <=> $multA; // Maior multiplicador primeiro (zonas premium)
+        });
+        
+        foreach ($zonesConfig as $zone) {
+            $shelfIndexes = $zone['shelf_indexes'] ?? [];
+            $zoneShelves = [];
+            
+            foreach ($shelfIndexes as $index) {
+                if (isset($linearShelves[$index])) {
+                    $zoneShelves[] = [
+                        'shelf_data' => $linearShelves[$index],
+                        'global_index' => $index
+                    ];
+                    $usedShelfIndexes[] = $index;
+                }
+            }
+            
+            $zonesShelves[] = [
+                'config' => $zone,
+                'shelves' => $zoneShelves,
+                'start_index' => min($shelfIndexes),
+                'end_index' => max($shelfIndexes)
+            ];
+        }
+        
+        // Prateleiras não atribuídas a zonas
+        $unassignedShelves = [];
+        foreach ($linearShelves as $index => $shelf) {
+            if (!in_array($index, $usedShelfIndexes)) {
+                $unassignedShelves[] = [
+                    'shelf_data' => $shelf,
+                    'global_index' => $index
+                ];
+            }
+        }
+        
+        return [
+            'zones' => $zonesShelves,
+            'unassigned' => $unassignedShelves
+        ];
+    }
+
+    /**
+     * Agrupa produtos por subcategoria e ordena as subcategorias por relevância
+     * 
+     * @param array $products - Produtos já ordenados por ABC
+     * @param array $abcLocal - Resultados ABC local
+     * @param string|null $genericCategoryId - ID da categoria genérica (para contexto)
+     * @return array - Array de subcategorias com seus produtos
+     */
+    protected function groupProductsBySubcategory(array $products, array $abcLocal, ?string $genericCategoryId = null): array
+    {
+        $subcategoriesMap = [];
+        
+        // 1. Agrupar produtos por subcategoria
+        foreach ($products as $product) {
+            // Extrair subcategoria do produto (categoria mais específica relativa à genérica)
+            $subcategoryName = $this->extractSubcategoryName($product, $genericCategoryId);
+            
+            if (!isset($subcategoriesMap[$subcategoryName])) {
+                $subcategoriesMap[$subcategoryName] = [
+                    'subcategory_name' => $subcategoryName,
+                    'products' => [],
+                    'count_A' => 0,
+                    'total_score' => 0
+                ];
+            }
+            
+            // Adicionar produto ao grupo
+            $subcategoriesMap[$subcategoryName]['products'][] = $product;
+            
+            // Calcular métricas para ordenação
+            $productEan = $product['ean'] ?? $product['id'];
+            $abcData = collect($abcLocal)->firstWhere('product_id', $productEan);
+            
+            if ($abcData) {
+                if (($abcData['abc_class'] ?? '') === 'A') {
+                    $subcategoriesMap[$subcategoryName]['count_A']++;
+                }
+                $subcategoriesMap[$subcategoryName]['total_score'] += $abcData['composite_score'] ?? 0;
+            }
+        }
+        
+        // 2. Ordenar subcategorias por relevância (mais A's primeiro, depois por score total)
+        usort($subcategoriesMap, function($a, $b) {
+            // Primeiro: maior quantidade de produtos A
+            if ($a['count_A'] !== $b['count_A']) {
+                return $b['count_A'] <=> $a['count_A'];
+            }
+            // Segundo: maior score total
+            return $b['total_score'] <=> $a['total_score'];
+        });
+        
+        return $subcategoriesMap;
+    }
+
+    /**
+     * Extrai o nome da subcategoria de um produto (relativa à categoria genérica)
+     * 
+     * @param array $product - Dados do produto
+     * @param string|null $genericCategoryId - ID da categoria genérica
+     * @return string - Nome da subcategoria (baseado em level_name)
+     */
+    protected function extractSubcategoryName(array $product, ?string $genericCategoryId = null): string
+    {
+        // Buscar categoria do produto (a mais específica)
+        $categoryId = $product['category_id'] ?? null;
+        
+        if (!$categoryId) {
+            return 'GERAL';
+        }
+        
+        try {
+            $category = \App\Models\Category::find($categoryId);
+            if (!$category) {
+                return 'GERAL';
+            }
+            
+            // Se não temos categoria genérica, usar a categoria do produto diretamente
+            if (!$genericCategoryId) {
+                return strtoupper($category->name);
+            }
+            
+            // Buscar a categoria genérica para entender a estrutura
+            $genericCategory = \App\Models\Category::find($genericCategoryId);
+            if (!$genericCategory) {
+                return strtoupper($category->name);
+            }
+            
+            // Se a categoria do produto é a mesma que a genérica, retornar "GERAL"
+            if ($categoryId === $genericCategoryId) {
+                return 'GERAL';
+            }
+            
+            // Buscar na hierarquia do produto a categoria que tem level_name = "subcategoria"
+            // E que seja filha (direta ou indireta) da categoria genérica
+            $hierarchy = $category->getFullHierarchy();
+            
+            // Procurar pela categoria genérica na hierarquia
+            $genericFound = false;
+            $subcategoryCandidate = null;
+            
+            foreach ($hierarchy as $cat) {
+                // Encontramos a categoria genérica
+                if ($cat->id === $genericCategoryId) {
+                    $genericFound = true;
+                    continue;
+                }
+                
+                // Se já passamos pela categoria genérica, procurar pela subcategoria
+                if ($genericFound) {
+                    // Procurar o primeiro nível após a categoria genérica que tem level_name = "subcategoria"
+                    // OU se não tiver, pegar o próximo nível
+                    if ($cat->level_name === 'subcategoria') {
+                        return strtoupper($cat->name);
+                    }
+                    
+                    // Guardar como candidato (primeiro após a categoria genérica)
+                    if (!$subcategoryCandidate) {
+                        $subcategoryCandidate = $cat;
+                    }
+                }
+            }
+            
+            // Se encontramos um candidato (primeiro nível após categoria genérica), usar ele
+            if ($subcategoryCandidate) {
+                return strtoupper($subcategoryCandidate->name);
+            }
+            
+            // Se não encontramos, usar o nome da categoria do produto
+            return strtoupper($category->name);
+            
+        } catch (\Exception $e) {
+            Log::warning("Erro ao buscar subcategoria", [
+                'category_id' => $categoryId,
+                'generic_category_id' => $genericCategoryId,
+                'error' => $e->getMessage()
+            ]);
+        }
+        
+        return 'GERAL';
     }
 }
