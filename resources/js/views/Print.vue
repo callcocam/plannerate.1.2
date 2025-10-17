@@ -91,6 +91,7 @@ const planogramData = computed(() => editorStore.currentState);
 
 onMounted(async () => {
     document.documentElement.classList.add('light');
+    document.documentElement.classList.remove('dark');
     // Inicializa sidebarOpen com o valor salvo no localStorage
     sidebarOpen.value = getSidebarState();
     propertiesOpen.value = getPropertiesState();
@@ -102,7 +103,6 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-    document.documentElement.classList.remove('light');
     // Remover listener do evento de duplo clique no produto
     window.removeEventListener('product-double-click', handleProductDoubleClick as EventListener);
 });
@@ -126,10 +126,10 @@ watch(propertiesOpen, (newValue) => {
         <!-- Header apenas no modo não-readonly -->
         
         <div class="relative">            
-            <div class="flex h-full w-full gap-6 overflow-hidden">
+            <div class="flex h-full w-full gap-6">
                
                 
-                <div class="flex h-full w-full flex-col gap-6 overflow-x-auto overflow-y-auto"> 
+                <div class="flex h-full w-full flex-col gap-6"> 
                     <Gondolas :record="planogramData" />
                 </div>
                 

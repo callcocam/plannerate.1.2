@@ -406,7 +406,8 @@ export class PrintService {
             flowText.style.top = 'auto';
             flowText.style.left = 'auto';
             flowText.style.right = 'auto';
-            flowText.style.marginBottom = '10px';
+            flowText.style.marginBottom = '80px'; // Aumenta espaçamento entre FlowIndicator e conteúdo
+            flowText.style.paddingBottom = '10px'; // Adiciona padding interno
         }
 
         // Adiciona elementos na ordem correta
@@ -514,6 +515,12 @@ export class PrintService {
      */
     detectPlanogramContainer() {
         console.log('=== DETECTANDO CONTAINER PRINCIPAL PARA PLANOGRAMA COMPLETO ===');
+        console.log('🔍 DEBUG: Verificando se #planogram-container-full existe...');
+        const planogramFull = document.querySelector('#planogram-container-full');
+        console.log('🔍 DEBUG: #planogram-container-full encontrado:', planogramFull ? 'SIM' : 'NÃO');
+        if (planogramFull) {
+            console.log('🔍 DEBUG: Dimensões do #planogram-container-full:', `${planogramFull.offsetWidth}x${planogramFull.offsetHeight}`);
+        }
 
         // Seletores específicos baseados na estrutura Vue real
         // PRIORIDADE MÁXIMA: Container que inclui FlowIndicator + Planograma
@@ -521,9 +528,9 @@ export class PrintService {
             '.flex.flex-col.overflow-auto.relative.w-full', // ⭐ Container principal (Gondola.vue linha 13) - INCLUI FlowIndicator + Sections
             '#planogram-container-full', // Container específico no Sections.vue (apenas módulos)
             '[ref="sectionsContainer"]', // Container específico com ref do Sections.vue
-            '.mt-28.flex.md\\\\:flex-row', // Container interno dos módulos (Sections.vue linha 5)
+            '.mt-0.flex', // Container interno dos módulos (Sections.vue linha 5) - ATUALIZADO
             '[style*="width: 3618px"]', // Container com largura específica detectada
-            '.flex.md\\\\:flex-row', // Container genérico que tem os SectionWrapper + LastRack
+            '.flex', // Container genérico que tem os SectionWrapper + LastRack
         ];
 
         // Busca containers candidatos
@@ -563,7 +570,6 @@ export class PrintService {
                 // 🏆 PRIORIDADE ABSOLUTA: Container que inclui FlowIndicator + Planograma
                 // Busca pelo FlowIndicator usando seletores específicos do FlowIndicator.vue
                 const hasFlowIndicator = element.querySelector('p.flex.items-center.gap-1') ||
-                    element.querySelector('p:has(span:contains("Fluxo da gôndola"))') ||
                     element.querySelector('.flex.relative') ||
                     // Busca por texto específico
                     (element.textContent && element.textContent.includes('Fluxo da gôndola'));
@@ -661,6 +667,8 @@ export class PrintService {
         if (bestContainer) {
             console.log(`✅ CONTAINER PRINCIPAL ENCONTRADO com pontuação: ${bestScore}`);
             console.log(`📐 Dimensões finais: ${bestContainer.offsetWidth}x${bestContainer.offsetHeight}`);
+            console.log(`🏷️  ID do container selecionado:`, bestContainer.id || 'SEM ID');
+            console.log(`🏷️  Classes do container:`, bestContainer.className);
 
             // Log adicional para debug
             const finalSectionCount = bestContainer.querySelectorAll('[data-section-id]').length;
@@ -690,7 +698,7 @@ export class PrintService {
                 }
 
                 const planogramContainer = bestContainer.querySelector('#planogram-container-full') ||
-                    bestContainer.querySelector('.mt-28.flex.md\\:flex-row');
+                    bestContainer.querySelector('.mt-0.flex');
 
                 if (flowIndicator && planogramContainer) {
                     const optimizedContainer = this.createOptimizedPlanogramContainer(flowIndicator, planogramContainer);

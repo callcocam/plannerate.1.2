@@ -1,5 +1,5 @@
 <template>
-    <div class="flex flex-col md:flex-row h-screen overflow-hidden items-end">
+    <div class="flex flex-col md:flex-row min-h-screen items-start justify-start" :style="{ paddingTop: dynamicPaddingTop + 'px' }">
         <slot name="flow-direction" />
 
         <div id="planogram-container-full" class="mt-0 flex md:flex-row" ref="sectionsContainer">
@@ -68,6 +68,15 @@ const draggableSections = computed<SectionType[]>({
 const lastSection = computed(() => {
     const sections = props.gondola?.sections || [];
     return sections.length > 0 ? sections[sections.length - 1] : null;
+});
+
+// Calcula padding dinâmico baseado na escala para respeitar o header fixo
+const dynamicPaddingTop = computed(() => {
+    const headerHeight = 10; // Altura aproximada do header fixo
+    const basePadding = 100; // Padding base para escala 1x
+    const scaleMultiplier = props.scaleFactor || 1;
+    // Aumenta o padding proporcionalmente à escala, mas com um fator menor para não exagerar
+    return Math.round((headerHeight + basePadding) * Math.pow(scaleMultiplier, 0.5));
 });
 
 </script>

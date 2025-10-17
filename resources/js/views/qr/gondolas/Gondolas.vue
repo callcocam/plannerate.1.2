@@ -7,10 +7,10 @@
         <ErrorOverlay v-if="editorStore.error" :error="editorStore.error" @dismiss="editorStore.setError(null)" />
 
         <!-- Conteúdo Principal -->
-        <div v-if="currentGondola" class="flex h-full w-full flex-col gap-4 overflow-hidden">
+        <div v-if="currentGondola" class="flex h-full w-full flex-col gap-4 ">
             <Info :gondola="currentGondola" :readonly="true" />
 
-            <div class="flex flex-col overflow-auto relative w-full">
+            <div class="flex flex-col relative w-full" :style="{ paddingTop: dynamicPaddingTop + 'px' }">
                 <!-- Indicador de Fluxo -->
                 <FlowIndicator v-if="currentGondola.flow" :flow="currentGondola.flow as 'left_to_right' | 'right_to_left'" :width="gondolaWidth" />
 
@@ -48,6 +48,15 @@ const gondolaWidth = computed(() => {
     return currentGondola.value.sections.reduce((total, section) =>
         total + (section.width + section.cremalheira_width) * scaleFactor.value
         , 0);
+});
+
+// Calcula padding dinâmico baseado na escala para respeitar o header fixo
+const dynamicPaddingTop = computed(() => {
+    const headerHeight = 50; // Altura aproximada do header fixo
+    const basePadding = 20; // Padding base para o FlowIndicator
+    const scaleMultiplier = scaleFactor.value || 1;
+    // Aumenta o padding proporcionalmente à escala, mas com um fator menor para não exagerar
+    return Math.round((headerHeight + basePadding) * Math.pow(scaleMultiplier, 0.3));
 });
 
 // ===== Sincronização Gôndola-Rota =====

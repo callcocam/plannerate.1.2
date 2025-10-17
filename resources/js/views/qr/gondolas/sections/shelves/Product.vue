@@ -5,6 +5,7 @@
         :src="imageUrl"
         @error="handleImageError"
         alt="Imagem do Produto"
+        class="object-contain "
         :style="{...imageStyle, ...productStyle}"
     />  
 </template>
@@ -51,10 +52,14 @@ return placeholderUrl.value;
 * Estilo da imagem - aplica object-fit: contain apenas para placeholder
 */
 const imageStyle = computed(() => {
+    const imageUrl = props.product?.image_url || '';
 // Verifica se não há imagem do produto (vai usar placeholder)
 const hasProductImage = props.product?.image_url && typeof props.product.image_url === 'string';
+//quero verificar se a imagem tem o fall4.jpg
+const fallbackImage = imageUrl.includes('fall4.jpg');
 
-if (!hasProductImage) {
+if (!hasProductImage || fallbackImage) {
+    console.log('Oi', hasProductImage);
     return {
         width: '100%',
         height: '100%',
@@ -81,14 +86,14 @@ if (target.src !== placeholderUrl.value) {
     console.warn(`Erro ao carregar imagem do produto: ${target.src}`);
     target.src = placeholderUrl.value;
     // Aplica estilos do placeholder quando há erro
-    target.style.objectFit = 'contain';
+    target.style.objectFit = 'cover';
     target.style.backgroundColor = '#f5f5f5';
     target.style.border = '1px solid #ddd';
 } else {
     console.error('Erro ao carregar placeholder, usando imagem padrão');
     // Fallback final: imagem inline base64 simples
     target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTAiIGhlaWdodD0iNTAiIHZpZXdCb3g9IjAgMCA1MCA1MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjUwIiBoZWlnaHQ9IjUwIiBmaWxsPSIjRkY4MDgwIi8+Cjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSJ3aGl0ZSIgZm9udC1zaXplPSIxNCI+WDwvdGV4dD4KPC9zdmc+';
-    target.style.objectFit = 'contain';
+    target.style.objectFit = 'cover';
     target.style.backgroundColor = '#f5f5f5';
     target.style.border = '1px solid #ddd';
 }
