@@ -4,8 +4,7 @@
         ref="productRef"
         :src="imageUrl"
         @error="handleImageError"
-        alt="Imagem do Produto"
-        class="object-contain "
+        alt="Imagem do Produto" 
         :style="{...imageStyle, ...productStyle}"
     />  
 </template>
@@ -70,7 +69,8 @@ if (!hasProductImage || fallbackImage) {
 
 return {
     width: '100%',
-    height: '100%'
+    height: '100%',
+    objectFit: 'cover' as const,
 };
 });
 
