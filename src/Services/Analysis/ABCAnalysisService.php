@@ -9,8 +9,7 @@
 namespace Callcocam\Plannerate\Services\Analysis;
 
 use App\Models\Product;
-use App\Models\SaleSummary;
-use App\Services\OptimizedSummarySales;
+use App\Models\SaleSummary; 
 use Illuminate\Support\Collection;
 
 class ABCAnalysisService
@@ -37,31 +36,6 @@ class ABCAnalysisService
         $classified = $this->classifyProducts($products, $startDate, $endDate, $storeId);
 
         return $classified;
-    }
-
-
-
-    /**
-     * Calcula os totais de quantidade, valor e margem
-     */
-    protected function calculateTotals(Collection $sales, Collection $purchases): array
-    {
-
-        // Retorna os totais
-        //acquisition_cost -> Custo de aquisição do produto
-        //sale_price -> Preço de venda do produto
-        //total_profit_margin -> Margem de lucro unitária
-        //sale_date -> Data da venda
-        //promotion -> Promoção
-        //total_sale_quantity -> Quantidade vendida
-        //total_sale_value -> Valor total da venda
-        //current_stock -> Estoque atual
-        return [
-            'quantity' => $sales->sum('total_sale_quantity'), // Quantidade vendida
-            'value' => $sales->sum('sale_price'), // Valor total da venda
-            'margin' => $sales->sum('total_profit_margin'), // Margem de lucro unitária
-            'current_stock' => $purchases->sum('current_stock') // Estoque atual
-        ];
     }
 
     /**

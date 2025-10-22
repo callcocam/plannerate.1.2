@@ -48,8 +48,10 @@ class AnalysisController extends Controller
         ]);
 
         $planogram = Planogram::find($request->planogram);
-        $startDate = $planogram->start_date;
-        $endDate = $planogram->end_date;
+        
+        // Normalizar datas para início/fim do mês (compatível com sale_summaries)
+        $startDate = \Carbon\Carbon::parse($planogram->start_date)->startOfMonth()->format('Y-m-d');
+        $endDate = \Carbon\Carbon::parse($planogram->end_date)->endOfMonth()->format('Y-m-d');
 
         $result = $this->abcService->analyze(
             $request->products,
@@ -76,8 +78,10 @@ class AnalysisController extends Controller
         ]);
 
         $planogram = Planogram::find($request->planogram);
-        $startDate = $planogram->start_date;
-        $endDate = $planogram->end_date;
+        
+        // Normalizar datas para início/fim do mês (compatível com sale_summaries)
+        $startDate = \Carbon\Carbon::parse($planogram->start_date)->startOfMonth()->format('Y-m-d');
+        $endDate = \Carbon\Carbon::parse($planogram->end_date)->endOfMonth()->format('Y-m-d');
 
         $result = $this->targetStockService->analyze(
             $request->products,
@@ -113,8 +117,10 @@ class AnalysisController extends Controller
         ]);
 
         $planogram = Planogram::find($request->planogram);
-        $startDate = $planogram->start_date;
-        $endDate = $planogram->end_date;
+        
+        // Normalizar datas para início/fim do mês (compatível com sale_summaries)
+        $startDate = \Carbon\Carbon::parse($planogram->start_date)->startOfMonth()->format('Y-m-d');
+        $endDate = \Carbon\Carbon::parse($planogram->end_date)->endOfMonth()->format('Y-m-d');
 
         $result = $this->bcgService->analyze(
             $request->products,
