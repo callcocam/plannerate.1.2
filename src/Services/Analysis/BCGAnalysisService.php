@@ -8,7 +8,7 @@
 namespace Callcocam\Plannerate\Services\Analysis;
 
 use App\Models\Product;
-use App\Models\Sale;
+use App\Models\SaleSummary;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection; 
 use Illuminate\Support\Facades\Log;
@@ -53,21 +53,21 @@ class BCGAnalysisService
     }
 
     /**
-     * Busca as vendas dos produtos no período
+     * Busca as vendas dos produtos no período usando dados sumarizados
      */
     protected function getSales( 
         ?string $startDate,
         ?string $endDate,
         ?int $storeId = null
     ): Collection | Builder {
-        $query = Sale::query();
+        $query = SaleSummary::where('period_type', 'monthly');
 
         if ($startDate) {
-            $query->where('sale_date', '>=', $startDate);
+            $query->where('period_start', '>=', $startDate);
         }
 
         if ($endDate) {
-            $query->where('sale_date', '<=', $endDate);
+            $query->where('period_end', '<=', $endDate);
         }
 
         if ($storeId) {
@@ -78,7 +78,7 @@ class BCGAnalysisService
     }
 
         /**
-     * Busca dados brutos dos produtos para análise BCG
+     * Busca dados brutos dos produtos para análise BCG usando dados sumarizados
      */
     protected function calculateGrowthAndMarketShare(
         Collection $products,
@@ -89,10 +89,20 @@ class BCGAnalysisService
         $result = [];  
         foreach ($products as $product) {
             $cloneCurrentSales = clone $currentSales;
-            // Vendas do produto no período atual (filtradas)
-            $currentProductSales = $cloneCurrentSales->where('product_id', $product->id)->sum('total_sale_value');
-            $currentProductQuantity = $cloneCurrentSales->where('product_id', $product->id)->sum('total_sale_quantity');
-            $currentProductMargin = $cloneCurrentSales->where('product_id', $product->id)->sum('total_profit_margin');
+            
+            // Agregar vendas do produto usando SaleSummary
+            $productSummary = $cloneCurrentSales
+                ->where('product_id', $product->id)
+                ->selectRaw('
+                    SUM(total_value) as total_value,
+                    SUM(total_quantity) as total_quantity,
+                    SUM(total_profit) as total_profit
+                ')
+                ->first();
+
+            $currentProductSales = $productSummary->total_value ?? 0;
+            $currentProductQuantity = $productSummary->total_quantity ?? 0;
+            $currentProductMargin = $productSummary->total_profit ?? 0;
 
             // Calcular valores para os eixos baseado na seleção do usuário
             $xValue = $this->calculateAxisValue($xAxis, $currentProductSales, $currentProductQuantity, $currentProductMargin);

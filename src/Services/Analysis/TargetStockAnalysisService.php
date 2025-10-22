@@ -9,7 +9,7 @@ namespace Callcocam\Plannerate\Services\Analysis;
 
 use App\Models\Product;
 use App\Models\Purchase;
-use App\Models\Sale;
+use App\Models\SaleSummary;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -47,7 +47,7 @@ class TargetStockAnalysisService
     }
 
     /**
-     * Busca as vendas dos produtos no período
+     * Busca as vendas dos produtos no período usando dados sumarizados
      */
     protected function getSales(
         array $productIds,
@@ -55,33 +55,38 @@ class TargetStockAnalysisService
         ?string $endDate,
         ?int $storeId
     ): Collection {
-        $query = Sale::whereIn('product_id', $productIds);
+        $query = SaleSummary::whereIn('product_id', $productIds)
+            ->where('period_type', 'monthly');
 
-            if ($startDate) {
-                $query->where('sale_date', '>=', $startDate);
-            }
+        if ($startDate) {
+            $query->where('period_start', '>=', $startDate);
+        }
 
-            if ($endDate) {
-                $query->where('sale_date', '<=', $endDate);
-            }
+        if ($endDate) {
+            $query->where('period_end', '<=', $endDate);
+        }
 
-            // if ($storeId) {
-            //     $query->where('store_id', $storeId);
-            // }
+        if ($storeId) {
+            $query->where('store_id', $storeId);
+        }
 
         return $query->get();
     }
 
     /**
-     * Agrupa as vendas por produto e dia
+     * Agrupa as vendas por produto e período (mensal)
+     * Nota: Dados já vêm sumarizados mensalmente, convertemos para formato esperado
      */
     protected function groupDailySales(Collection $sales): array
     {
         $grouped = [];
 
-        foreach ($sales as $sale) { 
-            $date = $sale->sale_date instanceof Carbon ? $sale->sale_date->format('Y-m-d') : $sale->sale_date;
-            $productId = $sale->product_id;
+        foreach ($sales as $summary) { 
+            // Usar period_start como referência de período
+            $date = $summary->period_start instanceof Carbon 
+                ? $summary->period_start->format('Y-m-d') 
+                : $summary->period_start;
+            $productId = $summary->product_id;
 
             if (!isset($grouped[$productId])) {
                 $grouped[$productId] = [];
@@ -91,7 +96,8 @@ class TargetStockAnalysisService
                 $grouped[$productId][$date] = 0;
             }
 
-            $grouped[$productId][$date] += $sale->total_sale_quantity;
+            // total_quantity já é a soma do período
+            $grouped[$productId][$date] += $summary->total_quantity;
         }
 
         return $grouped;
