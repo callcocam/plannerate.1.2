@@ -5,12 +5,13 @@
  * User: callcocam@gmail.com, contato@sigasmart.com.br
  * https://www.sigasmart.com.br
  */
+
 namespace Callcocam\Plannerate\Services\Analysis;
 
 use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\Sale;
-use App\Models\SaleSummary;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -18,27 +19,26 @@ class TargetStockAnalysisService
 {
     /**
      * Realiza análise de estoque alvo dos produtos
-     * Nota: Agora usa dados mensais da tabela sale_summaries
-     *
+     * 
      * @param array $productIds
      * @param string|null $startDate
      * @param string|null $endDate
-     * @param int|null $storeId
+     * @param int|null $storeId 
      * @return array
      */
     public function analyze(
         array $productIds,
         ?string $startDate = null,
         ?string $endDate = null,
-        ?string $storeId = null,
+        ?int $storeId = null,
     ): array {
         // Busca os produtos
-        $products = Product::whereIn('id', $productIds)->get();
+        // $products = Product::whereIn('id', $productIds)->get();
 
-        // Busca as vendas sumarizadas no período (dados mensais)
+        // Busca as vendas no período
         $sales = $this->getSales($productIds, $startDate, $endDate, $storeId);
 
-        // Agrupa as vendas por produto e período (mês)
+        // Agrupa as vendas por produto e dia
         $dailySales = $this->groupDailySales($sales);
 
         // Calcula as estatísticas
@@ -48,52 +48,51 @@ class TargetStockAnalysisService
     }
 
     /**
-     * Busca as vendas dos produtos no período usando sale_summaries
+     * Busca as vendas dos produtos no período
      */
     protected function getSales(
         array $productIds,
         ?string $startDate,
         ?string $endDate,
-        ?string $storeId
+        ?int $storeId
     ): Collection {
-        $query = SaleSummary::whereIn('product_id', $productIds);
+        $query = Sale::whereIn('product_id', $productIds);
 
         if ($startDate) {
-            $query->where('period_start', '>=', $startDate);
+            $query->where('sale_date', '>=', $startDate);
         }
 
         if ($endDate) {
-            $query->where('period_end', '<=', $endDate);
+            $query->where('sale_date', '<=', $endDate);
         }
 
-        if ($storeId) {
-            $query->where('store_id', $storeId);
-        }
+        // if ($storeId) {
+        //     $query->where('store_id', $storeId);
+        // }
 
         return $query->get();
     }
 
     /**
-     * Agrupa as vendas por produto e período (mês)
-     * Nota: Agora trabalha com dados mensais ao invés de diários
+     * Agrupa as vendas por produto e dia
      */
     protected function groupDailySales(Collection $sales): array
     {
         $grouped = [];
 
         foreach ($sales as $sale) {
-            $period = $sale->period_start; // Usa o início do período (mês)
+            $date = $sale->sale_date instanceof Carbon ? $sale->sale_date->format('Y-m-d') : $sale->sale_date;
             $productId = $sale->product_id;
 
             if (!isset($grouped[$productId])) {
                 $grouped[$productId] = [];
             }
 
-            if (!isset($grouped[$productId][$period])) {
-                $grouped[$productId][$period] = 0;
+            if (!isset($grouped[$productId][$date])) {
+                $grouped[$productId][$date] = 0;
             }
 
-            $grouped[$productId][$period] += $sale->total_sale_quantity;
+            $grouped[$productId][$date] += $sale->total_sale_quantity;
         }
 
         return $grouped;
@@ -124,7 +123,6 @@ class TargetStockAnalysisService
 
     /**
      * Calcula as estatísticas de vendas
-     * Nota: Trabalha com dados mensais (não mais diários)
      */
     protected function calculateStatistics(array $dailySales): array
     {
@@ -139,7 +137,7 @@ class TargetStockAnalysisService
                 continue;
             }
 
-            // Média mensal
+            // Média diária
             $average = array_sum($quantities) / $count;
 
             // Desvio padrão
@@ -158,10 +156,10 @@ class TargetStockAnalysisService
                 'standard_deviation' => round($standardDeviation, 2),
                 'variability' => round($variability, 2),
                 'currentStock' => $currentStock,
-                'sales_by_period' => $sales, // Agora são períodos mensais
+                'sales_by_day' => $sales,
             ];
         }
 
         return $result;
     }
-} 
+}

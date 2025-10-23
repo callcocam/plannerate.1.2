@@ -5,6 +5,7 @@
  * User: callcocam@gmail.com, contato@sigasmart.com.br
  * https://www.sigasmart.com.br
  */
+
 namespace Callcocam\Plannerate\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
@@ -103,8 +104,7 @@ class AnalysisControllerUpdated extends Controller
                 $planogram->end_date,
                 $xAxis,
                 $yAxis,
-                $planogram->client_id,
-                $planogram->store_id,
+                $validatedData['storeId'] ?? null,
                 $classifyBy,
                 $displayBy
             );
@@ -217,8 +217,7 @@ class AnalysisControllerUpdated extends Controller
             $request->products,
             $startDate,
             $endDate,
-            $planogram->client_id,
-            $planogram->store_id
+            $request->storeId
         );
 
         return response()->json($result);
@@ -243,8 +242,7 @@ class AnalysisControllerUpdated extends Controller
             $request->products,
             $startDate,
             $endDate,
-            $planogram->client_id,
-            $planogram->store_id
+            $request->storeId,
         );
 
         return response()->json($result);

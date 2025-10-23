@@ -5,14 +5,12 @@
  * User: callcocam@gmail.com, contato@sigasmart.com.br
  * https://www.sigasmart.com.br
  */
-
 namespace Callcocam\Plannerate\Services\Analysis;
 
 use App\Models\Product;
-use App\Models\SaleSummary;
+use App\Models\Sale;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Collection; 
 
 class BCGAnalysisServiceImproved
 {
@@ -35,8 +33,7 @@ class BCGAnalysisServiceImproved
         ?string $endDate = null,
         ?string $xAxis = null,
         ?string $yAxis = null,
-        ?string $clientId = null,
-        ?string $storeId = null,
+        ?int $storeId = null,
         ?string $classifyBy = 'categoria',
         ?string $displayBy = 'produto'
     ): array {
@@ -50,7 +47,7 @@ class BCGAnalysisServiceImproved
         $products = Product::whereIn('id', $productIds)->get();
 
         // Buscar vendas
-        $currentSales = $this->getSales($startDate, $endDate, $clientId, $storeId);
+        $currentSales = $this->getSales($startDate, $endDate, $storeId);
 
         // Calcular dados agregados baseado na configuração
         $aggregatedData = $this->calculateAggregatedData(
@@ -258,26 +255,21 @@ class BCGAnalysisServiceImproved
     private function getSales(
         ?string $startDate,
         ?string $endDate,
-        ?string $clientId = null,
-        ?string $storeId = null
+        ?int $storeId = null
     ): Builder {
-        $query = SaleSummary::query();
+        $query = Sale::query();
 
-        if ($startDate) {
-            $query->where('period_start', '>=', $startDate);
-        }
+        // if ($startDate) {
+        //     $query->where('sale_date', '>=', $startDate);
+        // }
 
-        if ($endDate) {
-            $query->where('period_end', '<=', $endDate);
-        }
+        // if ($endDate) {
+        //     $query->where('sale_date', '<=', $endDate);
+        // }
 
-        if ($storeId) {
-            $query->where('store_id', $storeId);
-        }
-
-        if ($clientId) {
-            $query->where('client_id', $clientId);
-        }
+        // if ($storeId) {
+        //     $query->where('store_id', $storeId);
+        // }
 
         return $query;
     }

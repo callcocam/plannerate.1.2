@@ -42,22 +42,20 @@ class AnalysisController extends Controller
     public function abcAnalysis(Request $request): JsonResponse
     {
         $request->validate([
-            'products' => 'required|array', 
+            'products' => 'required|array',
             'planogram' => 'required|string',
             'storeId' => 'nullable|integer|exists:stores,id',
         ]);
 
         $planogram = Planogram::find($request->planogram);
-        
-        // Normalizar datas para início/fim do mês (compatível com sale_summaries)
-        $startDate = \Carbon\Carbon::parse($planogram->start_date)->startOfMonth()->format('Y-m-d');
-        $endDate = \Carbon\Carbon::parse($planogram->end_date)->endOfMonth()->format('Y-m-d'); 
+        $startDate = $planogram->start_date;
+        $endDate = $planogram->end_date;
+
         $result = $this->abcService->analyze(
             $request->products,
             $startDate,
             $endDate,
-            $planogram->client_id,
-            $planogram->store_id
+            $request->storeId
         );
 
         return response()->json($result);
@@ -72,23 +70,20 @@ class AnalysisController extends Controller
     public function targetStockAnalysis(Request $request): JsonResponse
     {
         $request->validate([
-            'products' => 'required|array', 
+            'products' => 'required|array',
             'planogram' => 'required|string',
-            'storeId' => 'nullable|integer|exists:stores,id', 
+            'storeId' => 'nullable|integer|exists:stores,id',
         ]);
 
         $planogram = Planogram::find($request->planogram);
-        
-        // Normalizar datas para início/fim do mês (compatível com sale_summaries)
-        $startDate = \Carbon\Carbon::parse($planogram->start_date)->startOfMonth()->format('Y-m-d');
-        $endDate = \Carbon\Carbon::parse($planogram->end_date)->endOfMonth()->format('Y-m-d');
+        $startDate = $planogram->start_date;
+        $endDate = $planogram->end_date;
 
         $result = $this->targetStockService->analyze(
             $request->products,
             $startDate,
             $endDate,
-            $planogram->client_id,
-            $planogram->store_id
+            $request->storeId,
         );
 
         return response()->json($result);
@@ -103,9 +98,9 @@ class AnalysisController extends Controller
     public function bcgAnalysis(Request $request): JsonResponse
     {
         $request->validate([
-            'products' => 'required|array', 
+            'products' => 'required|array',
             'planogram' => 'required|string',
-            'storeId' => 'nullable|integer|exists:stores,id', 
+            'storeId' => 'nullable|integer|exists:stores,id',
             'xAxis' => 'nullable|string',
             'yAxis' => 'nullable|string'
         ]);
@@ -113,15 +108,13 @@ class AnalysisController extends Controller
         // Log dos parâmetros recebidos no controller
         Log::info('BCG Controller - Parâmetros recebidos:', [
             'xAxis' => $request->xAxis,
-            'yAxis' => $request->yAxis, 
+            'yAxis' => $request->yAxis,
             'products_count' => count($request->products)
         ]);
 
         $planogram = Planogram::find($request->planogram);
-        
-        // Normalizar datas para início/fim do mês (compatível com sale_summaries)
-        $startDate = \Carbon\Carbon::parse($planogram->start_date)->startOfMonth()->format('Y-m-d');
-        $endDate = \Carbon\Carbon::parse($planogram->end_date)->endOfMonth()->format('Y-m-d');
+        $startDate = $planogram->start_date;
+        $endDate = $planogram->end_date;
 
         $result = $this->bcgService->analyze(
             $request->products,
@@ -129,10 +122,9 @@ class AnalysisController extends Controller
             $endDate,
             $request->xAxis,
             $request->yAxis,
-            $planogram->client_id,
-            $planogram->store_id
+            $request->storeId
         );
 
         return response()->json($result);
     }
-} 
+}

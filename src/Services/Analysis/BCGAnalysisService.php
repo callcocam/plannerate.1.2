@@ -5,10 +5,11 @@
  * User: callcocam@gmail.com, contato@sigasmart.com.br
  * https://www.sigasmart.com.br
  */
+
 namespace Callcocam\Plannerate\Services\Analysis;
 
 use App\Models\Product;
-use App\Models\SaleSummary;
+use App\Models\Sale;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -32,20 +33,19 @@ class BCGAnalysisService
         ?string $endDate = null,
         ?string $xAxis = null,
         ?string $yAxis = null,
-        ?string $clientId = null,
-        ?string $storeId = null
+        ?int $storeId = null
     ): array {
 
         // Busca os produtos
         $products = Product::whereIn('id', $productIds)->get();
 
         // Busca as vendas no período atual
-        $currentSales = $this->getSales($startDate, $endDate, $clientId, $storeId);
+        $currentSales = $this->getSales($startDate, $endDate, $storeId);
 
         // Calcula o crescimento e participação de mercado
         $analysis = $this->calculateGrowthAndMarketShare(
             $products,
-            $currentSales, 
+            $currentSales,
             $xAxis,
             $yAxis
         );
@@ -59,22 +59,18 @@ class BCGAnalysisService
     protected function getSales(
         ?string $startDate,
         ?string $endDate,
-        ?string $clientId = null,
-        ?string $storeId = null
+        ?int $storeId = null
     ): Collection | Builder {
-        $query = SaleSummary::query();
+        $query = Sale::query();
 
         if ($startDate) {
-            $query->where('period_start', '>=', $startDate);
+            $query->where('sale_date', '>=', $startDate);
         }
 
         if ($endDate) {
-            $query->where('period_end', '<=', $endDate);
+            $query->where('sale_date', '<=', $endDate);
         }
 
-        if ($clientId) {
-            $query->where('client_id', $clientId);
-        }
         if ($storeId) {
             $query->where('store_id', $storeId);
         }
@@ -82,7 +78,7 @@ class BCGAnalysisService
         return $query;
     }
 
-        /**
+    /**
      * Busca dados brutos dos produtos para análise BCG
      */
     protected function calculateGrowthAndMarketShare(
@@ -91,7 +87,7 @@ class BCGAnalysisService
         ?string $xAxis = null,
         ?string $yAxis = null
     ): array {
-        $result = [];  
+        $result = [];
         foreach ($products as $product) {
             $cloneCurrentSales = clone $currentSales;
             // Vendas do produto no período atual (filtradas)
@@ -104,7 +100,7 @@ class BCGAnalysisService
             $yValue = $this->calculateAxisValue($yAxis, $currentProductSales, $currentProductQuantity, $currentProductMargin);
 
             // Filtrar apenas produtos que têm vendas no período (valores > 0)
-            if ($xValue <= 0 && $yValue <= 0) { 
+            if ($xValue <= 0 && $yValue <= 0) {
                 continue; // Pula produtos sem vendas
             }
 
@@ -129,7 +125,7 @@ class BCGAnalysisService
                 'product_id' => $product->id,
                 'ean' => $product->ean,
                 'category' => $category,
-                'current_sales' => $currentProductSales, 
+                'current_sales' => $currentProductSales,
                 'x_axis_value' => round($xValue, 2),
                 'y_axis_value' => round($yValue, 2),
                 'x_axis_label' => $xAxis ?: 'VALOR DE VENDA',
@@ -157,5 +153,4 @@ class BCGAnalysisService
                 return $sales; // Valor padrão
         }
     }
- 
 }
