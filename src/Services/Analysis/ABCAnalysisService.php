@@ -59,6 +59,7 @@ class ABCAnalysisService
 
             // Agregar dados já sumarizados
             $summary = $summaryQuery->selectRaw('
+                SUM(avg_margin) as avg_margin,
                 SUM(total_quantity) as total_quantity,
                 SUM(total_value) as total_value,
                 SUM(total_profit) as total_profit,
@@ -67,7 +68,7 @@ class ABCAnalysisService
 
             $quantity = $summary->total_quantity ?? 0;
             $value = $summary->total_value ?? 0;
-            $totalProfit = $summary->total_profit ?? 0;
+            $totalProfit = $summary->avg_margin ?? 0;
 
             // Buscar estoque atual (purchases não tem sumarização)
             $productPurchases = $product->purchases()
