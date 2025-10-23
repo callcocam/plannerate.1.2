@@ -73,8 +73,7 @@ class ABCAnalysisService
                 })
                 ->when($clientId, function ($query) use ($clientId) {
                     $query->where('client_id', $clientId);
-                });
-                dd($clientId);
+                }); 
             $quantity = $productSales->sum('total_sale_quantity');
             $value = $productSales->sum('total_sale_value');
             $margin = $productSales->sum('total_profit_margin');
