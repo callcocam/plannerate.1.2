@@ -32,7 +32,7 @@ class BCGAnalysisService
         ?string $endDate = null,
         ?string $xAxis = null,
         ?string $yAxis = null,
-        ?int $storeId = null
+        ?string $storeId = null
     ): array {
 
         // Busca os produtos

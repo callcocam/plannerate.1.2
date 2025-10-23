@@ -259,7 +259,7 @@ class BCGAnalysisServiceImproved
         ?string $startDate,
         ?string $endDate,
         ?string $clientId = null,
-        ?int $storeId = null
+        ?string $storeId = null
     ): Builder {
         $query = SaleSummary::query();
 
