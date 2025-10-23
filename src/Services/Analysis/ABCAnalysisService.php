@@ -7,9 +7,7 @@
  */
 namespace Callcocam\Plannerate\Services\Analysis;
 
-use App\Models\Product;
-use App\Models\Purchase;
-use App\Models\SaleSummary;
+use App\Models\Product; 
 use Illuminate\Support\Collection;
 
 class ABCAnalysisService
@@ -27,13 +25,14 @@ class ABCAnalysisService
         array $productIds,
         ?string $startDate = null,
         ?string $endDate = null,
-        ?int $storeId = null
+        ?string $clientId = null,
+        ?string $storeId = null
     ): array {
         // Busca os produtos
         $products = Product::whereIn('id', $productIds)->get(); 
 
         // Classifica os produtos
-        $classified = $this->classifyProducts($products, $startDate, $endDate, $storeId);
+        $classified = $this->classifyProducts($products, $startDate, $endDate, $clientId, $storeId);
 
         return $classified;
     }
@@ -60,7 +59,8 @@ class ABCAnalysisService
         Collection $products, 
         ?string $startDate = null,
         ?string $endDate = null,
-        ?int $storeId = null
+        ?string $clientId = null,
+        ?string $storeId = null
     ): array {
         $result = [];
 
@@ -70,9 +70,10 @@ class ABCAnalysisService
                     $query->where('period_start', '>=', $startDate);
                 })->when($endDate, function ($query) use ($endDate) {
                     $query->where('period_end', '<=', $endDate);
-                })->when($storeId, function ($query) use ($storeId) {
-                    $query->where('store_id', $storeId);
-                });
+                })
+                ->when($clientId, function ($query) use ($clientId) {
+                    $query->where('client_id', $clientId);
+                }); 
             $quantity = $productSales->sum('total_sale_quantity');
             $value = $productSales->sum('total_sale_value');
             $margin = $productSales->sum('total_profit_margin');

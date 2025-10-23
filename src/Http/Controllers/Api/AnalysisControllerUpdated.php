@@ -103,7 +103,8 @@ class AnalysisControllerUpdated extends Controller
                 $planogram->end_date,
                 $xAxis,
                 $yAxis,
-                $validatedData['storeId'] ?? null,
+                $planogram->client_id,
+                $planogram->store_id,
                 $classifyBy,
                 $displayBy
             );
@@ -216,7 +217,8 @@ class AnalysisControllerUpdated extends Controller
             $request->products,
             $startDate,
             $endDate,
-            $request->storeId
+            $planogram->client_id,
+            $planogram->store_id
         );
 
         return response()->json($result);
@@ -241,7 +243,8 @@ class AnalysisControllerUpdated extends Controller
             $request->products,
             $startDate,
             $endDate,
-            $request->storeId,
+            $planogram->client_id,
+            $planogram->store_id
         );
 
         return response()->json($result);

@@ -52,12 +52,13 @@ class AnalysisController extends Controller
         // Normalizar datas para início/fim do mês (compatível com sale_summaries)
         $startDate = \Carbon\Carbon::parse($planogram->start_date)->startOfMonth()->format('Y-m-d');
         $endDate = \Carbon\Carbon::parse($planogram->end_date)->endOfMonth()->format('Y-m-d');
-
+dd($planogram->client_id);
         $result = $this->abcService->analyze(
             $request->products,
             $startDate,
             $endDate,
-            $request->storeId 
+            $planogram->client_id,
+            $planogram->store_id
         );
 
         return response()->json($result);
@@ -87,7 +88,8 @@ class AnalysisController extends Controller
             $request->products,
             $startDate,
             $endDate,
-            $request->storeId, 
+            $planogram->client_id,
+            $planogram->store_id
         );
 
         return response()->json($result);
@@ -128,7 +130,8 @@ class AnalysisController extends Controller
             $endDate,
             $request->xAxis,
             $request->yAxis,
-            $request->storeId
+            $planogram->client_id,
+            $planogram->store_id
         );
 
         return response()->json($result);
