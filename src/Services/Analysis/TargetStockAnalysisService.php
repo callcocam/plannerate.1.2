@@ -54,7 +54,7 @@ class TargetStockAnalysisService
         array $productIds,
         ?string $startDate,
         ?string $endDate,
-        ?int $storeId
+        ?string $storeId
     ): Collection {
         $query = SaleSummary::whereIn('product_id', $productIds);
 
