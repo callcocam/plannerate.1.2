@@ -5,9 +5,10 @@
  * User: callcocam@gmail.com, contato@sigasmart.com.br
  * https://www.sigasmart.com.br
  */
+
 namespace Callcocam\Plannerate\Services\Analysis;
 
-use App\Models\Product; 
+use App\Models\Product;
 use Illuminate\Support\Collection;
 
 class ABCAnalysisService
@@ -29,15 +30,15 @@ class ABCAnalysisService
         ?string $storeId = null
     ): array {
         // Busca os produtos
-        $products = Product::whereIn('id', $productIds)->get(); 
+        $products = Product::whereIn('id', $productIds)->get();
 
         // Classifica os produtos
         $classified = $this->classifyProducts($products, $startDate, $endDate, $clientId, $storeId);
 
         return $classified;
     }
- 
- 
+
+
 
     /**
      * Calcula os totais de quantidade, valor e margem
@@ -56,7 +57,7 @@ class ABCAnalysisService
      * Classifica os produtos em A, B ou C
      */
     protected function classifyProducts(
-        Collection $products, 
+        Collection $products,
         ?string $startDate = null,
         ?string $endDate = null,
         ?string $clientId = null,
@@ -73,7 +74,7 @@ class ABCAnalysisService
                 })
                 ->when($clientId, function ($query) use ($clientId) {
                     $query->where('client_id', $clientId);
-                }); 
+                });
             $quantity = $productSales->sum('total_sale_quantity');
             $value = $productSales->sum('total_sale_value');
             $margin = $productSales->sum('total_profit_margin');
@@ -96,7 +97,7 @@ class ABCAnalysisService
                 $lastSale = $saleDate->period_end;
             }
             $result[] = [
-                'id' => $product->ean, 
+                'id' => $product->ean,
                 'name' => $product->name,
                 'category' => $product->category_name, //Atributo analise de sortimento
                 'quantity' => $quantity,
