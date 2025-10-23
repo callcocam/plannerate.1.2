@@ -35,7 +35,8 @@ class BCGAnalysisServiceImproved
         ?string $endDate = null,
         ?string $xAxis = null,
         ?string $yAxis = null,
-        ?int $storeId = null,
+        ?string $clientId = null,
+        ?string $storeId = null,
         ?string $classifyBy = 'categoria',
         ?string $displayBy = 'produto'
     ): array {
@@ -49,7 +50,7 @@ class BCGAnalysisServiceImproved
         $products = Product::whereIn('id', $productIds)->get();
 
         // Buscar vendas
-        $currentSales = $this->getSales($startDate, $endDate, $storeId);
+        $currentSales = $this->getSales($startDate, $endDate, $clientId, $storeId);
 
         // Calcular dados agregados baseado na configuração
         $aggregatedData = $this->calculateAggregatedData(
@@ -257,6 +258,7 @@ class BCGAnalysisServiceImproved
     private function getSales(
         ?string $startDate,
         ?string $endDate,
+        ?string $clientId = null,
         ?int $storeId = null
     ): Builder {
         $query = SaleSummary::query();
@@ -271,6 +273,10 @@ class BCGAnalysisServiceImproved
 
         if ($storeId) {
             $query->where('store_id', $storeId);
+        }
+
+        if ($clientId) {
+            $query->where('client_id', $clientId);
         }
 
         return $query;
