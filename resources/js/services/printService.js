@@ -8,9 +8,9 @@ import jsPDF from 'jspdf';
 export class PrintService {
     constructor() {
         this.defaultConfig = {
-            scale: 2, // Escala padrão para melhor qualidade
+            scale: 4, // Escala padrão para melhor qualidade
             format: 'A4', // A4, A3, custom
-            orientation: 'landscape', // landscape, portrait
+            orientation: 'portrait', // landscape, portrait
             margins: {
                 top: 20,
                 right: 20,
@@ -117,9 +117,12 @@ export class PrintService {
                 });
 
                 if (moduleContainer && this.isElementValid(moduleContainer)) {
+                    // 🎯 CORREÇÃO: Usa o número correto do módulo para o nome
+                    const moduleName = this.extractModuleName(sectionElement, sectionIndex, moduleNumber);
+                    
                     const moduleData = {
                         id: sectionId,
-                        name: `Módulo ${moduleNumber}`,
+                        name: moduleName,
                         element: moduleContainer,
                         moduleType: 'COMPLETE_MODULE',
                         hasCremalheira: true,
@@ -228,7 +231,66 @@ export class PrintService {
             return this._detectedFlow;
         }
 
-        // MÉTODO 3: Análise mais robusta do posicionamento das seções
+        // MÉTODO 3: Análise dos labels dos módulos para detectar fluxo correto
+        console.log('🔍 Analisando labels dos módulos para detectar fluxo...');
+        
+        // Busca por labels de módulos no DOM
+        const moduleLabels = document.querySelectorAll('[class*="module-label"], [class*="Módulo"]');
+        console.log(`📋 Encontrados ${moduleLabels.length} labels de módulos`);
+        
+        if (moduleLabels.length > 0) {
+            // Analisa a ordem dos labels
+            const labelPositions = Array.from(moduleLabels).map(label => {
+                const rect = label.getBoundingClientRect();
+                const text = label.textContent || label.innerText || '';
+                return {
+                    element: label,
+                    left: rect.left,
+                    text: text.trim(),
+                    rect: rect
+                };
+            });
+
+            // Ordena por posição horizontal
+            labelPositions.sort((a, b) => a.left - b.left);
+            
+            console.log('📋 Labels ordenados por posição:');
+            labelPositions.forEach((label, index) => {
+                console.log(`   ${index + 1}. "${label.text}" - Posição: ${label.left}px`);
+            });
+
+            // Se encontrou labels com números, analisa a sequência
+            const numberedLabels = labelPositions.filter(label => 
+                label.text.match(/Módulo\s*\d+/i) || label.text.match(/\d+/)
+            );
+
+            if (numberedLabels.length >= 2) {
+                console.log('🔢 Analisando sequência numérica dos labels...');
+                
+                // Extrai números dos labels
+                const numbers = numberedLabels.map(label => {
+                    const match = label.text.match(/\d+/);
+                    return match ? parseInt(match[0]) : 0;
+                });
+
+                console.log(`📊 Números encontrados: [${numbers.join(', ')}]`);
+
+                // Se os números estão em ordem crescente da esquerda para direita, é left_to_right
+                // Se estão em ordem decrescente da esquerda para direita, é right_to_left
+                const isAscending = numbers.every((num, index) => index === 0 || num > numbers[index - 1]);
+                const isDescending = numbers.every((num, index) => index === 0 || num < numbers[index - 1]);
+
+                if (isAscending) {
+                    this._cacheFlow('left_to_right', 'sequência numérica dos labels (crescente)');
+                    return this._detectedFlow;
+                } else if (isDescending) {
+                    this._cacheFlow('right_to_left', 'sequência numérica dos labels (decrescente)');
+                    return this._detectedFlow;
+                }
+            }
+        }
+
+        // MÉTODO 4: Análise mais robusta do posicionamento das seções
         const sections = document.querySelectorAll('[data-section-id]');
         if (sections.length > 1) {
             // Coleta posições de todas as seções para análise mais precisa
@@ -262,7 +324,7 @@ export class PrintService {
             }
         }
 
-        // MÉTODO 4: Análise de atributos data-section-id para determinar ordem
+        // MÉTODO 5: Análise de atributos data-section-id para determinar ordem
         const sectionIds = Array.from(sections).map(s => s.getAttribute('data-section-id'));
         if (sectionIds.length > 1) {
             // Se os IDs seguem um padrão sequencial, assume left_to_right
@@ -484,12 +546,125 @@ export class PrintService {
         container.style.zIndex = '-1000';
         container.style.pointerEvents = 'none'; // Evita interferência
         container.style.transform = 'translateZ(0)'; // Force hardware acceleration
-        container.style.height = window.innerHeight + 'px'; // Usa altura da viewport
+        
         document.body.appendChild(container);
+
+        // 🎯 CORREÇÃO: Calcula altura dinâmica considerando produtos que se estendem acima das prateleiras
+        const calculatedHeight = this.calculateModuleHeightWithProducts(container);
+        if (calculatedHeight > 0) {
+            container.style.height = calculatedHeight + 'px';
+            console.log(`📏 Altura ajustada para incluir produtos: ${calculatedHeight}px`);
+        }
 
         console.log(`✅ Container virtual criado: ${container.offsetWidth}x${container.offsetHeight}px`);
 
         return container;
+    }
+
+    /**
+     * Calcula a altura necessária para incluir produtos que se estendem acima das prateleiras
+     * @param {HTMLElement} container - Container do módulo
+     * @returns {number} Altura calculada em pixels
+     */
+    calculateModuleHeightWithProducts(container) {
+        console.log('🔍 Calculando altura considerando produtos que se estendem acima das prateleiras...');
+        
+        try {
+            // Busca todas as prateleiras no container
+            const shelves = container.querySelectorAll('[class*="shelf"]');
+            console.log(`📋 Encontradas ${shelves.length} prateleiras`);
+            
+            if (shelves.length === 0) {
+                console.log('⚠️  Nenhuma prateleira encontrada, usando altura padrão');
+                return container.offsetHeight;
+            }
+            
+            let maxTopOffset = 0;
+            let maxBottomOffset = 0;
+            
+            shelves.forEach((shelf, index) => {
+                // Busca produtos/segmentos na prateleira
+                const segments = shelf.querySelectorAll('[data-draggable="true"]');
+                console.log(`📦 Prateleira ${index + 1}: ${segments.length} segmentos`);
+                
+                segments.forEach(segment => {
+                    const rect = segment.getBoundingClientRect();
+                    const shelfRect = shelf.getBoundingClientRect();
+                    
+                    // Calcula quanto o produto se estende acima da prateleira
+                    const topOffset = shelfRect.top - rect.top;
+                    const bottomOffset = rect.bottom - shelfRect.bottom;
+                    
+                    if (topOffset > maxTopOffset) {
+                        maxTopOffset = topOffset;
+                        console.log(`📏 Novo máximo top offset: ${maxTopOffset}px`);
+                    }
+                    
+                    if (bottomOffset > maxBottomOffset) {
+                        maxBottomOffset = bottomOffset;
+                        console.log(`📏 Novo máximo bottom offset: ${maxBottomOffset}px`);
+                    }
+                });
+            });
+            
+            // Altura original do container
+            const originalHeight = container.offsetHeight;
+            
+            // Adiciona margem superior para produtos que se estendem acima
+            const topMargin = Math.max(maxTopOffset, 0); // Mínimo de 20px de margem
+            
+            // 🎯 CORREÇÃO: Margem inferior mais generosa para última prateleira
+            // Considera que produtos podem se estender significativamente abaixo da última prateleira
+            const bottomMargin = Math.max(maxBottomOffset, 40); // Mínimo de 40px para margem inferior
+            
+            // 🎯 CORREÇÃO ADICIONAL: Se há produtos na última prateleira, adiciona margem extra
+            const lastShelf = shelves[shelves.length - 1];
+            const lastShelfSegments = lastShelf ? lastShelf.querySelectorAll('[data-draggable="true"]') : [];
+            
+            if (lastShelfSegments.length > 0) {
+                // Se a última prateleira tem produtos, adiciona margem extra baseada na altura dos produtos
+                let maxProductHeight = 0;
+                lastShelfSegments.forEach(segment => {
+                    const segmentHeight = segment.offsetHeight;
+                    if (segmentHeight > maxProductHeight) {
+                        maxProductHeight = segmentHeight;
+                    }
+                });
+                
+                // Adiciona 50% da altura do produto como margem extra para a última prateleira
+                const extraBottomMargin = Math.max(maxProductHeight * 0.5, 30);
+                const finalBottomMargin = Math.max(bottomMargin, extraBottomMargin);
+                
+                console.log(`📏 Última prateleira com ${lastShelfSegments.length} produtos:`);
+                console.log(`   - Altura máxima do produto: ${maxProductHeight}px`);
+                console.log(`   - Margem extra calculada: ${extraBottomMargin}px`);
+                console.log(`   - Margem inferior final: ${finalBottomMargin}px`);
+                
+                const calculatedHeight = originalHeight + topMargin + finalBottomMargin;
+                
+                console.log(`📊 Cálculo de altura (com correção última prateleira):`);
+                console.log(`   - Altura original: ${originalHeight}px`);
+                console.log(`   - Margem superior (produtos acima): ${topMargin}px`);
+                console.log(`   - Margem inferior (última prateleira): ${finalBottomMargin}px`);
+                console.log(`   - Altura final: ${calculatedHeight}px`);
+                
+                return calculatedHeight;
+            }
+            
+            const calculatedHeight = originalHeight + topMargin + bottomMargin;
+            
+            console.log(`📊 Cálculo de altura:`);
+            console.log(`   - Altura original: ${originalHeight}px`);
+            console.log(`   - Margem superior (produtos acima): ${topMargin}px`);
+            console.log(`   - Margem inferior (produtos abaixo): ${bottomMargin}px`);
+            console.log(`   - Altura final: ${calculatedHeight}px`);
+            
+            return calculatedHeight;
+            
+        } catch (error) {
+            console.error('❌ Erro ao calcular altura com produtos:', error);
+            return container.offsetHeight; // Fallback para altura original
+        }
     }
 
     /**
@@ -783,53 +958,30 @@ export class PrintService {
     }
 
     /**
-     * Extrai o nome do módulo de diferentes fontes
+     * Extrai o nome do módulo diretamente da label no DOM
      * @param {HTMLElement} element - Elemento do módulo
      * @param {number} index - Índice do módulo
+     * @param {number} moduleNumber - Número correto do módulo baseado no fluxo
      * @returns {string} Nome do módulo
      */
-    extractModuleName(element, index) {
+    extractModuleName(element, index, moduleNumber = null) {
         // Tratamento especial para LastRack
         if (element.hasAttribute('data-last-rack')) {
             return 'Cremalheira Final';
         }
 
-        // Lista de seletores para encontrar o nome do módulo
-        const nameSelectors = [
-            '.module-label',
-            '.section-title',
-            '.module-title',
-            '.planogram-title',
-            '[class*="title"]',
-            '[class*="label"]',
-            'h1, h2, h3, h4, h5, h6'
-        ];
-
-        for (const selector of nameSelectors) {
-            try {
-                const nameElement = element.querySelector(selector);
-                if (nameElement) {
-                    const text = (nameElement.textContent || nameElement.innerText || '').trim();
-                    if (text && text.length > 0) {
-                        return text;
-                    }
-                }
-            } catch (error) {
-                // Continua tentando outros seletores
+        // 🎯 SIMPLIFICAÇÃO: Busca diretamente pela label do módulo
+        const moduleLabel = element.querySelector('.module-label');
+        if (moduleLabel) {
+            const labelText = (moduleLabel.textContent || moduleLabel.innerText || '').trim();
+            if (labelText && labelText.length > 0) {
+                console.log(`📋 Label encontrada: "${labelText}"`);
+                return labelText;
             }
         }
 
-        // Se não encontrou nome específico, tenta usar atributos
-        const title = element.getAttribute('title') ||
-            element.getAttribute('data-title') ||
-            element.getAttribute('data-name');
-
-        if (title && title.trim()) {
-            return title.trim();
-        }
-
-        // Nome padrão
-        return `MÓDULO ${index + 1}`;
+        // Fallback: usa o número correto do módulo
+        return `Módulo ${moduleNumber || (index + 1)}`;
     }
 
     /**
@@ -908,9 +1060,48 @@ export class PrintService {
         const hasFlowIndicator = element.querySelector('p.flex.items-center.gap-1') ||
             (element.textContent && element.textContent.includes('Fluxo da gôndola'));
         const isCompleteContainer = hasFlowIndicator && element.querySelectorAll('[data-section-id]').length >= 1;
+        const isVirtualModule = element.hasAttribute('data-virtual-module');
 
         let finalWidth = offsetWidth;
         let finalHeight = offsetHeight;
+
+        // 🎯 CORREÇÃO ESPECIAL para módulos virtuais com produtos que se estendem acima das prateleiras
+        if (isVirtualModule) {
+            console.log('🔍 Aplicando correção especial para módulo virtual...');
+            
+            // Busca produtos que se estendem acima das prateleiras
+            const shelves = element.querySelectorAll('[class*="shelf"]');
+            let maxProductHeight = 0;
+            
+            shelves.forEach(shelf => {
+                const segments = shelf.querySelectorAll('[data-draggable="true"]');
+                segments.forEach(segment => {
+                    const segmentHeight = segment.offsetHeight;
+                    if (segmentHeight > maxProductHeight) {
+                        maxProductHeight = segmentHeight;
+                    }
+                });
+            });
+            
+            // Adiciona margem superior baseada na altura dos produtos
+            if (maxProductHeight > 0) {
+                const productMargin = Math.max(maxProductHeight * 0.3, 30); // 30% da altura do produto ou mínimo 30px
+                finalHeight += productMargin;
+                console.log(`📏 Ajustando altura para produtos: +${productMargin}px (produto: ${maxProductHeight}px)`);
+                
+                // 🎯 CORREÇÃO ADICIONAL: Margem extra para última prateleira
+                const lastShelf = element.querySelector('[class*="shelf"]:last-child');
+                if (lastShelf) {
+                    const lastShelfSegments = lastShelf.querySelectorAll('[data-draggable="true"]');
+                    if (lastShelfSegments.length > 0) {
+                        // Adiciona margem extra de 50% da altura do produto para a última prateleira
+                        const extraBottomMargin = Math.max(maxProductHeight * 0.5, 40);
+                        finalHeight += extraBottomMargin;
+                        console.log(`📏 Margem extra para última prateleira: +${extraBottomMargin}px`);
+                    }
+                }
+            }
+        }
 
         // Se o elemento tem scroll content maior que o visível, usa scrollHeight/scrollWidth
         if (scrollWidth > offsetWidth) {
@@ -1761,6 +1952,52 @@ if (typeof window !== 'undefined') {
                     flow: printService._detectedFlow,
                     timestamp: printService._flowDetectionTimestamp
                 }
+            };
+        },
+        // Método específico para debug da última prateleira
+        debugLastShelf: (moduleIndex = 0) => {
+            console.log(`=== DEBUG ÚLTIMA PRATELEIRA - MÓDULO ${moduleIndex + 1} ===`);
+            const modules = printService.detectModules();
+            const module = modules[moduleIndex];
+            
+            if (!module) {
+                console.log('❌ Módulo não encontrado');
+                return null;
+            }
+            
+            const container = module.element;
+            const shelves = container.querySelectorAll('[class*="shelf"]');
+            const lastShelf = shelves[shelves.length - 1];
+            
+            if (!lastShelf) {
+                console.log('❌ Última prateleira não encontrada');
+                return null;
+            }
+            
+            const segments = lastShelf.querySelectorAll('[data-draggable="true"]');
+            console.log(`📋 Última prateleira: ${segments.length} produtos`);
+            
+            let maxHeight = 0;
+            segments.forEach((segment, index) => {
+                const height = segment.offsetHeight;
+                if (height > maxHeight) maxHeight = height;
+                console.log(`📦 Produto ${index + 1}: ${height}px`);
+            });
+            
+            const calculatedMargin = Math.max(maxHeight * 0.5, 40);
+            console.log(`📏 Altura máxima do produto: ${maxHeight}px`);
+            console.log(`📏 Margem calculada: ${calculatedMargin}px`);
+            console.log(`📏 Altura atual do container: ${container.offsetHeight}px`);
+            console.log(`📏 Altura sugerida: ${container.offsetHeight + calculatedMargin}px`);
+            
+            return {
+                moduleIndex,
+                lastShelf,
+                segmentsCount: segments.length,
+                maxProductHeight: maxHeight,
+                calculatedMargin,
+                currentHeight: container.offsetHeight,
+                suggestedHeight: container.offsetHeight + calculatedMargin
             };
         }
     };
