@@ -5,11 +5,11 @@
  * User: callcocam@gmail.com, contato@sigasmart.com.br
  * https://www.sigasmart.com.br
  */
-
 namespace Callcocam\Plannerate\Services\Analysis;
 
 use App\Models\Product;
-use App\Models\SaleSummary; 
+use App\Models\Purchase;
+use App\Models\SaleSummary;
 use Illuminate\Support\Collection;
 
 class ABCAnalysisService
@@ -30,19 +30,34 @@ class ABCAnalysisService
         ?int $storeId = null
     ): array {
         // Busca os produtos
-        $products = Product::whereIn('id', $productIds)->get();
+        $products = Product::whereIn('id', $productIds)->get(); 
 
         // Classifica os produtos
         $classified = $this->classifyProducts($products, $startDate, $endDate, $storeId);
 
         return $classified;
     }
+ 
+ 
+
+    /**
+     * Calcula os totais de quantidade, valor e margem
+     */
+    protected function calculateTotals(Collection $sales, Collection $purchases): array
+    {
+        return [
+            'quantity' => $sales->sum('total_sale_quantity'),
+            'value' => $sales->sum('total_sale_value'),
+            'margin' => $sales->sum('total_profit_margin'),
+            'current_stock' => $purchases->sum('current_stock')
+        ];
+    }
 
     /**
      * Classifica os produtos em A, B ou C
      */
     protected function classifyProducts(
-        Collection $products,
+        Collection $products, 
         ?string $startDate = null,
         ?string $endDate = null,
         ?int $storeId = null
@@ -50,60 +65,42 @@ class ABCAnalysisService
         $result = [];
 
         foreach ($products as $product) {
-            // Usar dados sumarizados para performance
-            $summaryQuery = SaleSummary::where('product_id', $product->id)
-                ->where('period_type', 'monthly')
-                ->when($startDate, fn($q) => $q->where('period_start', '>=', $startDate))
-                ->when($endDate, fn($q) => $q->where('period_end', '<=', $endDate))
-                ->when($storeId, fn($q) => $q->where('store_id', $storeId));
-
-            // Agregar dados já sumarizados
-            $summary = $summaryQuery->selectRaw('
-                SUM(avg_margin) as avg_margin,
-                SUM(total_quantity) as total_quantity,
-                SUM(total_value) as total_value,
-                SUM(total_profit) as total_profit,
-                SUM(total_cost) as total_cost
-            ')->first();
-
-            $quantity = $summary->total_quantity ?? 0;
-            $value = $summary->total_value ?? 0;
-            $totalProfit = $summary->avg_margin ?? 0;
-
-            // Buscar estoque atual (purchases não tem sumarização)
-            $productPurchases = $product->purchases()
-                ->when($startDate, fn($q) => $q->where('entry_date', '>=', $startDate))
-                ->when($endDate, fn($q) => $q->where('entry_date', '<=', $endDate))
-                ->when($storeId, fn($q) => $q->where('store_id', $storeId));
-
-            $currentPurchases = $productPurchases->orderBy('entry_date', 'desc')->first();
+            $productSales = $product->saleSummaries()
+                ->when($startDate, function ($query) use ($startDate) {
+                    $query->where('period_start', '>=', $startDate);
+                })->when($endDate, function ($query) use ($endDate) {
+                    $query->where('period_end', '<=', $endDate);
+                })->when($storeId, function ($query) use ($storeId) {
+                    $query->where('store_id', $storeId);
+                });
+            $quantity = $productSales->sum('total_sale_quantity');
+            $value = $productSales->sum('total_sale_value');
+            $margin = $productSales->sum('total_profit_margin');
+            $productPurchases = $product->purchases()->when($startDate, function ($query) use ($startDate) {
+                $query->where('entry_date', '>=', $startDate);
+            })->when($endDate, function ($query) use ($endDate) {
+                $query->where('entry_date', '<=', $endDate);
+            })->when($storeId, function ($query) use ($storeId) {
+                $query->where('store_id', $storeId);
+            });
+            $currentPurchases = $productPurchases->first();
             $currentStock = 0;
             $lastPurchase = null;
-            
+            $lastSale = null;
             if ($currentPurchases) {
                 $lastPurchase = $currentPurchases->entry_date;
                 $currentStock = $currentPurchases->current_stock;
             }
-
-            // Buscar última venda (da summary)
-            $lastSaleRecord = SaleSummary::where('product_id', $product->id)
-                ->where('period_type', 'monthly')
-                ->when($storeId, fn($q) => $q->where('store_id', $storeId))
-                ->orderBy('period_end', 'desc')
-                ->first();
-            
-            $lastSale = $lastSaleRecord?->period_end;
-
+            if ($saleDate = $productSales->first()) {
+                $lastSale = $saleDate->period_end;
+            }
             $result[] = [
-                'id' => $product->ean,
+                'id' => $product->ean, 
                 'name' => $product->name,
-                // SUPERMERCADO > MERCEARIA TRADICIONAL > FARINÁCEOS > FARINHA > DE MILHO > MÉDIA pegar os 5 primeiros níveis
-                'category' => $product->category 
-                    ? implode(' > ', array_slice(explode(' > ', $product->category->full_path), 0, 5))
-                    : 'Sem Categoria',
+                'category' => $product->category_name, //Atributo analise de sortimento
                 'quantity' => $quantity,
                 'value' => $value,
-                'margin' => round($totalProfit, 2),
+                'margin' => $margin,
                 'currentStock' => $currentStock,
                 'lastPurchase' => $lastPurchase,
                 'lastSale' => $lastSale,

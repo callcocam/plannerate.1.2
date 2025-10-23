@@ -5,10 +5,11 @@
  * User: callcocam@gmail.com, contato@sigasmart.com.br
  * https://www.sigasmart.com.br
  */
+
 namespace Callcocam\Plannerate\Services\Analysis;
 
 use App\Models\Product;
-use App\Models\Sale;
+use App\Models\SaleSummary;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -258,19 +259,19 @@ class BCGAnalysisServiceImproved
         ?string $endDate,
         ?int $storeId = null
     ): Builder {
-        $query = Sale::query();
+        $query = SaleSummary::query();
 
-        // if ($startDate) {
-        //     $query->where('sale_date', '>=', $startDate);
-        // }
+        if ($startDate) {
+            $query->where('period_start', '>=', $startDate);
+        }
 
-        // if ($endDate) {
-        //     $query->where('sale_date', '<=', $endDate);
-        // }
+        if ($endDate) {
+            $query->where('period_end', '<=', $endDate);
+        }
 
-        // if ($storeId) {
-        //     $query->where('store_id', $storeId);
-        // }
+        if ($storeId) {
+            $query->where('store_id', $storeId);
+        }
 
         return $query;
     }
