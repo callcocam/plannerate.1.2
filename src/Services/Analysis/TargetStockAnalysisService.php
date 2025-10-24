@@ -11,12 +11,29 @@ namespace Callcocam\Plannerate\Services\Analysis;
 use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\Sale;
+use App\Models\MonthlySalesSummary;
+use App\Services\Analysis\SalesDataSourceService;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class TargetStockAnalysisService
 {
+    /**
+     * Serviço de fonte de dados de vendas
+     */
+    protected SalesDataSourceService $dataSource;
+
+    /**
+     * Construtor
+     * 
+     * @param string $sourceType 'daily' ou 'monthly' (padrão: 'daily')
+     */
+    public function __construct(?string $sourceType = null)
+    {
+        $this->dataSource = new SalesDataSourceService($sourceType ?? 'monthly');
+    }
+
     /**
      * Realiza análise de estoque alvo dos produtos
      * 
@@ -38,7 +55,7 @@ class TargetStockAnalysisService
         // Busca as vendas no período
         $sales = $this->getSales($productIds, $startDate, $endDate, $storeId);
 
-        // Agrupa as vendas por produto e dia
+        // Agrupa as vendas por produto e dia (ou mês se usar monthly)
         $dailySales = $this->groupDailySales($sales);
 
         // Calcula as estatísticas
@@ -56,14 +73,14 @@ class TargetStockAnalysisService
         ?string $endDate,
         ?int $storeId
     ): Collection {
-        $query = Sale::whereIn('product_id', $productIds);
+        // Usa o modelo correto baseado no sourceType
+        $query = $this->dataSource->getSourceType() === 'monthly' 
+            ? MonthlySalesSummary::whereIn('product_id', $productIds)
+            : Sale::whereIn('product_id', $productIds);
 
-        if ($startDate) {
-            $query->where('sale_date', '>=', $startDate);
-        }
-
-        if ($endDate) {
-            $query->where('sale_date', '<=', $endDate);
+        // Aplica filtro de data usando o dataSource se datas forem fornecidas
+        if ($startDate && $endDate) {
+            $query = $this->dataSource->applyDateFilter($query, $startDate, $endDate);
         }
 
         // if ($storeId) {

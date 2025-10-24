@@ -8,11 +8,27 @@
 
 namespace Callcocam\Plannerate\Services\Analysis;
 
-use App\Models\Product; 
+use App\Models\Product;
+use App\Services\Analysis\SalesDataSourceService;
 use Illuminate\Support\Collection;
 
 class ABCAnalysisService
 {
+    /**
+     * Serviço de fonte de dados de vendas
+     */
+    protected SalesDataSourceService $dataSource;
+
+    /**
+     * Construtor
+     * 
+     * @param string $sourceType 'daily' ou 'monthly' (padrão: 'daily')
+     */
+    public function __construct(?string $sourceType = null)
+    {
+        $this->dataSource = new SalesDataSourceService($sourceType ?? 'monthly');
+    }
+
     /**
      * Realiza análise ABC dos produtos
      * 
@@ -74,12 +90,16 @@ class ABCAnalysisService
         $result = [];
 
         foreach ($products as $product) {
-            // 7896508200041
-            $productSales = $product->sales()->when($startDate, function ($query) use ($startDate) {
-                $query->where('sale_date', '>=', $startDate);
-            })->when($endDate, function ($query) use ($endDate) {
-                $query->where('sale_date', '<=', $endDate);
-            })->when($storeId, function ($query) use ($storeId) {
+            // Usa o dataSource para obter a query (sales ou monthly_sales_summaries)
+            $productSales = $this->dataSource->getQueryForProduct($product);
+            
+            // Aplica filtro de data usando o dataSource
+            if ($startDate && $endDate) {
+                $productSales = $this->dataSource->applyDateFilter($productSales, $startDate, $endDate);
+            }
+            
+            // Aplica filtros adicionais
+            $productSales = $productSales->when($storeId, function ($query) use ($storeId) {
                 $query->where('store_id', $storeId);
             });
 
@@ -90,7 +110,7 @@ class ABCAnalysisService
             $totalCustoMedio = 0;
             $totalImpostos = 0;
             foreach ($salesWithAccessors as $sale) {
-                // Usar os accessors do modelo Sale
+                // Usar os accessors do modelo Sale ou MonthlySalesSummary
                 $totalCustoMedio += $sale->custo_medio_loja;
                 $totalImpostos += $sale->impostos_sale;
             }
@@ -113,18 +133,18 @@ class ABCAnalysisService
                 $lastPurchase = $currentPurchases->entry_date;
                 $currentStock = $currentPurchases->current_stock;
             }
-            if ($saleDate = $productSales->orderBy('sale_date', 'desc')->first()) {
-                $lastSale = $saleDate->sale_date;
+            
+            // Buscar última venda usando o campo de data correto
+            $dateField = $this->dataSource->getDateFieldName();
+            if ($saleDate = $this->dataSource->getQueryForProduct($product)->orderBy($dateField, 'desc')->first()) {
+                $lastSale = $saleDate->{$dateField};
             }
+            
             $result[] = [
                 'id' => $product->ean,
                 'name' => $product->name,
                 // SUPERMERCADO > MERCEARIA TRADICIONAL > FARINÁCEOS > FARINHA > DE MILHO > MÉDIA pegar os 5 primeiros níveis
-                // 'category' =>  $product->category->full_path, //Atributo analise de sortimento<?php
-                // ...existing code...
-                // SUPERMERCADO > MERCEARIA TRADICIONAL > FARINÁCEOS > FARINHA > DE MILHO > MÉDIA pegar os 5 primeiros níveis
                 'category' => implode(' > ', array_slice(explode(' > ', $product->category->full_path), 0, 5)), //Atributo analise de sortimento
-                // ...existing code...
                 'quantity' => $quantity,
                 'value' => $value,
                 'margin' => $totalMargem,

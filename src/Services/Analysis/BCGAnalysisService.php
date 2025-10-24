@@ -10,12 +10,29 @@ namespace Callcocam\Plannerate\Services\Analysis;
 
 use App\Models\Product;
 use App\Models\Sale;
+use App\Models\MonthlySalesSummary;
+use App\Services\Analysis\SalesDataSourceService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
 class BCGAnalysisService
 {
+    /**
+     * Serviço de fonte de dados de vendas
+     */
+    protected SalesDataSourceService $dataSource;
+
+    /**
+     * Construtor
+     * 
+     * @param string $sourceType 'daily' ou 'monthly' (padrão: 'daily')
+     */
+    public function __construct(?string $sourceType = null)
+    {
+        $this->dataSource = new SalesDataSourceService($sourceType ?? 'monthly');
+    }
+
     /**
      * Realiza análise BCG dos produtos
      * 
@@ -61,14 +78,14 @@ class BCGAnalysisService
         ?string $endDate,
         ?int $storeId = null
     ): Collection | Builder {
-        $query = Sale::query();
+        // Usa o modelo correto baseado no sourceType
+        $query = $this->dataSource->getSourceType() === 'monthly' 
+            ? MonthlySalesSummary::query() 
+            : Sale::query();
 
-        if ($startDate) {
-            $query->where('sale_date', '>=', $startDate);
-        }
-
-        if ($endDate) {
-            $query->where('sale_date', '<=', $endDate);
+        // Aplica filtro de data usando o dataSource se datas forem fornecidas
+        if ($startDate && $endDate) {
+            $query = $this->dataSource->applyDateFilter($query, $startDate, $endDate);
         }
 
         if ($storeId) {
