@@ -8,8 +8,7 @@
 
 namespace Callcocam\Plannerate\Services\Analysis;
 
-use App\Models\Product;
-use App\Services\OptimizedSummarySales;
+use App\Models\Product; 
 use Illuminate\Support\Collection;
 
 class ABCAnalysisService
