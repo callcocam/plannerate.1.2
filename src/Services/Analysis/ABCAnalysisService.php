@@ -42,13 +42,14 @@ class ABCAnalysisService
         array $productIds,
         ?string $startDate = null,
         ?string $endDate = null,
+        ?int $clientId = null,
         ?int $storeId = null
     ): array {
         // Busca os produtos
         $products = Product::whereIn('id', $productIds)->get();
 
         // Classifica os produtos
-        $classified = $this->classifyProducts($products, $startDate, $endDate, $storeId);
+        $classified = $this->classifyProducts($products, $startDate, $endDate, $clientId, $storeId);
 
         return $classified;
     }
@@ -85,6 +86,7 @@ class ABCAnalysisService
         Collection $products,
         ?string $startDate = null,
         ?string $endDate = null,
+        ?int $clientId = null,
         ?int $storeId = null
     ): array {
         $result = [];
@@ -92,31 +94,39 @@ class ABCAnalysisService
         foreach ($products as $product) {
             // Usa o dataSource para obter a query (sales ou monthly_sales_summaries)
             $productSales = $this->dataSource->getQueryForProduct($product);
-            
+
             // Aplica filtro de data usando o dataSource
             if ($startDate && $endDate) {
                 $productSales = $this->dataSource->applyDateFilter($productSales, $startDate, $endDate);
             }
-            
+
             // Aplica filtros adicionais
             $productSales = $productSales->when($storeId, function ($query) use ($storeId) {
                 $query->where('store_id', $storeId);
+            })->when($clientId, function ($query) use ($clientId) {
+                $query->where('client_id', $clientId);
             });
 
             $quantity = $productSales->sum('total_sale_quantity');
             $value = $productSales->sum('total_sale_value');
             $margin = $productSales->sum('total_profit_margin');
-            $salesWithAccessors = $productSales->get();
-            $totalCustoMedio = 0;
-            $totalImpostos = 0;
-            foreach ($salesWithAccessors as $sale) {
-                // Usar os accessors do modelo Sale ou MonthlySalesSummary
-                $totalCustoMedio += $sale->custo_medio_loja;
-                $totalImpostos += $sale->impostos_sale;
-            }
-            $totalMargem = round($value - $totalImpostos - $totalCustoMedio, 2);
+            
 
-            $margemAbsoluta = round($value - $totalImpostos - $totalCustoMedio, 2);
+            // $salesWithAccessors = $productSales->get();
+            // $totalCustoMedio = 0;
+            // $totalImpostos = 0;
+            // foreach ($salesWithAccessors as $sale) {
+            //     // Usar os accessors do modelo Sale ou MonthlySalesSummary
+            //     $totalCustoMedio += $sale->custo_medio_loja;
+            //     $totalImpostos += $sale->impostos_sale;
+            // }
+            // $totalMargem = round($value - $totalImpostos - $totalCustoMedio, 2);
+
+            // $margemAbsoluta = round($value - $totalImpostos - $totalCustoMedio, 2);
+
+            // ✅ OTIMIZAÇÃO: Usar margem_contribuicao pré-calculada
+            // (agora armazenada diretamente na tabela, sem necessidade de loop)
+            $totalMargem = round($productSales->sum('margem_contribuicao') ?? 0, 2); 
 
             $productPurchases = $product->purchases()->when($startDate, function ($query) use ($startDate) {
                 $query->where('entry_date', '>=', $startDate);
@@ -124,6 +134,8 @@ class ABCAnalysisService
                 $query->where('entry_date', '<=', $endDate);
             })->when($storeId, function ($query) use ($storeId) {
                 $query->where('store_id', $storeId);
+            })->when($clientId, function ($query) use ($clientId) {
+                $query->where('client_id', $clientId);
             });
             $currentPurchases = $productPurchases->orderBy('entry_date', 'desc')->first();
             $currentStock = 0;
@@ -133,13 +145,13 @@ class ABCAnalysisService
                 $lastPurchase = $currentPurchases->entry_date;
                 $currentStock = $currentPurchases->current_stock;
             }
-            
+
             // Buscar última venda usando o campo de data correto
             $dateField = $this->dataSource->getDateFieldName();
             if ($saleDate = $this->dataSource->getQueryForProduct($product)->orderBy($dateField, 'desc')->first()) {
                 $lastSale = $saleDate->{$dateField};
             }
-            
+
             $result[] = [
                 'id' => $product->ean,
                 'name' => $product->name,

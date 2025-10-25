@@ -50,6 +50,7 @@ class BCGAnalysisService
         ?string $endDate = null,
         ?string $xAxis = null,
         ?string $yAxis = null,
+        ?int $clientId = null,
         ?int $storeId = null
     ): array {
 
@@ -57,7 +58,7 @@ class BCGAnalysisService
         $products = Product::whereIn('id', $productIds)->get();
 
         // Busca as vendas no período atual
-        $currentSales = $this->getSales($startDate, $endDate, $storeId);
+        $currentSales = $this->getSales($startDate, $endDate, $clientId, $storeId);
 
         // Calcula o crescimento e participação de mercado
         $analysis = $this->calculateGrowthAndMarketShare(
@@ -76,6 +77,7 @@ class BCGAnalysisService
     protected function getSales(
         ?string $startDate,
         ?string $endDate,
+        ?int $clientId = null,
         ?int $storeId = null
     ): Collection | Builder {
         // Usa o modelo correto baseado no sourceType
@@ -86,6 +88,10 @@ class BCGAnalysisService
         // Aplica filtro de data usando o dataSource se datas forem fornecidas
         if ($startDate && $endDate) {
             $query = $this->dataSource->applyDateFilter($query, $startDate, $endDate);
+        }
+
+        if ($clientId) {
+            $query->where('client_id', $clientId);
         }
 
         if ($storeId) {

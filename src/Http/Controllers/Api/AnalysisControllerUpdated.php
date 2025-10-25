@@ -97,14 +97,20 @@ class AnalysisControllerUpdated extends Controller
 
         try {
             $planogram = Planogram::findOrFail($validatedData['planogram']);
+            
+            // Garantir que sempre use o primeiro dia do mês de start_date
+            // e o último dia do mês de end_date
+            $startDate = date('Y-m-01', strtotime($planogram->start_date));
+            $endDate = date('Y-m-t', strtotime($planogram->end_date)); // 't' = último dia do mês
 
             $result = $this->bcgService->analyze(
                 $validatedData['products'],
-                $planogram->start_date,
-                $planogram->end_date,
+                $startDate,
+                $endDate,
                 $xAxis,
-                $yAxis,
-                $validatedData['storeId'] ?? null,
+                $yAxis, 
+                $planogram->client_id,
+                $planogram->store_id,
                 $classifyBy,
                 $displayBy
             );
@@ -119,8 +125,8 @@ class AnalysisControllerUpdated extends Controller
                         'x_axis' => $xAxis,
                         'y_axis' => $yAxis,
                         'period' => [
-                            'start_date' => $planogram->start_date,
-                            'end_date' => $planogram->end_date
+                            'start_date' => $startDate, // Já ajustado para primeiro dia do mês
+                            'end_date' => $endDate      // Já ajustado para último dia do mês
                         ]
                     ],
                     'summary' => [
@@ -210,14 +216,17 @@ class AnalysisControllerUpdated extends Controller
         ]);
 
         $planogram = Planogram::find($request->planogram);
-        $startDate = $planogram->start_date;
-        $endDate = $planogram->end_date;
+        // Garantir que sempre use o primeiro dia do mês de start_date
+        // e o último dia do mês de end_date
+        $startDate = date('Y-m-01', strtotime($planogram->start_date));
+        $endDate = date('Y-m-t', strtotime($planogram->end_date)); // 't' = último dia do mês
 
         $result = $this->abcService->analyze(
             $request->products,
             $startDate,
             $endDate,
-            $request->storeId
+            $planogram->client_id,
+            $planogram->store_id
         );
 
         return response()->json($result);
@@ -235,14 +244,17 @@ class AnalysisControllerUpdated extends Controller
         ]);
 
         $planogram = Planogram::find($request->planogram);
-        $startDate = $planogram->start_date;
-        $endDate = $planogram->end_date;
+        // Garantir que sempre use o primeiro dia do mês de start_date
+        // e o último dia do mês de end_date
+        $startDate = date('Y-m-01', strtotime($planogram->start_date));
+        $endDate = date('Y-m-t', strtotime($planogram->end_date)); // 't' = último dia do mês
 
         $result = $this->targetStockService->analyze(
             $request->products,
             $startDate,
             $endDate,
-            $request->storeId,
+            $planogram->client_id,
+            $planogram->store_id
         );
 
         return response()->json($result);
