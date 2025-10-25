@@ -35,15 +35,16 @@ class ABCAnalysisService
      * @param array $productIds
      * @param string|null $startDate
      * @param string|null $endDate
-     * @param int|null $storeId 
+     * @param string|null $clientId 
+     * @param string|null $storeId 
      * @return array
      */
     public function analyze(
         array $productIds,
         ?string $startDate = null,
         ?string $endDate = null,
-        ?int $clientId = null,
-        ?int $storeId = null
+        ?string $clientId = null,
+        ?string $storeId = null
     ): array {
         // Busca os produtos
         $products = Product::whereIn('id', $productIds)->get();
@@ -86,8 +87,8 @@ class ABCAnalysisService
         Collection $products,
         ?string $startDate = null,
         ?string $endDate = null,
-        ?int $clientId = null,
-        ?int $storeId = null
+        ?string $clientId = null,
+        ?string $storeId = null
     ): array {
         $result = [];
 

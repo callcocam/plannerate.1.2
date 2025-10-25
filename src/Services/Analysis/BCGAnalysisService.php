@@ -41,7 +41,8 @@ class BCGAnalysisService
      * @param string|null $endDate
      * @param string|null $xAxis
      * @param string|null $yAxis
-     * @param int|null $storeId 
+     * @param string|null $storeId 
+     * @param string|null $clientId 
      * @return array
      */
     public function analyze(
@@ -50,8 +51,8 @@ class BCGAnalysisService
         ?string $endDate = null,
         ?string $xAxis = null,
         ?string $yAxis = null,
-        ?int $clientId = null,
-        ?int $storeId = null
+        ?string $clientId = null,
+        ?string $storeId = null
     ): array {
 
         // Busca os produtos
@@ -77,8 +78,8 @@ class BCGAnalysisService
     protected function getSales(
         ?string $startDate,
         ?string $endDate,
-        ?int $clientId = null,
-        ?int $storeId = null
+        ?string $clientId = null,
+        ?string $storeId = null
     ): Collection | Builder {
         // Usa o modelo correto baseado no sourceType
         $query = $this->dataSource->getSourceType() === 'monthly' 

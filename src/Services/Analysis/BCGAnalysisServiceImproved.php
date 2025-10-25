@@ -33,8 +33,8 @@ class BCGAnalysisServiceImproved
         ?string $endDate = null,
         ?string $xAxis = null,
         ?string $yAxis = null,
-        ?int $clientId = null,
-        ?int $storeId = null,
+        ?string $clientId = null,
+        ?string $storeId = null,
         ?string $classifyBy = 'categoria',
         ?string $displayBy = 'produto'
     ): array {
@@ -256,8 +256,8 @@ class BCGAnalysisServiceImproved
     private function getSales(
         ?string $startDate,
         ?string $endDate,
-        ?int $clientId = null,
-        ?int $storeId = null
+        ?string $clientId = null,
+        ?string $storeId = null
     ): Builder {
         $query = Sale::query();
 
