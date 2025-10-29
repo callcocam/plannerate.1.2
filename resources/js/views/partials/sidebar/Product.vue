@@ -499,8 +499,7 @@ const updateProductImage = async (layer: Layer) => {
     
     toast.success("Imagem do produto atualizada com sucesso!");
   } catch (error) {
-    console.error("Erro ao atualizar imagem do produto:", error);
-    throw error;
+    toast.error("Erro ao atualizar imagem do produto: " + (error as Error).message);
   }
 };
 
