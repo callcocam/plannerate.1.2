@@ -37,19 +37,19 @@ class PlannerateController extends Controller
     public function show(Request $request, string $id)
     {
         try {
+            // OTIMIZAÇÃO: Eager loading seletivo - remove relacionamentos pesados (sales, purchases)
+            // e carrega apenas campos essenciais
             $planogram = $this->getModel()::query()->with([
-                'tenant',
+                'tenant:id,name',
                 'store.store_map.gondolas',
-                'cluster',
-                'client',
+                'cluster:id,name',
+                'client:id,name',
                 'gondolas',
                 'gondolas.sections',
                 'gondolas.sections.shelves',
                 'gondolas.sections.shelves.segments',
                 'gondolas.sections.shelves.segments.layer',
-                'gondolas.sections.shelves.segments.layer.product',
-                'gondolas.sections.shelves.segments.layer.product.sales',
-                'gondolas.sections.shelves.segments.layer.product.purchases'
+                'gondolas.sections.shelves.segments.layer.product:id,name,ean,description,url'
             ])->findOrFail($id); 
 
             // $planogram->load([
@@ -106,19 +106,19 @@ class PlannerateController extends Controller
             // Se chegou até aqui sem erros, confirma a transação
             DB::commit();
 
+            // OTIMIZAÇÃO: Eager loading seletivo - remove relacionamentos pesados (sales, purchases)
+            // e carrega apenas campos essenciais do produto
             $planogram =  $this->getModel()::query()->with([
-                'tenant',
-                'store',
-                'cluster',
-                'client',
+                'tenant:id,name',
+                'store:id,name',
+                'cluster:id,name',
+                'client:id,name',
                 'gondolas',
                 'gondolas.sections',
                 'gondolas.sections.shelves',
                 'gondolas.sections.shelves.segments',
                 'gondolas.sections.shelves.segments.layer',
-                'gondolas.sections.shelves.segments.layer.product',
-                'gondolas.sections.shelves.segments.layer.product.sales',
-                'gondolas.sections.shelves.segments.layer.product.purchases'
+                'gondolas.sections.shelves.segments.layer.product:id,name,ean,description,url'
             ])->findOrFail($planogram->id);
 
             return response()->json([
@@ -183,9 +183,18 @@ class PlannerateController extends Controller
         $existingGondolaIds = $planogram->gondolas()->pluck('id')->toArray();
         $processedGondolaIds = [];
 
+        // OTIMIZAÇÃO: Bulk loading - carregar todas as gondolas de uma vez
+        $gondolaIds = array_filter(array_column($gondolas, 'id'));
+        $existingGondolas = Gondola::whereIn('id', $gondolaIds)->get()->keyBy('id');
+
         foreach ($gondolas as $gondolaData) {
             // Verificar se é uma gôndola existente ou nova
-            $gondola = Gondola::query()->where('id', data_get($gondolaData, 'id'))->first();
+            $gondolaId = data_get($gondolaData, 'id');
+            $gondola = $existingGondolas->get($gondolaId);
+
+            if (!$gondola) {
+                $gondola = new Gondola();
+            }
 
             // Atualizar atributos da gôndola
             $gondola->fill($this->filterGondolaAttributes($gondolaData));
@@ -248,11 +257,18 @@ class PlannerateController extends Controller
         $existingSectionIds = $gondola->sections()->pluck('id')->toArray();
         $processedSectionIds = [];
 
-        // Criar seções se fornecidas
-        $shelfService =  new ShelfPositioningService();
+        // OTIMIZAÇÃO: Mover ShelfPositioningService para fora do loop
+        $shelfService = new ShelfPositioningService();
+
+        // OTIMIZAÇÃO: Bulk loading - carregar todas as sections de uma vez
+        $sectionIds = array_filter(array_column($sections, 'id'));
+        $existingSections = Section::whereIn('id', $sectionIds)->get()->keyBy('id');
+
         foreach ($sections as $i => $sectionData) {
             // Verificar se é uma seção existente ou nova
-            $section = Section::query()->where('id', data_get($sectionData, 'id'))->first();
+            $sectionId = data_get($sectionData, 'id');
+            $section = $existingSections->get($sectionId);
+
             if (!$section) {
                 $section = Section::query()->create([
                     'id' => (string) Str::orderedUuid(),
@@ -337,9 +353,15 @@ class PlannerateController extends Controller
         $existingShelfIds = $section->shelves()->pluck('id')->toArray();
         $processedShelfIds = [];
 
+        // OTIMIZAÇÃO: Bulk loading - carregar todas as shelves de uma vez
+        $shelfIds = array_filter(array_column($shelves, 'id'));
+        $existingShelves = Shelf::whereIn('id', $shelfIds)->get()->keyBy('id');
+
         foreach ($shelves as  $i => $shelfData) {
             // Verificar se é uma prateleira existente ou nova
-            $shelf = Shelf::query()->where('id', data_get($shelfData, 'id'))->first();
+            $shelfId = data_get($shelfData, 'id');
+            $shelf = $existingShelves->get($shelfId);
+
             if (!$shelf) {
                 $shelf = Shelf::query()->create([
                     'id' => (string) Str::orderedUuid(),
@@ -419,10 +441,15 @@ class PlannerateController extends Controller
         $existingSegmentIds = $shelf->segments()->pluck('id')->toArray();
         $processedSegmentIds = [];
 
+        // OTIMIZAÇÃO: Bulk loading - carregar todos os segments de uma vez
+        $segmentIds = array_filter(array_column($segments, 'id'));
+        $existingSegments = Segment::whereIn('id', $segmentIds)->get()->keyBy('id');
+
         foreach ($segments as $segmentData) {
             // Verificar se é um segmento existente ou novo
-            // Para segmentos temporários (ex: "segment-1745084634214-0"), geramos um novo ID
-            $segment = Segment::query()->where('id', data_get($segmentData, 'id'))->first();
+            $segmentId = data_get($segmentData, 'id');
+            $segment = $existingSegments->get($segmentId);
+
             if (!$segment) {
                 $segment = Segment::query()->create([
                     'id' => (string) Str::orderedUuid(),
@@ -491,9 +518,14 @@ class PlannerateController extends Controller
      */
     private function processLayer(Segment $segment, array $layerData): void
     {
-        // Verificar se é uma camada existente ou nova
-        // Para camadas temporárias (ex: "layer-1745084634214-01jqp9bx4t369a5aqe9z90xdhg"), geramos um novo ID
-        $layer = Layer::query()->where('id', data_get($layerData, 'id'))->first();
+        // OTIMIZAÇÃO: Query única para verificar se layer existe
+        $layerId = data_get($layerData, 'id');
+        $layer = null;
+
+        if ($layerId) {
+            $layer = Layer::query()->where('id', $layerId)->first();
+        }
+
         if (!$layer) {
             $layer = Layer::query()->create([
                 'tenant_id' => $segment->tenant_id,
@@ -501,6 +533,7 @@ class PlannerateController extends Controller
                 'segment_id' => $segment->id,
             ]);
         }
+
         // Atualizar atributos da camada
         $layer->fill($this->filterLayerAttributes($layerData));
         $layer->segment_id = $segment->id;
