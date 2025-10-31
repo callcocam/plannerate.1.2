@@ -1,5 +1,5 @@
 <template>
-    <div class="flex items-center">
+    <div class="flex items-center" data-last-rack="true">
         <Cremalheira :section="section" :scale-factor="scaleFactor" :is-last-section="true" :index="index" />
     </div>
 </template>

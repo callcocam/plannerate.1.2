@@ -4,7 +4,7 @@
         ref="productRef"
         :src="imageUrl"
         @error="handleImageError"
-        alt="Imagem do Produto"
+        alt="Imagem do Produto" 
         :style="{...imageStyle, ...productStyle}"
     />  
 </template>
@@ -51,10 +51,13 @@ return placeholderUrl.value;
 * Estilo da imagem - aplica object-fit: contain apenas para placeholder
 */
 const imageStyle = computed(() => {
+    const imageUrl = props.product?.image_url || '';
 // Verifica se não há imagem do produto (vai usar placeholder)
 const hasProductImage = props.product?.image_url && typeof props.product.image_url === 'string';
+//quero verificar se a imagem tem o fall4.jpg
+const fallbackImage = imageUrl.includes('fall4.jpg');
 
-if (!hasProductImage) {
+if (!hasProductImage || fallbackImage) { 
     return {
         width: '100%',
         height: '100%',
@@ -66,7 +69,8 @@ if (!hasProductImage) {
 
 return {
     width: '100%',
-    height: '100%'
+    height: '100%',
+    objectFit: 'cover' as const,
 };
 });
 

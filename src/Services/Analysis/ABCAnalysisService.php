@@ -9,33 +9,48 @@
 namespace Callcocam\Plannerate\Services\Analysis;
 
 use App\Models\Product;
-use App\Services\OptimizedSummarySales;
+use App\Services\Analysis\SalesDataSourceService;
 use Illuminate\Support\Collection;
 
 class ABCAnalysisService
 {
+    /**
+     * Serviço de fonte de dados de vendas
+     */
+    protected SalesDataSourceService $dataSource;
+
+    /**
+     * Construtor
+     * 
+     * @param string $sourceType 'daily' ou 'monthly' (padrão: 'daily')
+     */
+    public function __construct(?string $sourceType = null)
+    {
+        $this->dataSource = new SalesDataSourceService($sourceType ?? 'monthly');
+    }
+
     /**
      * Realiza análise ABC dos produtos
      * 
      * @param array $productIds
      * @param string|null $startDate
      * @param string|null $endDate
-     * @param int|null $storeId
-     * @param array|null $weights - Pesos para ABC (quantity, value, margin) 
+     * @param string|null $clientId 
+     * @param string|null $storeId 
      * @return array
      */
     public function analyze(
         array $productIds,
         ?string $startDate = null,
         ?string $endDate = null,
-        ?int $storeId = null,
-        ?array $weights = null
+        ?string $clientId = null,
+        ?string $storeId = null
     ): array {
         // Busca os produtos
         $products = Product::whereIn('id', $productIds)->get();
 
         // Classifica os produtos
-        $classified = $this->classifyProducts($products, $startDate, $endDate, $storeId, $weights);
+        $classified = $this->classifyProducts($products, $startDate, $endDate, $clientId, $storeId);
 
         return $classified;
     }
@@ -72,35 +87,47 @@ class ABCAnalysisService
         Collection $products,
         ?string $startDate = null,
         ?string $endDate = null,
-        ?int $storeId = null,
-        ?array $weights = null
+        ?string $clientId = null,
+        ?string $storeId = null
     ): array {
         $result = [];
 
         foreach ($products as $product) {
-            // 7896508200041
-            $productSales = $product->sales()->when($startDate, function ($query) use ($startDate) {
-                $query->where('sale_date', '>=', $startDate);
-            })->when($endDate, function ($query) use ($endDate) {
-                $query->where('sale_date', '<=', $endDate);
-            })->when($storeId, function ($query) use ($storeId) {
+            // Usa o dataSource para obter a query (sales ou monthly_sales_summaries)
+            $productSales = $this->dataSource->getQueryForProduct($product);
+
+            // Aplica filtro de data usando o dataSource
+            if ($startDate && $endDate) {
+                $productSales = $this->dataSource->applyDateFilter($productSales, $startDate, $endDate);
+            }
+
+            // Aplica filtros adicionais
+            $productSales = $productSales->when($storeId, function ($query) use ($storeId) {
                 $query->where('store_id', $storeId);
+            })->when($clientId, function ($query) use ($clientId) {
+                $query->where('client_id', $clientId);
             });
 
             $quantity = $productSales->sum('total_sale_quantity');
             $value = $productSales->sum('total_sale_value');
             $margin = $productSales->sum('total_profit_margin');
-            $salesWithAccessors = $productSales->get();
-            $totalCustoMedio = 0;
-            $totalImpostos = 0;
-            foreach ($salesWithAccessors as $sale) {
-                // Usar os accessors do modelo Sale
-                $totalCustoMedio += $sale->custo_medio_loja;
-                $totalImpostos += $sale->impostos_sale;
-            }
-            $totalMargem = round($value - $totalImpostos - $totalCustoMedio, 2);
+            
 
-            $margemAbsoluta = round($value - $totalImpostos - $totalCustoMedio, 2);
+            // $salesWithAccessors = $productSales->get();
+            // $totalCustoMedio = 0;
+            // $totalImpostos = 0;
+            // foreach ($salesWithAccessors as $sale) {
+            //     // Usar os accessors do modelo Sale ou MonthlySalesSummary
+            //     $totalCustoMedio += $sale->custo_medio_loja;
+            //     $totalImpostos += $sale->impostos_sale;
+            // }
+            // $totalMargem = round($value - $totalImpostos - $totalCustoMedio, 2);
+
+            // $margemAbsoluta = round($value - $totalImpostos - $totalCustoMedio, 2);
+
+            // ✅ OTIMIZAÇÃO: Usar margem_contribuicao pré-calculada
+            // (agora armazenada diretamente na tabela, sem necessidade de loop)
+            $totalMargem = round($productSales->sum('margem_contribuicao') ?? 0, 2); 
 
             $productPurchases = $product->purchases()->when($startDate, function ($query) use ($startDate) {
                 $query->where('entry_date', '>=', $startDate);
@@ -108,6 +135,8 @@ class ABCAnalysisService
                 $query->where('entry_date', '<=', $endDate);
             })->when($storeId, function ($query) use ($storeId) {
                 $query->where('store_id', $storeId);
+            })->when($clientId, function ($query) use ($clientId) {
+                $query->where('client_id', $clientId);
             });
             $currentPurchases = $productPurchases->orderBy('entry_date', 'desc')->first();
             $currentStock = 0;
@@ -117,18 +146,18 @@ class ABCAnalysisService
                 $lastPurchase = $currentPurchases->entry_date;
                 $currentStock = $currentPurchases->current_stock;
             }
-            if ($saleDate = $productSales->orderBy('sale_date', 'desc')->first()) {
-                $lastSale = $saleDate->sale_date;
+
+            // Buscar última venda usando o campo de data correto
+            $dateField = $this->dataSource->getDateFieldName();
+            if ($saleDate = $this->dataSource->getQueryForProduct($product)->orderBy($dateField, 'desc')->first()) {
+                $lastSale = $saleDate->{$dateField};
             }
+
             $result[] = [
                 'id' => $product->ean,
                 'name' => $product->name,
                 // SUPERMERCADO > MERCEARIA TRADICIONAL > FARINÁCEOS > FARINHA > DE MILHO > MÉDIA pegar os 5 primeiros níveis
-                // 'category' =>  $product->category->full_path, //Atributo analise de sortimento<?php
-                // ...existing code...
-                // SUPERMERCADO > MERCEARIA TRADICIONAL > FARINÁCEOS > FARINHA > DE MILHO > MÉDIA pegar os 5 primeiros níveis
                 'category' => implode(' > ', array_slice(explode(' > ', $product->category->full_path), 0, 5)), //Atributo analise de sortimento
-                // ...existing code...
                 'quantity' => $quantity,
                 'value' => $value,
                 'margin' => $totalMargem,

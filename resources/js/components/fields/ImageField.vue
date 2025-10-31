@@ -24,9 +24,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
-import { Trash2, Upload } from 'lucide-vue-next';
-import { Cropper } from "vue-advanced-cropper";
+import { ref, watch } from 'vue'; 
 import "vue-advanced-cropper/dist/style.css";
 import type { CropperResult } from 'vue-advanced-cropper';
 import { Label } from '../ui/label';

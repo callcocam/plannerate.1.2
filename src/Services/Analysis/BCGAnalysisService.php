@@ -5,16 +5,34 @@
  * User: callcocam@gmail.com, contato@sigasmart.com.br
  * https://www.sigasmart.com.br
  */
+
 namespace Callcocam\Plannerate\Services\Analysis;
 
 use App\Models\Product;
 use App\Models\Sale;
+use App\Models\MonthlySalesSummary;
+use App\Services\Analysis\SalesDataSourceService;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection; 
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
 class BCGAnalysisService
 {
+    /**
+     * Serviço de fonte de dados de vendas
+     */
+    protected SalesDataSourceService $dataSource;
+
+    /**
+     * Construtor
+     * 
+     * @param string $sourceType 'daily' ou 'monthly' (padrão: 'daily')
+     */
+    public function __construct(?string $sourceType = null)
+    {
+        $this->dataSource = new SalesDataSourceService($sourceType ?? 'monthly');
+    }
+
     /**
      * Realiza análise BCG dos produtos
      * 
@@ -23,7 +41,8 @@ class BCGAnalysisService
      * @param string|null $endDate
      * @param string|null $xAxis
      * @param string|null $yAxis
-     * @param int|null $storeId 
+     * @param string|null $storeId 
+     * @param string|null $clientId 
      * @return array
      */
     public function analyze(
@@ -32,19 +51,20 @@ class BCGAnalysisService
         ?string $endDate = null,
         ?string $xAxis = null,
         ?string $yAxis = null,
-        ?int $storeId = null
+        ?string $clientId = null,
+        ?string $storeId = null
     ): array {
 
         // Busca os produtos
         $products = Product::whereIn('id', $productIds)->get();
 
         // Busca as vendas no período atual
-        $currentSales = $this->getSales($startDate, $endDate, $storeId);
+        $currentSales = $this->getSales($startDate, $endDate, $clientId, $storeId);
 
         // Calcula o crescimento e participação de mercado
         $analysis = $this->calculateGrowthAndMarketShare(
             $products,
-            $currentSales, 
+            $currentSales,
             $xAxis,
             $yAxis
         );
@@ -55,19 +75,24 @@ class BCGAnalysisService
     /**
      * Busca as vendas dos produtos no período
      */
-    protected function getSales( 
+    protected function getSales(
         ?string $startDate,
         ?string $endDate,
-        ?int $storeId = null
+        ?string $clientId = null,
+        ?string $storeId = null
     ): Collection | Builder {
-        $query = Sale::query();
+        // Usa o modelo correto baseado no sourceType
+        $query = $this->dataSource->getSourceType() === 'monthly' 
+            ? MonthlySalesSummary::query() 
+            : Sale::query();
 
-        if ($startDate) {
-            $query->where('sale_date', '>=', $startDate);
+        // Aplica filtro de data usando o dataSource se datas forem fornecidas
+        if ($startDate && $endDate) {
+            $query = $this->dataSource->applyDateFilter($query, $startDate, $endDate);
         }
 
-        if ($endDate) {
-            $query->where('sale_date', '<=', $endDate);
+        if ($clientId) {
+            $query->where('client_id', $clientId);
         }
 
         if ($storeId) {
@@ -77,7 +102,7 @@ class BCGAnalysisService
         return $query;
     }
 
-        /**
+    /**
      * Busca dados brutos dos produtos para análise BCG
      */
     protected function calculateGrowthAndMarketShare(
@@ -86,7 +111,7 @@ class BCGAnalysisService
         ?string $xAxis = null,
         ?string $yAxis = null
     ): array {
-        $result = [];  
+        $result = [];
         foreach ($products as $product) {
             $cloneCurrentSales = clone $currentSales;
             // Vendas do produto no período atual (filtradas)
@@ -99,7 +124,7 @@ class BCGAnalysisService
             $yValue = $this->calculateAxisValue($yAxis, $currentProductSales, $currentProductQuantity, $currentProductMargin);
 
             // Filtrar apenas produtos que têm vendas no período (valores > 0)
-            if ($xValue <= 0 && $yValue <= 0) { 
+            if ($xValue <= 0 && $yValue <= 0) {
                 continue; // Pula produtos sem vendas
             }
 
@@ -124,7 +149,7 @@ class BCGAnalysisService
                 'product_id' => $product->id,
                 'ean' => $product->ean,
                 'category' => $category,
-                'current_sales' => $currentProductSales, 
+                'current_sales' => $currentProductSales,
                 'x_axis_value' => round($xValue, 2),
                 'y_axis_value' => round($yValue, 2),
                 'x_axis_label' => $xAxis ?: 'VALOR DE VENDA',
@@ -152,5 +177,4 @@ class BCGAnalysisService
                 return $sales; // Valor padrão
         }
     }
- 
 }

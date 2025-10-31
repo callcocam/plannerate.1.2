@@ -1,5 +1,5 @@
 <template>
-    <div class="flex items-center relative">
+    <div class="flex items-start relative">
         <Cremalheira :section="section" :scale-factor="scaleFactor" @delete-section="$emit('delete', section)"
             :index="index" />
 

@@ -153,5 +153,6 @@ export const useEditorStore = defineStore('editor', () => {
         isToggleSelectedLayer: actions.isToggleSelectedLayer,
         clearLayerSelection: actions.clearLayerSelection,
         setSelectedLayer: actions.setSelectedLayer,
+        updateProductImage: actions.updateProductImage,
     };
 });

@@ -88,7 +88,7 @@ export function useGondolaEditForm(options: UseGondolaEditFormOptions) {
     /**
      * Atualiza partes do formData
      */
-    const updateForm = (newData: Partial<GondolaEditFormData>) => {
+    const updateForm = (newData: Partial<GondolaEditFormData>) => { 
         for (const key in newData) {
             if (Object.prototype.hasOwnProperty.call(formData, key)) {
                 (formData as any)[key] = newData[key as keyof GondolaEditFormData];

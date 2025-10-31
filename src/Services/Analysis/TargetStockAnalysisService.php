@@ -5,40 +5,59 @@
  * User: callcocam@gmail.com, contato@sigasmart.com.br
  * https://www.sigasmart.com.br
  */
+
 namespace Callcocam\Plannerate\Services\Analysis;
 
 use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\Sale;
+use App\Models\MonthlySalesSummary;
+use App\Services\Analysis\SalesDataSourceService;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 
 class TargetStockAnalysisService
 {
+    /**
+     * Serviço de fonte de dados de vendas
+     */
+    protected SalesDataSourceService $dataSource;
+
+    /**
+     * Construtor
+     * 
+     * @param string $sourceType 'daily' ou 'monthly' (padrão: 'daily')
+     */
+    public function __construct(?string $sourceType = null)
+    {
+        $this->dataSource = new SalesDataSourceService($sourceType ?? 'monthly');
+    }
+
     /**
      * Realiza análise de estoque alvo dos produtos
      * 
      * @param array $productIds
      * @param string|null $startDate
      * @param string|null $endDate
-     * @param int|null $storeId 
+     * @param string|null $clientId 
+     * @param string|null $storeId  
      * @return array
      */
     public function analyze(
         array $productIds,
         ?string $startDate = null,
         ?string $endDate = null,
-        ?int $storeId = null, 
+        ?string $clientId = null,
+        ?string $storeId = null
     ): array {
         // Busca os produtos
         // $products = Product::whereIn('id', $productIds)->get();
 
         // Busca as vendas no período
-        $sales = $this->getSales($productIds, $startDate, $endDate, $storeId);
+        $sales = $this->getSales($productIds, $startDate, $endDate, $clientId, $storeId);
 
-        // Agrupa as vendas por produto e dia
-        $dailySales = $this->groupDailySales($sales); 
+        // Agrupa as vendas por produto e dia (ou mês se usar monthly)
+        $dailySales = $this->groupDailySales($sales);
 
         // Calcula as estatísticas
         $statistics = $this->calculateStatistics($dailySales);
@@ -53,21 +72,26 @@ class TargetStockAnalysisService
         array $productIds,
         ?string $startDate,
         ?string $endDate,
-        ?int $storeId
+        ?string $clientId = null,
+        ?string $storeId = null,
     ): Collection {
-        $query = Sale::whereIn('product_id', $productIds);
+        // Usa o modelo correto baseado no sourceType
+        $query = $this->dataSource->getSourceType() === 'monthly'
+            ? MonthlySalesSummary::whereIn('product_id', $productIds)
+            : Sale::whereIn('product_id', $productIds);
 
-            if ($startDate) {
-                $query->where('sale_date', '>=', $startDate);
-            }
+        // Aplica filtro de data usando o dataSource se datas forem fornecidas
+        if ($startDate && $endDate) {
+            $query = $this->dataSource->applyDateFilter($query, $startDate, $endDate);
+        }
 
-            if ($endDate) {
-                $query->where('sale_date', '<=', $endDate);
-            }
+        if ($clientId && $clientId !== 'all') {
+            $query->where('client_id', $clientId);
+        }
 
-            // if ($storeId) {
-            //     $query->where('store_id', $storeId);
-            // }
+        if ($storeId && $storeId !== 'all') {
+            $query->where('store_id', $storeId);
+        }
 
         return $query->get();
     }
@@ -79,7 +103,7 @@ class TargetStockAnalysisService
     {
         $grouped = [];
 
-        foreach ($sales as $sale) { 
+        foreach ($sales as $sale) {
             $date = $sale->sale_date instanceof Carbon ? $sale->sale_date->format('Y-m-d') : $sale->sale_date;
             $productId = $sale->product_id;
 
@@ -97,7 +121,7 @@ class TargetStockAnalysisService
         return $grouped;
     }
 
-    protected function getCurrentStock(string $productId, ?string $startDate, ?string $endDate, ?string $storeId): int
+    protected function getCurrentStock(string $productId, ?string $startDate, ?string $endDate, ?string $clientId, ?string $storeId): int
     {
         $query = Purchase::where('product_id', $productId)
             ->orderBy('entry_date', 'asc');
@@ -108,6 +132,10 @@ class TargetStockAnalysisService
 
         if ($endDate) {
             $query->where('entry_date', '<=', $endDate);
+        }
+
+        if ($clientId) {
+            $query->where('client_id', $clientId);
         }
 
         if ($storeId) {
@@ -128,7 +156,7 @@ class TargetStockAnalysisService
         $result = [];
 
         foreach ($dailySales as $productId => $sales) {
-            $currentStock = $this->getCurrentStock($productId, null, null, null);
+            $currentStock = $this->getCurrentStock($productId, null, null, null, null);
             $quantities = array_values($sales);
             $count = count($quantities);
 
@@ -161,4 +189,4 @@ class TargetStockAnalysisService
 
         return $result;
     }
-} 
+}
