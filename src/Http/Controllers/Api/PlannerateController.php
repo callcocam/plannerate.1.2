@@ -101,9 +101,9 @@ class PlannerateController extends Controller
 
             $planogram->save();
 
-            SavePlanogramJob::dispatch($planogram, $data);
+            // SavePlanogramJob::dispatch($planogram);
             // Processa as gôndolas e sua estrutura aninhada
-            // $this->processGondolas($planogram, data_get($data, 'gondolas', []));
+            $this->processGondolas($planogram, data_get($data, 'gondolas', []));
 
             // Se chegou até aqui sem erros, confirma a transação 
 
@@ -192,13 +192,13 @@ class PlannerateController extends Controller
             $gondolaId = data_get($gondolaData, 'id');
             $gondola = $existingGondolas->get($gondolaId);
 
-            if (!$gondola) {
-                $gondola = new Gondola();
-            }
+            // if (!$gondola) {
+            //     $gondola = new Gondola();
+            // }
 
-            // Atualizar atributos da gôndola
-            $gondola->fill($this->filterGondolaAttributes($gondolaData));
-            $gondola->save();
+            // // Atualizar atributos da gôndola
+            // $gondola->fill($this->filterGondolaAttributes($gondolaData));
+            // $gondola->save();
 
             // Registrar o ID para não remover depois
             $processedGondolaIds[] = $gondola->id;
@@ -212,7 +212,7 @@ class PlannerateController extends Controller
         // Remover gôndolas que não estão mais presentes no planograma
         $gondolasToDelete = array_diff($existingGondolaIds, $processedGondolaIds);
         if (!empty($gondolasToDelete)) {
-            Gondola::whereIn('id', $gondolasToDelete)->delete();
+            // Gondola::whereIn('id', $gondolasToDelete)->delete();
         }
     }
 

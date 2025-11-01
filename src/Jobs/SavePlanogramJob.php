@@ -29,7 +29,7 @@ class SavePlanogramJob implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct(public Planogram $planogram, public array $data)
+    public function __construct(public Planogram $planogram)
     {
         //
     }
@@ -39,7 +39,8 @@ class SavePlanogramJob implements ShouldQueue
      */
     public function handle(): void
     {
-        $this->processGondolas($this->planogram, data_get($this->data, 'gondolas', []));
+        $data = request()->all();
+        $this->processGondolas($this->planogram, data_get($data, 'gondolas', []));
     }
 
     /**
@@ -84,7 +85,7 @@ class SavePlanogramJob implements ShouldQueue
         // Remover gôndolas que não estão mais presentes no planograma
         $gondolasToDelete = array_diff($existingGondolaIds, $processedGondolaIds);
         if (!empty($gondolasToDelete)) {
-            Gondola::whereIn('id', $gondolasToDelete)->delete();
+            // Gondola::whereIn('id', $gondolasToDelete)->delete();
         }
     }
 
