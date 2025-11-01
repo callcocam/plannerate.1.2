@@ -41,9 +41,7 @@ class PlannerateController extends Controller
         try {
             // OTIMIZAÇÃO: Eager loading seletivo - remove relacionamentos pesados (sales, purchases)
             // e carrega apenas campos essenciais
-            $planogram = Cache::rememberForever("planogram_{$id}", function () use ($id) {
-                return $this->getModel()::query()->findOrFail($id);
-            });
+            $planogram =   $this->getModel()::query()->findOrFail($id); 
 
 
 

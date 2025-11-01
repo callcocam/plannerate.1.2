@@ -504,7 +504,8 @@ class GondolaController extends Controller
                 //Pegar a seção
                 $section = $gondola->sections->where('ordering', $modulo - 1)->first();
                 if ($section) {
-                    $shelf = $section->shelves->where('ordering', $prateleira - 1)->first();
+                    $shelf = $section->shelves->where('ordering', $prateleira - 1)
+                    ->first();
                     if ($shelf) {
 
                         $product = Product::where('ean', $ean)->first();
