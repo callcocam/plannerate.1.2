@@ -24,7 +24,12 @@
                     <XIcon class="mr-2 h-4 w-4" />
                     <span> Voltar</span>
                 </a>
-
+                <Button variant="outline" size="sm" @click="openImportModal"
+                    class="dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                    title="Gôndola" type="button">
+                    <UploadCloudIcon class="mr-2 h-4 w-4" />
+                    <span>Importar Dados</span>
+                </Button>
                 <Button variant="outline" size="sm" @click="openAddGondolaModal"
                     class="dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
                     title="Gôndola" type="button">
@@ -44,7 +49,7 @@
 
 <script setup lang="ts">
 import { useEditorStore } from '@plannerate/store/editor';
-import { PencilIcon, PlusCircleIcon, XIcon } from 'lucide-vue-next';
+import { PencilIcon, PlusCircleIcon, UploadCloudIcon, XIcon } from 'lucide-vue-next';
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -79,6 +84,13 @@ const openAddGondolaModal = () => {
 const openEditGondolaModal = () => {
     router.push({
         name: 'plannerate.gondola.edit',
+        params: { id: planogramId.value, gondolaId: route.params.gondolaId },
+    });
+};
+// Função para abrir o modal de importação
+const openImportModal = () => {
+    router.push({
+        name: 'plannerate.gondola.import',
         params: { id: planogramId.value, gondolaId: route.params.gondolaId },
     });
 };

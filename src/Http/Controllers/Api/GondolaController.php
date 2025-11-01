@@ -8,6 +8,7 @@
 
 namespace Callcocam\Plannerate\Http\Controllers\Api;
 
+use App\Models\Product;
 use Callcocam\Plannerate\Http\Requests\Gondola\StoreGondolaRequest;
 use Callcocam\Plannerate\Http\Requests\Gondola\UpdateGondolaRequest;
 use Callcocam\Plannerate\Http\Resources\GondolaResource;
@@ -21,6 +22,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -151,7 +153,7 @@ class GondolaController extends Controller
 
             // Validar dados
             $validatedData = $request->validated();
-            $validatedData['user_id'] = auth()->id(); 
+            $validatedData['user_id'] = auth()->id();
 
             // Criar nova gôndola
             $gondola = $this->createGondola($request, $planogram);
@@ -189,7 +191,7 @@ class GondolaController extends Controller
         try {
             DB::beginTransaction();
 
-            $gondola = Gondola::findOrFail($id); 
+            $gondola = Gondola::findOrFail($id);
 
             // Limpar seções e prateleiras existentes
             // $this->deleteSectionsAndShelves($gondola->sections);
@@ -233,7 +235,7 @@ class GondolaController extends Controller
      */
     public function destroy($gondola)
     {
-         $model = Gondola::find($gondola);
+        $model = Gondola::find($gondola);
         try {
             DB::beginTransaction();
 
@@ -276,33 +278,7 @@ class GondolaController extends Controller
         return Gondola::create($gondolaData);
     }
 
-    /**
-     * Atualiza uma gôndola existente
-     *
-     * @param Gondola $gondola
-     * @param Request $request
-     * @return void
-     */
-    private function updateGondola(Gondola $gondola, Request $request): void
-    {
-        $gondolaData = [
-            'name' => $request->input('name', $gondola->name),
-            'location' => $request->input('location', $gondola->location),
-            'side' => $request->input('side', $gondola->side),
-            'flow' => $request->input('flow', $gondola->flow),
-            'scale_factor' => $request->input('scale_factor', $gondola->scale_factor),
-            'num_modulos' => $request->input('num_modulos', $gondola->num_modulos),
-            'status' => $request->input('status', $gondola->status),
-            'user_id' => auth()->id(),
-        ];
 
-        // Atualizar slug se o nome foi alterado
-        if ($gondola->name !== $gondolaData['name']) {
-            $gondolaData['slug'] = Str::slug($gondolaData['name']);
-        }
-
-        $gondola->update($gondolaData);
-    }
 
     /**
      * Cria seções e prateleiras para uma gôndola
@@ -455,5 +431,161 @@ class GondolaController extends Controller
         });
     }
 
-   
+
+    public function import(Request $request)
+    {
+        try {
+            $request->validate([
+                'planogramId' => 'required|exists:planograms,id',
+                'gondolaId' => 'required|exists:gondolas,id',
+                'gondolaCsv' => 'required|file|mimes:csv,xls,xlsx|max:2048',
+            ]);
+
+            $planogramId = $request->input('planogramId');
+            $gondolaId = $request->input('gondolaId');
+            $file = $request->file('gondolaCsv');
+
+            $filePath = $file->store('uploads', 'public');
+
+            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load(Storage::disk('public')->path($filePath));
+            if (!$spreadsheet) {
+                return [
+                    'success' => false,
+                    'message' => 'Erro ao carregar o arquivo Excel.'
+                ];
+            }
+            $worksheet = $spreadsheet->getActiveSheet();
+
+            if (!$worksheet) {
+                return [
+                    'success' => false,
+                    'message' => 'Erro ao carregar a planilha do arquivo Excel.'
+                ];
+            }
+            // Módulo	Prateleira	Ean	Frentes
+
+            // Carregar arquivo Excel 
+            $rows = $worksheet->toArray();
+
+            // Verificar se há uma linha de cabeçalho
+            $headerRow = $options['headerRow'] ?? true;
+            $startRow = $headerRow ? 1 : 0;
+
+            // Obter mapeamento de colunas (se fornecido)
+            $columnMapping = $options['columnMapping'] ?? null;
+
+            $gondola = Gondola::with('sections.shelves.segments.layer')->find($gondolaId);
+            if (!$gondola) {
+                return [
+                    'success' => false,
+                    'message' => 'Gôndola não encontrada.'
+                ];
+            }
+
+
+            // Determinar índices das colunas
+            $headers = $headerRow ? $rows[0] : [];
+            $moduloIndex = $this->findColumnIndex('Módulo', $headers, $columnMapping);
+            $prateleiraIndex = $this->findColumnIndex('Prateleira', $headers, $columnMapping);
+            $eanIndex = $this->findColumnIndex('Ean', $headers, $columnMapping);
+            $frentesIndex = $this->findColumnIndex('Frentes', $headers, $columnMapping);
+            for ($i = $startRow; $i < count($rows); $i++) {
+                $row = $rows[$i];
+
+                // Ignorar linhas vazias
+                if (empty(array_filter($row))) {
+                    continue;
+                }
+
+                $modulo = $this->getCellValue($row, $moduloIndex);
+                $prateleira = $this->getCellValue($row, $prateleiraIndex);
+                $ean = $this->getCellValue($row, $eanIndex);
+                $frentes = $this->getCellValue($row, $frentesIndex, 1);
+                //Pegar a seção
+                $section = $gondola->sections->where('ordering', $modulo - 1)->first();
+                if ($section) {
+                    $shelf = $section->shelves->where('ordering', $prateleira - 1)->first();
+                    if ($shelf) {
+
+                        $product = Product::where('ean', $ean)->first();
+                        if ($product) {
+                            $width = $product->width * $frentes;
+                            $segment = $shelf->segments()->create([
+                                'shelf_id' => $shelf->id,
+                                'width' => $width,
+                                'ordering' => 0,
+                                'quantity' => 1,
+                                'status' => 'published',
+                                'user_id' => auth()->id(),
+                                'tenant_id' => $gondola->tenant_id,
+                            ]);
+                            if ($segment) {
+                                $segment->layer()->create([
+                                    'segment_id' => $segment->id,
+                                    'product_id' => $product->id,
+                                    'quantity' => $frentes,
+                                    'height' => $product->height,
+                                    'status' => 'published',
+                                    'user_id' => auth()->id(),
+                                    'tenant_id' => $gondola->tenant_id,
+                                ]);
+                            }
+                        } else {
+                            Log::warning("Produto não encontrado para EAN: {$ean} na linha " . ($i + 1));
+                        }
+                    } else {
+                        Log::warning("Prateleira não encontrada: {$prateleira} na linha " . ($i + 1));
+                    }
+                } else {
+                    Log::warning("Módulo não encontrado: {$modulo} na linha " . ($i + 1));
+                }
+            }
+
+            return $this->handleSuccess('Arquivo CSV importado com sucesso');
+        } catch (Throwable $e) {
+            return $this->handleException($e, $e->getMessage());
+        }
+    }
+
+
+    protected function getCellValue($row, $index, $default = null)
+    {
+        if (!is_int($index) || $index < 0 || $index >= count($row)) {
+            return $default; // Índice inválido
+        }
+
+        // Verifica se o índice é válido e se a célula não está vazia
+        if (isset($row[$index]) && !is_null($row[$index]) && trim($row[$index]) !== '') {
+            return trim($row[$index]);
+        }
+        return $default;
+    }
+
+    protected function findColumnIndex($fieldName, $headers, $mapping = null)
+    {
+        // Se houver mapeamento, usar a coluna especificada
+        if ($mapping && isset($mapping[$fieldName]) && $mapping[$fieldName] !== '') {
+            // Mapear o nome da coluna para o índice numérico
+            return array_search($mapping[$fieldName], $headers);
+        }
+
+        // Caso contrário, tentar encontrar por correspondência de nome
+        if (!empty($headers)) {
+            // PRIMEIRA TENTATIVA: Correspondência exata (case insensitive)
+            foreach ($headers as $index => $header) {
+                if (strtolower(trim($header)) === strtolower(trim($fieldName))) {
+                    return $index;
+                }
+            }
+
+            // SEGUNDA TENTATIVA: Correspondência parcial (apenas se não encontrou exata)
+            foreach ($headers as $index => $header) {
+                if (strpos(strtolower(trim($header)), strtolower(trim($fieldName))) !== false) {
+                    return $index;
+                }
+            }
+        }
+
+        return false;
+    }
 }

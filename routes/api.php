@@ -20,6 +20,7 @@ Route::middleware(['api'])
         Route::put('plannerate/{planogram}', [PlannerateController::class, 'save'])->name('plannerate.save');
 
         Route::resource('gondolas', GondolaController::class);
+        Route::post('gondolas/import', [GondolaController::class, 'import'])->name('gondolas.import');
 
 
 

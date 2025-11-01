@@ -56,6 +56,13 @@ export const useGondolaService = () => {
         return apiService.delete(`gondolas/${gondolaId}`);
     };
 
+    const uploadGondolaCSV = async (formData: FormData) => {
+        return apiService.post(`gondolas/import`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        });
+    };
 
     return {
         fetchGondola,
@@ -64,6 +71,7 @@ export const useGondolaService = () => {
         transferShelf,
         updateGondola,
         updateGondolaAlignment,
-        deleteGondola
+        deleteGondola,
+        uploadGondolaCSV
     };
 };

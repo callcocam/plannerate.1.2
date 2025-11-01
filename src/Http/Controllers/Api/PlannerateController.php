@@ -39,7 +39,10 @@ class PlannerateController extends Controller
         try {
             // OTIMIZAÇÃO: Eager loading seletivo - remove relacionamentos pesados (sales, purchases)
             // e carrega apenas campos essenciais
-            $planogram = $this->getModel()::query()->with([
+            $planogram = $this->getModel()::query()->findOrFail($id);
+
+            $planogram->load([
+
                 'tenant:id,name',
                 'store.store_map.gondolas',
                 'cluster:id,name',
@@ -50,15 +53,7 @@ class PlannerateController extends Controller
                 'gondolas.sections.shelves.segments',
                 'gondolas.sections.shelves.segments.layer',
                 'gondolas.sections.shelves.segments.layer.product:id,name,ean,description,url'
-            ])->findOrFail($id);
-
-            // $planogram->load([
-            //     'gondolas' => function ($query) use ($request) {
-            //         if ($request->has('gondolaId')) {
-            //             $query->where('id', $request->get('gondolaId'));
-            //         }
-            //     }
-            // ]);
+            ]);
 
 
             return response()->json(new PlannerateResource($planogram));

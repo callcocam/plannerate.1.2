@@ -15,18 +15,18 @@ const routes: Array<RouteRecordRaw> = [
                 path: '',
                 name: 'plannerate.qr.index',
                 component: () => import('@plannerate/views/Create.vue'),
-                props: route => ({ 
+                props: route => ({
                     id: route.params.id,
-                    record: route.params.record 
+                    record: route.params.record
                 }),
             },
             {
                 path: 'gondola/:gondolaId',
                 name: 'gondola.qr.view',
-                component: () => import('@plannerate/views/View.vue'), 
-                redirect: { name: 'plannerate.qr.gondola.view' },  
+                component: () => import('@plannerate/views/View.vue'),
+                redirect: { name: 'plannerate.qr.gondola.view' },
                 children: [
-                    { 
+                    {
                         path: '',
                         name: 'plannerate.qr.gondola.view',
                         component: () => import('@plannerate/views/gondolas/Gondola.vue'),
@@ -37,10 +37,10 @@ const routes: Array<RouteRecordRaw> = [
             {
                 path: 'qr/:gondolaId',
                 name: 'qr.view',
-                component: () => import('@plannerate/views/Print.vue'), 
-                redirect: { name: 'plannerate.qr.view' },  
+                component: () => import('@plannerate/views/Print.vue'),
+                redirect: { name: 'plannerate.qr.view' },
                 children: [
-                    { 
+                    {
                         path: '',
                         name: 'plannerate.qr.view',
                         component: () => import('@plannerate/views/qr/gondolas/Gondolas.vue'),
@@ -62,9 +62,9 @@ const routes: Array<RouteRecordRaw> = [
                 path: '',
                 name: 'plannerate.index',
                 component: () => import('@plannerate/views/Create.vue'),
-                props: route => ({ 
+                props: route => ({
                     id: route.params.id,
-                    record: route.params.record 
+                    record: route.params.record
                 }),
                 children: [
                     {
@@ -78,10 +78,10 @@ const routes: Array<RouteRecordRaw> = [
             {
                 path: 'gondola/:gondolaId',
                 name: 'gondola.view',
-                component: () => import('@plannerate/views/View.vue'), 
-                redirect: { name: 'plannerate.gondola.view' },  
+                component: () => import('@plannerate/views/View.vue'),
+                redirect: { name: 'plannerate.gondola.view' },
                 children: [
-                    { 
+                    {
                         path: '',
                         name: 'plannerate.gondola.view',
                         component: () => import('@plannerate/views/gondolas/Gondola.vue'),
@@ -100,11 +100,18 @@ const routes: Array<RouteRecordRaw> = [
                         props: true,
                     },
                     {
-                        path: 'editar',
+                        path: 'section/add',
                         name: 'plannerate.gondola.add_section',
                         component: () => import('@plannerate/views/gondolas/form/AddSectionModal.vue'),
                         props: true,
                     },
+                    {
+                        path: 'importar',
+                        name: 'plannerate.gondola.import',
+                        component: () => import('@plannerate/views/gondolas/form/Import.vue'),
+                        props: true,
+                    }
+
                 ]
             }
         ]
@@ -120,8 +127,8 @@ const router = createRouter({
     routes,
     // Usar algoritmo de correspondência de rotas mais preciso
     strict: true,
-    
+
 });
- 
+
 
 export default router;
