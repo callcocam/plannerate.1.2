@@ -126,11 +126,8 @@ class PlannerateUpdateSevice
             ->toArray();
 
         $processedGondolaIds = [];
-
-        Log::info('🔍 [GONDOLAS] Comparando gôndolas', [
-            'existing_count' => count($existingGondolaIds),
-            'incoming_count' => count($gondolas),
-        ]);
+        $createdCount = 0;
+        $updatedCount = 0;
 
         // Bulk loading - carregar todas as gondolas existentes de uma vez
         $gondolaIds = array_filter(array_column($gondolas, 'id'));
@@ -150,19 +147,13 @@ class PlannerateUpdateSevice
                 $gondola->tenant_id = $planogram->tenant_id;
                 $gondola->user_id = $planogram->user_id;
                 $gondola->planogram_id = $planogram->id;
-
-                Log::info('➕ [GONDOLA] Criando nova gôndola', [
-                    'gondola_id' => $gondola->id,
-                    'name' => data_get($gondolaData, 'name'),
-                ]);
+                $createdCount++;
             } else {
-                Log::info('🔄 [GONDOLA] Atualizando gôndola existente', [
-                    'gondola_id' => $gondola->id,
-                    'name' => data_get($gondolaData, 'name'),
-                ]);
+                $updatedCount++;
             }
 
             // Atualizar atributos da gôndola
+            $gondola->timestamps = false; // Desabilitar timestamps para performance
             $gondola->fill($this->filterGondolaAttributes($gondolaData));
             $gondola->save();
 
@@ -181,12 +172,16 @@ class PlannerateUpdateSevice
         if (!empty($gondolasToDelete)) {
             Log::warning('🗑️ [GONDOLAS] Removendo gôndolas órfãs', [
                 'orphan_count' => count($gondolasToDelete),
-                'orphan_ids' => $gondolasToDelete,
             ]);
-
-            // Usar soft delete se disponível, caso contrário delete permanente
             Gondola::whereIn('id', $gondolasToDelete)->delete();
         }
+
+        // Log de resumo
+        Log::info('✅ [GONDOLAS] Processamento concluído', [
+            'created' => $createdCount,
+            'updated' => $updatedCount,
+            'deleted' => count($gondolasToDelete),
+        ]);
     }
 
     /**
@@ -239,12 +234,8 @@ class PlannerateUpdateSevice
 
         $processedSectionIds = [];
         $shelfService = new ShelfPositioningService();
-
-        Log::info('🔍 [SECTIONS] Comparando seções', [
-            'gondola_id' => $gondola->id,
-            'existing_count' => count($existingSectionIds),
-            'incoming_count' => count($sections),
-        ]);
+        $createdCount = 0;
+        $updatedCount = 0;
 
         // Bulk loading - carregar todas as sections de uma vez
         $sectionIds = array_filter(array_column($sections, 'id'));
@@ -266,23 +257,16 @@ class PlannerateUpdateSevice
                     'gondola_id' => $gondola->id,
                     'name' => data_get($sectionData, 'name', "Seção #{$i}"),
                 ]);
-
-                Log::info('➕ [SECTION] Criando nova seção', [
-                    'section_id' => $section->id,
-                    'gondola_id' => $gondola->id,
-                    'name' => $section->name,
-                ]);
+                $createdCount++;
             } else {
-                Log::info('🔄 [SECTION] Atualizando seção existente', [
-                    'section_id' => $section->id,
-                    'gondola_id' => $gondola->id,
-                ]);
+                $updatedCount++;
             }
 
             // Atualizar atributos da seção
             $data = $this->filterSectionAttributes($sectionData, $shelfService, $gondola);
             $data['gondola_id'] = $gondola->id;
             $data['name'] = sprintf('%d# Sessão', $i);
+            $section->timestamps = false; // Desabilitar timestamps para performance
             $section->update($data);
 
             // Registrar ID processado
@@ -298,13 +282,17 @@ class PlannerateUpdateSevice
         $sectionsToDelete = array_diff($existingSectionIds, $processedSectionIds);
 
         if (!empty($sectionsToDelete)) {
-            Log::warning('🗑️ [SECTIONS] Removendo seções órfãs', [
-                'gondola_id' => $gondola->id,
-                'orphan_count' => count($sectionsToDelete),
-                'orphan_ids' => $sectionsToDelete,
-            ]);
-
             Section::whereIn('id', $sectionsToDelete)->delete();
+        }
+
+        // Log de resumo apenas se houver operações relevantes
+        if ($createdCount > 0 || count($sectionsToDelete) > 0) {
+            Log::info('✅ [SECTIONS] Processamento concluído', [
+                'gondola_id' => $gondola->id,
+                'created' => $createdCount,
+                'updated' => $updatedCount,
+                'deleted' => count($sectionsToDelete),
+            ]);
         }
     }
 
@@ -361,12 +349,8 @@ class PlannerateUpdateSevice
             ->toArray();
 
         $processedShelfIds = [];
-
-        Log::info('🔍 [SHELVES] Comparando prateleiras', [
-            'section_id' => $section->id,
-            'existing_count' => count($existingShelfIds),
-            'incoming_count' => count($shelves),
-        ]);
+        $createdCount = 0;
+        $updatedCount = 0;
 
         // Bulk loading - carregar todas as shelves de uma vez
         $shelfIds = array_filter(array_column($shelves, 'id'));
@@ -387,28 +371,21 @@ class PlannerateUpdateSevice
                     'user_id' => $section->user_id,
                     'section_id' => $section->id,
                 ]);
-
-                Log::info('➕ [SHELF] Criando nova prateleira', [
-                    'shelf_id' => $shelf->id,
-                    'section_id' => $section->id,
-                    'index' => $i,
-                ]);
+                $createdCount++;
             } else {
-                Log::info('🔄 [SHELF] Atualizando prateleira existente', [
-                    'shelf_id' => $shelf->id,
-                    'section_id' => $section->id,
-                ]);
+                $updatedCount++;
             }
 
             // Atualizar atributos da prateleira
             $data = $this->filterShelfAttributes($shelfData, $shelfService, $i, $section);
             $data['section_id'] = $section->id;
+            $shelf->timestamps = false; // Desabilitar timestamps para performance
             $shelf->update($data);
 
             // Registrar ID processado
             $processedShelfIds[] = $shelf->id;
 
-            // Processar segmentos desta prateleira
+            // Processar segmentos desta prateleira (mantém batch nos segments)
             if (isset($shelfData['segments'])) {
                 $this->processSegments($shelf, data_get($shelfData, 'segments', []));
             }
@@ -418,12 +395,6 @@ class PlannerateUpdateSevice
         $shelvesToDelete = array_diff($existingShelfIds, $processedShelfIds);
 
         if (!empty($shelvesToDelete)) {
-            Log::warning('🗑️ [SHELVES] Removendo prateleiras órfãs', [
-                'section_id' => $section->id,
-                'orphan_count' => count($shelvesToDelete),
-                'orphan_ids' => $shelvesToDelete,
-            ]);
-
             Shelf::whereIn('id', $shelvesToDelete)->delete();
         }
     }
@@ -451,8 +422,6 @@ class PlannerateUpdateSevice
             'shelf_height' => data_get($data, 'shelf_height', 4),
             'shelf_depth' => data_get($data, 'shelf_depth', 20),
             'shelf_position' => data_get($data, 'shelf_position', 0),
-            'shelf_x_position' => data_get($data, 'shelf_x_position', 0),
-            'quantity' => data_get($data, 'quantity', 1),
             'ordering' => data_get($data, 'ordering', 0),
             'spacing' => data_get($data, 'spacing', 2),
             'settings' => data_get($data, 'settings', []),
@@ -480,12 +449,10 @@ class PlannerateUpdateSevice
             ->toArray();
 
         $processedSegmentIds = [];
-
-        Log::info('🔍 [SEGMENTS] Comparando segmentos', [
-            'shelf_id' => $shelf->id,
-            'existing_count' => count($existingSegmentIds),
-            'incoming_count' => count($segments),
-        ]);
+        $createdCount = 0;
+        $updatedCount = 0;
+        $segmentsToUpsert = [];
+        $layersToProcess = [];
 
         // Bulk loading - carregar todos os segments de uma vez
         $segmentIds = array_filter(array_column($segments, 'id'));
@@ -499,49 +466,51 @@ class PlannerateUpdateSevice
             $segment = $existingSegments->get($segmentId);
 
             if (!$segment) {
-                // Criar novo segmento
-                $segment = Segment::query()->create([
-                    'id' => (string) Str::orderedUuid(),
-                    'tenant_id' => $shelf->tenant_id,
-                    'user_id' => $shelf->user_id,
-                    'shelf_id' => $shelf->id,
-                ]);
-
-                Log::info('➕ [SEGMENT] Criando novo segmento', [
-                    'segment_id' => $segment->id,
-                    'shelf_id' => $shelf->id,
-                ]);
+                // Preparar novo segmento para batch insert
+                $segmentId = (string) Str::orderedUuid();
+                $createdCount++;
             } else {
-                Log::info('🔄 [SEGMENT] Atualizando segmento existente', [
-                    'segment_id' => $segment->id,
-                    'shelf_id' => $shelf->id,
-                ]);
+                $segmentId = $segment->id;
+                $updatedCount++;
             }
 
-            // Atualizar atributos do segmento
+            // Preparar dados para batch upsert
             $data = $this->filterSegmentAttributes($segmentData);
+            $data['id'] = $segmentId;
             $data['shelf_id'] = $shelf->id;
-            $segment->update($data);
+            $data['tenant_id'] = $shelf->tenant_id;
+            $data['user_id'] = $shelf->user_id;
 
-            // Registrar ID processado
-            $processedSegmentIds[] = $segment->id;
+            $segmentsToUpsert[] = $data;
+            $processedSegmentIds[] = $segmentId;
 
-            // Processar camada (layer) deste segmento
+            // Guardar layers para processar depois
             if (isset($segmentData['layer'])) {
-                $this->processLayer($segment, data_get($segmentData, 'layer', []));
+                $layersToProcess[] = [
+                    'segment_id' => $segmentId,
+                    'layer_data' => $segmentData['layer'],
+                ];
             }
+        }
+
+        // BATCH UPSERT - 1 query ao invés de N queries!
+        if (!empty($segmentsToUpsert)) {
+            Segment::upsert(
+                $segmentsToUpsert,
+                ['id'], // Unique identifier
+                ['width', 'ordering', 'position', 'quantity', 'spacing', 'settings', 'alignment', 'status', 'shelf_id'] // Campos para atualizar
+            );
+        }
+
+        // Processar layers em batch
+        if (!empty($layersToProcess)) {
+            $this->processLayersBatch($layersToProcess);
         }
 
         // Identificar e remover segmentos órfãos
         $segmentsToDelete = array_diff($existingSegmentIds, $processedSegmentIds);
 
         if (!empty($segmentsToDelete)) {
-            Log::warning('🗑️ [SEGMENTS] Removendo segmentos órfãos', [
-                'shelf_id' => $shelf->id,
-                'orphan_count' => count($segmentsToDelete),
-                'orphan_ids' => $segmentsToDelete,
-            ]);
-
             Segment::whereIn('id', $segmentsToDelete)->delete();
         }
     }
@@ -569,7 +538,6 @@ class PlannerateUpdateSevice
             'settings' => data_get($data, 'settings', []),
             'alignment' => data_get($data, 'alignment', 'left'),
             'status' => $status,
-            'tabindex' => data_get($data, 'tabindex', 0),
         ];
 
         return $fillable;
@@ -606,21 +574,12 @@ class PlannerateUpdateSevice
                 'user_id' => $segment->user_id,
                 'segment_id' => $segment->id,
             ]);
-
-            Log::info('➕ [LAYER] Criando nova layer', [
-                'layer_id' => $layer->id,
-                'segment_id' => $segment->id,
-            ]);
-        } else {
-            Log::info('🔄 [LAYER] Atualizando layer existente', [
-                'layer_id' => $layer->id,
-                'segment_id' => $segment->id,
-            ]);
         }
 
         // Atualizar atributos da camada
         $layer->fill($this->filterLayerAttributes($layerData));
         $layer->segment_id = $segment->id;
+        $layer->timestamps = false; // Desabilitar timestamps para performance
         $layer->save();
 
         // IMPORTANTE: Como a relação é 1:1, se houver outras layers órfãs
@@ -631,13 +590,83 @@ class PlannerateUpdateSevice
             ->get();
 
         if ($orphanLayers->isNotEmpty()) {
-            Log::warning('🗑️ [LAYERS] Removendo layers órfãs duplicadas (relação 1:1)', [
-                'segment_id' => $segment->id,
-                'orphan_count' => $orphanLayers->count(),
-                'orphan_ids' => $orphanLayers->pluck('id')->toArray(),
-            ]);
-
             $orphanLayers->each->delete();
+        }
+    }
+
+    /**
+     * Processa múltiplas layers em batch para performance
+     *
+     * @param array $layersData Array de ['segment_id' => ..., 'layer_data' => ...]
+     * @return void
+     */
+    private function processLayersBatch(array $layersData): void
+    {
+        if (empty($layersData)) {
+            return;
+        }
+
+        // Buscar todas as layers existentes de uma vez
+        $segmentIds = array_column($layersData, 'segment_id');
+        $existingLayers = Layer::query()
+            ->whereIn('segment_id', $segmentIds)
+            ->get()
+            ->keyBy('segment_id');
+
+        // Buscar tenant_id e user_id dos segments de uma vez só
+        $segments = Segment::query()->whereIn('id', $segmentIds)->get()->keyBy('id');
+
+        $layersToUpsert = [];
+        $createdCount = 0;
+        $updatedCount = 0;
+
+        foreach ($layersData as $item) {
+            $segmentId = $item['segment_id'];
+            $layerData = $item['layer_data'];
+
+            $existingLayer = $existingLayers->get($segmentId);
+            $layerId = $existingLayer ? $existingLayer->id : data_get($layerData, 'id');
+
+            if (!$layerId) {
+                $layerId = (string) Str::orderedUuid();
+                $createdCount++;
+            } else {
+                $updatedCount++;
+            }
+
+            // Preparar dados para batch upsert
+            $data = $this->filterLayerAttributes($layerData);
+            $data['id'] = $layerId;
+            $data['segment_id'] = $segmentId;
+
+            // Pegar tenant_id e user_id do segment
+            $segment = $segments->get($segmentId);
+            if ($segment) {
+                $data['tenant_id'] = $segment->tenant_id;
+                $data['user_id'] = $segment->user_id;
+            }
+
+            $layersToUpsert[] = $data;
+        }
+
+        // BATCH UPSERT - 1 query ao invés de N queries!
+        if (!empty($layersToUpsert)) {
+            Layer::upsert(
+                $layersToUpsert,
+                ['id'], // Unique identifier
+                ['product_id', 'height', 'quantity', 'spacing', 'settings', 'alignment', 'status', 'segment_id'] // Campos para atualizar
+            );
+        }
+
+        // Remover layers órfãs (relação 1:1)
+        foreach ($segmentIds as $segmentId) {
+            $validLayerId = collect($layersToUpsert)->firstWhere('segment_id', $segmentId)['id'] ?? null;
+            if ($validLayerId) {
+                Layer::query()
+                    ->where('segment_id', $segmentId)
+                    ->where('id', '!=', $validLayerId)
+                    ->delete();
+            }
         }
     }
 
@@ -656,9 +685,7 @@ class PlannerateUpdateSevice
             'spacing',
             'settings',
             'alignment',
-            'reload',
             'status',
-            'tabindex',
         ];
 
         $filtered = array_intersect_key($data, array_flip($fillable));

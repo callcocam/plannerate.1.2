@@ -9,7 +9,6 @@
 namespace Callcocam\Plannerate\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Planogram as ModelsPlanogram;
 use Callcocam\Plannerate\Http\Resources\PlannerateResource;
 use Callcocam\Plannerate\Models\Gondola;
 use Callcocam\Plannerate\Models\Layer;
@@ -17,11 +16,11 @@ use Callcocam\Plannerate\Models\Planogram;
 use Callcocam\Plannerate\Models\Section;
 use Callcocam\Plannerate\Models\Segment;
 use Callcocam\Plannerate\Models\Shelf;
-use Callcocam\Plannerate\Services\Plannerate\PlannerateUpdateSevice;
 use Callcocam\Plannerate\Services\ShelfPositioningService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
@@ -40,9 +39,27 @@ class PlannerateController extends Controller
         try {
             // OTIMIZAÇÃO: Eager loading seletivo - remove relacionamentos pesados (sales, purchases)
             // e carrega apenas campos essenciais
-            $planogram =   $this->getModel()::query()->findOrFail($id);
+            $planogram = $this->getModel()::query()->with([
+                'tenant:id,name',
+                'store.store_map.gondolas',
+                'cluster:id,name',
+                'client:id,name',
+                'gondolas',
+                'gondolas.sections',
+                'gondolas.sections.shelves',
+                'gondolas.sections.shelves.segments',
+                'gondolas.sections.shelves.segments.layer',
+                'gondolas.sections.shelves.segments.layer.product:id,name,ean,description,url'
+            ])->findOrFail($id); 
 
-
+            // $planogram->load([
+            //     'gondolas' => function ($query) use ($request) {
+            //         if ($request->has('gondolaId')) {
+            //             $query->where('id', $request->get('gondolaId'));
+            //         }
+            //     }
+            // ]);
+            
 
             return response()->json(new PlannerateResource($planogram));
         } catch (ModelNotFoundException $e) {
@@ -67,33 +84,38 @@ class PlannerateController extends Controller
 
     /**
      * Salva ou atualiza um planograma completo com toda a estrutura aninhada
-     *
-     * ATUALIZAÇÃO: Agora utiliza PlannerateUpdateService para processamento
-     * O serviço implementa comparação de dados e exclusão automática de registros órfãos
-     *
+     * 
      * @param Request $request
-     * @param ModelsPlanogram $planogram
      * @return \Illuminate\Http\JsonResponse
      */
-    public function save(Request $request, ModelsPlanogram $planogram)
+    public function save(Request $request, Planogram $planogram)
     {
+        // Iniciar uma transação para garantir a consistência dos dados
+        DB::beginTransaction();
+
         try {
-            // Delegar processamento para o serviço especializado
-            // O serviço gerencia:
-            // - Transação de banco de dados
-            // - Atualização de planograma
-            // - Comparação e sincronização de gondolas, sections, shelves, segments e layers
-            // - Exclusão de registros órfãos (soft delete quando disponível)
-            // - Logging detalhado de todas as operações
-            PlannerateUpdateSevice::make()->update($request, $planogram);
+            $data = $request->all();
+
+            // Atualiza os atributos básicos do planograma
+            $planogram->fill($this->filterPlanogramAttributes($data));
+
+            $planogram->save();
+            // Processa as gôndolas e sua estrutura aninhada
+            $this->processGondolas($planogram, data_get($data, 'gondolas', []));
+
+            // Se chegou até aqui sem erros, confirma a transação
+            DB::commit();
+ 
 
             return response()->json([
                 'success' => true,
-                'message' => 'Planograma atualizado com sucesso',
-                'data' => $planogram
+                'message' =>   'Planograma atualizado com sucesso',
+                'data' => []
             ]);
-
         } catch (\Exception $e) {
+            // Em caso de erro, reverte todas as alterações
+            DB::rollBack();
+
             Log::error('Erro ao salvar planograma:', [
                 'exception' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
@@ -107,50 +129,6 @@ class PlannerateController extends Controller
             ], 500);
         }
     }
-
-    /* ============================================================================
-     * CÓDIGO ANTERIOR - MANTIDO PARA REFERÊNCIA E COMPARAÇÃO
-     * ============================================================================
-     *
-     * Este código foi substituído pelo PlannerateUpdateService que implementa:
-     * 1. Comparação entre dados do frontend vs banco de dados
-     * 2. Identificação de registros órfãos (existem no banco mas não vieram do frontend)
-     * 3. Exclusão automática de órfãos usando soft delete
-     * 4. Logging detalhado de todas as operações
-     * 5. Gerenciamento de transações
-     *
-     * public function save_OLD_VERSION(Request $request, ModelsPlanogram $planogram)
-     * {
-     *     try {
-     *         $data = $request->all();
-     *
-     *         Storage::disk('local')->put('planogram_debug.json', json_encode($data, JSON_PRETTY_PRINT));
-     *
-     *         // Processa as gôndolas e sua estrutura aninhada
-     *         $this->processGondolas($planogram, data_get($data, 'gondolas', []));
-     *
-     *         return response()->json([
-     *             'success' => true,
-     *             'message' => 'Planograma atualizado com sucesso',
-     *             'data' => $planogram
-     *         ]);
-     *     } catch (\Exception $e) {
-     *         Log::error('Erro ao salvar planograma:', [
-     *             'exception' => $e->getMessage(),
-     *             'trace' => $e->getTraceAsString()
-     *         ]);
-     *
-     *         return response()->json([
-     *             'success' => false,
-     *             'message' => 'Erro ao salvar planograma: ' . $e->getMessage(),
-     *             'error' => $e->getMessage(),
-     *             'trace' => app()->environment('production') ? null : $e->getTraceAsString()
-     *         ], 500);
-     *     }
-     * }
-     *
-     * ============================================================================
-     */
 
     /**
      * Filtra apenas os atributos pertinentes ao modelo Planogram
@@ -204,7 +182,7 @@ class PlannerateController extends Controller
             if (!$gondola) {
                 $gondola = new Gondola();
             }
-
+   
             // Atualizar atributos da gôndola
             $gondola->fill($this->filterGondolaAttributes($gondolaData));
             $gondola->save();
@@ -221,7 +199,7 @@ class PlannerateController extends Controller
         // Remover gôndolas que não estão mais presentes no planograma
         $gondolasToDelete = array_diff($existingGondolaIds, $processedGondolaIds);
         if (!empty($gondolasToDelete)) {
-            // Gondola::whereIn('id', $gondolasToDelete)->delete();
+            Gondola::whereIn('id', $gondolasToDelete)->delete();
         }
     }
 
@@ -288,10 +266,11 @@ class PlannerateController extends Controller
                 ]);
             }
 
-            $data = $this->filterSectionAttributes($sectionData, $shelfService, $gondola);
-            $data['gondola_id'] = $gondola->id;
-            $data['name'] = sprintf('%s# Sessão', $i);
-            $section->update($data);
+            // Atualizar atributos da seção
+            $section->fill($this->filterSectionAttributes($sectionData, $shelfService, $gondola));
+            $section->gondola_id = $gondola->id;
+            $section->name = sprintf('%s# Sessão', $i);
+            $section->save();
 
             // Registrar o ID para não remover depois
             $processedSectionIds[] = $section->id;
@@ -319,20 +298,20 @@ class PlannerateController extends Controller
     private function filterSectionAttributes(array $data, ShelfPositioningService $shelfService, Gondola $gondola): array
     {
         $fillable = [
-            'name' => data_get($data, 'name', 'Seção'),
-            'slug' => data_get($data, 'slug', Str::slug(data_get($data, 'name', 'seccao'))),
-            'width' => data_get($data, 'width', 130),
-            'height' => data_get($data, 'height', 180),
-            'num_shelves' => data_get($data, 'num_shelves', 4),
-            'base_height' => data_get($data, 'base_height', 10),
-            'base_depth' => data_get($data, 'base_depth', 20),
-            'base_width' => data_get($data, 'base_width', 130),
-            'hole_height' => data_get($data, 'hole_height', 4),
-            'hole_width' => data_get($data, 'hole_width', 2),
-            'hole_spacing' => data_get($data, 'hole_spacing', 2),
-            'shelf_height' => data_get($data, 'shelf_height', 4),
-            'cremalheira_width' => data_get($data, 'cremalheira_width', 2),
-            'ordering' => data_get($data, 'ordering', 0),
+            'name',
+            'slug',
+            'width',
+            'height',
+            'num_shelves',
+            'base_height',
+            'base_depth',
+            'base_width',
+            'hole_height',
+            'hole_width',
+            'hole_spacing',
+            'shelf_height',
+            'cremalheira_width',
+            'ordering',
             // 'settings',
             // 'status',
             // Adicione outros campos conforme necessário
@@ -343,9 +322,9 @@ class PlannerateController extends Controller
 
         $sectionSettings['holes'] = $shelfService->calculateHoles($data);
 
-        $fillable['settings'] = $sectionSettings;
+        $data['settings'] = $sectionSettings;
 
-        return $fillable;
+        return array_intersect_key($data, array_flip($fillable));
     }
 
     /**
@@ -380,9 +359,9 @@ class PlannerateController extends Controller
             }
 
             // Atualizar atributos da prateleira
-            $data = $this->filterShelfAttributes($shelfData, $shelfService, $i, $section);
-            $data['section_id'] = $section->id;
-            $shelf->update($data);
+            $shelf->fill($this->filterShelfAttributes($shelfData, $shelfService, $i, $section));
+            $shelf->section_id = $section->id;
+            $shelf->save();
 
             // Registrar o ID para não remover depois
             $processedShelfIds[] = $shelf->id;
@@ -413,18 +392,18 @@ class PlannerateController extends Controller
     {
         $fillable = [
             // 'code',
-            'product_type' => data_get($data, 'product_type', 'generic'),
-            'shelf_width' => data_get($data, 'shelf_width', 130),
-            'shelf_height' => data_get($data, 'shelf_height', 4),
-            'shelf_depth' => data_get($data, 'shelf_depth', 20),
-            'shelf_position' => data_get($data, 'shelf_position', 0),
-            'shelf_x_position' => data_get($data, 'shelf_x_position', 0),
-            'quantity' => data_get($data, 'quantity', 1),
-            'ordering' => data_get($data, 'ordering', 0),
-            'spacing' => data_get($data, 'spacing', 2),
-            'settings' => data_get($data, 'settings', []),
-            'status' => data_get($data, 'status', 'published'),
-            'alignment' => data_get($data, 'alignment', 'left'),
+            'product_type',
+            'shelf_width',
+            'shelf_height',
+            'shelf_depth',
+            'shelf_position',
+            'shelf_x_position',
+            'quantity',
+            'ordering',
+            'spacing',
+            'settings',
+            'status',
+            'alignment',
             // Adicione outros campos conforme necessário
         ];
         // $holes = data_get($section, 'settings.holes', []);
@@ -433,7 +412,7 @@ class PlannerateController extends Controller
         // Converter settings para JSON se for array
 
 
-        return $fillable;
+        return array_intersect_key($data, array_flip($fillable));
     }
 
     /**
@@ -468,9 +447,9 @@ class PlannerateController extends Controller
             }
 
             // Atualizar atributos do segmento
-            $data = $this->filterSegmentAttributes($segmentData);
-            $data['shelf_id'] = $shelf->id;
-            $segment->update($data);
+            $segment->fill($this->filterSegmentAttributes($segmentData));
+            $segment->shelf_id = $shelf->id;
+            $segment->save();
 
             // Registrar o ID para não remover depois
             $processedSegmentIds[] = $segment->id;
@@ -497,24 +476,24 @@ class PlannerateController extends Controller
     private function filterSegmentAttributes(array $data): array
     {
         $fillable = [
-            'width' => data_get($data, 'width', 30),
-            'ordering' => data_get($data, 'ordering', 0),
-            'position' => data_get($data, 'position', 0),
-            'quantity' => data_get($data, 'quantity', 1),
-            'spacing' => data_get($data, 'spacing', 2),
-            'settings' => data_get($data, 'settings', []),
-            'alignment' => data_get($data, 'alignment', 'left'),
-            'status' => data_get($data, 'status', 'published'),
-            'tabindex' => data_get($data, 'tabindex', 0),
+            'width',
+            'ordering',
+            'position',
+            'quantity',
+            'spacing',
+            'settings',
+            'alignment',
+            'status',
+            'tabindex',
             // Adicione outros campos conforme necessário
         ];
 
         // Converter settings para JSON se for array
         if (isset($data['settings']) && is_array($data['settings'])) {
-            $fillable['settings'] = json_encode($data['settings']);
+            $data['settings'] = json_encode($data['settings']);
         }
 
-        return $fillable;
+        return array_intersect_key($data, array_flip($fillable));
     }
 
     /**
@@ -584,8 +563,8 @@ class PlannerateController extends Controller
 
     protected function getModel()
     {
-        if (class_exists('App\Models\V1\Planogram')) {
-            return 'App\Models\V1\Planogram';
+        if (class_exists('App\Models\Planogram')) {
+            return 'App\Models\Planogram';
         }
         return Planogram::class;
     }
