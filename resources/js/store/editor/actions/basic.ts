@@ -31,12 +31,11 @@ export function setError(newError: string | null) {
  * Inicializa o store com os dados do planograma e estado inicial do editor
  * @param initialPlanogramData Dados iniciais do planograma (sem estado do editor)
  */
-export function initialize(initialPlanogramData: Omit<PlanogramEditorState, 'scaleFactor' | 'showGrid'>) { 
+export function initialize(initialPlanogramData: Omit<PlanogramEditorState, 'scaleFactor' | 'showGrid'>) {
 
     // Carrega a escala salva do localStorage ou usa o padrão
     const savedScale = loadScaleFromLocalStorage();
-    const scaleFactor = savedScale !== null ? savedScale : 3;
-
+    const scaleFactor = savedScale !== null ? savedScale : 3; 
     // Cria uma cópia profunda dos dados iniciais e adiciona valores padrão
     const initialState: PlanogramEditorState = {
         ...JSON.parse(JSON.stringify(initialPlanogramData)),
@@ -219,13 +218,13 @@ export async function saveChanges(): Promise<any> {
         const editorService = useEditorService();
 
         // Chama a API para salvar os dados
-        const response = await editorService.savePlanogram(planogramData.id as string, planogramData as any); 
+        const response = await editorService.savePlanogram(planogramData.id as string, planogramData as any);
         setIsLoading(false);
 
         if (response.data && response.success) {
             // Se salvou com sucesso, atualiza o estado com os dados retornados (se houver)
             if (response.data) {
-                initialize(response.data);
+                // initialize(response.data);
             }
 
             // Reseta o histórico com o novo estado como base

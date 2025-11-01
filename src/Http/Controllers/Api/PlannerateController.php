@@ -9,6 +9,7 @@
 namespace Callcocam\Plannerate\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Planogram as ModelsPlanogram;
 use Callcocam\Plannerate\Http\Resources\PlannerateResource;
 use Callcocam\Plannerate\Models\Gondola;
 use Callcocam\Plannerate\Models\Layer;
@@ -20,6 +21,7 @@ use Callcocam\Plannerate\Services\ShelfPositioningService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -39,21 +41,10 @@ class PlannerateController extends Controller
         try {
             // OTIMIZAÇÃO: Eager loading seletivo - remove relacionamentos pesados (sales, purchases)
             // e carrega apenas campos essenciais
-            $planogram = $this->getModel()::query()->findOrFail($id);
+            $planogram = Cache::rememberForever("planogram_{$id}", function () use ($id) {
+                return $this->getModel()::query()->findOrFail($id);
+            });
 
-            $planogram->load([
-
-                'tenant:id,name',
-                'store.store_map.gondolas',
-                'cluster:id,name',
-                'client:id,name',
-                'gondolas',
-                'gondolas.sections',
-                'gondolas.sections.shelves',
-                'gondolas.sections.shelves.segments',
-                'gondolas.sections.shelves.segments.layer',
-                'gondolas.sections.shelves.segments.layer.product:id,name,ean,description,url'
-            ]);
 
 
             return response()->json(new PlannerateResource($planogram));
@@ -83,9 +74,9 @@ class PlannerateController extends Controller
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
-    public function save(Request $request, $planogram)
+    public function save(Request $request, ModelsPlanogram $planogram)
     {
-        $planogram =  $this->getModel()::query()->findOrFail($planogram);
+
         // Iniciar uma transação para garantir a consistência dos dados
         DB::beginTransaction();
 
@@ -104,23 +95,27 @@ class PlannerateController extends Controller
 
             // OTIMIZAÇÃO: Eager loading seletivo - remove relacionamentos pesados (sales, purchases)
             // e carrega apenas campos essenciais do produto
-            $planogram->load([
-                'tenant:id,name',
-                'store:id,name',
-                'cluster:id,name',
-                'client:id,name',
-                'gondolas',
-                'gondolas.sections',
-                'gondolas.sections.shelves',
-                'gondolas.sections.shelves.segments',
-                'gondolas.sections.shelves.segments.layer',
-                'gondolas.sections.shelves.segments.layer.product:id,name,ean,description,url'
-            ]);
-
+            // $planogram->load([
+            //     'tenant:id,name',
+            //     'store:id,name',
+            //     'cluster:id,name',
+            //     'client:id,name',
+            //     'gondolas',
+            //     'gondolas.sections',
+            //     'gondolas.sections.shelves',
+            //     'gondolas.sections.shelves.segments',
+            //     'gondolas.sections.shelves.segments.layer',
+            //     'gondolas.sections.shelves.segments.layer.product:id,name,ean,description,url'
+            // ]);
+            $id = $planogram->id;
+            Cache::forget("planogram_{$id}");
+            // $planogram = Cache::rememberForever("planogram_{$id}", function () use ($id) {
+            //     return $this->getModel()::query()->findOrFail($id);
+            // });
             return response()->json([
                 'success' => true,
                 'message' =>   'Planograma atualizado com sucesso',
-                'data' => new PlannerateResource($planogram)
+                'data' => []
             ]);
         } catch (\Exception $e) {
             // Em caso de erro, reverte todas as alterações
@@ -573,8 +568,8 @@ class PlannerateController extends Controller
 
     protected function getModel()
     {
-        if (class_exists('App\Models\Planogram')) {
-            return 'App\Models\Planogram';
+        if (class_exists('App\Models\V1\Planogram')) {
+            return 'App\Models\V1\Planogram';
         }
         return Planogram::class;
     }

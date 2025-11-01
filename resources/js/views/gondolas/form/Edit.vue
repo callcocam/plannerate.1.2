@@ -248,6 +248,7 @@ const closeModal = () => {
 // submitForm é chamado diretamente pelo botão no template
 
 onMounted(() => {
+  console.log("Edit.vue montado", formData);
   // Modal de edição montado - sistema de cores ativo baseado no status de vinculação
 });
 </script>
