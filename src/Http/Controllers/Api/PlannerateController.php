@@ -271,11 +271,10 @@ class PlannerateController extends Controller
                 ]);
             }
 
-            // Atualizar atributos da seção
-            $section->fill($this->filterSectionAttributes($sectionData, $shelfService, $gondola));
-            $section->gondola_id = $gondola->id;
-            $section->name = sprintf('%s# Sessão', $i);
-            $section->save();
+            $data = $this->filterSectionAttributes($sectionData, $shelfService, $gondola);
+            $data['gondola_id'] = $gondola->id;
+            $data['name'] = sprintf('%s# Sessão', $i);
+            $section->update($data);
 
             // Registrar o ID para não remover depois
             $processedSectionIds[] = $section->id;
@@ -303,20 +302,20 @@ class PlannerateController extends Controller
     private function filterSectionAttributes(array $data, ShelfPositioningService $shelfService, Gondola $gondola): array
     {
         $fillable = [
-            'name',
-            'slug',
-            'width',
-            'height',
-            'num_shelves',
-            'base_height',
-            'base_depth',
-            'base_width',
-            'hole_height',
-            'hole_width',
-            'hole_spacing',
-            'shelf_height',
-            'cremalheira_width',
-            'ordering',
+            'name' => data_get($data, 'name', 'Seção'),
+            'slug' => data_get($data, 'slug', Str::slug(data_get($data, 'name', 'seccao'))),
+            'width' => data_get($data, 'width', 130),
+            'height' => data_get($data, 'height', 180),
+            'num_shelves' => data_get($data, 'num_shelves', 4),
+            'base_height' => data_get($data, 'base_height', 10),
+            'base_depth' => data_get($data, 'base_depth', 20),
+            'base_width' => data_get($data, 'base_width', 130),
+            'hole_height' => data_get($data, 'hole_height', 4),
+            'hole_width' => data_get($data, 'hole_width', 2),
+            'hole_spacing' => data_get($data, 'hole_spacing', 2),
+            'shelf_height' => data_get($data, 'shelf_height', 4),
+            'cremalheira_width' => data_get($data, 'cremalheira_width', 2),
+            'ordering' => data_get($data, 'ordering', 0),
             // 'settings',
             // 'status',
             // Adicione outros campos conforme necessário
@@ -327,9 +326,9 @@ class PlannerateController extends Controller
 
         $sectionSettings['holes'] = $shelfService->calculateHoles($data);
 
-        $data['settings'] = $sectionSettings;
+        $fillable['settings'] = $sectionSettings;
 
-        return array_intersect_key($data, array_flip($fillable));
+        return $fillable;
     }
 
     /**
@@ -364,9 +363,9 @@ class PlannerateController extends Controller
             }
 
             // Atualizar atributos da prateleira
-            $shelf->fill($this->filterShelfAttributes($shelfData, $shelfService, $i, $section));
-            $shelf->section_id = $section->id;
-            $shelf->save();
+            $data = $this->filterShelfAttributes($shelfData, $shelfService, $i, $section);
+            $data['section_id'] = $section->id;
+            $shelf->update($data);
 
             // Registrar o ID para não remover depois
             $processedShelfIds[] = $shelf->id;
@@ -397,18 +396,18 @@ class PlannerateController extends Controller
     {
         $fillable = [
             // 'code',
-            'product_type',
-            'shelf_width',
-            'shelf_height',
-            'shelf_depth',
-            'shelf_position',
-            'shelf_x_position',
-            'quantity',
-            'ordering',
-            'spacing',
-            'settings',
-            'status',
-            'alignment',
+            'product_type' => data_get($data, 'product_type', 'generic'),
+            'shelf_width' => data_get($data, 'shelf_width', 130),
+            'shelf_height' => data_get($data, 'shelf_height', 4),
+            'shelf_depth' => data_get($data, 'shelf_depth', 20),
+            'shelf_position' => data_get($data, 'shelf_position', 0),
+            'shelf_x_position' => data_get($data, 'shelf_x_position', 0),
+            'quantity' => data_get($data, 'quantity', 1),
+            'ordering' => data_get($data, 'ordering', 0),
+            'spacing' => data_get($data, 'spacing', 2),
+            'settings' => data_get($data, 'settings', []),
+            'status' => data_get($data, 'status', 'published'),
+            'alignment' => data_get($data, 'alignment', 'left'),
             // Adicione outros campos conforme necessário
         ];
         // $holes = data_get($section, 'settings.holes', []);
@@ -417,7 +416,7 @@ class PlannerateController extends Controller
         // Converter settings para JSON se for array
 
 
-        return array_intersect_key($data, array_flip($fillable));
+        return $fillable;
     }
 
     /**
@@ -452,9 +451,9 @@ class PlannerateController extends Controller
             }
 
             // Atualizar atributos do segmento
-            $segment->fill($this->filterSegmentAttributes($segmentData));
-            $segment->shelf_id = $shelf->id;
-            $segment->save();
+            $data = $this->filterSegmentAttributes($segmentData);
+            $data['shelf_id'] = $shelf->id;
+            $segment->update($data);
 
             // Registrar o ID para não remover depois
             $processedSegmentIds[] = $segment->id;
@@ -481,24 +480,24 @@ class PlannerateController extends Controller
     private function filterSegmentAttributes(array $data): array
     {
         $fillable = [
-            'width',
-            'ordering',
-            'position',
-            'quantity',
-            'spacing',
-            'settings',
-            'alignment',
-            'status',
-            'tabindex',
+            'width' => data_get($data, 'width', 30),
+            'ordering' => data_get($data, 'ordering', 0),
+            'position' => data_get($data, 'position', 0),
+            'quantity' => data_get($data, 'quantity', 1),
+            'spacing' => data_get($data, 'spacing', 2),
+            'settings' => data_get($data, 'settings', []),
+            'alignment' => data_get($data, 'alignment', 'left'),
+            'status' => data_get($data, 'status', 'published'),
+            'tabindex' => data_get($data, 'tabindex', 0),
             // Adicione outros campos conforme necessário
         ];
 
         // Converter settings para JSON se for array
         if (isset($data['settings']) && is_array($data['settings'])) {
-            $data['settings'] = json_encode($data['settings']);
+            $fillable['settings'] = json_encode($data['settings']);
         }
 
-        return array_intersect_key($data, array_flip($fillable));
+        return $fillable;
     }
 
     /**
