@@ -6,11 +6,12 @@
  * https://www.sigasmart.com.br
  */
 
-namespace Callcocam\Plannerate\Http\Controllers\Api;
+namespace Callcocam\Plannerate\Jobs;
 
-use App\Http\Controllers\Controller;
-use Callcocam\Plannerate\Http\Resources\PlannerateResource;
-use Callcocam\Plannerate\Jobs\SavePlanogramJob;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Queue\Queueable;
+
+
 use Callcocam\Plannerate\Models\Gondola;
 use Callcocam\Plannerate\Models\Layer;
 use Callcocam\Plannerate\Models\Planogram;
@@ -18,156 +19,27 @@ use Callcocam\Plannerate\Models\Section;
 use Callcocam\Plannerate\Models\Segment;
 use Callcocam\Plannerate\Models\Shelf;
 use Callcocam\Plannerate\Services\ShelfPositioningService;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Throwable;
 
-class PlannerateController extends Controller
+
+class SavePlanogramJob implements ShouldQueue
 {
+    use Queueable;
 
     /**
-     * Exibe um planograma específico
-     * 
-     * @param Planogram $planogram
-     * @return PlannerateResource|JsonResponse
+     * Create a new job instance.
      */
-    public function show(Request $request, string $id)
+    public function __construct(public Planogram $planogram, public array $data)
     {
-        try {
-            // OTIMIZAÇÃO: Eager loading seletivo - remove relacionamentos pesados (sales, purchases)
-            // e carrega apenas campos essenciais
-            $planogram = $this->getModel()::query()->with([
-                'tenant:id,name',
-                'store.store_map.gondolas',
-                'cluster:id,name',
-                'client:id,name',
-                'gondolas',
-                'gondolas.sections',
-                'gondolas.sections.shelves',
-                'gondolas.sections.shelves.segments',
-                'gondolas.sections.shelves.segments.layer',
-                'gondolas.sections.shelves.segments.layer.product:id,name,ean,description,url'
-            ])->findOrFail($id); 
-
-            // $planogram->load([
-            //     'gondolas' => function ($query) use ($request) {
-            //         if ($request->has('gondolaId')) {
-            //             $query->where('id', $request->get('gondolaId'));
-            //         }
-            //     }
-            // ]);
-            
-
-            return response()->json(new PlannerateResource($planogram));
-        } catch (ModelNotFoundException $e) {
-            return response()->json([
-                'message' => 'Planograma não encontrado',
-                'status' => 'error'
-            ], 404);
-        } catch (Throwable $e) {
-            Log::error('Erro ao exibir planograma', [
-                'exception' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ]);
-
-            return response()->json([
-                'message' => $e->getMessage(),
-                'status' => 'error'
-            ], 500);
-        }
-    }
-
-
-    /**
-     * Salva ou atualiza um planograma completo com toda a estrutura aninhada
-     * 
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function save(Request $request, Planogram $planogram)
-    {
-        // Iniciar uma transação para garantir a consistência dos dados
-       
-        try {
-            $data = $request->all();
-
-            // Atualiza os atributos básicos do planograma
-            $planogram->fill($this->filterPlanogramAttributes($data));
-
-            $planogram->save();
-
-            SavePlanogramJob::dispatch($planogram, $data);
-            // Processa as gôndolas e sua estrutura aninhada
-            // $this->processGondolas($planogram, data_get($data, 'gondolas', []));
-
-            // Se chegou até aqui sem erros, confirma a transação 
-
-            // OTIMIZAÇÃO: Eager loading seletivo - remove relacionamentos pesados (sales, purchases)
-            // e carrega apenas campos essenciais do produto
-            $planogram =  $this->getModel()::query()->with([
-                'tenant:id,name',
-                'store:id,name',
-                'cluster:id,name',
-                'client:id,name',
-                'gondolas',
-                'gondolas.sections',
-                'gondolas.sections.shelves',
-                'gondolas.sections.shelves.segments',
-                'gondolas.sections.shelves.segments.layer',
-                'gondolas.sections.shelves.segments.layer.product:id,name,ean,description,url'
-            ])->findOrFail($planogram->id);
-
-            return response()->json([
-                'success' => true,
-                'message' =>   'Planograma atualizado com sucesso',
-                'data' => new PlannerateResource($planogram)
-            ]);
-        } catch (\Exception $e) {
-            // Em caso de erro, reverte todas as alterações 
-
-            Log::error('Erro ao salvar planograma:', [
-                'exception' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Erro ao salvar planograma: ' . $e->getMessage(),
-                'error' => $e->getMessage(),
-                'trace' => app()->environment('production') ? null : $e->getTraceAsString()
-            ], 500);
-        }
+        //
     }
 
     /**
-     * Filtra apenas os atributos pertinentes ao modelo Planogram
-     * 
-     * @param array $data
-     * @return array
+     * Execute the job.
      */
-    private function filterPlanogramAttributes(array $data): array
+    public function handle(): void
     {
-        // Incluir apenas os campos que fazem parte da tabela planograms
-        $fillable = [
-            'name',
-            'slug',
-            'description',
-            'store_id',
-            'store',
-            'cluster_id',
-            'cluster',
-            'start_date',
-            'end_date',
-            'status',
-            // Adicione outros campos conforme necessário
-        ];
-
-        return array_intersect_key($data, array_flip($fillable));
+        $this->processGondolas($this->planogram, data_get($this->data, 'gondolas', []));
     }
 
     /**
