@@ -97,9 +97,9 @@ class PlannerateController extends Controller
             $data = $request->all();
 
             // Atualiza os atributos básicos do planograma
-            $planogram->fill($this->filterPlanogramAttributes($data));
+            // $planogram->fill($this->filterPlanogramAttributes($data));
 
-            $planogram->save();
+            // $planogram->save();
 
             // SavePlanogramJob::dispatch($planogram);
             // Processa as gôndolas e sua estrutura aninhada
