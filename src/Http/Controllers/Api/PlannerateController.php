@@ -10,7 +10,6 @@ namespace Callcocam\Plannerate\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Callcocam\Plannerate\Http\Resources\PlannerateResource;
-use Callcocam\Plannerate\Jobs\SavePlanogramJob;
 use Callcocam\Plannerate\Models\Gondola;
 use Callcocam\Plannerate\Models\Layer;
 use Callcocam\Plannerate\Models\Planogram;
@@ -51,7 +50,7 @@ class PlannerateController extends Controller
                 'gondolas.sections.shelves.segments',
                 'gondolas.sections.shelves.segments.layer',
                 'gondolas.sections.shelves.segments.layer.product:id,name,ean,description,url'
-            ])->findOrFail($id); 
+            ])->findOrFail($id);
 
             // $planogram->load([
             //     'gondolas' => function ($query) use ($request) {
@@ -60,7 +59,7 @@ class PlannerateController extends Controller
             //         }
             //     }
             // ]);
-            
+
 
             return response()->json(new PlannerateResource($planogram));
         } catch (ModelNotFoundException $e) {
@@ -89,27 +88,28 @@ class PlannerateController extends Controller
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
-    public function save(Request $request, Planogram $planogram)
+    public function save(Request $request, $planogram)
     {
+        $planogram =  $this->getModel()::query()->findOrFail($planogram);
         // Iniciar uma transação para garantir a consistência dos dados
-       
+        DB::beginTransaction();
+
         try {
             $data = $request->all();
 
             // Atualiza os atributos básicos do planograma
-            // $planogram->fill($this->filterPlanogramAttributes($data));
+            $planogram->fill($this->filterPlanogramAttributes($data));
 
-            // $planogram->save();
-
-            // SavePlanogramJob::dispatch($planogram);
+            $planogram->save();
             // Processa as gôndolas e sua estrutura aninhada
             $this->processGondolas($planogram, data_get($data, 'gondolas', []));
 
-            // Se chegou até aqui sem erros, confirma a transação 
+            // Se chegou até aqui sem erros, confirma a transação
+            DB::commit();
 
             // OTIMIZAÇÃO: Eager loading seletivo - remove relacionamentos pesados (sales, purchases)
             // e carrega apenas campos essenciais do produto
-            $planogram =  $this->getModel()::query()->with([
+            $planogram->load([
                 'tenant:id,name',
                 'store:id,name',
                 'cluster:id,name',
@@ -120,7 +120,7 @@ class PlannerateController extends Controller
                 'gondolas.sections.shelves.segments',
                 'gondolas.sections.shelves.segments.layer',
                 'gondolas.sections.shelves.segments.layer.product:id,name,ean,description,url'
-            ])->findOrFail($planogram->id);
+            ]);
 
             return response()->json([
                 'success' => true,
@@ -128,7 +128,8 @@ class PlannerateController extends Controller
                 'data' => new PlannerateResource($planogram)
             ]);
         } catch (\Exception $e) {
-            // Em caso de erro, reverte todas as alterações 
+            // Em caso de erro, reverte todas as alterações
+            DB::rollBack();
 
             Log::error('Erro ao salvar planograma:', [
                 'exception' => $e->getMessage(),
@@ -186,19 +187,20 @@ class PlannerateController extends Controller
         // OTIMIZAÇÃO: Bulk loading - carregar todas as gondolas de uma vez
         $gondolaIds = array_filter(array_column($gondolas, 'id'));
         $existingGondolas = Gondola::whereIn('id', $gondolaIds)->get()->keyBy('id');
+        $data = [];
 
         foreach ($gondolas as $gondolaData) {
             // Verificar se é uma gôndola existente ou nova
             $gondolaId = data_get($gondolaData, 'id');
             $gondola = $existingGondolas->get($gondolaId);
 
-            // if (!$gondola) {
-            //     $gondola = new Gondola();
-            // }
+            if (!$gondola) {
+                $gondola = new Gondola();
+            }
 
-            // // Atualizar atributos da gôndola
-            // $gondola->fill($this->filterGondolaAttributes($gondolaData));
-            // $gondola->save();
+            // Atualizar atributos da gôndola
+            $gondola->fill($this->filterGondolaAttributes($gondolaData));
+            $gondola->save();
 
             // Registrar o ID para não remover depois
             $processedGondolaIds[] = $gondola->id;
