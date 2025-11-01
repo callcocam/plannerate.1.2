@@ -38,8 +38,8 @@ class PlannerateResource extends JsonResource
             'status' => $this->status,
             'gondolas' => GondolaResource::collection($this->whenLoaded('gondolas')),
             'status_label' => $this->status,
-            'created_at' => $this->created_at ? $this->created_at->format('Y-m-d H:i:s') : null,
-            'updated_at' => $this->updated_at ? $this->updated_at->format('Y-m-d H:i:s') : null,
+            // 'created_at' => $this->created_at ? $this->created_at->format('Y-m-d H:i:s') : null,
+            // 'updated_at' => $this->updated_at ? $this->updated_at->format('Y-m-d H:i:s') : null,
             'tenant' => $this->whenLoaded('tenant'),
             'mercadologico_nivel' => $this->mercadologico_nivel,
         ];

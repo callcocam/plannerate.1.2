@@ -35,7 +35,7 @@ export function initialize(initialPlanogramData: Omit<PlanogramEditorState, 'sca
 
     // Carrega a escala salva do localStorage ou usa o padrão
     const savedScale = loadScaleFromLocalStorage();
-    const scaleFactor = savedScale !== null ? savedScale : 3; 
+    const scaleFactor = savedScale !== null ? savedScale : 3;
     // Cria uma cópia profunda dos dados iniciais e adiciona valores padrão
     const initialState: PlanogramEditorState = {
         ...JSON.parse(JSON.stringify(initialPlanogramData)),
@@ -198,9 +198,6 @@ export async function saveChanges(): Promise<any> {
     if (!currentState.value) {
         throw new Error("Não há estado atual para salvar");
     }
-
-    console.log('Salvando alterações...', currentState.value);
-
     setIsLoading(true);
 
     try {
@@ -214,19 +211,26 @@ export async function saveChanges(): Promise<any> {
         // Remove campos temporários ou desnecessários antes de enviar
         delete (planogramData as any).error;
         delete (planogramData as any).isLoading;
+        delete (planogramData as any).store;
 
         const editorService = useEditorService();
 
         // Chama a API para salvar os dados
         const response = await editorService.savePlanogram(planogramData.id as string, planogramData as any);
-        setIsLoading(false);
 
         if (response.data && response.success) {
             // Se salvou com sucesso, atualiza o estado com os dados retornados (se houver)
             if (response.data) {
-                // initialize(response.data);
+                if (!planogramData?.id) {
+                    throw new Error("Resposta da API não contém ID do planograma");
+                }
+                const gondolaId = currentGondola.value?.id;
+                const response = await editorService.fetchPlanogram(planogramData.id, { gondolaId });
+                console.log('Dados atualizados após salvar:', response);
+                initialize(response);
             }
 
+            setIsLoading(false);
             // Reseta o histórico com o novo estado como base
             const gondolaId = currentGondola.value?.id;
             if (gondolaId && gondolaHistories.value[gondolaId]) {

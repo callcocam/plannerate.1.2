@@ -17,12 +17,11 @@ use Callcocam\Plannerate\Models\Planogram;
 use Callcocam\Plannerate\Models\Section;
 use Callcocam\Plannerate\Models\Segment;
 use Callcocam\Plannerate\Models\Shelf;
+use Callcocam\Plannerate\Services\Plannerate\PlannerateUpdateSevice;
 use Callcocam\Plannerate\Services\ShelfPositioningService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
@@ -41,7 +40,7 @@ class PlannerateController extends Controller
         try {
             // OTIMIZAÇÃO: Eager loading seletivo - remove relacionamentos pesados (sales, purchases)
             // e carrega apenas campos essenciais
-            $planogram =   $this->getModel()::query()->findOrFail($id); 
+            $planogram =   $this->getModel()::query()->findOrFail($id);
 
 
 
@@ -68,57 +67,33 @@ class PlannerateController extends Controller
 
     /**
      * Salva ou atualiza um planograma completo com toda a estrutura aninhada
-     * 
+     *
+     * ATUALIZAÇÃO: Agora utiliza PlannerateUpdateService para processamento
+     * O serviço implementa comparação de dados e exclusão automática de registros órfãos
+     *
      * @param Request $request
+     * @param ModelsPlanogram $planogram
      * @return \Illuminate\Http\JsonResponse
      */
     public function save(Request $request, ModelsPlanogram $planogram)
     {
-
-        // Iniciar uma transação para garantir a consistência dos dados
-        DB::beginTransaction();
-
         try {
-            $data = $request->all();
+            // Delegar processamento para o serviço especializado
+            // O serviço gerencia:
+            // - Transação de banco de dados
+            // - Atualização de planograma
+            // - Comparação e sincronização de gondolas, sections, shelves, segments e layers
+            // - Exclusão de registros órfãos (soft delete quando disponível)
+            // - Logging detalhado de todas as operações
+            PlannerateUpdateSevice::make()->update($request, $planogram);
 
-            // Atualiza os atributos básicos do planograma
-            $planogram->fill($this->filterPlanogramAttributes($data));
-
-            $planogram->save();
-            // Processa as gôndolas e sua estrutura aninhada
-            $this->processGondolas($planogram, data_get($data, 'gondolas', []));
-
-            // Se chegou até aqui sem erros, confirma a transação
-            DB::commit();
-
-            // OTIMIZAÇÃO: Eager loading seletivo - remove relacionamentos pesados (sales, purchases)
-            // e carrega apenas campos essenciais do produto
-            // $planogram->load([
-            //     'tenant:id,name',
-            //     'store:id,name',
-            //     'cluster:id,name',
-            //     'client:id,name',
-            //     'gondolas',
-            //     'gondolas.sections',
-            //     'gondolas.sections.shelves',
-            //     'gondolas.sections.shelves.segments',
-            //     'gondolas.sections.shelves.segments.layer',
-            //     'gondolas.sections.shelves.segments.layer.product:id,name,ean,description,url'
-            // ]);
-            $id = $planogram->id;
-            Cache::forget("planogram_{$id}");
-            // $planogram = Cache::rememberForever("planogram_{$id}", function () use ($id) {
-            //     return $this->getModel()::query()->findOrFail($id);
-            // });
             return response()->json([
                 'success' => true,
-                'message' =>   'Planograma atualizado com sucesso',
-                'data' => []
+                'message' => 'Planograma atualizado com sucesso',
+                'data' => $planogram
             ]);
-        } catch (\Exception $e) {
-            // Em caso de erro, reverte todas as alterações
-            DB::rollBack();
 
+        } catch (\Exception $e) {
             Log::error('Erro ao salvar planograma:', [
                 'exception' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
@@ -132,6 +107,50 @@ class PlannerateController extends Controller
             ], 500);
         }
     }
+
+    /* ============================================================================
+     * CÓDIGO ANTERIOR - MANTIDO PARA REFERÊNCIA E COMPARAÇÃO
+     * ============================================================================
+     *
+     * Este código foi substituído pelo PlannerateUpdateService que implementa:
+     * 1. Comparação entre dados do frontend vs banco de dados
+     * 2. Identificação de registros órfãos (existem no banco mas não vieram do frontend)
+     * 3. Exclusão automática de órfãos usando soft delete
+     * 4. Logging detalhado de todas as operações
+     * 5. Gerenciamento de transações
+     *
+     * public function save_OLD_VERSION(Request $request, ModelsPlanogram $planogram)
+     * {
+     *     try {
+     *         $data = $request->all();
+     *
+     *         Storage::disk('local')->put('planogram_debug.json', json_encode($data, JSON_PRETTY_PRINT));
+     *
+     *         // Processa as gôndolas e sua estrutura aninhada
+     *         $this->processGondolas($planogram, data_get($data, 'gondolas', []));
+     *
+     *         return response()->json([
+     *             'success' => true,
+     *             'message' => 'Planograma atualizado com sucesso',
+     *             'data' => $planogram
+     *         ]);
+     *     } catch (\Exception $e) {
+     *         Log::error('Erro ao salvar planograma:', [
+     *             'exception' => $e->getMessage(),
+     *             'trace' => $e->getTraceAsString()
+     *         ]);
+     *
+     *         return response()->json([
+     *             'success' => false,
+     *             'message' => 'Erro ao salvar planograma: ' . $e->getMessage(),
+     *             'error' => $e->getMessage(),
+     *             'trace' => app()->environment('production') ? null : $e->getTraceAsString()
+     *         ], 500);
+     *     }
+     * }
+     *
+     * ============================================================================
+     */
 
     /**
      * Filtra apenas os atributos pertinentes ao modelo Planogram
