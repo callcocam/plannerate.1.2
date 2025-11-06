@@ -19,6 +19,7 @@ class UpdateSectionRequest extends BaseFormRequest
         $sectionId = $this->route('id');
 
         return [
+            'gondola_id' => ['sometimes', 'required', 'string', 'exists:gondolas,id'],
             'name' => ['sometimes', 'required', 'string', 'max:255'],
             'code' => [
                 'nullable', 

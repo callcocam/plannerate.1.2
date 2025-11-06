@@ -169,12 +169,12 @@ class PlannerateUpdateSevice
         // Identificar e remover gôndolas órfãs
         $gondolasToDelete = array_diff($existingGondolaIds, $processedGondolaIds);
 
-        if (!empty($gondolasToDelete)) {
-            Log::warning('🗑️ [GONDOLAS] Removendo gôndolas órfãs', [
-                'orphan_count' => count($gondolasToDelete),
-            ]);
-            Gondola::whereIn('id', $gondolasToDelete)->delete();
-        }
+        // if (!empty($gondolasToDelete)) {
+        //     Log::warning('🗑️ [GONDOLAS] Removendo gôndolas órfãs', [
+        //         'orphan_count' => count($gondolasToDelete),
+        //     ]);
+        //     Gondola::whereIn('id', $gondolasToDelete)->delete();
+        // }
 
         // Log de resumo
         Log::info('✅ [GONDOLAS] Processamento concluído', [

@@ -2,7 +2,7 @@
 import type { Section } from '@plannerate/types/sections';
 import { findGondola } from '../utils';
 import { recordChange } from '../history';
-import { isSectionEditing, selectedSection, isDragging } from '../state';
+import { isSectionEditing, selectedSection, isDragging, currentState } from '../state';
 /**
  * Define a ordem das seções para uma gôndola específica
  * @param gondolaId ID da gôndola
@@ -19,24 +19,20 @@ export function setGondolaSectionOrder(gondolaId: string, newSections: Section[]
     }));
 
     // Compara se a nova ordem (IDs e ordenação implícita pelo índice) é diferente da atual
-    // (Considerando que a ordenação no estado pode não estar correta antes desta função)
     const currentSectionIds = gondola.sections.map(s => s.id);
     const newSectionIds = updatedSections.map(s => s.id);
 
-    // Verificamos apenas a ordem dos IDs por enquanto, pois a atualização de 'ordering' será feita abaixo.
     if (JSON.stringify(currentSectionIds) === JSON.stringify(newSectionIds)) {
-        // Poderíamos adicionar uma verificação mais profunda aqui se necessário,
-        // comparando também o campo 'ordering' atual com o novo índice, mas
-        // geralmente, se a ordem dos IDs não mudou, a intenção não é reordenar.
         console.log('Ordem dos IDs das seções não mudou.');
-        // No entanto, ainda pode ser necessário atualizar os campos 'ordering' se estiverem dessincronizados.
-        // Vamos garantir que o estado reflita a ordem atualizada de qualquer maneira.
     }
 
-    // Atualiza o array de seções com a nova ordem E com o campo ordering atualizado
+    // Atualiza o array de seções com nova referência
     gondola.sections = updatedSections;
-    console.log(`Nova ordem das seções definida e campo 'ordering' atualizado para a gôndola ${gondolaId}`);
-    recordChange(); // Registra a mudança para que as seções atualizadas sejam salvas posteriormente
+    
+    // Força reatividade no estado global
+    forceReactivity(gondolaId, gondola);
+    
+    recordChange();
 }
 
 /**
@@ -53,32 +49,59 @@ export function removeSectionFromGondola(gondolaId: string, sectionId: string) {
 
     if (gondola.sections.length < initialLength) {
         console.log(`Seção ${sectionId} removida da gôndola ${gondolaId}`);
+        forceReactivity(gondolaId, gondola);
         recordChange();
     } else {
         console.warn(`Seção ${sectionId} não encontrada na gôndola ${gondolaId} para remoção.`);
     }
+} 
+
+/**
+ * Helper para forçar reatividade após modificar uma gôndola
+ */
+function forceReactivity(gondolaId: string, updatedGondola: any) {
+    if (!currentState.value) return;
+    
+    const gondolaIndex = currentState.value.gondolas.findIndex(g => g.id === gondolaId);
+    if (gondolaIndex === -1) return;
+    
+    // Força reatividade criando novo array de gôndolas
+    currentState.value.gondolas = [
+        ...currentState.value.gondolas.slice(0, gondolaIndex),
+        { ...updatedGondola },
+        ...currentState.value.gondolas.slice(gondolaIndex + 1)
+    ];
 }
 
 /**
- * Define o alinhamento para uma seção específica
- * @param gondolaId ID da gôndola
- * @param sectionId ID da seção
- * @param alignment Novo valor de alinhamento
+ * Helper para fazer merge profundo de dados de seção
  */
-// export function setSectionAlignment(gondolaId: string, sectionId: string, alignment: string | null) {
-//     const path = findPath(gondolaId, sectionId, null, 'setSectionAlignment');
-//     if (!path) return;
-
-//     const { section } = path;
-
-//     if (section.alignment !== alignment) {
-//         section.alignment = alignment;
-//         console.log(`Alinhamento da seção ${sectionId} definido para ${alignment}`);
-//         recordChange();
-//     } else {
-//         console.log(`Alinhamento da seção ${sectionId} já era ${alignment}.`);
-//     }
-// }
+function mergeSection(originalSection: Section, sectionData: Partial<Section>): Section {
+    const updatedSection = { ...originalSection };
+    
+    for (const key in sectionData) {
+        if (Object.prototype.hasOwnProperty.call(sectionData, key)) {
+            const newValue = sectionData[key as keyof Section];
+            
+            // Mesclagem profunda para 'settings'
+            if (key === 'settings' && typeof newValue === 'object' && newValue !== null) {
+                updatedSection.settings = {
+                    ...originalSection.settings,
+                    ...newValue
+                };
+                
+                // Log para furos recalculados
+                if ('holes' in newValue && Array.isArray((newValue as any).holes)) {
+                    console.log(`Furos recalculados para seção ${originalSection.id}:`, (newValue as any).holes);
+                }
+            } else {
+                (updatedSection as any)[key] = newValue;
+            }
+        }
+    }
+    
+    return updatedSection;
+}
 
 /**
  * Atualiza os dados de uma seção específica
@@ -96,60 +119,25 @@ export function updateSectionData(gondolaId: string, sectionId: string, sectionD
         return;
     }
 
-    const originalSection = gondola.sections[sectionIndex];
-    
-    // Cria o objeto atualizado com mesclagem profunda para propriedades aninhadas
-    const updatedSection = { ...originalSection };
-    
-    // Mescla as propriedades, tratando especialmente objetos aninhados como 'settings'
-    for (const key in sectionData) {
-        if (Object.prototype.hasOwnProperty.call(sectionData, key)) {
-            const newValue = sectionData[key as keyof Section];
-            
-            // Para propriedades de objeto aninhado como 'settings', fazer mesclagem profunda
-            if (key === 'settings' && typeof newValue === 'object' && newValue !== null) {
-                updatedSection.settings = {
-                    ...originalSection.settings,
-                    ...newValue
-                };
-                
-                // Log específico para furos recalculados
-                if (newValue && typeof newValue === 'object' && 'holes' in newValue && Array.isArray((newValue as any).holes)) {
-                    console.log(`Furos recalculados para seção ${sectionId}:`, (newValue as any).holes);
-                }
-            } else {
-                (updatedSection as any)[key] = newValue;
-            }
-        }
-    }
+    // Merge dos dados usando helper
+    const updatedSection = mergeSection(gondola.sections[sectionIndex], sectionData);
 
-    // Atualiza a seção dentro do array da gôndola
-    gondola.sections[sectionIndex] = updatedSection;
+    // Substitui o array inteiro para forçar reatividade
+    gondola.sections = [
+        ...gondola.sections.slice(0, sectionIndex),
+        updatedSection,
+        ...gondola.sections.slice(sectionIndex + 1)
+    ];
     
-    // Se a seção atualizada for a mesma que está selecionada, atualiza as propriedades da ref
-    if (selectedSection.value && selectedSection.value.id === sectionId) {
-        console.log(`Atualizando propriedades da ref selectedSection para ${sectionId}`);
-        
-        // Para propriedades aninhadas como settings, fazer mesclagem profunda
-        for (const key in sectionData) {
-            if (Object.prototype.hasOwnProperty.call(sectionData, key)) {
-                const newValue = sectionData[key as keyof Section];
-                
-                if (key === 'settings' && typeof newValue === 'object' && newValue !== null) {
-                    selectedSection.value.settings = {
-                        ...selectedSection.value.settings,
-                        ...newValue
-                    };
-                } else {
-                    (selectedSection.value as any)[key] = newValue;
-                }
-            }
-        }
+    // Força reatividade no estado global
+    forceReactivity(gondolaId, gondola);
+    
+    // Atualiza seção selecionada se for a mesma
+    if (selectedSection.value?.id === sectionId) {
+        selectedSection.value = mergeSection(selectedSection.value, sectionData);
     }
-
-    console.log(`Dados da seção ${sectionId} atualizados.`);
-    console.log('Settings atualizados:', updatedSection.settings);
-    recordChange(); // Registra após todas as mutações
+ 
+    recordChange();
 }
 
 export function setIsSectionEditing(value: boolean) {

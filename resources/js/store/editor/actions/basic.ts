@@ -80,38 +80,7 @@ export function setCurrentGondola(gondola: Gondola | null) {
         console.log(`Usando histórico existente para gôndola ${gondolaId}`);
     }
 }
-
-/**
- * Salva as alterações atuais (implementação futura)
- */
-// export async function saveChanges() {
-//     if (!currentState.value || !currentGondola.value) return;
-
-//     const gondolaId = currentGondola.value.id;
-//     console.log(`Salvando alterações para gôndola ${gondolaId}...`, currentState.value);
-
-//     // TODO: Implementar chamada API para salvar
-
-//     // Após salvar com sucesso, podemos atualizar o histórico inicial
-//     if (gondolaHistories.value[gondolaId]) {
-//         // Faz do estado atual o novo estado "inicial" após salvar
-//         const newInitialState = JSON.parse(JSON.stringify(currentState.value));
-
-//         gondolaHistories.value[gondolaId] = {
-//             entries: [{
-//                 timestamp: Date.now(),
-//                 state: newInitialState,
-//                 gondolaId
-//             }],
-//             currentIndex: 0
-//         };
-//         console.log(JSON.stringify(gondolaHistories.value[gondolaId], null, 2));
-//         console.log(`Histórico resetado após salvar gôndola ${gondolaId}`);
-//     }
-
-//     alert('Funcionalidade de salvar ainda não implementada!');
-// }
-
+ 
 /**
  * Atualiza uma propriedade específica do planograma
  * @param key Nome da propriedade a ser atualizada
@@ -201,12 +170,16 @@ export async function saveChanges(): Promise<any> {
     setIsLoading(true);
 
     try {
-        const gondola =  currentState.value?.gondolas.filter(g => g.id === currentGondola.value?.id); 
-        currentState.value.gondolas = gondola;
-        // Obtém os dados do planograma atual
+        // Salva todas as gôndolas para restaurar depois
+        const allGondolas = currentState.value.gondolas;
+        
+        // Filtra para enviar apenas a gôndola atual
+        const currentGondolaData = allGondolas.filter(g => g.id === currentGondola.value?.id);
+        
+        // Obtém os dados do planograma atual com apenas a gôndola atual
         const planogramData = {
             ...currentState.value,
-            // Adicionamos campos extras ou necessários aqui
+            gondolas: currentGondolaData,
             updated_at: new Date().toISOString()
         };
 
@@ -214,12 +187,12 @@ export async function saveChanges(): Promise<any> {
         delete (planogramData as any).error;
         delete (planogramData as any).isLoading;
         delete (planogramData as any).store;
-        delete (planogramData as any).client_id; // Exemplo de remoção de campo desnecessário
-        delete (planogramData as any).tenant; // Exemplo de remoção de campo desnecessário
-        delete (planogramData as any).user; // Exemplo de remoção de campo desnecessário
-        delete (planogramData as any).cluster_id; // Exemplo de remoção de campo desnecessário
-        delete (planogramData as any).mercadologico_nivel; // Exemplo de remoção de campo desnecessário 
-        delete (planogramData as any).status_label; // Exemplo de remoção de campo desnecessário  
+        delete (planogramData as any).client_id;
+        delete (planogramData as any).tenant;
+        delete (planogramData as any).user;
+        delete (planogramData as any).cluster_id;
+        delete (planogramData as any).mercadologico_nivel;
+        delete (planogramData as any).status_label;
 
         const editorService = useEditorService();
 
@@ -227,22 +200,14 @@ export async function saveChanges(): Promise<any> {
         const response = await editorService.savePlanogram(planogramData.id as string, planogramData as any);
 
         if (response.data && response.success) {
-            // Se salvou com sucesso, atualiza o estado com os dados retornados (se houver)
-            if (response.data) {
-                // if (!planogramData?.id) {
-                //     throw new Error("Resposta da API não contém ID do planograma");
-                // }
-                // const gondolaId = currentGondola.value?.id;
-                // const response = await editorService.fetchPlanogram(planogramData.id, { gondolaId });
-                // console.log('Dados atualizados após salvar:', response);
-                // initialize(response);
-            }
-
             setIsLoading(false);
+            
+            // Restaura todas as gôndolas no estado
+            currentState.value.gondolas = allGondolas;
+            
             // Reseta o histórico com o novo estado como base
             const gondolaId = currentGondola.value?.id;
             if (gondolaId && gondolaHistories.value[gondolaId]) {
-                // Faz do estado atual o novo estado "inicial" após salvar
                 gondolaHistories.value[gondolaId] = {
                     entries: [{
                         timestamp: Date.now(),
@@ -253,12 +218,12 @@ export async function saveChanges(): Promise<any> {
                 };
             }
 
-            // Notifica o usuário
             showSuccessNotification('Alterações salvas com sucesso!');
-
             return response.data;
         } else {
-            // Se houver erro na resposta
+            // Restaura todas as gôndolas em caso de erro também
+            currentState.value.gondolas = allGondolas;
+            
             const errorMessage = response.data?.message || 'Erro ao salvar alterações';
             setError(errorMessage);
             showErrorNotification(errorMessage);
@@ -270,8 +235,7 @@ export async function saveChanges(): Promise<any> {
         }
     } catch (error) {
         setIsLoading(false);
-        console.log('error', error);
-        // Tratar o erro
+        
         const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido ao salvar';
         console.error('Erro ao salvar alterações:', error);
 
