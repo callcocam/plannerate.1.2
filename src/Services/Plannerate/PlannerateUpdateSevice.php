@@ -37,19 +37,12 @@ class PlannerateUpdateSevice
      * @return void
      * @throws \Exception
      */
-    public function update(Request $request, $planogram): void
+    public function update($data, $planogram): void
     {
         DB::beginTransaction();
 
         try {
-            $data = $request->all();
-
-            Log::info('🔄 [UPDATE SERVICE] Iniciando atualização do planograma', [
-                'planogram_id' => $planogram->id,
-                'planogram_name' => $planogram->name,
-                'gondolas_count' => count(data_get($data, 'gondolas', [])),
-            ]);
-
+ 
             // Atualiza os atributos básicos do planograma
             $planogram->fill($this->filterPlanogramAttributes($data));
             $planogram->save();
@@ -66,7 +59,6 @@ class PlannerateUpdateSevice
             Log::info('🎉 [UPDATE SERVICE] Atualização do planograma concluída com sucesso', [
                 'planogram_id' => $planogram->id,
             ]);
-
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -143,7 +135,7 @@ class PlannerateUpdateSevice
             if (!$gondola) {
                 // Criar nova gôndola
                 $gondola = new Gondola();
-                $gondola->id = (string) Str::orderedUuid();
+                $gondola->id = (string) Str::ulid();
                 $gondola->tenant_id = $planogram->tenant_id;
                 $gondola->user_id = $planogram->user_id;
                 $gondola->planogram_id = $planogram->id;
@@ -251,7 +243,7 @@ class PlannerateUpdateSevice
             if (!$section) {
                 // Criar nova seção
                 $section = Section::query()->create([
-                    'id' => (string) Str::orderedUuid(),
+                    'id' => (string) Str::ulid(),
                     'tenant_id' => $gondola->tenant_id,
                     'user_id' => $gondola->user_id,
                     'gondola_id' => $gondola->id,
@@ -366,7 +358,7 @@ class PlannerateUpdateSevice
             if (!$shelf) {
                 // Criar nova prateleira
                 $shelf = Shelf::query()->create([
-                    'id' => (string) Str::orderedUuid(),
+                    'id' => (string) Str::ulid(),
                     'tenant_id' => $section->tenant_id,
                     'user_id' => $section->user_id,
                     'section_id' => $section->id,
@@ -467,7 +459,7 @@ class PlannerateUpdateSevice
 
             if (!$segment) {
                 // Preparar novo segmento para batch insert
-                $segmentId = (string) Str::orderedUuid();
+                $segmentId = (string) Str::ulid();
                 $createdCount++;
             } else {
                 $segmentId = $segment->id;
@@ -498,7 +490,7 @@ class PlannerateUpdateSevice
             Segment::upsert(
                 $segmentsToUpsert,
                 ['id'], // Unique identifier
-                ['width', 'ordering', 'position', 'quantity', 'spacing', 'settings', 'alignment', 'status', 'shelf_id'] // Campos para atualizar
+                ['width', 'ordering', 'position', 'quantity', 'spacing', 'alignment', 'status', 'shelf_id'] // Campos para atualizar
             );
         }
 
@@ -535,7 +527,7 @@ class PlannerateUpdateSevice
             'position' => data_get($data, 'position', 0),
             'quantity' => data_get($data, 'quantity', 1),
             'spacing' => data_get($data, 'spacing', 2),
-            'settings' => data_get($data, 'settings', []),
+            // 'settings' => data_get($data, 'settings', []),
             'alignment' => data_get($data, 'alignment', 'left'),
             'status' => $status,
         ];
@@ -569,7 +561,7 @@ class PlannerateUpdateSevice
         if (!$layer) {
             // Criar nova layer
             $layer = Layer::query()->create([
-                'id' => (string) Str::orderedUuid(),
+                'id' => (string) Str::ulid(),
                 'tenant_id' => $segment->tenant_id,
                 'user_id' => $segment->user_id,
                 'segment_id' => $segment->id,
@@ -628,7 +620,7 @@ class PlannerateUpdateSevice
             $layerId = $existingLayer ? $existingLayer->id : data_get($layerData, 'id');
 
             if (!$layerId) {
-                $layerId = (string) Str::orderedUuid();
+                $layerId = (string) Str::ulid();
                 $createdCount++;
             } else {
                 $updatedCount++;

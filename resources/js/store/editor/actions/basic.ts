@@ -212,6 +212,12 @@ export async function saveChanges(): Promise<any> {
         delete (planogramData as any).error;
         delete (planogramData as any).isLoading;
         delete (planogramData as any).store;
+        delete (planogramData as any).client_id; // Exemplo de remoção de campo desnecessário
+        delete (planogramData as any).tenant; // Exemplo de remoção de campo desnecessário
+        delete (planogramData as any).user; // Exemplo de remoção de campo desnecessário
+        delete (planogramData as any).cluster_id; // Exemplo de remoção de campo desnecessário
+        delete (planogramData as any).mercadologico_nivel; // Exemplo de remoção de campo desnecessário 
+        delete (planogramData as any).status_label; // Exemplo de remoção de campo desnecessário  
 
         const editorService = useEditorService();
 
@@ -221,13 +227,13 @@ export async function saveChanges(): Promise<any> {
         if (response.data && response.success) {
             // Se salvou com sucesso, atualiza o estado com os dados retornados (se houver)
             if (response.data) {
-                if (!planogramData?.id) {
-                    throw new Error("Resposta da API não contém ID do planograma");
-                }
-                const gondolaId = currentGondola.value?.id;
-                const response = await editorService.fetchPlanogram(planogramData.id, { gondolaId });
-                console.log('Dados atualizados após salvar:', response);
-                initialize(response);
+                // if (!planogramData?.id) {
+                //     throw new Error("Resposta da API não contém ID do planograma");
+                // }
+                // const gondolaId = currentGondola.value?.id;
+                // const response = await editorService.fetchPlanogram(planogramData.id, { gondolaId });
+                // console.log('Dados atualizados após salvar:', response);
+                // initialize(response);
             }
 
             setIsLoading(false);

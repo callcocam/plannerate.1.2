@@ -10,6 +10,7 @@ namespace Callcocam\Plannerate\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Callcocam\Plannerate\Http\Resources\PlannerateResource;
+use Callcocam\Plannerate\Jobs\SavePlanogramJob;
 use Callcocam\Plannerate\Models\Gondola;
 use Callcocam\Plannerate\Models\Layer;
 use Callcocam\Plannerate\Models\Planogram;
@@ -50,7 +51,7 @@ class PlannerateController extends Controller
                 'gondolas.sections.shelves.segments',
                 'gondolas.sections.shelves.segments.layer',
                 'gondolas.sections.shelves.segments.layer.product:id,name,ean,description,url'
-            ])->findOrFail($id); 
+            ])->findOrFail($id);
 
             // $planogram->load([
             //     'gondolas' => function ($query) use ($request) {
@@ -59,7 +60,7 @@ class PlannerateController extends Controller
             //         }
             //     }
             // ]);
-            
+
 
             return response()->json(new PlannerateResource($planogram));
         } catch (ModelNotFoundException $e) {
@@ -91,21 +92,21 @@ class PlannerateController extends Controller
     public function save(Request $request, Planogram $planogram)
     {
         // Iniciar uma transação para garantir a consistência dos dados
-        DB::beginTransaction();
+        // DB::beginTransaction();
 
         try {
             $data = $request->all();
 
-            // Atualiza os atributos básicos do planograma
-            $planogram->fill($this->filterPlanogramAttributes($data));
+            // // Atualiza os atributos básicos do planograma
+            // $planogram->fill($this->filterPlanogramAttributes($data));
 
-            $planogram->save();
-            // Processa as gôndolas e sua estrutura aninhada
-            $this->processGondolas($planogram, data_get($data, 'gondolas', []));
+            // $planogram->save();
+            // // Processa as gôndolas e sua estrutura aninhada
+            // $this->processGondolas($planogram, data_get($data, 'gondolas', []));
 
-            // Se chegou até aqui sem erros, confirma a transação
-            DB::commit();
- 
+            // // Se chegou até aqui sem erros, confirma a transação
+            // DB::commit();
+            SavePlanogramJob::dispatch($data, $planogram);
 
             return response()->json([
                 'success' => true,
@@ -114,7 +115,7 @@ class PlannerateController extends Controller
             ]);
         } catch (\Exception $e) {
             // Em caso de erro, reverte todas as alterações
-            DB::rollBack();
+            // DB::rollBack();
 
             Log::error('Erro ao salvar planograma:', [
                 'exception' => $e->getMessage(),
@@ -182,7 +183,7 @@ class PlannerateController extends Controller
             if (!$gondola) {
                 $gondola = new Gondola();
             }
-   
+
             // Atualizar atributos da gôndola
             $gondola->fill($this->filterGondolaAttributes($gondolaData));
             $gondola->save();
