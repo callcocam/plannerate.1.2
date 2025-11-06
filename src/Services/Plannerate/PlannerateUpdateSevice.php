@@ -21,12 +21,20 @@ use Illuminate\Support\Str;
 
 class PlannerateUpdateSevice
 {
+
+    protected $user = null;
+
+    public function __construct($user)
+    {
+        $this->user = $user;
+    }
+
     /**
      * Factory method para criar uma instância do serviço
      */
-    public static function make(): PlannerateUpdateSevice
+    public static function make($user): PlannerateUpdateSevice
     {
-        return new static();
+        return new static($user);
     }
 
     /**
@@ -42,7 +50,7 @@ class PlannerateUpdateSevice
         DB::beginTransaction();
 
         try {
- 
+
             // Atualiza os atributos básicos do planograma
             $planogram->fill($this->filterPlanogramAttributes($data));
             $planogram->save();
@@ -259,8 +267,13 @@ class PlannerateUpdateSevice
             $data['gondola_id'] = $gondola->id;
             $data['name'] = sprintf('%d# Sessão', $i);
             $section->timestamps = false; // Desabilitar timestamps para performance
-            $section->update($data);
-            
+            if ($section->update($data)) {
+                activity('plannerate')
+                    ->causedBy($this->user)
+                    ->performedOn($section) 
+                    ->log('Seção atualizada via PlannerateUpdateService');
+            }
+
 
             // Registrar ID processado
             $processedSectionIds[] = $section->id;
@@ -373,7 +386,12 @@ class PlannerateUpdateSevice
             $data = $this->filterShelfAttributes($shelfData, $shelfService, $i, $section);
             $data['section_id'] = $section->id;
             $shelf->timestamps = false; // Desabilitar timestamps para performance
-            $shelf->update($data);
+           if ($shelf->update($data)) {
+                activity('plannerate')
+                    ->causedBy($this->user)
+                    ->performedOn($shelf) 
+                    ->log('Prateleira atualizada via PlannerateUpdateService');
+            }
 
             // Registrar ID processado
             $processedShelfIds[] = $shelf->id;
@@ -535,7 +553,7 @@ class PlannerateUpdateSevice
 
         return $fillable;
     }
- 
+
 
     /**
      * Processa múltiplas layers em batch para performance

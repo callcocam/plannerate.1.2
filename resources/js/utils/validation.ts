@@ -1,5 +1,6 @@
 import type { Shelf } from '@plannerate/types/shelves';
 import type { Layer } from '@plannerate/types/segment'; // Importar Segment novamente
+import { ulid } from 'ulid';
 
 /**
  * Valida se a largura total dos segmentos em uma prateleira, considerando uma mudança proposta
@@ -24,7 +25,7 @@ export function validateShelfWidth(
     let temporarySegmentId: string | null = null;
 
     if (addedSegmentLayer) {
-        temporarySegmentId = `temp-add-${Date.now()}`;
+        temporarySegmentId = ulid();
         // Usar 'as any' para contornar a incompatibilidade de tipos estrita
         segmentsToCalculate.push({
             id: temporarySegmentId,

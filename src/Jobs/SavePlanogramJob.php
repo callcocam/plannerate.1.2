@@ -23,7 +23,7 @@ class SavePlanogramJob implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct(public $request, public Planogram $planogram)
+    public function __construct(public $request, public Planogram $planogram, public $user = null)
     {
         //
     }
@@ -33,7 +33,7 @@ class SavePlanogramJob implements ShouldQueue
      */
     public function handle(): void
     {
-       PlannerateUpdateSevice::make()->update($this->request, $this->planogram);
+       PlannerateUpdateSevice::make($this->user)->update($this->request, $this->planogram);
     }
  
 }

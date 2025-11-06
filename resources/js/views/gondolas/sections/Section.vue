@@ -17,6 +17,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { ulid } from 'ulid';
 import { useEditorStore } from '@plannerate/store/editor';
 import { Section } from '@plannerate/types/sections';
 import { Product, Segment } from '@plannerate/types/segment';
@@ -78,12 +79,10 @@ const calculateHoles = (section: Section) => {
 };
 
 const createSegment = (product: Product, shelf: ShelfType, quantity = 1): Segment => {
-    const timestamp = Date.now();
-    const random = Math.random().toString(36).substr(2, 9);
     const ordering = (shelf.segments?.length || 0) + 1;
-
+    const segmentId = ulid();
     return {
-        id: `segment-${timestamp}-${random}-${ordering}`,
+        id: segmentId,
         user_id: null,
         tenant_id: '',
         width: props.section.width,
@@ -97,13 +96,13 @@ const createSegment = (product: Product, shelf: ShelfType, quantity = 1): Segmen
         status: 'published',
         tabindex: ordering,
         layer: {
-            id: `layer-${timestamp}-${random}`,
+            id: ulid(),
             product_id: product.id,
             product: product,
             quantity,
             status: 'published',
             height: product.height,
-            segment_id: `segment-${timestamp}-${random}-${ordering}`,
+            segment_id: segmentId,
             tabindex: 0,
         },
     };
@@ -182,7 +181,7 @@ const handleDrop = async (event: DragEvent) => {
 // ===== Product Drop Handlers =====
 const validateAndAddProduct = (product: Product, shelf: ShelfType, quantity = 1) => {
     const tempLayer = {
-        id: `temp-${Date.now()}`,
+        id: ulid(),
         product_id: product.id,
         product: product,
         quantity,

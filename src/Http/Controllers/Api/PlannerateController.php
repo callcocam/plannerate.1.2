@@ -106,7 +106,7 @@ class PlannerateController extends Controller
 
             // // Se chegou até aqui sem erros, confirma a transação
             // DB::commit();
-            SavePlanogramJob::dispatch($data, $planogram);
+            SavePlanogramJob::dispatch($data, $planogram, auth()->user());
 
             return response()->json([
                 'success' => true,
