@@ -29,10 +29,16 @@ export const useEditorService = () => {
     return apiService.get(`/plannerate/${planogramId}`, {params});
   };
 
+  const fetchPlanograms = (params = {}) => {
+    console.log('Fetching planograms with params:', params);
+    return apiService.get(`/planograms`, {params});
+  };
+
   return {
     updateScaleFactor,
-    saveContent,
+    saveContent,  
     fetchPlanogram,
+    fetchPlanograms,
     savePlanogram
   };
 };

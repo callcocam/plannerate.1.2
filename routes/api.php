@@ -15,6 +15,7 @@ Route::middleware(['api'])
     ->name('api.')
     ->group(function () {
 
+        Route::get('planograms', [PlannerateController::class, 'index'])->name('plannerate.index');
         Route::get('plannerate/{id}', [PlannerateController::class, 'show'])->name('plannerate.show');
 
         Route::put('plannerate/{planogram}', [PlannerateController::class, 'save'])->name('plannerate.save');

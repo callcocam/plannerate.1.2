@@ -29,6 +29,34 @@ use Throwable;
 class PlannerateController extends Controller
 {
 
+
+    public function index(Request $request): JsonResponse
+    {
+        try {
+            $planograms = Planogram::query()
+                ->with(['tenant:id,name', 'gondolas'])
+                ->when($request->has('store_id'), function ($query) use ($request) {
+                    $query->where('store_id', $request->get('store_id'));
+                })
+                ->when($request->has('cluster_id'), function ($query) use ($request) {
+                    $query->where('cluster_id', $request->get('cluster_id'));
+                })
+                ->get();
+
+            return response()->json(PlannerateResource::collection($planograms));
+        } catch (Throwable $e) {
+            Log::error('Erro ao listar planogramas', [
+                'exception' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'message' => $e->getMessage(),
+                'status' => 'error'
+            ], 500);
+        }
+    }
     /**
      * Exibe um planograma específico
      * 
