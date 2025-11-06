@@ -201,6 +201,8 @@ export async function saveChanges(): Promise<any> {
     setIsLoading(true);
 
     try {
+        const gondola =  currentState.value?.gondolas.filter(g => g.id === currentGondola.value?.id); 
+        currentState.value.gondolas = gondola;
         // Obtém os dados do planograma atual
         const planogramData = {
             ...currentState.value,

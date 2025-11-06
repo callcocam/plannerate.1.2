@@ -6,7 +6,7 @@
  * https://www.sigasmart.com.br
  */
 
-namespace Callcocam\Plannerate\Http\Controllers\Api; 
+namespace Callcocam\Plannerate\Http\Controllers\Api;
 
 use Callcocam\Plannerate\Http\Requests\Layer\Api\UpdateLayerRequest;
 use Callcocam\Plannerate\Http\Resources\LayerSingleResource;
@@ -43,17 +43,23 @@ class LayerController extends Controller
      * @param Layer $layer
      * @return \Illuminate\Http\JsonResponse
      */
-    public function show(Request $request, Layer $layer)
+    public function show(Request $request,  $layer)
     {
-        try { 
+        try {
+            if ($layer = Layer::find($layer)) {
+                DB::beginTransaction();
+            } else {
+                return response()->json(['message' => 'Camada não encontrada, por favor aguarde um momento'], 200);
+            }
+            DB::commit();
             $layer->load([
                 'product',
                 'product.image',
                 'product.sales',
                 'product.purchases',
-            ]); 
+            ]);
             return response()->json(new LayerSingleResource($layer), 200);
-        } catch (\Exception $e) { 
+        } catch (\Exception $e) {
             return $this->handleInternalServerError('Erro ao carregar a camada');
         }
     }
@@ -64,7 +70,7 @@ class LayerController extends Controller
      */
     public function store(Request $request, Layer $layer)
     {
-        $validated = $request->all(); 
+        $validated = $request->all();
         // Processa atualização normal
         try {
             DB::beginTransaction();

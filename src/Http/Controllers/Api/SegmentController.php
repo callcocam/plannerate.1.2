@@ -81,7 +81,7 @@ class SegmentController extends Controller
                 $segment->layer()->create($layer);
             }
             return $this->handleSuccess('Segmento criado com sucesso', [
-                'data' => new SegmentResource($segment),
+                'data' => []
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
