@@ -13,10 +13,13 @@ use Callcocam\LaraGatekeeper\Core\Landlord\BelongsToTenants;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class Layer extends Model
 {
     use HasUlids, SoftDeletes, BelongsToTenants;
+    use LogsActivity;
 
     protected $fillable = [
         'tenant_id',
@@ -65,5 +68,12 @@ class Layer extends Model
         $this->save();
 
         return $this;
+    }
+    
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['*']);
+        // Chain fluent methods for configuration options
     }
 }

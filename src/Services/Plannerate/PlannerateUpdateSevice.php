@@ -260,6 +260,7 @@ class PlannerateUpdateSevice
             $data['name'] = sprintf('%d# Sessão', $i);
             $section->timestamps = false; // Desabilitar timestamps para performance
             $section->update($data);
+            
 
             // Registrar ID processado
             $processedSectionIds[] = $section->id;
@@ -534,57 +535,7 @@ class PlannerateUpdateSevice
 
         return $fillable;
     }
-
-    /**
-     * Processa a camada (layer) de um segmento
-     * Remove layers órfãs e gerencia a relação 1:1
-     *
-     * @param Segment $segment
-     * @param array $layerData
-     * @return void
-     */
-    private function processLayer(Segment $segment, array $layerData): void
-    {
-        $layerId = data_get($layerData, 'id');
-        $layer = null;
-
-        // Verificar se a layer existe
-        if ($layerId) {
-            $layer = Layer::query()->where('id', $layerId)->first();
-        }
-
-        // Se não existe, tentar buscar pela relação com o segmento
-        if (!$layer) {
-            $layer = Layer::query()->where('segment_id', $segment->id)->first();
-        }
-
-        if (!$layer) {
-            // Criar nova layer
-            $layer = Layer::query()->create([
-                'id' => (string) Str::ulid(),
-                'tenant_id' => $segment->tenant_id,
-                'user_id' => $segment->user_id,
-                'segment_id' => $segment->id,
-            ]);
-        }
-
-        // Atualizar atributos da camada
-        $layer->fill($this->filterLayerAttributes($layerData));
-        $layer->segment_id = $segment->id;
-        $layer->timestamps = false; // Desabilitar timestamps para performance
-        $layer->save();
-
-        // IMPORTANTE: Como a relação é 1:1, se houver outras layers órfãs
-        // vinculadas a este segmento (não deveria acontecer), removê-las
-        $orphanLayers = Layer::query()
-            ->where('segment_id', $segment->id)
-            ->where('id', '!=', $layer->id)
-            ->get();
-
-        if ($orphanLayers->isNotEmpty()) {
-            $orphanLayers->each->delete();
-        }
-    }
+ 
 
     /**
      * Processa múltiplas layers em batch para performance

@@ -9,14 +9,16 @@
 namespace Callcocam\Plannerate\Models;
 
 use Callcocam\LaraGatekeeper\Core\Landlord\BelongsToTenants;
-use Callcocam\Plannerate\Enums\ShelfStatus; 
+use Callcocam\Plannerate\Enums\ShelfStatus;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\LogOptions;
 
 class Shelf extends Model
 {
     use  HasUlids, SoftDeletes, BelongsToTenants;
+    use \Spatie\Activitylog\Traits\LogsActivity;
 
     protected $fillable = [
         'tenant_id',
@@ -53,5 +55,13 @@ class Shelf extends Model
     public function segments()
     {
         return $this->hasMany(Segment::class)->orderBy('ordering');
+    }
+
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['*']);
+        // Chain fluent methods for configuration options
     }
 }

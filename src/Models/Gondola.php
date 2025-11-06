@@ -16,12 +16,15 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model; 
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 use Tall\Sluggable\HasSlug;
 use Tall\Sluggable\SlugOptions;
 
 class Gondola extends Model
 {
     use HasFactory, HasSlug, HasUlids, SoftDeletes, BelongsToTenants;
+     use LogsActivity;
 
     protected $fillable = [ 
         'user_id',
@@ -75,5 +78,13 @@ class Gondola extends Model
                 ->generateSlugsFrom($this->slugFrom())
                 ->saveSlugsTo($this->slugTo());
         }
+    }
+
+    
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['*']);
+        // Chain fluent methods for configuration options
     }
 }

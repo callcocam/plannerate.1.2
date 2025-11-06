@@ -18,11 +18,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\LogOptions;
 use Tall\Sluggable\SlugOptions;
 
 class Section extends Model
 {
     use HasFactory, HasSlug, HasUlids, SoftDeletes, BelongsToTenants;
+    use \Spatie\Activitylog\Traits\LogsActivity;
 
     protected $fillable = [
         'tenant_id',
@@ -121,5 +123,12 @@ class Section extends Model
                 ->generateSlugsFrom($this->slugFrom())
                 ->saveSlugsTo($this->slugTo());
         }
+    }
+    
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['*']);
+        // Chain fluent methods for configuration options
     }
 }

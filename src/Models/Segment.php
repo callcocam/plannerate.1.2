@@ -12,10 +12,12 @@ use Callcocam\LaraGatekeeper\Core\Landlord\BelongsToTenants;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\LogOptions;
 
 class Segment extends Model
 {
     use HasUlids, SoftDeletes, BelongsToTenants;
+    use \Spatie\Activitylog\Traits\LogsActivity;
 
     protected $fillable = [
         'tenant_id',
@@ -43,5 +45,13 @@ class Segment extends Model
     public function shelf()
     {
         return $this->belongsTo(Shelf::class);
+    }
+
+    
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['*']);
+        // Chain fluent methods for configuration options
     }
 }

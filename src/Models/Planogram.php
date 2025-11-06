@@ -16,12 +16,14 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\LogOptions;
 use Tall\Sluggable\HasSlug;
 use Tall\Sluggable\SlugOptions;
 
 class Planogram extends Model
 {
     use HasFactory, HasUlids, SoftDeletes, HasSlug, BelongsToTenants;
+    use \Spatie\Activitylog\Traits\LogsActivity;
 
     protected $guarded = ['id'];
 
@@ -58,5 +60,12 @@ class Planogram extends Model
                 ->generateSlugsFrom($this->slugFrom())
                 ->saveSlugsTo($this->slugTo());
         }
+    }
+    
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['*']);
+        // Chain fluent methods for configuration options
     }
 }
