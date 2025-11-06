@@ -10,10 +10,10 @@ namespace Callcocam\Plannerate\Models;
 
 use App\Models\StoreMapGondola;
 use Callcocam\LaraGatekeeper\Core\Landlord\BelongsToTenants;
-use Callcocam\Plannerate\Enums\GondolaStatus;   
+use Callcocam\Plannerate\Enums\GondolaStatus;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model; 
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\LogOptions;
@@ -24,9 +24,9 @@ use Tall\Sluggable\SlugOptions;
 class Gondola extends Model
 {
     use HasFactory, HasSlug, HasUlids, SoftDeletes, BelongsToTenants;
-     use LogsActivity;
+    use LogsActivity;
 
-    protected $fillable = [ 
+    protected $fillable = [
         'user_id',
         'planogram_id',
         'name',
@@ -46,7 +46,7 @@ class Gondola extends Model
         'scale_factor' => 'integer',
         'status' => GondolaStatus::class,
     ];
- 
+
 
     public function sections(): HasMany
     {
@@ -80,7 +80,7 @@ class Gondola extends Model
         }
     }
 
-    
+
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
