@@ -312,7 +312,10 @@
                     >
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Selecione a gôndola à qual esta seção pertence {{ formData.gondola_id }}</p>
+                    <p>
+                      Selecione a gôndola à qual esta seção pertence
+                      {{ formData.gondola_id }}
+                    </p>
                   </TooltipContent>
                 </Tooltip>
                 <Select id="gondola_id" v-model="formData.gondola_id" class="h-8">
@@ -637,7 +640,7 @@ const recalculatedHoles = computed(() => {
     hole_height: formData.value.hole_height || selectedSection.value?.hole_height || 0,
     hole_width: formData.value.hole_width || selectedSection.value?.hole_width || 0,
     hole_spacing: formData.value.hole_spacing || selectedSection.value?.hole_spacing || 0,
-    base_height: formData.value.base_height || selectedSection.value?.base_height || 0, 
+    base_height: formData.value.base_height || selectedSection.value?.base_height || 0,
   };
 
   return calculateHoles(sectionData);
@@ -650,7 +653,7 @@ const currentHolesCount = computed(() => {
 
 // Inicializa o formulário com valores padrão
 const formData = ref<Partial<Section>>({
-  gondola_id: selectedSection.value?.gondola_id || '',
+  gondola_id: selectedSection.value?.gondola_id || "",
   name: "",
   width: 0,
   height: 0,
@@ -670,7 +673,7 @@ watch(
   (newSection: Section) => {
     if (newSection) {
       formData.value = {
-        gondola_id: newSection.gondola_id || '',
+        gondola_id: newSection.gondola_id || "",
         name: newSection.name,
         width: newSection.width,
         height: newSection.height,
@@ -699,7 +702,7 @@ const cancelEditing = () => {
   // Reset do formulário para os valores originais
   if (selectedSection.value) {
     formData.value = {
-      gondola_id: selectedSection.value.gondola_id || '',
+      gondola_id: selectedSection.value.gondola_id || "",
       name: selectedSection.value.name,
       width: selectedSection.value.width,
       height: selectedSection.value.height,
@@ -767,7 +770,16 @@ const saveChanges = async () => {
 
   try {
     // Primeiro, atualizar no estado local para feedback imediato
-    editorStore.updateSectionData(correctGondolaId, sectionId, dataToSave);
+    editorStore.updateSectionData(
+      dataToSave.gondola_id ?? correctGondolaId,
+      sectionId,
+      dataToSave
+    );
+
+    if (correctGondolaId != dataToSave.gondola_id) {
+      // Se a gôndola foi alterada, remover a seção da gôndola antiga
+      editorStore.removeSectionFromGondola(correctGondolaId, sectionId);
+    }
 
     // Depois, sincronizar com o backend para recalcular os furos
     const { useSectionService } = await import("../../../services/sectionService");
@@ -775,11 +787,12 @@ const saveChanges = async () => {
 
     const response = await sectionService.updateSection(sectionId, dataToSave);
 
-    if (response.data && response.data.data) {
+    console.log("Resposta do backend ao salvar seção:", response.data);
+
+    if (response.data) {
       // Atualizar o estado local com os dados retornados do backend (incluindo furos recalculados)
-      const updatedSection = response.data.data;
+      const updatedSection = response.data;
       editorStore.updateSectionData(correctGondolaId, sectionId, updatedSection);
- 
     }
 
     toast.success("Seção atualizada com sucesso!", {

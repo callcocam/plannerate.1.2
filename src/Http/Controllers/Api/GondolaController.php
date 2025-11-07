@@ -134,6 +134,40 @@ class GondolaController extends Controller
             return $this->handleInternalServerError('Ocorreu um erro ao carregar a gôndola');
         }
     }
+    /**
+     * Exibe uma gôndola específica
+     * 
+     * @param string $id
+     * @return GondolaResource|JsonResponse
+     */
+    public function getGondola(string $id)
+    {
+        try {
+            // Verificar se o planograma existe  
+            $gondolas = Gondola::with([
+                'sections:id,gondola_id,name,code,width,height,num_shelves,base_height,base_width,base_depth,cremalheira_width,hole_height,hole_width,hole_spacing,ordering,settings,status,tenant_id,user_id',
+                'sections.shelves:id,section_id,code,product_type,shelf_width,shelf_height,shelf_depth,shelf_position,ordering,status,tenant_id,user_id,spacing',
+                'sections.shelves.segments:id,shelf_id,width,height,ordering,position,quantity,settings,status,tenant_id,user_id',
+                'sections.shelves.segments.layer:id,segment_id,product_id,height,quantity,alignment,spacing,settings,status,tenant_id,user_id',
+                'sections.shelves.segments.layer.product:id,name,ean,description,url'
+            ])
+                 ->where('id', $id)->get();
+
+            return  GondolaResource::collection($gondolas)
+                ->additional([
+                    'message' => null,
+                    'status' => 'success'
+                ]);
+        } catch (ModelNotFoundException $e) {
+            return $this->handleNotFoundException('Gôndola ou planograma não encontrado',[
+                'message' => $e->getMessage()
+            ]);
+        } catch (Throwable $e) {
+            return $this->handleInternalServerError('Ocorreu um erro ao carregar a gôndola',[
+                'message' => $e->getMessage()
+            ]);
+        }
+    }
 
     /**
      * Armazena uma nova gôndola
@@ -505,7 +539,7 @@ class GondolaController extends Controller
                 $section = $gondola->sections->where('ordering', $modulo - 1)->first();
                 if ($section) {
                     $shelf = $section->shelves->where('ordering', $prateleira - 1)
-                    ->first();
+                        ->first();
                     if ($shelf) {
 
                         $product = Product::where('ean', $ean)->first();

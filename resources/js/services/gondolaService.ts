@@ -9,6 +9,12 @@ export const useGondolaService = () => {
     const fetchGondola = async (gondolaId: string) => {
         return apiService.get(`gondolas/${gondolaId}`);
     };
+    /**
+     * Busca uma gôndola específica pelo ID
+     */
+    const getGondola = async (gondolaId: string) => {
+        return apiService.get(`gondola/${gondolaId}/editar`);
+    };
 
     /**
      * Atualiza os dados de uma gôndola
@@ -72,6 +78,7 @@ export const useGondolaService = () => {
         updateGondola,
         updateGondolaAlignment,
         deleteGondola,
-        uploadGondolaCSV
+        uploadGondolaCSV,
+        getGondola
     };
 };

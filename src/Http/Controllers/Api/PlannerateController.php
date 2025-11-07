@@ -80,6 +80,7 @@ class PlannerateController extends Controller
                 'gondolas.sections.shelves.segments.layer',
                 'gondolas.sections.shelves.segments.layer.product:id,name,ean,description,url'
             ])->findOrFail($id);
+            
 
             // $planogram->load([
             //     'gondolas' => function ($query) use ($request) {
