@@ -48,9 +48,7 @@ export function initialize(initialPlanogramData: Omit<PlanogramEditorState, 'sca
 
     // Limpa o histórico e referências anteriores
     gondolaHistories.value = {};
-    currentGondola.value = null;
-
-    console.log('Editor store inicializado com sucesso.');
+    currentGondola.value = null; 
 }
 
 /**
