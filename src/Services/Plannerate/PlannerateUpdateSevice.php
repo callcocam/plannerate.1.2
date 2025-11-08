@@ -478,7 +478,7 @@ class PlannerateUpdateSevice
 
             // Preparar dados para batch upsert
             $data = $this->filterSegmentAttributes($segmentData);
-            $data['id'] = $segmentId;
+            $data['id'] = substr($segmentId, 0, 27); // ULID tem 26 caracteres, garantir que não exceda
             $data['shelf_id'] = $shelf->id;
             $data['tenant_id'] = $shelf->tenant_id;
             $data['user_id'] = $shelf->user_id;
@@ -587,7 +587,7 @@ class PlannerateUpdateSevice
 
             // Preparar dados para batch upsert
             $data = $this->filterLayerAttributes($layerData);
-            $data['id'] = $layerId;
+            $data['id'] = substr($layerId, 0, 27); // ULID tem 26 caracteres, garantir que não exceda
             $data['segment_id'] = $segmentId;
 
             // Pegar tenant_id e user_id do segment
