@@ -55,18 +55,10 @@ class PlannerateUpdateSevice
             $planogram->fill($this->filterPlanogramAttributes($data));
             $planogram->save();
 
-            Log::info('✅ [UPDATE SERVICE] Planograma atualizado', [
-                'planogram_id' => $planogram->id,
-            ]);
-
             // Processa as gôndolas e sua estrutura aninhada
             $this->processGondolas($planogram, data_get($data, 'gondolas', []));
 
             DB::commit();
-
-            Log::info('🎉 [UPDATE SERVICE] Atualização do planograma concluída com sucesso', [
-                'planogram_id' => $planogram->id,
-            ]);
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -270,7 +262,7 @@ class PlannerateUpdateSevice
             if ($section->update($data)) {
                 activity('plannerate')
                     ->causedBy($this->user)
-                    ->performedOn($section) 
+                    ->performedOn($section)
                     ->log('Seção atualizada via PlannerateUpdateService');
             }
 
@@ -366,13 +358,13 @@ class PlannerateUpdateSevice
             ->keyBy('id');
 
         foreach ($shelves as $i => $shelfData) {
-            $shelfId = data_get($shelfData, 'id');
+            $shelfId = data_get($shelfData, 'id', (string) Str::ulid());
             $shelf = $existingShelves->get($shelfId);
 
             if (!$shelf) {
                 // Criar nova prateleira
                 $shelf = Shelf::query()->create([
-                    'id' => (string) Str::ulid(),
+                    'id' => $shelfId,
                     'tenant_id' => $section->tenant_id,
                     'user_id' => $section->user_id,
                     'section_id' => $section->id,
@@ -386,10 +378,10 @@ class PlannerateUpdateSevice
             $data = $this->filterShelfAttributes($shelfData, $shelfService, $i, $section);
             $data['section_id'] = $section->id;
             $shelf->timestamps = false; // Desabilitar timestamps para performance
-           if ($shelf->update($data)) {
+            if ($shelf->update($data)) {
                 activity('plannerate')
                     ->causedBy($this->user)
-                    ->performedOn($shelf) 
+                    ->performedOn($shelf)
                     ->log('Prateleira atualizada via PlannerateUpdateService');
             }
 
@@ -473,12 +465,11 @@ class PlannerateUpdateSevice
             ->keyBy('id');
 
         foreach ($segments as $segmentData) {
-            $segmentId = data_get($segmentData, 'id');
+            $segmentId = data_get($segmentData, 'id', (string) Str::ulid());
             $segment = $existingSegments->get($segmentId);
 
             if (!$segment) {
-                // Preparar novo segmento para batch insert
-                $segmentId = (string) Str::ulid();
+                // Preparar novo segmento para batch insert 
                 $createdCount++;
             } else {
                 $segmentId = $segment->id;
@@ -586,10 +577,9 @@ class PlannerateUpdateSevice
             $layerData = $item['layer_data'];
 
             $existingLayer = $existingLayers->get($segmentId);
-            $layerId = $existingLayer ? $existingLayer->id : data_get($layerData, 'id');
+            $layerId = data_get($layerData, 'id', (string) Str::ulid());
 
-            if (!$layerId) {
-                $layerId = (string) Str::ulid();
+            if (!$existingLayer) {
                 $createdCount++;
             } else {
                 $updatedCount++;

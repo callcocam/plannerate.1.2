@@ -153,8 +153,6 @@ export function toggleGrid() {
         recordChange();
     }
 }
-
-
 // Função saveChanges atualizada no /store/editor/actions/basic.ts
 
 /**
