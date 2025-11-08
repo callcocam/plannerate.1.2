@@ -364,7 +364,7 @@ class PlannerateUpdateSevice
             if (!$shelf) {
                 // Criar nova prateleira
                 $shelf = Shelf::query()->create([
-                    'id' => $shelfId,
+                    'id' =>  substr($shelfId, 0, 27), // ULID tem 26 caracteres, garantir que não exceda
                     'tenant_id' => $section->tenant_id,
                     'user_id' => $section->user_id,
                     'section_id' => $section->id,
