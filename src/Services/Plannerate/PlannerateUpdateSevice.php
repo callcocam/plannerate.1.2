@@ -598,8 +598,8 @@ class PlannerateUpdateSevice
                 $data['user_id'] = $segment->user_id;
             } else {
                 // Fallback: usar tenant_id e user_id de algum lugar padrão
-                $data['tenant_id'] = $shelf->tenant_id ?? null;
-                $data['user_id'] = $shelf->user_id ?? null;
+                $data['tenant_id'] = data_get($this->user, 'tenant_id', null);
+                $data['user_id'] = data_get($this->user, 'id', null);
             }
 
             // Garantir que todos os campos obrigatórios existam
