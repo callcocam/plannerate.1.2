@@ -634,23 +634,21 @@ class PlannerateUpdateSevice
      */
     private function filterLayerAttributes(array $data): array
     {
-        $fillable = [
-            'product_id',
-            'height',
-            'quantity',
-            'spacing',
-            'settings',
-            'alignment',
-            'status',
-        ];
-
-        $filtered = array_intersect_key($data, array_flip($fillable));
-
-        // Fix: Se status vier como array {value, label, color}, extrair apenas o value
-        if (isset($filtered['status']) && is_array($filtered['status'])) {
-            $filtered['status'] = $filtered['status']['value'] ?? null;
+        // Fix: Extrair status.value se vier como array
+        $status = data_get($data, 'status', 'published'); // Default value
+        if (is_array($status)) {
+            $status = $status['value'] ?? 'published';
         }
 
-        return $filtered;
+        // Garantir que TODOS os campos existam em TODAS as linhas
+        return [
+            'product_id' => data_get($data, 'product_id'),
+            'height' => data_get($data, 'height'),
+            'quantity' => data_get($data, 'quantity'),
+            'spacing' => data_get($data, 'spacing', 0),
+            'settings' => data_get($data, 'settings'),
+            'alignment' => data_get($data, 'alignment'),
+            'status' => $status,
+        ];
     }
 }
