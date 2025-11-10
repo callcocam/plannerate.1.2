@@ -394,7 +394,8 @@ const replicateShelf = () => {
         console.log('replicateShelf: IDs faltando (gondola, section, ou shelf).');
         return;
     }
-    editorStore.duplicateShelfInSection(gondolaId.value, props.shelf.section_id, props.shelf.id);
+    console.log('Replicando prateleira:', props.shelf.id);
+    // editorStore.duplicateShelfInSection(gondolaId.value, props.shelf.section_id, props.shelf.id);
 };
 
 onMounted(() => {
