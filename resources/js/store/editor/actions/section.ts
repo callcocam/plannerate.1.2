@@ -27,10 +27,7 @@ export function setGondolaSectionOrder(gondolaId: string, newSections: Section[]
     }
 
     // Atualiza o array de seções com nova referência
-    gondola.sections = updatedSections;
-    
-    // Força reatividade no estado global
-    forceReactivity(gondolaId, gondola);
+    gondola.sections = updatedSections; 
     
     recordChange();
 }
@@ -47,31 +44,13 @@ export function removeSectionFromGondola(gondolaId: string, sectionId: string) {
     const initialLength = gondola.sections.length;
     gondola.sections = gondola.sections.filter(s => s.id !== sectionId);
 
-    if (gondola.sections.length < initialLength) {
-        console.log(`Seção ${sectionId} removida da gôndola ${gondolaId}`);
-        forceReactivity(gondolaId, gondola);
+    if (gondola.sections.length < initialLength) { 
         recordChange();
     } else {
         console.warn(`Seção ${sectionId} não encontrada na gôndola ${gondolaId} para remoção.`);
     }
 } 
-
-/**
- * Helper para forçar reatividade após modificar uma gôndola
- */
-function forceReactivity(gondolaId: string, updatedGondola: any) {
-    if (!currentState.value) return;
-    
-    const gondolaIndex = currentState.value.gondolas.findIndex(g => g.id === gondolaId);
-    if (gondolaIndex === -1) return;
-    
-    // Força reatividade criando novo array de gôndolas
-    currentState.value.gondolas = [
-        ...currentState.value.gondolas.slice(0, gondolaIndex),
-        { ...updatedGondola },
-        ...currentState.value.gondolas.slice(gondolaIndex + 1)
-    ];
-}
+ 
 
 /**
  * Helper para fazer merge profundo de dados de seção
@@ -128,9 +107,7 @@ export function updateSectionData(gondolaId: string, sectionId: string, sectionD
         updatedSection,
         ...gondola.sections.slice(sectionIndex + 1)
     ];
-    
-    // Força reatividade no estado global
-    forceReactivity(gondolaId, gondola);
+     
     
     // Atualiza seção selecionada se for a mesma
     if (selectedSection.value?.id === sectionId) {

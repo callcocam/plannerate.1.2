@@ -127,46 +127,51 @@ export function duplicateShelfInSection(gondolaId: string, sectionId: string, sh
         return;
     }
 
-    // Cria uma cópia profunda da prateleira
-    const duplicatedShelf = JSON.parse(JSON.stringify(shelf));
+    console.log(`Duplicando prateleira via API...`, shelf);
+    
+    // Criar uma cópia da prateleira para duplicação
+    const duplicatedShelf = { ...shelf };
     duplicatedShelf.id = ulid(); // Gera um novo ID único para a prateleira duplicada
     
-    // Gera novos IDs para os segmentos
-    duplicatedShelf.segments = duplicatedShelf.segments.map((segment: any) => {
-        const segmentId = ulid();
-        segment.layer.segment_id = segmentId;
-        console.log("Duplicando segmento com novo ID:", segmentId);
-        console.log("Segmento duplicado:", segment.quantity);
-        console.log("Layer do segmento duplicado:", segment.layer);
-        
-        return { ...segment, id: segmentId };
-    });
-
-    // Ordena as prateleiras por posição para determinar onde inserir a nova
+    // Ordenar as prateleiras por posição para identificar a posição relativa
     const sortedShelves = [...section.shelves].sort((a, b) => a.shelf_position - b.shelf_position);
     const currentShelfIndex = sortedShelves.findIndex(s => s.id === shelfId);
-    const currentPosition = shelf.shelf_position;
-
-    // Determina a nova posição baseada na posição da prateleira original
-    let newPosition: number;
     
-    if (currentShelfIndex === 0) {
-        // É a primeira prateleira - adiciona acima (posição menor)
-        newPosition = currentPosition - 10;
-        console.log(`Duplicando primeira prateleira: nova posição ${newPosition} (acima)`);
-    } else if (currentShelfIndex === sortedShelves.length - 1) {
-        // É a última prateleira - adiciona abaixo (posição maior)
-        newPosition = currentPosition + 10;
-        console.log(`Duplicando última prateleira: nova posição ${newPosition} (abaixo)`);
+    // Determinar se é primeira, última ou do meio
+    const isFirst = currentShelfIndex === 0;
+    const isLast = currentShelfIndex === sortedShelves.length - 1;
+    
+    if (isFirst) {
+        // Se é a primeira, duplica para baixo (posição maior)
+        duplicatedShelf.shelf_position = shelf.shelf_position + 10;
+        console.log(`Duplicando primeira prateleira para baixo. Nova posição: ${duplicatedShelf.shelf_position}`);
+    } else if (isLast) {
+        // Se é a última, duplica para cima (posição menor)
+        duplicatedShelf.shelf_position = shelf.shelf_position - 10;
+        console.log(`Duplicando última prateleira para cima. Nova posição: ${duplicatedShelf.shelf_position}`);
     } else {
-        // É uma prateleira do meio - adiciona abaixo por padrão
-        newPosition = currentPosition + 10;
-        console.log(`Duplicando prateleira do meio: nova posição ${newPosition} (abaixo, padrão)`);
+        // Se é do meio, duplica para baixo (padrão)
+        duplicatedShelf.shelf_position = shelf.shelf_position + 10;
+        console.log(`Duplicando prateleira do meio para baixo. Nova posição: ${duplicatedShelf.shelf_position}`);
     }
-
-    duplicatedShelf.shelf_position = newPosition;
     
-    console.log(`Duplicando prateleira ${shelfId} via API...`, duplicatedShelf);
+    // Regenerar IDs dos segmentos e layers
+    duplicatedShelf.segments = duplicatedShelf.segments.map(segment => {
+        const segmentId = ulid();
+        const newSegment = { ...segment, id: segmentId };
+        
+        // Regenerar ID do layer (produto) dentro do segmento
+        if (newSegment.layer) {
+            newSegment.layer = {
+                ...newSegment.layer,
+                id: ulid(), // Novo ID para o layer
+                segment_id: segmentId // Atualizar referência do segmento
+            };
+        }
+        
+        return newSegment;
+    });
+    
     section.shelves.push(duplicatedShelf);
     recordChange();
 
