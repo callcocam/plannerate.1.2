@@ -26,6 +26,7 @@ import { toast } from 'vue-sonner';
 import type { Gondola } from '@plannerate/types/gondola';
 import type { Section as SectionType } from '@plannerate/types/sections';
 import { useEditorStore } from '@plannerate/store/editor';
+import { getActiveSections } from '@plannerate/store/editor/actions/section';
 import SectionWrapper from '@plannerate/views/gondolas/components/sections/SectionWrapper.vue';
 import LastRack from '@plannerate/views/gondolas/sections/LastRack.vue';
 
@@ -50,10 +51,17 @@ const editorStore = useEditorStore();
 const sectionsContainer = ref<HTMLElement | null>(null);
 
 // ===== Computed Properties =====
-const canReorder = computed(() => props.gondola?.id && props.gondola.sections.length > 1);
+const canReorder = computed(() => {
+    const activeSections = getActiveSections(props.gondola?.sections || []);
+    return props.gondola?.id && activeSections.length > 1;
+});
 
 const draggableSections = computed<SectionType[]>({
-    get: () => [...(props.gondola?.sections || [])],
+    get: () => {
+        const allSections = props.gondola?.sections || [];
+        // Retorna apenas seções ativas para exibição e arraste
+        return getActiveSections(allSections);
+    },
     set: (newOrder: SectionType[]) => {
         if (!props.gondola?.id) {
             console.warn('Sections.vue: Não é possível reordenar - ID da gôndola não encontrado');
@@ -66,8 +74,8 @@ const draggableSections = computed<SectionType[]>({
 });
 
 const lastSection = computed(() => {
-    const sections = props.gondola?.sections || [];
-    return sections.length > 0 ? sections[sections.length - 1] : null;
+    const activeSections = getActiveSections(props.gondola?.sections || []);
+    return activeSections.length > 0 ? activeSections[activeSections.length - 1] : null;
 });
 
 // ===== Methods =====
@@ -79,10 +87,11 @@ const handleDeleteSection = (section: SectionType) => {
         return;
     }
 
-    // Confirmação adicional se for a última seção
-    if (props.gondola.sections.length === 1) {
+    // Confirmação adicional se for a última seção ativa
+    const activeSections = getActiveSections(props.gondola.sections || []);
+    if (activeSections.length === 1) {
         toast.error('Aviso', {
-            description: 'Não é possível deletar a última seção da gôndola.'
+            description: 'Não é possível deletar a última seção ativa da gôndola.'
         });
         return;
     }

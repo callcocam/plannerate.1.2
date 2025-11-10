@@ -2,7 +2,7 @@
 import type { Section } from '@plannerate/types/sections';
 import { findGondola } from '../utils';
 import { recordChange } from '../history';
-import { isSectionEditing, selectedSection, isDragging, currentState } from '../state';
+import { isSectionEditing, selectedSection, isDragging } from '../state';
 /**
  * Define a ordem das seções para uma gôndola específica
  * @param gondolaId ID da gôndola
