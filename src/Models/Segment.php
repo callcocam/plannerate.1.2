@@ -31,10 +31,12 @@ class Segment extends Model
         'settings',
         'alignment',
         'status',
+        'deleted_at',
     ];
 
     protected $casts = [
         'settings' => 'array',
+        'deleted_at' => 'datetime',
     ];
 
     public function layer()

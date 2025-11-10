@@ -19,21 +19,23 @@ export function setGondolaSectionOrder(gondolaId: string, newSections: Section[]
     }));
 
     // Compara se a nova ordem (IDs e ordenação implícita pelo índice) é diferente da atual
-    const currentSectionIds = gondola.sections.map(s => s.id);
+    const activeSections = getActiveSections(gondola.sections);
+    const currentSectionIds = activeSections.map(s => s.id);
     const newSectionIds = updatedSections.map(s => s.id);
 
     if (JSON.stringify(currentSectionIds) === JSON.stringify(newSectionIds)) {
         console.log('Ordem dos IDs das seções não mudou.');
     }
 
-    // Atualiza o array de seções com nova referência
-    gondola.sections = updatedSections; 
+    // Mantém seções deletadas e atualiza apenas as ativas
+    const deletedSections = gondola.sections.filter(s => isSectionDeleted(s));
+    gondola.sections = [...updatedSections, ...deletedSections]; 
     
     recordChange();
 }
 
 /**
- * Remove uma seção específica de uma gôndola
+ * Remove uma seção específica de uma gôndola usando soft delete
  * @param gondolaId ID da gôndola
  * @param sectionId ID da seção a ser removida
  */
@@ -41,14 +43,53 @@ export function removeSectionFromGondola(gondolaId: string, sectionId: string) {
     const gondola = findGondola(gondolaId, 'removeSectionFromGondola');
     if (!gondola) return;
 
-    const initialLength = gondola.sections.length;
-    gondola.sections = gondola.sections.filter(s => s.id !== sectionId);
-
-    if (gondola.sections.length < initialLength) { 
-        recordChange();
-    } else {
+    const section = gondola.sections.find(s => s.id === sectionId);
+    if (!section) {
         console.warn(`Seção ${sectionId} não encontrada na gôndola ${gondolaId} para remoção.`);
+        return;
     }
+
+    // Soft delete: marca a seção como deletada
+    section.deleted_at = new Date().toISOString();
+    recordChange();
+}
+
+/**
+ * Restaura uma seção deletada
+ * @param gondolaId ID da gôndola
+ * @param sectionId ID da seção a ser restaurada
+ */
+export function restoreSectionFromGondola(gondolaId: string, sectionId: string) {
+    const gondola = findGondola(gondolaId, 'restoreSectionFromGondola');
+    if (!gondola) return;
+
+    const section = gondola.sections.find(s => s.id === sectionId);
+    if (!section) {
+        console.warn(`Seção ${sectionId} não encontrada na gôndola ${gondolaId} para restauração.`);
+        return;
+    }
+
+    // Remove o soft delete
+    section.deleted_at = null;
+    recordChange();
+}
+
+/**
+ * Retorna apenas as seções ativas (não deletadas)
+ * @param sections Array de seções
+ * @returns Array de seções ativas
+ */
+export function getActiveSections(sections: Section[]): Section[] {
+    return sections.filter(section => !section.deleted_at);
+}
+
+/**
+ * Verifica se uma seção está deletada
+ * @param section Seção a ser verificada
+ * @returns true se a seção estiver deletada
+ */
+export function isSectionDeleted(section: Section): boolean {
+    return !!section.deleted_at;
 } 
  
 

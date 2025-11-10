@@ -35,6 +35,7 @@ class Shelf extends Model
         'settings',
         'alignment',
         'status',
+        'deleted_at',
     ];
 
     protected $casts = [
@@ -45,6 +46,7 @@ class Shelf extends Model
         'ordering' => 'integer',
         'settings' => 'json',
         'status' => ShelfStatus::class,
+        'deleted_at' => 'datetime',
     ];
 
     public function section()

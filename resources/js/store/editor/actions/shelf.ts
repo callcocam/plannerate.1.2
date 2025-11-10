@@ -6,6 +6,24 @@ import { recordChange } from '../history';
 import { isEqual } from 'lodash-es';
 import { selectedShelf, isShelfEditing } from '../state'; 
 import { ulid } from 'ulid';
+
+/**
+ * Função auxiliar para filtrar prateleiras que não foram deletadas (soft delete)
+ * @param shelves Array de prateleiras
+ * @returns Array de prateleiras não deletadas
+ */
+export function getActiveShelves(shelves: Shelf[]): Shelf[] {
+    return shelves.filter(shelf => !(shelf as any).deleted_at);
+}
+
+/**
+ * Função auxiliar para verificar se uma prateleira foi deletada (soft delete)
+ * @param shelf Prateleira a verificar
+ * @returns true se a prateleira foi deletada, false caso contrário
+ */
+export function isShelfDeleted(shelf: Shelf): boolean {
+    return !!(shelf as any).deleted_at;
+}
 /**
  * Inverte a ordem das prateleiras de uma seção específica
  * @param gondolaId ID da gôndola
@@ -17,14 +35,17 @@ export function invertShelvesInSection(gondolaId: string, sectionId: string) {
 
     const { section } = path;
 
-    if (section.shelves.length <= 1) {
-        console.warn(`Não foi possível inverter prateleiras: Seção ${sectionId} tem menos de 2 prateleiras.`);
+    // Filtrar apenas prateleiras ativas para inversão
+    const activeShelves = getActiveShelves(section.shelves);
+
+    if (activeShelves.length <= 1) {
+        console.warn(`Não foi possível inverter prateleiras: Seção ${sectionId} tem menos de 2 prateleiras ativas.`);
         return;
     }
 
     try {
-        // 1. Criar cópia e ordenar pela posição atual
-        const sortedShelvesCopy = [...section.shelves].sort((a, b) => a.shelf_position - b.shelf_position);
+        // 1. Criar cópia e ordenar pela posição atual (apenas prateleiras ativas)
+        const sortedShelvesCopy = [...activeShelves].sort((a, b) => a.shelf_position - b.shelf_position);
 
         // 2. Armazenar posições originais ordenadas
         const originalPositions = sortedShelvesCopy.map(shelf => shelf.shelf_position);
@@ -37,8 +58,8 @@ export function invertShelvesInSection(gondolaId: string, sectionId: string) {
         });
 
         let changed = false;
-        // 4. Atualizar as posições das prateleiras
-        section.shelves.forEach(shelf => {
+        // 4. Atualizar as posições apenas das prateleiras ativas
+        activeShelves.forEach(shelf => {
             const newPosition = newPositionsMap.get(shelf.id);
             if (newPosition !== undefined && shelf.shelf_position !== newPosition) {
                 shelf.shelf_position = newPosition;
@@ -132,8 +153,9 @@ export function duplicateShelfInSection(gondolaId: string, sectionId: string, sh
     const duplicatedShelf = { ...shelf };
     duplicatedShelf.id = ulid(); // Gera um novo ID único para a prateleira duplicada
 
-    // Ordenar as prateleiras por posição para identificar a posição relativa
-    const sortedShelves = [...section.shelves].sort((a, b) => a.shelf_position - b.shelf_position);
+    // Ordenar apenas prateleiras ativas por posição para identificar a posição relativa
+    const activeShelves = getActiveShelves(section.shelves);
+    const sortedShelves = [...activeShelves].sort((a, b) => a.shelf_position - b.shelf_position);
     const currentShelfIndex = sortedShelves.findIndex(s => s.id === shelfId);
 
     // Determinar se é primeira, última ou do meio
@@ -191,25 +213,50 @@ export function duplicateShelfInSection(gondolaId: string, sectionId: string, sh
     // });
 }
 /**
- * Remove uma prateleira específica de uma seção
+ * Remove uma prateleira específica de uma seção usando soft delete
  * @param gondolaId ID da gôndola
  * @param sectionId ID da seção
  * @param shelfId ID da prateleira a ser removida
  */
 export function removeShelfFromSection(gondolaId: string, sectionId: string, shelfId: string) {
-    const path = findPath(gondolaId, sectionId, null, 'removeShelfFromSection');
+    const path = findPath(gondolaId, sectionId, shelfId, 'removeShelfFromSection');
     if (!path) return;
 
-    const { section } = path;
+    const { shelf } = path;
 
-    const initialLength = section.shelves.length;
-    section.shelves = section.shelves.filter(sh => sh.id !== shelfId);
-
-    if (section.shelves.length < initialLength) {
-        console.log(`Prateleira ${shelfId} removida da seção ${sectionId}`);
+    if (shelf) {
+        // Aplicar soft delete - marcar como deletado com timestamp
+        (shelf as any).deleted_at = new Date().toISOString();
+        
+        console.log(`Prateleira ${shelfId} marcada como deletada (soft delete).`);
         recordChange();
     } else {
         console.warn(`Prateleira ${shelfId} não encontrada na seção ${sectionId} para remoção.`);
+    }
+}
+
+/**
+ * Restaura uma prateleira que foi marcada como deletada (soft delete)
+ * @param gondolaId ID da gôndola
+ * @param sectionId ID da seção
+ * @param shelfId ID da prateleira a ser restaurada
+ */
+export function restoreShelfFromSection(gondolaId: string, sectionId: string, shelfId: string) {
+    const path = findPath(gondolaId, sectionId, shelfId, 'restoreShelfFromSection');
+    if (!path) return;
+
+    const { shelf } = path;
+
+    if (shelf && isShelfDeleted(shelf)) {
+        // Remover a marca de deleted_at para restaurar
+        delete (shelf as any).deleted_at;
+        
+        console.log(`Prateleira ${shelfId} restaurada (soft delete removido).`);
+        recordChange();
+    } else if (shelf && !isShelfDeleted(shelf)) {
+        console.warn(`Prateleira ${shelfId} não estava deletada.`);
+    } else {
+        console.warn(`Prateleira ${shelfId} não encontrada na seção ${sectionId} para restauração.`);
     }
 }
 

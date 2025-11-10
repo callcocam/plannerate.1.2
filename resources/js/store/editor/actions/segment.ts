@@ -3,6 +3,24 @@ import type { Segment } from '@plannerate/types/segment';
 import { findGondola, findPath, findSection, findShelf } from '../utils';
 import { recordChange } from '../history';
 import { isLoading } from '../state';
+
+/**
+ * Função auxiliar para filtrar segmentos que não foram deletados (soft delete)
+ * @param segments Array de segmentos
+ * @returns Array de segmentos não deletados
+ */
+export function getActiveSegments(segments: Segment[]): Segment[] {
+    return segments.filter(segment => !(segment as any).deleted_at);
+}
+
+/**
+ * Função auxiliar para verificar se um segmento foi deletado (soft delete)
+ * @param segment Segmento a verificar
+ * @returns true se o segmento foi deletado, false caso contrário
+ */
+export function isSegmentDeleted(segment: Segment): boolean {
+    return !!(segment as any).deleted_at;
+}
 // import { useSegmentService } from '@plannerate/services/segmentService';
 /**
  * Adiciona um novo segmento a uma prateleira específica
@@ -55,12 +73,12 @@ export function setShelfSegmentsOrder(gondolaId: string, sectionId: string, shel
 
     const { shelf } = path;
 
-    // Compara se a nova ordem é realmente diferente da atual
-    const currentSegmentIds = shelf?.segments.map(seg => seg.id);
+    // Compara apenas segmentos ativos (não deletados) para a nova ordem
+    const currentActiveSegmentIds = getActiveSegments(shelf?.segments || []).map(seg => seg.id);
     const newSegmentIds = newSegments.map(seg => seg.id);
 
-    if (JSON.stringify(currentSegmentIds) === JSON.stringify(newSegmentIds)) {
-        console.log(`Ordem dos segmentos na prateleira ${shelfId} não mudou.`);
+    if (JSON.stringify(currentActiveSegmentIds) === JSON.stringify(newSegmentIds)) {
+        console.log(`Ordem dos segmentos ativos na prateleira ${shelfId} não mudou.`);
         return;
     }
 
@@ -71,7 +89,11 @@ export function setShelfSegmentsOrder(gondolaId: string, sectionId: string, shel
     }
 
     if (!shelf) return;
-    shelf.segments = [...newSegments as import('@/types/shelves').Segment[]];
+    
+    // Preservar segmentos deletados e adicionar os novos ativos
+    const deletedSegments = shelf.segments.filter(seg => isSegmentDeleted(seg));
+    shelf.segments = [...newSegments as import('@/types/shelves').Segment[], ...deletedSegments];
+    
     console.log(`Nova ordem dos segmentos definida para a prateleira ${shelfId}`);
     recordChange();
 }
@@ -131,6 +153,7 @@ export function transferSegmentBetweenShelves(
 
     // Atualizar ordem (anexar ao final se não especificado)
     segmentToMove.ordering = newOrdering ?? newShelf.segments.length + 1;
+    segmentToMove.transferred = true;
 
     // Adicionar segmento à prateleira de destino
     newShelf.segments.push(segmentToMove);
@@ -192,7 +215,7 @@ export function updateLayerQuantity(
 }
 
 /**
- * Remove um segmento específico de uma prateleira.
+ * Remove um segmento específico de uma prateleira usando soft delete.
  * @param gondolaId ID da gôndola
  * @param sectionId ID da seção
  * @param shelfId ID da prateleira
@@ -208,17 +231,56 @@ export function removeSegmentFromShelf(gondolaId: string, sectionId: string, she
     }
 
     const { shelf } = path;
-    const initialLength = shelf.segments.length;
-
-    // Filtra os segmentos, mantendo apenas aqueles cujo ID não corresponde ao segmentId
-    shelf.segments = shelf.segments.filter(segment => segment.id !== segmentId);
-
-    // Verifica se um segmento foi realmente removido
-    if (shelf.segments.length < initialLength) { 
+    
+    // Encontrar o segmento específico
+    const segment = shelf.segments.find(seg => seg.id === segmentId);
+    
+    if (segment) {
+        // Aplicar soft delete - marcar como deletado com timestamp
+        (segment as any).deleted_at = new Date().toISOString();
+        
+        console.log(`Segmento ${segmentId} marcado como deletado (soft delete).`);
         recordChange(); // Registra a mudança no histórico
     } else {
         console.warn(`Segmento ${segmentId} não encontrado na prateleira ${shelfId} para remoção.`);
     }
+    
+    isLoading.value = false;
+}
+
+/**
+ * Restaura um segmento que foi marcado como deletado (soft delete).
+ * @param gondolaId ID da gôndola
+ * @param sectionId ID da seção
+ * @param shelfId ID da prateleira
+ * @param segmentId ID do segmento a ser restaurado
+ */
+export function restoreSegmentFromShelf(gondolaId: string, sectionId: string, shelfId: string, segmentId: string) {
+    isLoading.value = true;
+    const path = findPath(gondolaId, sectionId, shelfId, 'restoreSegmentFromShelf');
+    if (!path || !path.shelf) {
+        console.warn('Caminho para prateleira não encontrado ao tentar restaurar segmento.');
+        isLoading.value = false;
+        return;
+    }
+
+    const { shelf } = path;
+    
+    // Encontrar o segmento específico (incluindo deletados)
+    const segment = shelf.segments.find(seg => seg.id === segmentId);
+    
+    if (segment && isSegmentDeleted(segment)) {
+        // Remover a marca de deleted_at para restaurar
+        delete (segment as any).deleted_at;
+        
+        console.log(`Segmento ${segmentId} restaurado (soft delete removido).`);
+        recordChange(); // Registra a mudança no histórico
+    } else if (segment && !isSegmentDeleted(segment)) {
+        console.warn(`Segmento ${segmentId} não estava deletado.`);
+    } else {
+        console.warn(`Segmento ${segmentId} não encontrado na prateleira ${shelfId} para restauração.`);
+    }
+    
     isLoading.value = false;
 }
 

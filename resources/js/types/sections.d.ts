@@ -55,6 +55,7 @@ interface Status {
     user_id: string;             // ID do usuário, ex: "01jrarbjws41jye4zs2ppr2vwe"
     width: number;               // Largura da seção, ex: 130
     gondola: Gondola;            // Gôndola associada (tipado)
+    deleted_at?: string | null; // Data de exclusão, ex: null
   }
   
   // Exemplo de uso:

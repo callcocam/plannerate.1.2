@@ -19,6 +19,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { ulid } from 'ulid';
 import { useEditorStore } from '@plannerate/store/editor';
+import { getActiveShelves } from '@plannerate/store/editor/actions/shelf';
 import { Section } from '@plannerate/types/sections';
 import { Product, Segment } from '@plannerate/types/segment';
 import { type Shelf as ShelfType } from '@plannerate/types/shelves';
@@ -121,10 +122,12 @@ const moduleNumber = computed(() =>
         : props.gondola.sections.length - 1 - props.sectionIndex
 );
 
-const sortedShelves = computed(() =>
-    [...(props.section.shelves || [])]
-        .sort((a, b) => a.shelf_position - b.shelf_position)
-);
+const sortedShelves = computed(() => {
+    const allShelves = props.section.shelves || [];
+    // Filtrar apenas prateleiras ativas e depois ordenar por posição
+    const activeShelves = getActiveShelves(allShelves);
+    return activeShelves.sort((a, b) => a.shelf_position - b.shelf_position);
+});
 
 const sectionStyle = computed(() => ({
     width: `${props.section.width * props.scaleFactor}px`,

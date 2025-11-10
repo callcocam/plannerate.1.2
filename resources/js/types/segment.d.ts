@@ -95,6 +95,7 @@ interface Segment {
     status: 'published' | 'draft' | string; // Status do segmento, ex: "published"
     layer: Layer;             // Informações sobre a camada associada 
     tabindex: number;
+    transferred?: boolean;  // Indica se o segmento foi transferido entre prateleiras
 }
 
 // Exemplo de uso:

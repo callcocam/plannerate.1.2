@@ -103,7 +103,6 @@ class PlannerateUpdateSevice
 
     /**
      * Processa as gôndolas e sua estrutura aninhada
-     * Remove gôndolas órfãs que não estão mais presentes no frontend
      *
      * @param mixed $planogram
      * @param array $gondolas
@@ -111,13 +110,6 @@ class PlannerateUpdateSevice
      */
     private function processGondolas($planogram, array $gondolas): void
     {
-        // Buscar IDs das gôndolas existentes no banco
-        $existingGondolaIds = Gondola::query()
-            ->where('planogram_id', $planogram->id)
-            ->pluck('id')
-            ->toArray();
-
-        $processedGondolaIds = [];
         $createdCount = 0;
         $updatedCount = 0;
 
@@ -149,30 +141,16 @@ class PlannerateUpdateSevice
             $gondola->fill($this->filterGondolaAttributes($gondolaData));
             $gondola->save();
 
-            // Registrar ID processado
-            $processedGondolaIds[] = $gondola->id;
-
             // Processar seções desta gôndola
             if (isset($gondolaData['sections'])) {
                 $this->processSections($gondola, data_get($gondolaData, 'sections', []));
             }
         }
 
-        // Identificar e remover gôndolas órfãs
-        $gondolasToDelete = array_diff($existingGondolaIds, $processedGondolaIds);
-
-        // if (!empty($gondolasToDelete)) {
-        //     Log::warning('🗑️ [GONDOLAS] Removendo gôndolas órfãs', [
-        //         'orphan_count' => count($gondolasToDelete),
-        //     ]);
-        //     Gondola::whereIn('id', $gondolasToDelete)->delete();
-        // }
-
         // Log de resumo
         Log::info('✅ [GONDOLAS] Processamento concluído', [
             'created' => $createdCount,
             'updated' => $updatedCount,
-            'deleted' => count($gondolasToDelete),
         ]);
     }
 
@@ -210,7 +188,6 @@ class PlannerateUpdateSevice
 
     /**
      * Processa as seções de uma gôndola
-     * Remove seções órfãs que não estão mais presentes no frontend
      *
      * @param Gondola $gondola
      * @param array $sections
@@ -218,13 +195,6 @@ class PlannerateUpdateSevice
      */
     private function processSections(Gondola $gondola, array $sections): void
     {
-        // Buscar IDs das seções existentes no banco
-        $existingSectionIds = Section::query()
-            ->where('gondola_id', $gondola->id)
-            ->pluck('id')
-            ->toArray();
-
-        $processedSectionIds = [];
         $shelfService = new ShelfPositioningService();
         $createdCount = 0;
         $updatedCount = 0;
@@ -266,30 +236,18 @@ class PlannerateUpdateSevice
                     ->log('Seção atualizada via PlannerateUpdateService');
             }
 
-
-            // Registrar ID processado
-            $processedSectionIds[] = $section->id;
-
             // Processar prateleiras desta seção
             if (isset($sectionData['shelves'])) {
                 $this->processShelves($section, data_get($sectionData, 'shelves', []), $shelfService);
             }
         }
 
-        // Identificar e remover seções órfãs
-        $sectionsToDelete = array_diff($existingSectionIds, $processedSectionIds);
-
-        if (!empty($sectionsToDelete)) {
-            Section::whereIn('id', $sectionsToDelete)->delete();
-        }
-
         // Log de resumo apenas se houver operações relevantes
-        if ($createdCount > 0 || count($sectionsToDelete) > 0) {
+        if ($createdCount > 0) {
             Log::info('✅ [SECTIONS] Processamento concluído', [
                 'gondola_id' => $gondola->id,
                 'created' => $createdCount,
                 'updated' => $updatedCount,
-                'deleted' => count($sectionsToDelete),
             ]);
         }
     }
@@ -304,6 +262,18 @@ class PlannerateUpdateSevice
      */
     private function filterSectionAttributes(array $data, ShelfPositioningService $shelfService, Gondola $gondola): array
     {
+        // Fix: Converter deleted_at do formato ISO 8601 para formato MySQL
+        $deletedAt = data_get($data, 'deleted_at', null);
+        if ($deletedAt && is_string($deletedAt)) {
+            try {
+                // Converter de ISO 8601 (2025-11-10T22:12:35.674Z) para MySQL (Y-m-d H:i:s)
+                $deletedAt = \Carbon\Carbon::parse($deletedAt)->format('Y-m-d H:i:s');
+            } catch (\Exception $e) {
+                // Se falhar na conversão, definir como null
+                $deletedAt = null;
+            }
+        }
+
         $fillable = [
             'name' => data_get($data, 'name', 'Seção'),
             'slug' => data_get($data, 'slug', Str::slug(data_get($data, 'name', 'seccao'))),
@@ -319,6 +289,7 @@ class PlannerateUpdateSevice
             'shelf_height' => data_get($data, 'shelf_height', 4),
             'cremalheira_width' => data_get($data, 'cremalheira_width', 2),
             'ordering' => data_get($data, 'ordering', 0),
+            'deleted_at' => $deletedAt,
         ];
 
         // Calcular furos e adicionar às configurações
@@ -331,7 +302,6 @@ class PlannerateUpdateSevice
 
     /**
      * Processa as prateleiras de uma seção
-     * Remove prateleiras órfãs que não estão mais presentes no frontend
      *
      * @param Section $section
      * @param array $shelves
@@ -340,13 +310,6 @@ class PlannerateUpdateSevice
      */
     private function processShelves(Section $section, array $shelves, ShelfPositioningService $shelfService): void
     {
-        // Buscar IDs das prateleiras existentes no banco
-        $existingShelfIds = Shelf::query()
-            ->where('section_id', $section->id)
-            ->pluck('id')
-            ->toArray();
-
-        $processedShelfIds = [];
         $createdCount = 0;
         $updatedCount = 0;
 
@@ -385,20 +348,10 @@ class PlannerateUpdateSevice
                     ->log('Prateleira atualizada via PlannerateUpdateService');
             }
 
-            // Registrar ID processado
-            $processedShelfIds[] = $shelf->id;
-
             // Processar segmentos desta prateleira (mantém batch nos segments)
             if (isset($shelfData['segments'])) {
                 $this->processSegments($shelf, data_get($shelfData, 'segments', []));
             }
-        }
-
-        // Identificar e remover prateleiras órfãs
-        $shelvesToDelete = array_diff($existingShelfIds, $processedShelfIds);
-
-        if (!empty($shelvesToDelete)) {
-            Shelf::whereIn('id', $shelvesToDelete)->delete();
         }
     }
 
@@ -419,6 +372,18 @@ class PlannerateUpdateSevice
             $status = $status['value'] ?? 'published';
         }
 
+        // Fix: Converter deleted_at do formato ISO 8601 para formato MySQL
+        $deletedAt = data_get($data, 'deleted_at', null);
+        if ($deletedAt && is_string($deletedAt)) {
+            try {
+                // Converter de ISO 8601 (2025-11-10T22:12:35.674Z) para MySQL (Y-m-d H:i:s)
+                $deletedAt = \Carbon\Carbon::parse($deletedAt)->format('Y-m-d H:i:s');
+            } catch (\Exception $e) {
+                // Se falhar na conversão, definir como null
+                $deletedAt = null;
+            }
+        }
+
         $fillable = [
             'product_type' => data_get($data, 'product_type', 'generic'),
             'shelf_width' => data_get($data, 'shelf_width', 130),
@@ -430,6 +395,7 @@ class PlannerateUpdateSevice
             'settings' => data_get($data, 'settings', []),
             'status' => $status,
             'alignment' => data_get($data, 'alignment', 'left'),
+            'deleted_at' => $deletedAt,
         ];
 
         return $fillable;
@@ -437,7 +403,6 @@ class PlannerateUpdateSevice
 
     /**
      * Processa os segmentos de uma prateleira
-     * Remove segmentos órfãos que não estão mais presentes no frontend
      *
      * @param Shelf $shelf
      * @param array $segments
@@ -445,13 +410,6 @@ class PlannerateUpdateSevice
      */
     private function processSegments(Shelf $shelf, array $segments): void
     {
-        // Buscar IDs dos segmentos existentes no banco
-        $existingSegmentIds = Segment::query()
-            ->where('shelf_id', $shelf->id)
-            ->pluck('id')
-            ->toArray();
-
-        $processedSegmentIds = [];
         $createdCount = 0;
         $updatedCount = 0;
         $segmentsToUpsert = [];
@@ -484,7 +442,6 @@ class PlannerateUpdateSevice
             $data['user_id'] = $shelf->user_id;
 
             $segmentsToUpsert[] = $data;
-            $processedSegmentIds[] = $segmentId;
 
             // Guardar layers para processar depois
             if (isset($segmentData['layer'])) {
@@ -500,20 +457,13 @@ class PlannerateUpdateSevice
             Segment::upsert(
                 $segmentsToUpsert,
                 ['id'], // Unique identifier
-                ['width', 'ordering', 'position', 'quantity', 'spacing', 'alignment', 'status', 'shelf_id'] // Campos para atualizar
+                ['width', 'ordering', 'position', 'quantity', 'spacing', 'alignment', 'status', 'shelf_id', 'deleted_at'] // Campos para atualizar
             );
         }
 
         // Processar layers em batch
         if (!empty($layersToProcess)) {
             $this->processLayersBatch($layersToProcess);
-        }
-
-        // Identificar e remover segmentos órfãos
-        $segmentsToDelete = array_diff($existingSegmentIds, $processedSegmentIds);
-
-        if (!empty($segmentsToDelete)) {
-            Segment::whereIn('id', $segmentsToDelete)->delete();
         }
     }
 
@@ -531,12 +481,25 @@ class PlannerateUpdateSevice
             $status = $status['value'] ?? 'published';
         }
 
+        // Fix: Converter deleted_at do formato ISO 8601 para formato MySQL
+        $deletedAt = data_get($data, 'deleted_at', null);
+        if ($deletedAt && is_string($deletedAt)) {
+            try {
+                // Converter de ISO 8601 (2025-11-10T22:12:35.674Z) para MySQL (Y-m-d H:i:s)
+                $deletedAt = \Carbon\Carbon::parse($deletedAt)->format('Y-m-d H:i:s');
+            } catch (\Exception $e) {
+                // Se falhar na conversão, definir como null
+                $deletedAt = null;
+            }
+        }
+
         $fillable = [
             'width' => data_get($data, 'width', 30),
             'ordering' => data_get($data, 'ordering', 0),
             'position' => data_get($data, 'position', 0),
             'quantity' => data_get($data, 'quantity', 1),
             'spacing' => data_get($data, 'spacing', 2),
+            'deleted_at' => $deletedAt,
             // 'settings' => data_get($data, 'settings', []),
             'alignment' => data_get($data, 'alignment', 'left'),
             'status' => $status,

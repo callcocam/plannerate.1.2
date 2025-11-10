@@ -65,8 +65,8 @@
                     Editar
                     <ContextMenuShortcut>⌘]</ContextMenuShortcut>
                 </ContextMenuItem>
-                <ContextMenuItem inset @click="invertSegments" :disabled="shelf.segments.length < 2">
-                    Inverter ({{ shelf.segments.length }})
+                <ContextMenuItem inset @click="invertSegments" :disabled="sortableSegments.length < 2">
+                    Inverter ({{ sortableSegments.length }})
                     <ContextMenuShortcut>⌘⇧I</ContextMenuShortcut>
                 </ContextMenuItem>
                 <ContextMenuSeparator />
@@ -83,6 +83,7 @@
 import { computed, defineEmits, defineProps, onMounted, onUnmounted, ref, nextTick, type CSSProperties } from 'vue';
 import draggable from 'vuedraggable';
 import { useEditorStore } from '@plannerate/store/editor';
+import { getActiveSegments } from '@plannerate/store/editor/actions/segment';
 import { type Product, type Segment as SegmentType } from '@plannerate/types/segment';
 import { type Shelf } from '@plannerate/types/shelves';
 import Segment from './Segment.vue';
@@ -257,10 +258,13 @@ const shelfStyle = computed(() => {
 /**
  * Referência local aos segmentos para o draggable
  * Aplica ordenamento e garante IDs para todos os segmentos
+ * Filtra apenas segmentos que não foram deletados (soft delete)
  */
 const sortableSegments = computed<SegmentType[]>({
     get() {
-        return props.shelf.segments || [];
+        const allSegments = props.shelf.segments || [];
+        // Usar a função utilitária para filtrar segmentos ativos
+        return getActiveSegments(allSegments);
     },
     set(newSegments: SegmentType[]) {
         if (!gondolaId.value || !props.shelf.section_id || !props.shelf.id) {

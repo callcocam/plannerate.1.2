@@ -39,6 +39,7 @@ interface Shelf {
     // Propriedades adicionais que podem ser úteis em alguns cenários
     shelf_x_position?: number;        // Posição horizontal da prateleira (opcional)
     section?: Section;               // Seção associada à prateleira
+    transferred?: boolean;          // Indica se o segmento foi transferido entre prateleiras
 }
 
 // Exemplo de uso:

@@ -47,6 +47,7 @@ class Section extends Model
         'ordering',
         'settings',
         'status',
+        'deleted_at',
     ];
 
     protected $casts = [
@@ -63,6 +64,7 @@ class Section extends Model
         'ordering' => 'integer',
         'settings' => 'array',
         'status' => SectionStatus::class,
+        'deleted_at' => 'datetime',
     ];
 
     /**
