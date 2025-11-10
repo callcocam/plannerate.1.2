@@ -597,15 +597,20 @@ class PlannerateUpdateSevice
                 $data['user_id'] = $segment->user_id;
             }
 
+            // Garantir que todos os campos obrigatórios existam
+            $data['created_at'] = data_get($data, 'created_at', now());
+            $data['updated_at'] = now();
             $layersToUpsert[] = $data;
         }
+
+
 
         // BATCH UPSERT - 1 query ao invés de N queries!
         if (!empty($layersToUpsert)) {
             Layer::upsert(
                 $layersToUpsert,
                 ['id'], // Unique identifier
-                ['product_id', 'height', 'quantity', 'spacing', 'settings', 'alignment', 'status', 'segment_id'] // Campos para atualizar
+                ['product_id', 'height', 'quantity', 'spacing', 'settings', 'alignment', 'status', 'segment_id', 'updated_at', 'created_at'] // Campos para atualizar
             );
         }
 
