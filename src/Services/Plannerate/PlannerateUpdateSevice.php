@@ -592,9 +592,14 @@ class PlannerateUpdateSevice
 
             // Pegar tenant_id e user_id do segment
             $segment = $segments->get($segmentId);
+            $segment = $segments->get($segmentId);
             if ($segment) {
                 $data['tenant_id'] = $segment->tenant_id;
                 $data['user_id'] = $segment->user_id;
+            } else {
+                // Fallback: usar tenant_id e user_id de algum lugar padrão
+                $data['tenant_id'] = $shelf->tenant_id ?? null;
+                $data['user_id'] = $shelf->user_id ?? null;
             }
 
             // Garantir que todos os campos obrigatórios existam
