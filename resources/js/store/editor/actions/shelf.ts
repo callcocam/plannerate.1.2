@@ -6,6 +6,7 @@ import { recordChange } from '../history';
 import { isEqual } from 'lodash-es';
 import { selectedShelf, isShelfEditing } from '../state';
 import { useShelfService } from '@plannerate/services/shelfService';
+import { ulid } from 'ulid';
 /**
  * Inverte a ordem das prateleiras de uma seção específica
  * @param gondolaId ID da gôndola
@@ -126,21 +127,64 @@ export function duplicateShelfInSection(gondolaId: string, sectionId: string, sh
         return;
     }
 
-    useShelfService().copyShelf(shelf.id).then(response => {
-        console.log('Resposta da API ao duplicar prateleira:', response);
-        if (response && response.data) {
-            const newShelfFromApi: Shelf = response.data;
-            // Ajustar alignment se for null 
-            section.shelves.push(newShelfFromApi);
-            console.log(`Prateleira ${shelfId} duplicada como ${newShelfFromApi.id} na seção ${sectionId} via API`);
-        } else {
-            console.error(`Resposta inválida ao duplicar prateleira ${shelfId}:`, response);
-        }
-        recordChange();
-    }).catch(error => {
-        console.error(`Erro ao duplicar prateleira ${shelfId} via API:`, error);
-        recordChange();
+    // Cria uma cópia profunda da prateleira
+    const duplicatedShelf = JSON.parse(JSON.stringify(shelf));
+    duplicatedShelf.id = ulid(); // Gera um novo ID único para a prateleira duplicada
+    
+    // Gera novos IDs para os segmentos
+    duplicatedShelf.segments = duplicatedShelf.segments.map((segment: any) => {
+        const segmentId = ulid();
+        segment.layer.segment_id = segmentId;
+        console.log("Duplicando segmento com novo ID:", segmentId);
+        console.log("Segmento duplicado:", segment.quantity);
+        console.log("Layer do segmento duplicado:", segment.layer);
+        
+        return { ...segment, id: segmentId };
     });
+
+    // Ordena as prateleiras por posição para determinar onde inserir a nova
+    const sortedShelves = [...section.shelves].sort((a, b) => a.shelf_position - b.shelf_position);
+    const currentShelfIndex = sortedShelves.findIndex(s => s.id === shelfId);
+    const currentPosition = shelf.shelf_position;
+
+    // Determina a nova posição baseada na posição da prateleira original
+    let newPosition: number;
+    
+    if (currentShelfIndex === 0) {
+        // É a primeira prateleira - adiciona acima (posição menor)
+        newPosition = currentPosition - 10;
+        console.log(`Duplicando primeira prateleira: nova posição ${newPosition} (acima)`);
+    } else if (currentShelfIndex === sortedShelves.length - 1) {
+        // É a última prateleira - adiciona abaixo (posição maior)
+        newPosition = currentPosition + 10;
+        console.log(`Duplicando última prateleira: nova posição ${newPosition} (abaixo)`);
+    } else {
+        // É uma prateleira do meio - adiciona abaixo por padrão
+        newPosition = currentPosition + 10;
+        console.log(`Duplicando prateleira do meio: nova posição ${newPosition} (abaixo, padrão)`);
+    }
+
+    duplicatedShelf.shelf_position = newPosition;
+    
+    console.log(`Duplicando prateleira ${shelfId} via API...`, duplicatedShelf);
+    section.shelves.push(duplicatedShelf);
+    recordChange();
+
+    // useShelfService().copyShelf(shelf.id).then(response => {
+    //     console.log('Resposta da API ao duplicar prateleira:', response);
+    //     if (response && response.data) {
+    //         const newShelfFromApi: Shelf = response.data;
+    //         // Ajustar alignment se for null 
+    //         section.shelves.push(newShelfFromApi);
+    //         console.log(`Prateleira ${shelfId} duplicada como ${newShelfFromApi.id} na seção ${sectionId} via API`);
+    //     } else {
+    //         console.error(`Resposta inválida ao duplicar prateleira ${shelfId}:`, response);
+    //     }
+    //     recordChange();
+    // }).catch(error => {
+    //     console.error(`Erro ao duplicar prateleira ${shelfId} via API:`, error);
+    //     recordChange();
+    // });
 }
 /**
  * Remove uma prateleira específica de uma seção
