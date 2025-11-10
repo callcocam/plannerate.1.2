@@ -20,7 +20,7 @@ const props = defineProps<{
     shelf: Shelf;
     scaleFactor: number;
     sectionWidth: number;
-    shelfDepth: number;
+    shelfDepth: number | null;
     isTargetStockViewActive?: boolean;
 }>(); 
 

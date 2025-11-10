@@ -4,8 +4,7 @@ import type { ShelfPosition } from '../types';
 import { findGondola, findPath, findSection } from '../utils';
 import { recordChange } from '../history';
 import { isEqual } from 'lodash-es';
-import { selectedShelf, isShelfEditing } from '../state';
-import { useShelfService } from '@plannerate/services/shelfService';
+import { selectedShelf, isShelfEditing } from '../state'; 
 import { ulid } from 'ulid';
 /**
  * Inverte a ordem das prateleiras de uma seção específica
@@ -128,19 +127,19 @@ export function duplicateShelfInSection(gondolaId: string, sectionId: string, sh
     }
 
     console.log(`Duplicando prateleira via API...`, shelf);
-    
+
     // Criar uma cópia da prateleira para duplicação
     const duplicatedShelf = { ...shelf };
     duplicatedShelf.id = ulid(); // Gera um novo ID único para a prateleira duplicada
-    
+
     // Ordenar as prateleiras por posição para identificar a posição relativa
     const sortedShelves = [...section.shelves].sort((a, b) => a.shelf_position - b.shelf_position);
     const currentShelfIndex = sortedShelves.findIndex(s => s.id === shelfId);
-    
+
     // Determinar se é primeira, última ou do meio
     const isFirst = currentShelfIndex === 0;
     const isLast = currentShelfIndex === sortedShelves.length - 1;
-    
+
     if (isFirst) {
         // Se é a primeira, duplica para baixo (posição maior)
         duplicatedShelf.shelf_position = shelf.shelf_position + 10;
@@ -154,12 +153,12 @@ export function duplicateShelfInSection(gondolaId: string, sectionId: string, sh
         duplicatedShelf.shelf_position = shelf.shelf_position + 10;
         console.log(`Duplicando prateleira do meio para baixo. Nova posição: ${duplicatedShelf.shelf_position}`);
     }
-    
+
     // Regenerar IDs dos segmentos e layers
     duplicatedShelf.segments = duplicatedShelf.segments.map(segment => {
         const segmentId = ulid();
         const newSegment = { ...segment, id: segmentId };
-        
+
         // Regenerar ID do layer (produto) dentro do segmento
         if (newSegment.layer) {
             newSegment.layer = {
@@ -168,10 +167,10 @@ export function duplicateShelfInSection(gondolaId: string, sectionId: string, sh
                 segment_id: segmentId // Atualizar referência do segmento
             };
         }
-        
+
         return newSegment;
     });
-    
+
     section.shelves.push(duplicatedShelf);
     recordChange();
 

@@ -7,7 +7,7 @@
         <div :style="innerSegmentStyle">
             <LayerComponent v-for="(_, index) in segmentQuantity" :key="index" :shelf="shelf" :segment="segment"
                 :layer="segment.layer" :scale-factor="scaleFactor" :section-width="sectionWidth"
-                :shelf-depth="shelf.shelf_depth" :is-target-stock-view-active="isTargetStockViewActive"
+                :shelf-depth="shelf.shelf_depth || null" :is-target-stock-view-active="isTargetStockViewActive"
                 @increase="onIncreaseQuantity" @decrease="onDecreaseQuantity"
                 @update-layer-quantity="updateLayerQuantity">
             </LayerComponent>

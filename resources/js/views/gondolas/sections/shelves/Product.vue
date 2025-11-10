@@ -13,7 +13,7 @@ const props = defineProps<{
     product: any;
     scaleFactor: number;
     index: number;
-    shelfDepth: number;
+    shelfDepth: number | null;
     layer: Layer;
 }>(); 
 const analysisResultStore = useAnalysisResultStore();

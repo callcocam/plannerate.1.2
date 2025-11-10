@@ -3,7 +3,7 @@ import type { Segment } from '@plannerate/types/segment';
 import { findGondola, findPath, findSection, findShelf } from '../utils';
 import { recordChange } from '../history';
 import { isLoading } from '../state';
-import { useSegmentService } from '@plannerate/services/segmentService';
+// import { useSegmentService } from '@plannerate/services/segmentService';
 /**
  * Adiciona um novo segmento a uma prateleira específica
  * @param gondolaId ID da gôndola
@@ -20,17 +20,21 @@ export function addSegmentToShelf(gondolaId: string, sectionId: string, shelfId:
     if (typeof newSegment.id === 'string') {
         if (!shelf) return;
 
-        useSegmentService().addSegment(shelfId, newSegment).then(response => {
+        console.log('Adicionando novo segmento:', newSegment);
+        shelf.segments.push(newSegment as import('@/types/shelves').Segment);
 
-            const { segment } = response.data as { segment: Segment };
-            if (segment) {
-                shelf.segments.push(segment as import('@/types/shelves').Segment);
-            } 
-            recordChange(false);
-        })
-            .catch(err => {
-                console.error('Erro ao adicionar camada:', err);
-            });
+        // useSegmentService().addSegment(shelfId, newSegment).then(response => {
+
+        //     const { segment } = response.data as { segment: Segment };
+        //     if (segment) {
+        //         shelf.segments.push(segment as import('@/types/shelves').Segment);
+        //     } 
+        //     recordChange(false);
+        // })
+        //     .catch(err => {
+        //         console.error('Erro ao adicionar camada:', err);
+        //     });
+         recordChange(false);
         console.log(`Segmento ${newSegment.id} adicionado à prateleira ${shelfId}.`);
 
     } else {
