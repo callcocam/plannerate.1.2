@@ -158,7 +158,7 @@ const updateLayerQuantity = (layer: Layer) => {
         toast.error('Limite de Largura Excedido', {
             description: `A largura total (${validation.totalWidth.toFixed(1)}cm) excederia a largura da seção (${validation.sectionWidth}cm).`,
         });
-        props.segment.layer.quantity -= 1;
+        // props.segment.layer.quantity -= 1;
         return;
     }
 

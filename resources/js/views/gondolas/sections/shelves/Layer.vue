@@ -7,7 +7,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, CSSProperties, onMounted, onUnmounted, ref } from 'vue';
+import { computed, CSSProperties, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useEditorStore } from '@plannerate/store/editor';
 import ProductNormal from '@plannerate/views/gondolas/sections/shelves/Product.vue';
 import { Layer as LayerType, Segment as SegmentType } from '@/types/segment';
@@ -46,6 +46,17 @@ const debounceTimer = ref<ReturnType<typeof setTimeout> | null>(null);
 const segmentSelected = ref(false);
 const editorGondola = computed(() => editorStore.getCurrentGondola);
 const currentSectionId = computed(() => props.shelf.section_id);
+
+// Watcher para sincronizar layerQuantity com mudanças nas props
+watch(
+    () => props.layer.quantity,
+    (newQuantity) => {
+        if (newQuantity !== undefined && newQuantity !== layerQuantity.value) {
+            layerQuantity.value = newQuantity;
+        }
+    },
+    { immediate: true }
+);
 /**
  * Computed style para o layer baseado em alinhamento e dimensões
  */
@@ -153,12 +164,23 @@ const handleSelectedLayer = (isCtrlOrMetaPressed: boolean, productId: string, la
 
 
 /**
- * Aumenta a quantidade de produtos no layer
+ * Atualiza a quantidade de produtos no layer para um valor específico
  */
 const onUpdateQuantity = async (quantity: number) => {
     // Usa selectedLayerIds
     if (editorStore.getSelectedLayerIds.size > 1) return;
 
+    // Validação da largura da prateleira
+    const validation = validateShelfWidth(props.shelf, props.sectionWidth, props.layer?.product?.id, quantity, null);
+    if (!validation.isValid) {
+        toast.error('Limite de Largura Excedido', {
+            description: `A largura total (${validation.totalWidth.toFixed(1)}cm) excederia a largura da seção (${validation.sectionWidth}cm).`,
+        });
+        return;
+    }
+
+    // Atualiza o valor local para manter sincronização
+    layerQuantity.value = quantity;
 
     emit('update-layer-quantity', {
         ...props.layer,
