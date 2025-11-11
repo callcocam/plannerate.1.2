@@ -325,13 +325,17 @@ class PlannerateUpdateSevice
             $shelf = $existingShelves->get($shelfId);
 
             if (!$shelf) {
-                // Criar nova prateleira
-                $shelf = Shelf::query()->create([
-                    'id' =>  substr($shelfId, 0, 27), // ULID tem 26 caracteres, garantir que não exceda
+                // Criar nova prateleira usando DB::insert para forçar o ID
+                DB::table('shelves')->insert([
+                    'id' =>  $shelfId,
                     'tenant_id' => $section->tenant_id,
                     'user_id' => $section->user_id,
                     'section_id' => $section->id,
+                    'created_at' => now(),
+                    'updated_at' => now(),
                 ]);
+                // Após inserir, busca a instância do modelo
+                $shelf = Shelf::find($shelfId);
                 $createdCount++;
             } else {
                 $updatedCount++;

@@ -42,6 +42,7 @@ import { computed, ref } from 'vue';
 import { PencilIcon, TrashIcon } from 'lucide-vue-next';
 import { useEditorStore } from '@plannerate/store/editor';
 import { type Shelf as ShelfType } from '@plannerate/types/shelves';
+import { ulid } from 'ulid';
 
 const props = defineProps({
     section: {
@@ -146,7 +147,7 @@ const addShelfToSection = (hole: any) => {
         shelfHeight.value = shelf.shelf_height
     }); 
     editorStore.addShelfToSection(section.gondola_id, section.id, {
-        id: `temp-shelf-${Date.now()}`,
+        id: ulid(),
         shelf_height: shelfHeight.value,
         shelf_position: hole.position,
         section_id: section.id,

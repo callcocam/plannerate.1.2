@@ -199,19 +199,12 @@ export async function saveChanges(): Promise<any> {
             setIsLoading(false);
             
             // Restaura todas as gôndolas no estado
-            currentState.value.gondolas = allGondolas;
+            // currentState.value.gondolas = allGondolas;
             
             // Reseta o histórico com o novo estado como base
             const gondolaId = currentGondola.value?.id;
-            if (gondolaId && gondolaHistories.value[gondolaId]) {
-                gondolaHistories.value[gondolaId] = {
-                    entries: [{
-                        timestamp: Date.now(),
-                        state: JSON.parse(JSON.stringify(currentState.value)),
-                        gondolaId
-                    }],
-                    currentIndex: 0
-                };
+            if (gondolaId) {
+                initializeGondolaHistory(gondolaId);
             }
 
             showSuccessNotification('Alterações salvas com sucesso!');

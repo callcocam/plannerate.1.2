@@ -432,7 +432,7 @@ analysisResultStore.$onAction(({ name }) => {
                   @click="selectedItemId = selectedItemId === item.id ? null : item.id"
                   :class="{ 'bg-blue-100 dark:bg-blue-900/50': selectedItemId === item.id, 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50': true }">
                   <td class="px-2 py-1 border">{{ item.id }}</td>
-                  <td class="px-2 py-1 border">{{ item.category }}</td>
+                  <td class="px-2 py-1 border truncate max-w-20 flex-wrap">{{ item.category }}</td>
                   <td class="px-2 py-1 border">{{ item.name }}</td>
                   <td class="px-2 py-1 border">{{ item.weightedAverage }}</td>
                   <td class="px-2 py-1 border">{{ (item.individualPercent * 100).toFixed(2) }}%</td>
