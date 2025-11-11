@@ -207,18 +207,22 @@ class PlannerateUpdateSevice
             ->keyBy('id');
 
         foreach ($sections as $i => $sectionData) {
-            $sectionId = data_get($sectionData, 'id');
+            $sectionId = data_get($sectionData, 'id', (string) Str::ulid());
             $section = $existingSections->get($sectionId);
 
             if (!$section) {
-                // Criar nova seção
-                $section = Section::query()->create([
-                    'id' => (string) Str::ulid(),
+                // Criar nova seção usando DB::insert para forçar o ID
+                DB::table('sections')->insert([
+                    'id' => $sectionId,
                     'tenant_id' => $gondola->tenant_id,
                     'user_id' => $gondola->user_id,
                     'gondola_id' => $gondola->id,
                     'name' => data_get($sectionData, 'name', "Seção #{$i}"),
+                    'created_at' => now(),
+                    'updated_at' => now(),
                 ]);
+                // Após inserir, busca a instância do modelo
+                $section = Section::find($sectionId);
                 $createdCount++;
             } else {
                 $updatedCount++;
