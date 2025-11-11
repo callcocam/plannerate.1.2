@@ -179,7 +179,7 @@ const onUpdateQuantity = async (quantity: number) => {
         return;
     }
 
-    // Atualiza o valor local para manter sincronização
+    // Atualiza o valor local para manter sincronização o meu Deus
     layerQuantity.value = quantity;
 
     emit('update-layer-quantity', {
