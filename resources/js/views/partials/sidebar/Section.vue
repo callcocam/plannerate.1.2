@@ -778,7 +778,7 @@ const saveChanges = async () => {
 
     if (correctGondolaId != dataToSave.gondola_id) {
       // Se a gôndola foi alterada, remover a seção da gôndola antiga
-      editorStore.removeSectionFromGondola(correctGondolaId, sectionId);
+      editorStore.removeSectionFromGondola(correctGondolaId, sectionId, false);
     }
 
     // Depois, sincronizar com o backend para recalcular os furos

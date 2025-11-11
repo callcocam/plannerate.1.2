@@ -15,7 +15,7 @@ export function setGondolaSectionOrder(gondolaId: string, newSections: Section[]
     // Atualiza o campo 'ordering' em cada seção da nova lista com base no índice
     const updatedSections = newSections.map((section, index) => ({
         ...section,
-        ordering: index, 
+        ordering: index,
     }));
 
     // Compara se a nova ordem (IDs e ordenação implícita pelo índice) é diferente da atual
@@ -29,8 +29,8 @@ export function setGondolaSectionOrder(gondolaId: string, newSections: Section[]
 
     // Mantém seções deletadas e atualiza apenas as ativas
     const deletedSections = gondola.sections.filter(s => isSectionDeleted(s));
-    gondola.sections = [...updatedSections, ...deletedSections]; 
-    
+    gondola.sections = [...updatedSections, ...deletedSections];
+
     recordChange();
 }
 
@@ -39,18 +39,22 @@ export function setGondolaSectionOrder(gondolaId: string, newSections: Section[]
  * @param gondolaId ID da gôndola
  * @param sectionId ID da seção a ser removida
  */
-export function removeSectionFromGondola(gondolaId: string, sectionId: string) {
+export function removeSectionFromGondola(gondolaId: string, sectionId: string, softDelete = true) {
     const gondola = findGondola(gondolaId, 'removeSectionFromGondola');
     if (!gondola) return;
 
-    const section = gondola.sections.find(s => s.id === sectionId);
-    if (!section) {
-        console.warn(`Seção ${sectionId} não encontrada na gôndola ${gondolaId} para remoção.`);
-        return;
+    if (softDelete) {
+        const section = gondola.sections.find(s => s.id === sectionId);
+        if (!section) {
+            console.warn(`Seção ${sectionId} não encontrada na gôndola ${gondolaId} para remoção.`);
+            return;
+        }
+        section.deleted_at = new Date().toISOString();
+    }else {
+        // Remoção física da seção
+        gondola.sections = gondola.sections.filter(s => s.id !== sectionId);
     }
 
-    // Soft delete: marca a seção como deletada
-    section.deleted_at = new Date().toISOString();
     recordChange();
 }
 
@@ -90,26 +94,26 @@ export function getActiveSections(sections: Section[]): Section[] {
  */
 export function isSectionDeleted(section: Section): boolean {
     return !!section.deleted_at;
-} 
- 
+}
+
 
 /**
  * Helper para fazer merge profundo de dados de seção
  */
 function mergeSection(originalSection: Section, sectionData: Partial<Section>): Section {
     const updatedSection = { ...originalSection };
-    
+
     for (const key in sectionData) {
         if (Object.prototype.hasOwnProperty.call(sectionData, key)) {
             const newValue = sectionData[key as keyof Section];
-            
+
             // Mesclagem profunda para 'settings'
             if (key === 'settings' && typeof newValue === 'object' && newValue !== null) {
                 updatedSection.settings = {
                     ...originalSection.settings,
                     ...newValue
                 };
-                
+
                 // Log para furos recalculados
                 if ('holes' in newValue && Array.isArray((newValue as any).holes)) {
                     console.log(`Furos recalculados para seção ${originalSection.id}:`, (newValue as any).holes);
@@ -119,7 +123,7 @@ function mergeSection(originalSection: Section, sectionData: Partial<Section>): 
             }
         }
     }
-    
+
     return updatedSection;
 }
 
@@ -148,13 +152,13 @@ export function updateSectionData(gondolaId: string, sectionId: string, sectionD
         updatedSection,
         ...gondola.sections.slice(sectionIndex + 1)
     ];
-     
-    
+
+
     // Atualiza seção selecionada se for a mesma
     if (selectedSection.value?.id === sectionId) {
         selectedSection.value = mergeSection(selectedSection.value, sectionData);
     }
- 
+
     recordChange();
 }
 
