@@ -51,8 +51,11 @@ const currentGondola = computed(() => editorStore.getCurrentGondola);
 const gondolaWidth = computed(() => {
     if (!currentGondola.value) return 0;
 
-    return currentGondola.value.sections.reduce((total, section) =>
-        total + (section.width + section.cremalheira_width) * scaleFactor.value
+    // Filtrar seções que não foram soft deleted
+    return currentGondola.value.sections
+        .filter(section => !section.deleted_at)
+        .reduce((total, section) =>
+            total + (section.width + section.cremalheira_width) * scaleFactor.value
         , 0);
 });
 

@@ -96,6 +96,7 @@ interface Segment {
     layer: Layer;             // Informações sobre a camada associada 
     tabindex: number;
     transferred?: boolean;  // Indica se o segmento foi transferido entre prateleiras
+    deleted_at?: string | null; // Data de soft delete, ex: "2025-01-15 10:30:00" ou null se não deletado
 }
 
 // Exemplo de uso:

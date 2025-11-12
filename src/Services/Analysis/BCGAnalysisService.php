@@ -148,6 +148,7 @@ class BCGAnalysisService
             $result[] = [
                 'product_id' => $product->id,
                 'ean' => $product->ean,
+                'name' => $product->name ?: $product->description ?: 'Sem Nome',
                 'category' => $category,
                 'current_sales' => $currentProductSales,
                 'x_axis_value' => round($xValue, 2),

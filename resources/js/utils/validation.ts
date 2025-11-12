@@ -21,7 +21,8 @@ export function validateShelfWidth(
     addedSegmentLayer: Layer | null = null
 ): { isValid: boolean; totalWidth: number; sectionWidth: number } {
     let totalWidth = 0;
-    const segmentsToCalculate = [...(shelf.segments || [])]; 
+    // Filtrar segmentos que foram soft deleted (deleted_at não é null/undefined)
+    const segmentsToCalculate = [...(shelf.segments || [])].filter(seg => !seg.deleted_at); 
     let temporarySegmentId: string | null = null;
 
     if (addedSegmentLayer) {
