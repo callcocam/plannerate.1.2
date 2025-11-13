@@ -304,31 +304,7 @@
               Informações Básicas
             </h3>
             <div class="mt-2 space-y-3">
-              <div class="space-y-1">
-                <Tooltip>
-                  <TooltipTrigger as-child>
-                    <Label for="gondola_id" class="block cursor-help truncate"
-                      >Gondola</Label
-                    >
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>
-                      Selecione a gôndola à qual esta seção pertence
-                      {{ formData.gondola_id }}
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-                <Select id="gondola_id" v-model="formData.gondola_id" class="h-8">
-                  <SelectTrigger class="w-full">
-                    <SelectValue placeholder="Selecione uma Gôndola" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem v-for="gondola in gondolas" :value="gondola.id">{{
-                      gondola.name
-                    }}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <Planogramns v-model="formData.gondola_id" :planogram="currentPlanogram" />
             </div>
             <div class="mt-2 space-y-3">
               <div class="space-y-1">
@@ -571,13 +547,8 @@ import {
   XIcon,
 } from "lucide-vue-next";
 import { toast } from "vue-sonner";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import Planogramns from "./Planogramns.vue";
+import { PlanogramEditorState } from "@/store/editor/types";
 
 const editorStore = useEditorStore();
 
@@ -585,7 +556,7 @@ const selectedSection = computed(() => editorStore.getSelectedSection as Section
 const editorGondola = computed(() => editorStore.getCurrentGondola);
 const isEditing = computed(() => editorStore.isSectionEditing);
 
-const gondolas = computed(() => editorStore.currentState?.gondolas || []);
+const currentPlanogram = computed(() => editorStore.currentState as PlanogramEditorState | null);
 
 // Função utilitária para calcular buracos da cremalheira (mesmo algoritmo do backend)
 const calculateHoles = (sectionData: {

@@ -34,12 +34,15 @@ class PlannerateController extends Controller
     {
         try {
             $planograms = Planogram::query()
-                ->with(['tenant:id,name', 'gondolas'])
+                ->with(['tenant:id,name', 'gondolas']) 
                 ->when($request->has('store_id'), function ($query) use ($request) {
                     $query->where('store_id', $request->get('store_id'));
                 })
                 ->when($request->has('cluster_id'), function ($query) use ($request) {
                     $query->where('cluster_id', $request->get('cluster_id'));
+                })
+                ->when($request->has('client_id'), function ($query) use ($request) {
+                    $query->where('client_id', $request->get('client_id'));
                 })
                 ->get();
 
@@ -80,7 +83,7 @@ class PlannerateController extends Controller
                 'gondolas.sections.shelves.segments.layer',
                 'gondolas.sections.shelves.segments.layer.product:id,name,ean,description,url'
             ])->findOrFail($id);
-            
+
 
             // $planogram->load([
             //     'gondolas' => function ($query) use ($request) {

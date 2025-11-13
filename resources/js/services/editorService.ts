@@ -24,13 +24,11 @@ export const useEditorService = () => {
   /**
    * Carrega o planograma
    */
-  const fetchPlanogram = (planogramId: string, params = {}) => {
-    console.log('Fetching planogram with params:', params);
+  const fetchPlanogram = (planogramId: string, params = {}) => { 
     return apiService.get(`/plannerate/${planogramId}`, {params});
   };
 
-  const fetchPlanograms = (params = {}) => {
-    console.log('Fetching planograms with params:', params);
+  const fetchPlanograms = (params = {}) => { 
     return apiService.get(`/planograms`, {params});
   };
 
