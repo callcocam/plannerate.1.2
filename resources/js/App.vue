@@ -2,7 +2,7 @@
 import { useRoute } from 'vue-router';
 import AppLayout from './layouts/AppLayout.vue';
 const route = useRoute();
-const appLayoutKey = route.fullPath.concat('-app-layout'); 
+const appLayoutKey = route.fullPath.concat('-app-layout');
 import { Toaster } from 'vue-sonner';
 </script>
 

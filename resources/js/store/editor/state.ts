@@ -19,6 +19,7 @@ export const currentGondola = ref<Gondola | null>(null);
 export const gondolaHistories = ref<Record<string, GondolaHistory>>({});
 export const isTimeTraveling = ref(false);
 export const productIdsInGondola = ref<string[]>([]);
+export const changesSinceLastSave = ref<Record<string, number>>({});
 
 // gerenciamento de estado das seções
 export const selectedSection = ref<Section | null>(null);
@@ -127,3 +128,9 @@ export const productIdsInCurrentGondola = computed(() => {
 
 // Estado de sessão na ora de drag and drop
 export const getIsDragging = computed(() => isDragging.value);
+
+// Retorna o número de mudanças desde o último save para a gôndola atual
+export const changeCountForCurrentGondola = computed((): number => {
+    if (!currentGondola.value) return 0;
+    return changesSinceLastSave.value[currentGondola.value.id] || 0;
+});

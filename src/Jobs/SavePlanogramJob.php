@@ -8,6 +8,7 @@
 
 namespace Callcocam\Plannerate\Jobs;
 
+use App\Events\QueueActivityUpdated;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
@@ -42,7 +43,7 @@ class SavePlanogramJob implements ShouldQueue
     {
         // Garante que jobs do mesmo planograma processem sequencialmente
         // Isso previne deadlocks ao evitar múltiplos jobs modificando os mesmos registros
-        $this->onQueue('planogramas'); 
+        $this->onQueue('planogramas');
     }
 
     /**
@@ -50,6 +51,52 @@ class SavePlanogramJob implements ShouldQueue
      */
     public function handle(): void
     {
-        PlannerateUpdateSevice::make($this->user)->update($this->request, $this->planogram);
+        // Notificar que o job começou a processar
+        broadcast(new QueueActivityUpdated(
+            jobName: 'SavePlanogramJob',
+            queueName: 'planogramas',
+            status: 'processing',
+            metadata: [
+                'planogram_id' => $this->planogram->id,
+                'planogram_name' => $this->planogram->name,
+                'started_at' => now()->toISOString(),
+            ],
+            tenantId: $this->planogram->tenant_id ?? null
+        ));
+
+        try {
+            // Processar a atualização do planograma
+            PlannerateUpdateSevice::make($this->user)->update($this->request, $this->planogram);
+
+            // Notificar sucesso
+            broadcast(new QueueActivityUpdated(
+                jobName: 'SavePlanogramJob',
+                queueName: 'planogramas',
+                status: 'completed',
+                metadata: [
+                    'planogram_id' => $this->planogram->id,
+                    'planogram_name' => $this->planogram->name,
+                    'completed_at' => now()->toISOString(),
+                ],
+                tenantId: $this->planogram->tenant_id ?? null
+            ));
+        } catch (\Exception $e) {
+            // Notificar erro
+            broadcast(new QueueActivityUpdated(
+                jobName: 'SavePlanogramJob',
+                queueName: 'planogramas',
+                status: 'failed',
+                metadata: [
+                    'planogram_id' => $this->planogram->id,
+                    'planogram_name' => $this->planogram->name,
+                    'error' => $e->getMessage(),
+                    'failed_at' => now()->toISOString(),
+                ],
+                tenantId: $this->planogram->tenant_id ?? null
+            ));
+
+            // Re-lançar a exceção para que o Laravel trate a falha do job
+            throw $e;
+        }
     }
 }

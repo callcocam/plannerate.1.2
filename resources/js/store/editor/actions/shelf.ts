@@ -97,7 +97,7 @@ export function addShelfToSection(gondolaId: string, sectionId: string, newShelf
     };
 
     section.shelves.push(shelfToAdd);
-    recordChange();
+    recordChange(true);
 }
 
 /**

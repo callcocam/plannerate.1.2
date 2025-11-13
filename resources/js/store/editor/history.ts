@@ -4,9 +4,10 @@ import {
     currentGondola,
     gondolaHistories,
     isTimeTraveling,
-    isLoading
+    isLoading,
+    changesSinceLastSave
 } from './state';
-import { MAX_HISTORY_SIZE, HistoryEntry } from './types';
+import { MAX_HISTORY_SIZE, AUTO_SAVE_THRESHOLD, HistoryEntry } from './types';
 import { calculateTabindex } from './utils';
 import { isEqual } from 'lodash-es';
 import { saveChanges } from './actions/basic';
@@ -32,14 +33,17 @@ export function initializeGondolaHistory(gondolaId: string) {
         entries: [historyEntry],
         currentIndex: 0
     };
- 
+
+    // Inicializa o contador de mudanças desde o último save
+    changesSinceLastSave.value[gondolaId] = 0;
+
 }
 
 /**
  * Registra uma mudança no estado atual no histórico da gôndola atual
  */
-export function recordChange(save: boolean = false) {
-    isLoading.value = true;
+export function recordChange(save: boolean = false, isLoadingState: boolean = true) {
+    isLoading.value = isLoadingState;
 
     // Não registra se estamos navegando pelo histórico ou se não há estado/gôndola atual
     if (isTimeTraveling.value || !currentState.value || !currentGondola.value) {
@@ -90,10 +94,28 @@ export function recordChange(save: boolean = false) {
 
     // Atualiza o índice atual
     history.currentIndex = history.entries.length - 1;
- 
+
+    // Garante que o contador existe para esta gôndola
+    if (changesSinceLastSave.value[gondolaId] === undefined) {
+        changesSinceLastSave.value[gondolaId] = 0;
+    }
+
+    // Incrementa o contador de mudanças
+    changesSinceLastSave.value[gondolaId]++;
+
+    // Verifica se atingiu o threshold para auto-save
+    if (changesSinceLastSave.value[gondolaId] >= AUTO_SAVE_THRESHOLD) {
+        console.log(`Auto-save acionado após ${changesSinceLastSave.value[gondolaId]} mudanças`);
+        changesSinceLastSave.value[gondolaId] = 0;
+        saveChanges();
+        isLoading.value = false;
+        return;
+    }
+
     isLoading.value = false;
 
     if (save) {
+        changesSinceLastSave.value[gondolaId] = 0;
         saveChanges();
     }
 }
@@ -186,5 +208,20 @@ export function resetGondolaHistory(gondolaId: string) {
         return;
     }
 
-    initializeGondolaHistory(gondolaId); 
+    initializeGondolaHistory(gondolaId);
+
+    // Reseta o contador de mudanças
+    changesSinceLastSave.value[gondolaId] = 0;
+}
+
+/**
+ * Reseta o contador de mudanças desde o último save para uma gôndola específica
+ * Útil quando um save manual é feito fora da função recordChange
+ * @param gondolaId ID da gôndola
+ */
+export function resetChangeCounter(gondolaId: string) {
+    if (gondolaId) {
+        changesSinceLastSave.value[gondolaId] = 0;
+        console.log(`Contador de mudanças resetado para gôndola ${gondolaId}`);
+    }
 }

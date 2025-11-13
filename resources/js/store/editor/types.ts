@@ -60,3 +60,4 @@ export interface ShelfPosition {
 
 // Constantes
 export const MAX_HISTORY_SIZE = 50;
+export const AUTO_SAVE_THRESHOLD = 10;
