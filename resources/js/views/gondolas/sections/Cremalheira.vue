@@ -142,16 +142,23 @@ const holes = computed(() => {
 
 const addShelfToSection = (hole: any) => {
     const section = props.section
-    const shelfHeight = ref(4); // Altura padrão da prateleira ao adicionar
-    section.shelves.map((shelf: any) => {
-        shelfHeight.value = shelf.shelf_height
-    }); 
+    
+    // Buscar altura da última prateleira ativa ou usar valor padrão
+    let shelfHeight = 4; // Altura padrão da prateleira ao adicionar
+    const activeShelves = section.shelves.filter((shelf: any) => !shelf.deleted_at);
+    if (activeShelves.length > 0) {
+        // Pegar a altura da última prateleira ativa
+        shelfHeight = activeShelves[activeShelves.length - 1].shelf_height || 4;
+    }
+    
     editorStore.addShelfToSection(section.gondola_id, section.id, {
         id: ulid(),
-        shelf_height: shelfHeight.value,
+        shelf_height: shelfHeight,
         shelf_position: hole.position,
+        shelf_x_position: 0, // Adicionar posição X padrão
         section_id: section.id,
         product_type: 'normal',
+        segments: [], // Inicializar array de segmentos vazio
     } as ShelfType);
 
     editorStore.clearLayerSelection(); // Limpa seleção de camadas ao selecionar prateleira    
