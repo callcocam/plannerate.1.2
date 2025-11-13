@@ -43,7 +43,7 @@ class SavePlanogramJob implements ShouldQueue
         // Garante que jobs do mesmo planograma processem sequencialmente
         // Isso previne deadlocks ao evitar múltiplos jobs modificando os mesmos registros
         if ($this->user) {
-            $this->onQueue("planogram-{$this->user->id}");
+            $this->onQueue($this->user->id);
         }
     }
 
