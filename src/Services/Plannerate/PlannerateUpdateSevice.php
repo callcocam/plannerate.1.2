@@ -17,6 +17,7 @@ use Callcocam\Plannerate\Services\ShelfPositioningService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class PlannerateUpdateSevice
@@ -38,7 +39,7 @@ class PlannerateUpdateSevice
     }
 
     /**
-     * Atualiza o planograma completo com comparação e limpeza de órfãos
+     * Atualiza o planograma completo com upserts diretos
      *
      * @param Request $request
      * @param mixed $planogram (App\Models\Planogram ou Callcocam\Plannerate\Models\Planogram)
@@ -51,6 +52,8 @@ class PlannerateUpdateSevice
 
         try {
 
+            Storage::disk('local')->put('plannerate-debug-update.json', json_encode($data, JSON_PRETTY_PRINT));
+
             // Atualiza os atributos básicos do planograma
             $planogram->fill($this->filterPlanogramAttributes($data));
             $planogram->save();
@@ -62,7 +65,7 @@ class PlannerateUpdateSevice
         } catch (\Exception $e) {
             DB::rollBack();
 
-            Log::error('❌ [UPDATE SERVICE] Erro ao atualizar planograma', [
+            Log::error('Erro ao atualizar planograma', [
                 'planogram_id' => $planogram->id ?? null,
                 'exception' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -102,7 +105,7 @@ class PlannerateUpdateSevice
     }
 
     /**
-     * Processa as gôndolas e sua estrutura aninhada
+     * Processa as gôndolas usando upsert direto
      *
      * @param mixed $planogram
      * @param array $gondolas
@@ -110,269 +113,43 @@ class PlannerateUpdateSevice
      */
     private function processGondolas($planogram, array $gondolas): void
     {
-        $createdCount = 0;
-        $updatedCount = 0;
+        foreach ($gondolas as $gondolaData) {
+            // Preparar dados da gondola
+            $data = $this->prepareGondolaData($gondolaData, $planogram);
 
-        // Bulk loading - carregar todas as gondolas existentes de uma vez
-        $gondolaIds = array_filter(array_column($gondolas, 'id'));
-        $existingGondolas = Gondola::query()
-            ->whereIn('id', $gondolaIds)
-            ->get()
-            ->keyBy('id');
-
-        foreach ($gondolas as $index => $gondolaData) {
-            $gondolaId = data_get($gondolaData, 'id');
-            $gondola = $existingGondolas->get($gondolaId);
-
-            if (!$gondola) {
-                // Criar nova gôndola
-                $gondola = new Gondola();
-                $gondola->id = (string) Str::ulid();
-                $gondola->tenant_id = $planogram->tenant_id;
-                $gondola->user_id = $planogram->user_id;
-                $gondola->planogram_id = $planogram->id;
-                $createdCount++;
-            } else {
-                $updatedCount++;
-            }
-
-            // Atualizar atributos da gôndola
-            $gondola->timestamps = false; // Desabilitar timestamps para performance
-            $gondola->fill($this->filterGondolaAttributes($gondolaData));
-            $gondola->save();
+            // Upsert direto - 1 query resolve criar OU atualizar
+            Gondola::upsert([$data], ['id'], [
+                'name',
+                'slug',
+                'location',
+                'side',
+                'flow',
+                'num_modulos',
+                'scale_factor',
+                'alignment',
+                'status',
+                'linked_map_gondola_id',
+                'linked_map_gondola_category',
+                'updated_at'
+            ]);
 
             // Processar seções desta gôndola
             if (isset($gondolaData['sections'])) {
-                $this->processSections($gondola, data_get($gondolaData, 'sections', []));
+                $this->processSections($gondolaData['id'], $gondolaData['sections'], $planogram);
             }
         }
 
-        // Log de resumo
-        Log::info('✅ [GONDOLAS] Processamento concluído', [
-            'created' => $createdCount,
-            'updated' => $updatedCount,
-        ]);
+        Log::info('Gondolas processadas', ['count' => count($gondolas)]);
     }
 
     /**
-     * Filtra atributos da gôndola
+     * Prepara dados da gôndola para upsert
      *
      * @param array $data
+     * @param mixed $planogram
      * @return array
      */
-    private function filterGondolaAttributes(array $data): array
-    {
-        $fillable = [
-            'name',
-            'slug',
-            'location',
-            'side',
-            'flow',
-            'num_modulos',
-            'scale_factor',
-            'alignment',
-            'status',
-            'linked_map_gondola_id',
-            'linked_map_gondola_category',
-        ];
-
-        $filtered = array_intersect_key($data, array_flip($fillable));
-
-        // Fix: Se status vier como array {value, label, color}, extrair apenas o value
-        if (isset($filtered['status']) && is_array($filtered['status'])) {
-            $filtered['status'] = $filtered['status']['value'] ?? null;
-        }
-
-        return $filtered;
-    }
-
-    /**
-     * Processa as seções de uma gôndola
-     *
-     * @param Gondola $gondola
-     * @param array $sections
-     * @return void
-     */
-    private function processSections(Gondola $gondola, array $sections): void
-    {
-        $shelfService = new ShelfPositioningService();
-        $createdCount = 0;
-        $updatedCount = 0;
-
-        // Bulk loading - carregar todas as sections de uma vez
-        $sectionIds = array_filter(array_column($sections, 'id'));
-        $existingSections = Section::query()
-            ->whereIn('id', $sectionIds)
-            ->get()
-            ->keyBy('id');
-
-        foreach ($sections as $i => $sectionData) {
-            $sectionId = data_get($sectionData, 'id', (string) Str::ulid());
-            $section = $existingSections->get($sectionId);
-
-            if (!$section) {
-                // Criar nova seção usando DB::insert para forçar o ID
-                DB::table('sections')->insert([
-                    'id' => $sectionId,
-                    'tenant_id' => $gondola->tenant_id,
-                    'user_id' => $gondola->user_id,
-                    'gondola_id' => $gondola->id,
-                    'name' => data_get($sectionData, 'name', "Seção #{$i}"),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-                // Após inserir, busca a instância do modelo
-                $section = Section::find($sectionId);
-                $createdCount++;
-            } else {
-                $updatedCount++;
-            }
-
-            // Atualizar atributos da seção
-            $data = $this->filterSectionAttributes($sectionData, $shelfService, $gondola);
-            $data['gondola_id'] = $gondola->id;
-            $data['name'] = sprintf('%d# Sessão', $i);
-            $section->timestamps = false; // Desabilitar timestamps para performance
-            if ($section->update($data)) {
-                activity('plannerate')
-                    ->causedBy($this->user)
-                    ->performedOn($section)
-                    ->log('Seção atualizada via PlannerateUpdateService');
-            }
-
-            // Processar prateleiras desta seção
-            if (isset($sectionData['shelves'])) {
-                $this->processShelves($section, data_get($sectionData, 'shelves', []), $shelfService);
-            }
-        }
-
-        // Log de resumo apenas se houver operações relevantes
-        if ($createdCount > 0) {
-            Log::info('✅ [SECTIONS] Processamento concluído', [
-                'gondola_id' => $gondola->id,
-                'created' => $createdCount,
-                'updated' => $updatedCount,
-            ]);
-        }
-    }
-
-    /**
-     * Filtra atributos da seção
-     *
-     * @param array $data
-     * @param ShelfPositioningService $shelfService
-     * @param Gondola $gondola
-     * @return array
-     */
-    private function filterSectionAttributes(array $data, ShelfPositioningService $shelfService, Gondola $gondola): array
-    {
-        // Fix: Converter deleted_at do formato ISO 8601 para formato MySQL
-        $deletedAt = data_get($data, 'deleted_at', null);
-        if ($deletedAt && is_string($deletedAt)) {
-            try {
-                // Converter de ISO 8601 (2025-11-10T22:12:35.674Z) para MySQL (Y-m-d H:i:s)
-                $deletedAt = \Carbon\Carbon::parse($deletedAt)->format('Y-m-d H:i:s');
-            } catch (\Exception $e) {
-                // Se falhar na conversão, definir como null
-                $deletedAt = null;
-            }
-        }
-
-        $fillable = [
-            'name' => data_get($data, 'name', 'Seção'),
-            'slug' => data_get($data, 'slug', Str::slug(data_get($data, 'name', 'seccao'))),
-            'width' => data_get($data, 'width', 130),
-            'height' => data_get($data, 'height', 180),
-            'num_shelves' => data_get($data, 'num_shelves', 4),
-            'base_height' => data_get($data, 'base_height', 10),
-            'base_depth' => data_get($data, 'base_depth', 20),
-            'base_width' => data_get($data, 'base_width', 130),
-            'hole_height' => data_get($data, 'hole_height', 4),
-            'hole_width' => data_get($data, 'hole_width', 2),
-            'hole_spacing' => data_get($data, 'hole_spacing', 2),
-            'shelf_height' => data_get($data, 'shelf_height', 4),
-            'cremalheira_width' => data_get($data, 'cremalheira_width', 2),
-            'ordering' => data_get($data, 'ordering', 0),
-            'deleted_at' => $deletedAt,
-        ];
-
-        // Calcular furos e adicionar às configurações
-        $sectionSettings = data_get($data, 'settings', []);
-        $sectionSettings['holes'] = $shelfService->calculateHoles($fillable);
-        $fillable['settings'] = $sectionSettings;
-
-        return $fillable;
-    }
-
-    /**
-     * Processa as prateleiras de uma seção
-     *
-     * @param Section $section
-     * @param array $shelves
-     * @param ShelfPositioningService $shelfService
-     * @return void
-     */
-    private function processShelves(Section $section, array $shelves, ShelfPositioningService $shelfService): void
-    {
-        $createdCount = 0;
-        $updatedCount = 0;
-
-        // Bulk loading - carregar todas as shelves de uma vez
-        $shelfIds = array_filter(array_column($shelves, 'id'));
-        $existingShelves = Shelf::query()
-            ->whereIn('id', $shelfIds)
-            ->get()
-            ->keyBy('id');
-
-        foreach ($shelves as $i => $shelfData) {
-            $shelfId = data_get($shelfData, 'id', (string) Str::ulid());
-            $shelf = $existingShelves->get($shelfId);
-
-            if (!$shelf) {
-                // Criar nova prateleira usando DB::insert para forçar o ID
-                DB::table('shelves')->insert([
-                    'id' =>  $shelfId,
-                    'tenant_id' => $section->tenant_id,
-                    'user_id' => $section->user_id,
-                    'section_id' => $section->id,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-                // Após inserir, busca a instância do modelo
-                $shelf = Shelf::find($shelfId);
-                $createdCount++;
-            } else {
-                $updatedCount++;
-            }
-
-            // Atualizar atributos da prateleira
-            $data = $this->filterShelfAttributes($shelfData, $shelfService, $i, $section);
-            $data['section_id'] = $section->id;
-            $shelf->timestamps = false; // Desabilitar timestamps para performance
-            if ($shelf->update($data)) {
-                activity('plannerate')
-                    ->causedBy($this->user)
-                    ->performedOn($shelf)
-                    ->log('Prateleira atualizada via PlannerateUpdateService');
-            }
-
-            // Processar segmentos desta prateleira (mantém batch nos segments)
-            if (isset($shelfData['segments'])) {
-                $this->processSegments($shelf, data_get($shelfData, 'segments', []));
-            }
-        }
-    }
-
-    /**
-     * Filtra atributos da prateleira
-     *
-     * @param array $data
-     * @param ShelfPositioningService $shelfService
-     * @param int $i
-     * @param Section $section
-     * @return array
-     */
-    private function filterShelfAttributes(array $data, ShelfPositioningService $shelfService, int $i, Section $section): array
+    private function prepareGondolaData(array $data, $planogram): array
     {
         // Fix: Extrair status.value se vier como array
         $status = data_get($data, 'status', 'published');
@@ -380,92 +157,280 @@ class PlannerateUpdateSevice
             $status = $status['value'] ?? 'published';
         }
 
+        return [
+            'id' => data_get($data, 'id'),
+            'tenant_id' => $planogram->tenant_id,
+            'user_id' => $planogram->user_id,
+            'planogram_id' => $planogram->id,
+            'name' => data_get($data, 'name', 'Gôndola'),
+            'slug' => data_get($data, 'slug'),
+            'num_modulos' => data_get($data, 'num_modulos', 1), // NOT NULL DEFAULT 1
+            'location' => data_get($data, 'location'),
+            'side' => data_get($data, 'side'),
+            'flow' => data_get($data, 'flow', 'left_to_right'), // NOT NULL DEFAULT 'left_to_right'
+            'alignment' => data_get($data, 'alignment', 'justify'), // NOT NULL DEFAULT 'justify'
+            'scale_factor' => data_get($data, 'scale_factor', 3), // NOT NULL DEFAULT 3
+            'status' => $status, // NOT NULL DEFAULT 'draft'
+            'linked_map_gondola_id' => data_get($data, 'linked_map_gondola_id'),
+            'linked_map_gondola_category' => data_get($data, 'linked_map_gondola_category'),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ];
+    }
+
+    /**
+     * Processa as seções usando upsert direto
+     *
+     * @param string $gondolaId
+     * @param array $sections
+     * @param mixed $planogram
+     * @return void
+     */
+    private function processSections(string $gondolaId, array $sections, $planogram): void
+    {
+        $shelfService = new ShelfPositioningService();
+
+        foreach ($sections as $i => $sectionData) {
+            // Preparar dados da section
+            $data = $this->prepareSectionData($sectionData, $gondolaId, $planogram, $shelfService, $i);
+
+            // Upsert direto - 1 query resolve criar OU atualizar
+            Section::upsert([$data], ['id'], [
+                'name',
+                'code',
+                'slug',
+                'width',
+                'height',
+                'num_shelves',
+                'base_height',
+                'base_depth',
+                'base_width',
+                'hole_height',
+                'hole_width',
+                'hole_spacing',
+                'cremalheira_width',
+                'ordering',
+                'alignment',
+                'settings',
+                'status',
+                'deleted_at',
+                'updated_at'
+            ]);
+
+            // Processar prateleiras desta seção
+            if (isset($sectionData['shelves'])) {
+                $this->processShelves($sectionData['id'], $sectionData['shelves'], $planogram);
+            }
+        }
+    }
+
+    /**
+     * Prepara dados da seção para upsert
+     *
+     * @param array $data
+     * @param string $gondolaId
+     * @param mixed $planogram
+     * @param ShelfPositioningService $shelfService
+     * @param int $index
+     * @return array
+     */
+    private function prepareSectionData(array $data, string $gondolaId, $planogram, ShelfPositioningService $shelfService, int $index): array
+    {
+        // Fix: Extrair status.value se vier como array
+        $status = data_get($data, 'status', 'draft');
+        if (is_array($status)) {
+            $status = $status['value'] ?? 'draft';
+        }
+
+        // Fix: Extrair alignment.value se vier como array
+        $alignment = data_get($data, 'alignment');
+        if (is_array($alignment)) {
+            $alignment = $alignment['value'] ?? null;
+        }
+
         // Fix: Converter deleted_at do formato ISO 8601 para formato MySQL
         $deletedAt = data_get($data, 'deleted_at', null);
         if ($deletedAt && is_string($deletedAt)) {
             try {
-                // Converter de ISO 8601 (2025-11-10T22:12:35.674Z) para MySQL (Y-m-d H:i:s)
                 $deletedAt = \Carbon\Carbon::parse($deletedAt)->format('Y-m-d H:i:s');
             } catch (\Exception $e) {
-                // Se falhar na conversão, definir como null
                 $deletedAt = null;
             }
         }
 
         $fillable = [
-            'product_type' => data_get($data, 'product_type', 'generic'),
-            'shelf_width' => data_get($data, 'shelf_width', 130),
-            'shelf_height' => data_get($data, 'shelf_height', 4),
-            'shelf_depth' => data_get($data, 'shelf_depth', 20),
-            'shelf_position' => data_get($data, 'shelf_position', 0),
-            'ordering' => data_get($data, 'ordering', 0),
-            'spacing' => data_get($data, 'spacing', 2),
-            'settings' => data_get($data, 'settings', []),
-            'status' => $status,
-            'alignment' => data_get($data, 'alignment', 'left'),
+            'id' => data_get($data, 'id'),
+            'tenant_id' => $planogram->tenant_id,
+            'user_id' => $planogram->user_id,
+            'gondola_id' => $gondolaId,
+            'name' => sprintf('%d# Sessão', $index),
+            'code' => data_get($data, 'code'), // varchar nullable
+            'slug' => data_get($data, 'slug', Str::slug(data_get($data, 'name', 'seccao'))),
+            'width' => data_get($data, 'width', 130),
+            'height' => data_get($data, 'height', 180),
+            'num_shelves' => data_get($data, 'num_shelves', 4),
+            'base_height' => data_get($data, 'base_height', 17), // NOT NULL DEFAULT 17
+            'base_depth' => data_get($data, 'base_depth', 40), // NOT NULL DEFAULT 40
+            'base_width' => data_get($data, 'base_width', 130), // NOT NULL DEFAULT 130
+            'cremalheira_width' => data_get($data, 'cremalheira_width', 4.00), // NOT NULL DEFAULT 4.00
+            'hole_height' => data_get($data, 'hole_height', 2.00), // NOT NULL DEFAULT 2.00
+            'hole_width' => data_get($data, 'hole_width', 2.00), // NOT NULL DEFAULT 2.00
+            'hole_spacing' => data_get($data, 'hole_spacing', 2.00), // NOT NULL DEFAULT 2.00
+            'ordering' => data_get($data, 'ordering', 0), // NOT NULL DEFAULT 0
+            'alignment' => $alignment, // nullable
+            'status' => $status, // NOT NULL DEFAULT 'draft'
             'deleted_at' => $deletedAt,
+            'created_at' => now(),
+            'updated_at' => now(),
         ];
+
+        // Calcular furos e adicionar às configurações
+        $sectionSettings = data_get($data, 'settings', []);
+        $sectionSettings['holes'] = $shelfService->calculateHoles($fillable);
+        $fillable['settings'] = $sectionSettings;
+
+        // FIX: Serializar settings para JSON (upsert não aplica casts automaticamente)
+        if (isset($fillable['settings']) && is_array($fillable['settings'])) {
+            $fillable['settings'] = json_encode($fillable['settings']);
+        }
 
         return $fillable;
     }
 
     /**
-     * Processa os segmentos de uma prateleira
+     * Processa as prateleiras usando upsert direto
      *
-     * @param Shelf $shelf
-     * @param array $segments
+     * @param string $sectionId
+     * @param array $shelves
+     * @param mixed $planogram
      * @return void
      */
-    private function processSegments(Shelf $shelf, array $segments): void
+    private function processShelves(string $sectionId, array $shelves, $planogram): void
     {
-        $createdCount = 0;
-        $updatedCount = 0;
+        foreach ($shelves as $shelfData) {
+            // Preparar dados da shelf
+            $data = $this->prepareShelfData($shelfData, $sectionId, $planogram);
+
+            // Upsert direto com Eloquent - aplica casts automaticamente
+            Shelf::upsert([$data], ['id'], [
+                'code',
+                'product_type',
+                'shelf_width',
+                'shelf_height',
+                'shelf_depth',
+                'shelf_position',
+                'ordering',
+                'alignment',
+                'spacing',
+                'settings',
+                'status',
+                'deleted_at',
+                'updated_at',
+            ]);
+
+            // Processar segmentos desta prateleira
+            if (isset($shelfData['segments'])) {
+                $this->processSegments($shelfData['id'], $shelfData['segments'], $planogram);
+            }
+        }
+    }
+
+    /**
+     * Prepara dados da prateleira para upsert
+     *
+     * @param array $data
+     * @param string $sectionId
+     * @param mixed $planogram
+     * @return array
+     */
+    private function prepareShelfData(array $data, string $sectionId, $planogram): array
+    {
+        // Fix: Extrair status.value se vier como array
+        $status = data_get($data, 'status', 'published');
+        if (is_array($status)) {
+            $status = $status['value'] ?? 'published';
+        }
+
+        // Fix: Extrair alignment.value se vier como array
+        $alignment = data_get($data, 'alignment');
+        if (is_array($alignment)) {
+            $alignment = $alignment['value'] ?? null;
+        }
+
+        // Fix: Converter deleted_at do formato ISO 8601 para formato MySQL
+        $deletedAt = data_get($data, 'deleted_at', null);
+        if ($deletedAt && is_string($deletedAt)) {
+            try {
+                $deletedAt = \Carbon\Carbon::parse($deletedAt)->format('Y-m-d H:i:s');
+            } catch (\Exception $e) {
+                $deletedAt = null;
+            }
+        }
+
+        $fillable = [
+            'id' => data_get($data, 'id'),
+            'tenant_id' => $planogram->tenant_id,
+            'user_id' => $planogram->user_id,
+            'section_id' => $sectionId,
+            'code' => data_get($data, 'code'), // varchar nullable
+            'product_type' => data_get($data, 'product_type', 'normal'), // NOT NULL DEFAULT 'normal'
+            'shelf_width' => data_get($data, 'shelf_width', 4), // NOT NULL DEFAULT 4
+            'shelf_height' => data_get($data, 'shelf_height', 4), // NOT NULL DEFAULT 4
+            'shelf_depth' => data_get($data, 'shelf_depth', 40), // NOT NULL DEFAULT 40
+            'shelf_position' => data_get($data, 'shelf_position', 0), // NOT NULL DEFAULT 0
+            'ordering' => data_get($data, 'ordering', 0), // NOT NULL DEFAULT 0
+            'alignment' => $alignment, // nullable
+            'spacing' => data_get($data, 'spacing', 0), // NOT NULL DEFAULT 0
+            'settings' => data_get($data, 'settings', []),
+            'status' => $status, // NOT NULL DEFAULT 'draft'
+            'deleted_at' => $deletedAt,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ];
+
+        // FIX: Serializar settings para JSON (upsert não aplica casts automaticamente)
+        if (isset($fillable['settings']) && is_array($fillable['settings'])) {
+            $fillable['settings'] = json_encode($fillable['settings']);
+        }
+
+        return $fillable;
+    }
+
+    /**
+     * Processa os segmentos em batch upsert
+     *
+     * @param string $shelfId
+     * @param array $segments
+     * @param mixed $planogram
+     * @return void
+     */
+    private function processSegments(string $shelfId, array $segments, $planogram): void
+    {
         $segmentsToUpsert = [];
         $layersToProcess = [];
 
-        // Bulk loading - carregar todos os segments de uma vez
-        $segmentIds = array_filter(array_column($segments, 'id'));
-        $existingSegments = Segment::query()
-            ->whereIn('id', $segmentIds)
-            ->get()
-            ->keyBy('id');
-
         foreach ($segments as $segmentData) {
-            $segmentId = data_get($segmentData, 'id', (string) Str::ulid());
-            $segment = $existingSegments->get($segmentId);
-
-            if (!$segment) {
-                // Preparar novo segmento para batch insert 
-                $createdCount++;
-            } else {
-                $segmentId = $segment->id;
-                $updatedCount++;
-            }
-
-            // Preparar dados para batch upsert
-            $data = $this->filterSegmentAttributes($segmentData);
-            $data['id'] = substr($segmentId, 0, 27); // ULID tem 26 caracteres, garantir que não exceda
-            $data['shelf_id'] = $shelf->id;
-            $data['tenant_id'] = $shelf->tenant_id;
-            $data['user_id'] = $shelf->user_id;
-
+            // Preparar dados do segment
+            $data = $this->prepareSegmentData($segmentData, $shelfId, $planogram);
             $segmentsToUpsert[] = $data;
 
             // Guardar layers para processar depois
             if (isset($segmentData['layer'])) {
                 $layersToProcess[] = [
-                    'segment_id' => $segmentId,
+                    'segment_id' => $data['id'],
                     'layer_data' => $segmentData['layer'],
+                    'tenant_id' => $planogram->tenant_id,
+                    'user_id' => $planogram->user_id,
                 ];
             }
         }
 
-        // BATCH UPSERT - 1 query ao invés de N queries!
+        // BATCH UPSERT - 1 query ao invés de N queries
         if (!empty($segmentsToUpsert)) {
             Segment::upsert(
                 $segmentsToUpsert,
-                ['id'], // Unique identifier
-                ['width', 'ordering', 'position', 'quantity', 'spacing', 'alignment', 'status', 'shelf_id', 'deleted_at'] // Campos para atualizar
+                ['id'],
+                ['width', 'distributed_width', 'height', 'ordering', 'alignment', 'position', 'quantity', 'spacing', 'settings', 'status', 'shelf_id', 'deleted_at', 'updated_at']
             );
         }
 
@@ -476,12 +441,14 @@ class PlannerateUpdateSevice
     }
 
     /**
-     * Filtra atributos do segmento
+     * Prepara dados do segmento para upsert
      *
      * @param array $data
+     * @param string $shelfId
+     * @param mixed $planogram
      * @return array
      */
-    private function filterSegmentAttributes(array $data): array
+    private function prepareSegmentData(array $data, string $shelfId, $planogram): array
     {
         // Fix: Extrair status.value se vier como array
         $status = data_get($data, 'status', 'published');
@@ -489,38 +456,54 @@ class PlannerateUpdateSevice
             $status = $status['value'] ?? 'published';
         }
 
+        // Fix: Extrair alignment.value se vier como array
+        $alignment = data_get($data, 'alignment');
+        if (is_array($alignment)) {
+            $alignment = $alignment['value'] ?? null;
+        }
+
         // Fix: Converter deleted_at do formato ISO 8601 para formato MySQL
         $deletedAt = data_get($data, 'deleted_at', null);
         if ($deletedAt && is_string($deletedAt)) {
             try {
-                // Converter de ISO 8601 (2025-11-10T22:12:35.674Z) para MySQL (Y-m-d H:i:s)
                 $deletedAt = \Carbon\Carbon::parse($deletedAt)->format('Y-m-d H:i:s');
             } catch (\Exception $e) {
-                // Se falhar na conversão, definir como null
                 $deletedAt = null;
             }
         }
 
         $fillable = [
-            'width' => data_get($data, 'width', 30),
-            'ordering' => data_get($data, 'ordering', 0),
-            'position' => data_get($data, 'position', 0),
-            'quantity' => data_get($data, 'quantity', 1),
-            'spacing' => data_get($data, 'spacing', 2),
+            'id' => data_get($data, 'id'),
+            'tenant_id' => $planogram->tenant_id,
+            'user_id' => $planogram->user_id,
+            'shelf_id' => $shelfId,
+            'width' => data_get($data, 'width'),
+            'distributed_width' => data_get($data, 'distributed_width'), // decimal nullable
+            'height' => data_get($data, 'height'),
+            'ordering' => data_get($data, 'ordering', 0), // NOT NULL DEFAULT 0
+            'alignment' => $alignment, // nullable
+            'position' => data_get($data, 'position'),
+            'quantity' => data_get($data, 'quantity', 1), // NOT NULL DEFAULT 1
+            'spacing' => data_get($data, 'spacing'),
+            'settings' => data_get($data, 'settings'), // json nullable
+            'status' => $status, // NOT NULL DEFAULT 'draft'
             'deleted_at' => $deletedAt,
-            // 'settings' => data_get($data, 'settings', []),
-            'alignment' => data_get($data, 'alignment', 'left'),
-            'status' => $status,
+            'created_at' => now(),
+            'updated_at' => now(),
         ];
+
+        // FIX: Serializar settings para JSON (upsert não aplica casts automaticamente)
+        if (isset($fillable['settings']) && is_array($fillable['settings'])) {
+            $fillable['settings'] = json_encode($fillable['settings']);
+        }
 
         return $fillable;
     }
 
-
     /**
      * Processa múltiplas layers em batch para performance
      *
-     * @param array $layersData Array de ['segment_id' => ..., 'layer_data' => ...]
+     * @param array $layersData Array de ['segment_id' => ..., 'layer_data' => ..., 'tenant_id' => ..., 'user_id' => ...]
      * @return void
      */
     private function processLayersBatch(array $layersData): void
@@ -529,68 +512,31 @@ class PlannerateUpdateSevice
             return;
         }
 
-        // Buscar todas as layers existentes de uma vez
-        $segmentIds = array_column($layersData, 'segment_id');
-        $existingLayers = Layer::query()
-            ->whereIn('segment_id', $segmentIds)
-            ->get()
-            ->keyBy('segment_id');
-
-        // Buscar tenant_id e user_id dos segments de uma vez só
-        $segments = Segment::query()->whereIn('id', $segmentIds)->get()->keyBy('id');
-
         $layersToUpsert = [];
-        $createdCount = 0;
-        $updatedCount = 0;
 
         foreach ($layersData as $item) {
-            $segmentId = $item['segment_id'];
-            $layerData = $item['layer_data'];
+            // Preparar dados da layer (tenant_id/user_id já vêm do parent)
+            $data = $this->prepareLayerData(
+                $item['layer_data'],
+                $item['segment_id'],
+                $item['tenant_id'],
+                $item['user_id']
+            );
 
-            $existingLayer = $existingLayers->get($segmentId);
-            $layerId = data_get($layerData, 'id', (string) Str::ulid());
-
-            if (!$existingLayer) {
-                $createdCount++;
-            } else {
-                $updatedCount++;
-            }
-
-            // Preparar dados para batch upsert
-            $data = $this->filterLayerAttributes($layerData);
-            $data['id'] = substr($layerId, 0, 27); // ULID tem 26 caracteres, garantir que não exceda
-            $data['segment_id'] = $segmentId;
-
-            // Pegar tenant_id e user_id do segment
-            $segment = $segments->get($segmentId);
-            $segment = $segments->get($segmentId);
-            if ($segment) {
-                $data['tenant_id'] = $segment->tenant_id;
-                $data['user_id'] = $segment->user_id;
-            } else {
-                // Fallback: usar tenant_id e user_id de algum lugar padrão
-                $data['tenant_id'] = data_get($this->user, 'tenant_id', null);
-                $data['user_id'] = data_get($this->user, 'id', null);
-            }
-
-            // Garantir que todos os campos obrigatórios existam
-            $data['created_at'] = data_get($data, 'created_at', now());
-            $data['updated_at'] = now();
             $layersToUpsert[] = $data;
         }
 
-
-
-        // BATCH UPSERT - 1 query ao invés de N queries!
+        // BATCH UPSERT - 1 query ao invés de N queries
         if (!empty($layersToUpsert)) {
             Layer::upsert(
                 $layersToUpsert,
-                ['id'], // Unique identifier
-                ['product_id', 'height', 'quantity', 'spacing', 'settings', 'alignment', 'status', 'segment_id', 'updated_at', 'created_at'] // Campos para atualizar
+                ['id'],
+                ['product_id', 'height', 'distributed_width', 'quantity', 'alignment', 'spacing', 'settings', 'status', 'segment_id', 'updated_at']
             );
         }
 
         // Remover layers órfãs (relação 1:1)
+        $segmentIds = array_column($layersData, 'segment_id');
         foreach ($segmentIds as $segmentId) {
             $validLayerId = collect($layersToUpsert)->firstWhere('segment_id', $segmentId)['id'] ?? null;
             if ($validLayerId) {
@@ -603,28 +549,50 @@ class PlannerateUpdateSevice
     }
 
     /**
-     * Filtra atributos da camada (layer)
+     * Prepara dados da camada (layer) para upsert
      *
      * @param array $data
+     * @param string $segmentId
+     * @param string $tenantId
+     * @param string $userId
      * @return array
      */
-    private function filterLayerAttributes(array $data): array
+    private function prepareLayerData(array $data, string $segmentId, string $tenantId, string $userId): array
     {
         // Fix: Extrair status.value se vier como array
-        $status = data_get($data, 'status', 'published'); // Default value
+        $status = data_get($data, 'status', 'published');
         if (is_array($status)) {
             $status = $status['value'] ?? 'published';
         }
 
-        // Garantir que TODOS os campos existam em TODAS as linhas
-        return [
+        // Fix: Extrair alignment.value se vier como array
+        $alignment = data_get($data, 'alignment');
+        if (is_array($alignment)) {
+            $alignment = $alignment['value'] ?? null;
+        }
+
+        $fillable = [
+            'id' => data_get($data, 'id'),
+            'tenant_id' => $tenantId,
+            'user_id' => $userId,
+            'segment_id' => $segmentId,
             'product_id' => data_get($data, 'product_id'),
             'height' => data_get($data, 'height'),
-            'quantity' => data_get($data, 'quantity'),
-            'spacing' => data_get($data, 'spacing', 0),
-            'settings' => data_get($data, 'settings'),
-            'alignment' => data_get($data, 'alignment'),
-            'status' => $status,
+            'distributed_width' => data_get($data, 'distributed_width'), // decimal nullable
+            'quantity' => data_get($data, 'quantity', 1), // NOT NULL DEFAULT 1
+            'alignment' => $alignment, // nullable
+            'spacing' => data_get($data, 'spacing', 0), // NOT NULL DEFAULT 0
+            'settings' => data_get($data, 'settings'), // json nullable
+            'status' => $status, // NOT NULL DEFAULT 'draft'
+            'created_at' => now(),
+            'updated_at' => now(),
         ];
+
+        // FIX: Serializar settings para JSON (upsert não aplica casts automaticamente)
+        if (isset($fillable['settings']) && is_array($fillable['settings'])) {
+            $fillable['settings'] = json_encode($fillable['settings']);
+        }
+
+        return $fillable;
     }
 }
