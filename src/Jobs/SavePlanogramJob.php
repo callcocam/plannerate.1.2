@@ -11,9 +11,9 @@ namespace Callcocam\Plannerate\Jobs;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
- 
-use Callcocam\Plannerate\Models\Planogram; 
-use Callcocam\Plannerate\Services\Plannerate\PlannerateUpdateSevice; 
+
+use Callcocam\Plannerate\Models\Planogram;
+use Callcocam\Plannerate\Services\Plannerate\PlannerateUpdateSevice;
 
 
 class SavePlanogramJob implements ShouldQueue
@@ -42,7 +42,9 @@ class SavePlanogramJob implements ShouldQueue
     {
         // Garante que jobs do mesmo planograma processem sequencialmente
         // Isso previne deadlocks ao evitar múltiplos jobs modificando os mesmos registros
-        // $this->onQueue("planogram-{$planogram->id}");
+        if ($this->user) {
+            $this->onQueue("planogram-{$this->user->id}");
+        }
     }
 
     /**
@@ -50,7 +52,6 @@ class SavePlanogramJob implements ShouldQueue
      */
     public function handle(): void
     {
-       PlannerateUpdateSevice::make($this->user)->update($this->request, $this->planogram);
+        PlannerateUpdateSevice::make($this->user)->update($this->request, $this->planogram);
     }
- 
 }
