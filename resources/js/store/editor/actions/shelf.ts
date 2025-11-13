@@ -91,13 +91,12 @@ export function addShelfToSection(gondolaId: string, sectionId: string, newShelf
 
     // Criar uma cópia e ajustar tipos antes de adicionar ao estado
     const shelfToAdd = {
-        ...newShelfData,
-        // Garante que alignment seja string ou undefined, tratando null
-        alignment: newShelfData.alignment === null ? undefined : newShelfData.alignment,
+        ...newShelfData, 
     };
 
     section.shelves.push(shelfToAdd);
-    recordChange(true);
+
+    recordChange();
 }
 
 /**
