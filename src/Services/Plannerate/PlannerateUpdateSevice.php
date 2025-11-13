@@ -329,18 +329,31 @@ class PlannerateUpdateSevice
             $shelf = $existingShelves->get($shelfId);
 
             if (!$shelf) {
-                // Criar nova prateleira usando DB::insert para forçar o ID
-                DB::table('shelves')->insert([
-                    'id' =>  $shelfId,
-                    'tenant_id' => $section->tenant_id,
-                    'user_id' => $section->user_id,
-                    'section_id' => $section->id,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-                // Após inserir, busca a instância do modelo
+                // Verificar se já existe no banco antes de criar
                 $shelf = Shelf::find($shelfId);
-                $createdCount++;
+                
+                if (!$shelf) {
+                    // Usar insertOrIgnore para evitar erros de duplicação em cenários de concorrência
+                    $inserted = DB::table('shelves')->insertOrIgnore([
+                        'id' =>  $shelfId,
+                        'tenant_id' => $section->tenant_id,
+                        'user_id' => $section->user_id,
+                        'section_id' => $section->id,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                    
+                    // Buscar a instância do modelo (pode ter sido criada por outro processo)
+                    $shelf = Shelf::find($shelfId);
+                    
+                    if ($inserted && $shelf) {
+                        $createdCount++;
+                    } else {
+                        $updatedCount++;
+                    }
+                } else {
+                    $updatedCount++;
+                }
             } else {
                 $updatedCount++;
             }
