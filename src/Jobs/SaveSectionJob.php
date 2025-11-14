@@ -2,6 +2,7 @@
 
 namespace Callcocam\Plannerate\Jobs;
 
+use App\Events\QueueActivityUpdated;
 use Callcocam\Plannerate\Models\Gondola;
 use Callcocam\Plannerate\Models\Section;
 use Callcocam\Plannerate\Services\ShelfPositioningService;
@@ -40,6 +41,17 @@ class SaveSectionJob implements ShouldQueue
         DB::beginTransaction();
 
         try {
+            // Broadcast: processando
+            QueueActivityUpdated::dispatch(
+                'SaveSectionJob',
+                'planogramas',
+                'processing',
+                [
+                    'section_id' => data_get($this->sectionData, 'id'),
+                    'gondola_id' => $this->gondolaId
+                ]
+            );
+
             $gondola = Gondola::findOrFail($this->gondolaId);
             
             $sectionId = data_get($this->sectionData, 'id', (string) Str::ulid());
@@ -87,6 +99,17 @@ class SaveSectionJob implements ShouldQueue
 
             DB::commit();
 
+            // Broadcast: concluído
+            QueueActivityUpdated::dispatch(
+                'SaveSectionJob',
+                'planogramas',
+                'completed',
+                [
+                    'section_id' => $section->id,
+                    'gondola_id' => $this->gondolaId
+                ]
+            );
+
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -95,6 +118,18 @@ class SaveSectionJob implements ShouldQueue
                 'gondola_id' => $this->gondolaId,
                 'exception' => $e->getMessage(),
             ]);
+
+            // Broadcast: falhou
+            QueueActivityUpdated::dispatch(
+                'SaveSectionJob',
+                'planogramas',
+                'failed',
+                [
+                    'section_id' => data_get($this->sectionData, 'id'),
+                    'gondola_id' => $this->gondolaId,
+                    'error' => $e->getMessage()
+                ]
+            );
 
             throw $e;
         }

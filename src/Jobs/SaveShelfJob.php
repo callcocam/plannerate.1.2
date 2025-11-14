@@ -2,6 +2,7 @@
 
 namespace Callcocam\Plannerate\Jobs;
 
+use App\Events\QueueActivityUpdated;
 use Callcocam\Plannerate\Models\Layer;
 use Callcocam\Plannerate\Models\Section;
 use Callcocam\Plannerate\Models\Segment;
@@ -41,6 +42,17 @@ class SaveShelfJob implements ShouldQueue
         DB::beginTransaction();
 
         try {
+            // Broadcast: processando
+            QueueActivityUpdated::dispatch(
+                'SaveShelfJob',
+                'planogramas',
+                'processing',
+                [
+                    'shelf_id' => data_get($this->shelfData, 'id'),
+                    'section_id' => $this->sectionId
+                ]
+            );
+
             $section = Section::findOrFail($this->sectionId);
             
             $shelfId = data_get($this->shelfData, 'id', (string) Str::ulid());
@@ -89,6 +101,17 @@ class SaveShelfJob implements ShouldQueue
 
             DB::commit();
 
+            // Broadcast: concluído
+            QueueActivityUpdated::dispatch(
+                'SaveShelfJob',
+                'planogramas',
+                'completed',
+                [
+                    'shelf_id' => $shelf->id,
+                    'section_id' => $this->sectionId
+                ]
+            );
+
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -97,6 +120,18 @@ class SaveShelfJob implements ShouldQueue
                 'section_id' => $this->sectionId,
                 'exception' => $e->getMessage(),
             ]);
+
+            // Broadcast: falhou
+            QueueActivityUpdated::dispatch(
+                'SaveShelfJob',
+                'planogramas',
+                'failed',
+                [
+                    'shelf_id' => data_get($this->shelfData, 'id'),
+                    'section_id' => $this->sectionId,
+                    'error' => $e->getMessage()
+                ]
+            );
 
             throw $e;
         }

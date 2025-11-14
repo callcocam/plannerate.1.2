@@ -2,6 +2,7 @@
 
 namespace Callcocam\Plannerate\Jobs;
 
+use App\Events\QueueActivityUpdated;
 use Callcocam\Plannerate\Models\Planogram;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -34,7 +35,19 @@ class SavePlanogramMetadataJob implements ShouldQueue
     public function handle(): void
     {
         try {
-            $planogram = Planogram::findOrFail($this->planogramId);
+            Log::info('[SavePlanogramMetadataJob] Iniciando salvamento de metadados', [
+                'planogram_id' => $this->planogramId,
+            ]);
+
+            // Broadcast: processando
+            QueueActivityUpdated::dispatch(
+                'SavePlanogramMetadataJob',
+                'planogramas',
+                'processing',
+                ['planogram_id' => $this->planogramId, 'planogram_name' => $this->data['name'] ?? null]
+            );
+
+            $planogram = Planogram::query()->findOrFail($this->planogramId);
 
             // Atualizar apenas os metadados do planograma
             $planogram->fill($this->filterPlanogramAttributes($this->data));
@@ -45,12 +58,35 @@ class SavePlanogramMetadataJob implements ShouldQueue
                 'name' => $planogram->name,
             ]);
 
-        } catch (\Exception $e) {
-            Log::error('❌ [METADATA] Erro ao atualizar metadados do planograma', [
+        Log::info('[SavePlanogramMetadataJob] Metadados salvos com sucesso', [
                 'planogram_id' => $this->planogramId,
-                'exception' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
             ]);
+
+            // Broadcast: concluído
+            QueueActivityUpdated::dispatch(
+                'SavePlanogramMetadataJob',
+                'planogramas',
+                'completed',
+                ['planogram_id' => $this->planogramId, 'planogram_name' => $planogram->name]
+            );
+        } catch (\Exception $e) {
+            Log::error('[SavePlanogramMetadataJob] Erro ao salvar metadados:', [
+                'planogram_id' => $this->planogramId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            // Broadcast: falhou
+            QueueActivityUpdated::dispatch(
+                'SavePlanogramMetadataJob',
+                'planogramas',
+                'failed',
+                [
+                    'planogram_id' => $this->planogramId,
+                    'planogram_name' => $this->data['name'] ?? null,
+                    'error' => $e->getMessage()
+                ]
+            );
 
             throw $e;
         }

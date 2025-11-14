@@ -2,6 +2,7 @@
 
 namespace Callcocam\Plannerate\Jobs;
 
+use App\Events\QueueActivityUpdated;
 use Callcocam\Plannerate\Models\Gondola;
 use Callcocam\Plannerate\Models\Planogram;
 use Illuminate\Bus\Queueable;
@@ -39,6 +40,17 @@ class SaveGondolaJob implements ShouldQueue
         DB::beginTransaction();
 
         try {
+            // Broadcast: processando
+            QueueActivityUpdated::dispatch(
+                'SaveGondolaJob',
+                'planogramas',
+                'processing',
+                [
+                    'gondola_id' => data_get($this->gondolaData, 'id'),
+                    'planogram_id' => $this->planogramId
+                ]
+            );
+
             $planogram = Planogram::findOrFail($this->planogramId);
             
             $gondolaId = data_get($this->gondolaData, 'id', (string) Str::ulid());
@@ -63,6 +75,17 @@ class SaveGondolaJob implements ShouldQueue
 
             DB::commit();
 
+            // Broadcast: concluído
+            QueueActivityUpdated::dispatch(
+                'SaveGondolaJob',
+                'planogramas',
+                'completed',
+                [
+                    'gondola_id' => $gondola->id,
+                    'planogram_id' => $this->planogramId
+                ]
+            );
+
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -71,6 +94,18 @@ class SaveGondolaJob implements ShouldQueue
                 'planogram_id' => $this->planogramId,
                 'exception' => $e->getMessage(),
             ]);
+
+            // Broadcast: falhou
+            QueueActivityUpdated::dispatch(
+                'SaveGondolaJob',
+                'planogramas',
+                'failed',
+                [
+                    'gondola_id' => data_get($this->gondolaData, 'id'),
+                    'planogram_id' => $this->planogramId,
+                    'error' => $e->getMessage()
+                ]
+            );
 
             throw $e;
         }

@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 
 import './../css/app.css';
+import './echo'; // Importar configuração do Echo
 import type { App, Component } from 'vue'
 import Plannerate from './App.vue';
 import ConfirmModal from './components/Confirm.vue';
