@@ -91,19 +91,13 @@ onMounted(() => {
   
   // Aguardar Echo estar disponível (pode ser carregado pelo app principal)
   const checkEcho = () => {
-    if (typeof window !== 'undefined' && window.Echo) {
-      console.log('✅ [QueueMonitor] Echo disponível!');
-      console.log('🎧 [QueueMonitor] Conectando ao canal queue-activity...');
+    if (typeof window !== 'undefined' && window.Echo) { 
       
-      const channel = window.Echo.channel('queue-activity');
-      console.log('🎧 [QueueMonitor] Channel criado:', channel);
+      const channel = window.Echo.channel('queue-activity'); 
       
-      channel.listen('.queue.activity.updated', (data: any) => {
-        console.log('📨 [QueueMonitor] ===== EVENTO RECEBIDO =====');
-        console.log('📨 [QueueMonitor] Data completo:', JSON.stringify(data, null, 2));
+      channel.listen('.queue.activity.updated', (data: any) => { 
         
-        if (data.queue_name === 'planogramas') {
-          console.log('✅ [QueueMonitor] Processando job de planogramas:', data.job_name, data.status);
+        if (data.queue_name === 'planogramas') { 
           updateJob(data);
         } else {
           console.log('⏭️ [QueueMonitor] Ignorando fila:', data.queue_name);
@@ -120,11 +114,9 @@ onMounted(() => {
   checkEcho();
 });
 
-onUnmounted(() => {
-  console.log('🔌 [QueueMonitor] Componente desmontando...');
+onUnmounted(() => { 
   if (typeof window !== 'undefined' && window.Echo) {
-    window.Echo.leaveChannel('queue-activity');
-    console.log('👋 [QueueMonitor] Desconectado do canal');
+    window.Echo.leaveChannel('queue-activity'); 
   }
 });
 </script>
