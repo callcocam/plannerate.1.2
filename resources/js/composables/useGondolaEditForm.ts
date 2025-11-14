@@ -137,9 +137,9 @@ export function useGondolaEditForm(options: UseGondolaEditFormOptions) {
         if (!formData.scale_factor || formData.scale_factor <= 0) {
             newErrors.scale_factor = ['Fator de escala deve ser um número positivo'];
         }
-        if (!formData.linkedMapGondolaId) {
-            newErrors.linkedMapGondolaId = ['Selecione uma gôndola para vincular.'];
-        }
+        // if (!formData.linkedMapGondolaId) {
+        //     newErrors.linkedMapGondolaId = ['Selecione uma gôndola para vincular.'];
+        // }
 
         errors.value = newErrors;
 
