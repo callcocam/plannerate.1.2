@@ -65,6 +65,7 @@ const registerMainComponents = (app: App): void => {
     app.component('AlertConfirm', AlertConfirm);
     app.component('v-alert-confirm', AlertConfirm);
     app.component('queue-monitor', QueueMonitor);
+    app.component('QueueMonitor', QueueMonitor);
 }
 
 /**

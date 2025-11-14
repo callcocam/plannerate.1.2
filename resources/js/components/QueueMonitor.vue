@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, CheckCircle2, XCircle, Clock } from 'lucide-vue-next';
+import { Card, CardContent } from '@/components/ui/card';
+import { Loader2, CheckCircle2, XCircle } from 'lucide-vue-next';
 
 interface QueueJob {
   id: string;
@@ -24,6 +24,7 @@ const totalJobs = ref(0);
 const completedJobs = ref(0);
 const failedJobs = ref(0);
 const isVisible = ref(false);
+const currentProcessingJob = ref<string>('');
 
 const jobLabels: Record<string, string> = {
   'SavePlanogramMetadataJob': 'Metadados',
@@ -31,6 +32,21 @@ const jobLabels: Record<string, string> = {
   'SaveSectionJob': 'Seção',
   'SaveShelfJob': 'Prateleira'
 };
+
+const progressPercentage = computed(() => {
+  if (totalJobs.value === 0) return 0;
+  return Math.round((completedJobs.value / totalJobs.value) * 100);
+});
+
+const currentJobLabel = computed(() => {
+  if (completedJobs.value === totalJobs.value && totalJobs.value > 0) {
+    return 'Concluído com sucesso!';
+  }
+  if (currentProcessingJob.value) {
+    return `Processando: ${currentProcessingJob.value}`;
+  }
+  return 'Aguardando...';
+});
 
 function updateJob(data: any) {
   const jobId = `${data.job_name}-${data.metadata.planogram_id || ''}-${data.metadata.gondola_id || ''}-${data.metadata.section_id || ''}-${data.metadata.shelf_id || ''}`;
@@ -46,6 +62,7 @@ function updateJob(data: any) {
   if (data.status === 'processing') {
     totalJobs.value++;
     isVisible.value = true;
+    currentProcessingJob.value = jobLabels[data.job_name] || data.job_name;
     console.log('🟢 [QueueMonitor] Card agora visível! Total jobs:', totalJobs.value);
   } else if (data.status === 'completed') {
     completedJobs.value++;
@@ -63,20 +80,20 @@ function updateJob(data: any) {
     timestamp: data.timestamp
   });
 
-  // Remover jobs concluídos após 5 segundos (aumentado para melhor visualização)
+  // Remover jobs concluídos após 3 segundos
   if (data.status === 'completed' || data.status === 'failed') {
     setTimeout(() => {
       console.log('🗑️ [QueueMonitor] Removendo job:', jobId);
       activeJobs.value.delete(jobId);
       if (activeJobs.value.size === 0) {
-        console.log('👋 [QueueMonitor] Todos jobs removidos, escondendo card em 3s...');
+        console.log('👋 [QueueMonitor] Todos jobs removidos, escondendo card em 2s...');
         setTimeout(() => {
           isVisible.value = false;
           resetCounters();
           console.log('🔄 [QueueMonitor] Contadores resetados');
-        }, 3000);
+        }, 2000);
       }
-    }, 5000);
+    }, 3000);
   }
 }
 
@@ -84,6 +101,7 @@ function resetCounters() {
   totalJobs.value = 0;
   completedJobs.value = 0;
   failedJobs.value = 0;
+  currentProcessingJob.value = '';
 }
 
 onMounted(() => {
@@ -134,63 +152,38 @@ onUnmounted(() => {
       v-if="isVisible" 
       class="fixed top-4 right-4 w-96 shadow-lg z-50 border-primary/20"
     >
-      <CardHeader class="pb-3">
-        <div class="flex items-center justify-between">
-          <CardTitle class="text-base flex items-center gap-2">
-            <Loader2 v-if="completedJobs < totalJobs" class="h-4 w-4 animate-spin" />
-            <CheckCircle2 v-else class="h-4 w-4 text-green-600" />
-            Processando Planograma
-          </CardTitle>
-          <div class="flex gap-2">
+      <CardContent class="p-4">
+        <div class="space-y-3">
+          <!-- Header com título e contador -->
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <Loader2 v-if="completedJobs < totalJobs" class="h-4 w-4 animate-spin text-primary" />
+              <CheckCircle2 v-else class="h-4 w-4 text-green-600" />
+              <span class="font-semibold text-sm">Processando Planograma</span>
+            </div>
             <Badge variant="outline" class="text-xs">
               {{ completedJobs }}/{{ totalJobs }}
             </Badge>
-            <Badge v-if="failedJobs > 0" variant="destructive" class="text-xs">
-              {{ failedJobs }} erros
-            </Badge>
           </div>
-        </div>
-        <CardDescription class="text-xs">
-          Salvando alterações em segundo plano
-        </CardDescription>
-      </CardHeader>
-      <CardContent class="space-y-2 max-h-64 overflow-y-auto">
-        <div
-          v-for="[id, job] in activeJobs"
-          :key="id"
-          class="flex items-center justify-between p-2 rounded-md bg-muted/50"
-        >
-          <div class="flex items-center gap-2">
-            <Loader2 
-              v-if="job.status === 'processing'" 
-              class="h-3 w-3 animate-spin text-blue-600" 
-            />
-            <CheckCircle2 
-              v-else-if="job.status === 'completed'" 
-              class="h-3 w-3 text-green-600" 
-            />
-            <XCircle 
-              v-else-if="job.status === 'failed'" 
-              class="h-3 w-3 text-red-600" 
-            />
-            <span class="text-xs font-medium">
-              {{ jobLabels[job.job_name] || job.job_name }}
-            </span>
+
+          <!-- Barra de Progresso -->
+          <div class="space-y-1">
+            <div class="h-2 bg-muted rounded-full overflow-hidden">
+              <div 
+                class="h-full bg-primary transition-all duration-300 ease-out"
+                :style="{ width: `${progressPercentage}%` }"
+              />
+            </div>
+            <p class="text-xs text-muted-foreground">
+              {{ currentJobLabel }}
+            </p>
           </div>
-          <Badge 
-            :variant="
-              job.status === 'processing' ? 'default' : 
-              job.status === 'completed' ? 'secondary' : 
-              'destructive'
-            " 
-            class="text-xs"
-          >
-            {{ 
-              job.status === 'processing' ? 'Processando' : 
-              job.status === 'completed' ? 'Concluído' : 
-              'Falhou' 
-            }}
-          </Badge>
+
+          <!-- Mensagem de erro se houver -->
+          <div v-if="failedJobs > 0" class="flex items-center gap-2 text-xs text-destructive">
+            <XCircle class="h-3 w-3" />
+            <span>{{ failedJobs }} {{ failedJobs === 1 ? 'erro' : 'erros' }}</span>
+          </div>
         </div>
       </CardContent>
     </Card>

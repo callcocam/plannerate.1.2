@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
 import AppLayout from './layouts/AppLayout.vue';
-import { Toaster } from 'vue-sonner';
-import QueueMonitor from './components/QueueMonitor.vue';
+import { Toaster } from 'vue-sonner'; 
 
 const route = useRoute();
 const appLayoutKey = route.fullPath.concat('-app-layout');
