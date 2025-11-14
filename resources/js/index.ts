@@ -63,6 +63,7 @@ const registerMainComponents = (app: App): void => {
     app.component('v-confirm-modal', ConfirmModal);
     app.component('AlertConfirm', AlertConfirm);
     app.component('v-alert-confirm', AlertConfirm);
+    app.component('queue-monitor', () => import('./components/QueueMonitor.vue'));
 }
 
 /**
