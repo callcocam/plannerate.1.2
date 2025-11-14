@@ -8,6 +8,7 @@ import ConfirmModal from './components/Confirm.vue';
 import AlertConfirm from './components/AlertConfirm.vue';
 import router from './routes';
 import { createPinia } from 'pinia';
+import QueueMonitor from './components/QueueMonitor.vue';
 
 // Definição de interfaces para tipagem adequada
 export interface PluginOptions {
@@ -63,7 +64,7 @@ const registerMainComponents = (app: App): void => {
     app.component('v-confirm-modal', ConfirmModal);
     app.component('AlertConfirm', AlertConfirm);
     app.component('v-alert-confirm', AlertConfirm);
-    app.component('queue-monitor', () => import('./components/QueueMonitor.vue'));
+    app.component('queue-monitor', QueueMonitor);
 }
 
 /**
