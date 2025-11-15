@@ -104,9 +104,12 @@ class TargetStockAnalysisService
         $grouped = [];
 
         foreach ($sales as $sale) {
-            $date = $sale->sale_date instanceof Carbon ? $sale->sale_date->format('Y-m-d') : $sale->sale_date;
             $productId = $sale->product_id;
-
+            if ($this->dataSource->getSourceType() === 'monthly') {
+                $date = $sale->sale_month instanceof Carbon ? $sale->sale_month->format('Y-m-d') : $sale->sale_month;
+            } else {
+                $date = $sale->sale_date instanceof Carbon ? $sale->sale_date->format('Y-m-d') : $sale->sale_date;
+            }
             if (!isset($grouped[$productId])) {
                 $grouped[$productId] = [];
             }
