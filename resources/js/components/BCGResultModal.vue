@@ -1,7 +1,7 @@
 <template>
   <TooltipProvider>
     <Dialog :open="open" @update:open="$emit('update:open', $event)">
-      <DialogContent class="md:max-w-[90%] xl:max-w-[70%] w-full max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent class="md:max-w-[90%] xl:max-w-[70%] w-full max-h-[90%] overflow-hidden flex flex-col">
         <DialogHeader>
           <div class="flex justify-between items-center">
             <div>
@@ -16,33 +16,35 @@
 
         <div class="flex-1 overflow-hidden flex flex-col">
           <!-- Resumo -->
-          <div v-if="summary" class="mb-4 py-2 px-4 bg-gray-50 rounded-lg flex-shrink-0">
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div>
-                <h3 class="text-sm font-medium text-gray-500">Total de Itens</h3>
-                <p class="text-lg font-semibold">{{ formatNumber.format(summary.totalItems) }}</p>
-              </div>
-              <div class="col-span-3">
-                <h3 class="text-sm font-medium text-gray-500">Classificações</h3>
-                <div class="flex flex-wrap gap-4">
-                  <p class="text-xs">
-                    <span class="text-green-600">Alto valor:</span> {{
-                      formatNumber.format(summary.classificationCounts['Alto valor - manutenção']) }}
-                  </p>
-                  <p class="text-xs">
-                    <span class="text-blue-600">Incentivo vol.:</span> {{
-                      formatNumber.format(summary.classificationCounts['Incentivo - volume']) }}
-                  </p>
-                  <p class="text-xs">
-                    <span class="text-purple-600">Incentivo lucro:</span> {{
-                      formatNumber.format(summary.classificationCounts['Incentivo - lucro']) }}
-                  </p>
-                  <p class="text-xs">
-                    <span class="text-red-600">Baixo valor:</span> {{
-                      formatNumber.format(summary.classificationCounts['Baixo valor - descontinuar']) }}
-                  </p>
-                </div>
-              </div>
+          <div v-if="summary" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 flex-shrink-0">
+            <!-- Card Total de Itens -->
+            <div class="bg-white p-4 rounded-lg border-l-4 border-gray-400 shadow-sm">
+              <h3 class="text-sm font-medium text-gray-500">Total de Itens</h3>
+              <p class="text-2xl font-bold mt-1">{{ formatNumber.format(summary.totalItems) }}</p>
+            </div>
+
+            <!-- Card Alto Valor -->
+            <div class="bg-white p-4 rounded-lg border-l-4 border-green-500 shadow-sm">
+              <h3 class="text-sm font-medium text-gray-500">Alto valor</h3>
+              <p class="text-2xl font-bold mt-1">
+                {{ formatNumber.format(summary.classificationCounts['Alto valor - manutenção']) }}
+              </p>
+            </div>
+
+            <!-- Card Incentivo -->
+            <div class="bg-white p-4 rounded-lg border-l-4 border-blue-500 shadow-sm">
+              <h3 class="text-sm font-medium text-gray-500">Incentivo</h3>
+              <p class="text-2xl font-bold mt-1">
+                {{ formatNumber.format(summary.classificationCounts['Incentivo - volume'] + summary.classificationCounts['Incentivo - lucro']) }}
+              </p>
+            </div>
+
+            <!-- Card Baixo Valor -->
+            <div class="bg-white p-4 rounded-lg border-l-4 border-red-500 shadow-sm">
+              <h3 class="text-sm font-medium text-gray-500">Baixo valor</h3>
+              <p class="text-2xl font-bold mt-1">
+                {{ formatNumber.format(summary.classificationCounts['Baixo valor - descontinuar']) }}
+              </p>
             </div>
           </div>
 
@@ -288,7 +290,8 @@ const searchText = ref('');
 // Parâmetros para recálculo
 const bcgParams = ref({
   xAxis: 'VALOR DE VENDA',         // EIXO X (horizontal)
-  yAxis: 'MARGEM DE CONTRIBUIÇÃO'  // EIXO Y (vertical)
+  yAxis: 'MARGEM DE CONTRIBUIÇÃO',  // EIXO Y (vertical)
+  sourceType: 'monthly' as 'monthly' | 'daily'
 });
 
 // Opções para os eixos
@@ -478,7 +481,8 @@ async function executeBCGAnalysisWithParams() {
         {
           marketShare: 0.1, // Valor padrão, será ajustado conforme necessário
           xAxis: bcgParams.value.xAxis,
-          yAxis: bcgParams.value.yAxis, 
+          yAxis: bcgParams.value.yAxis,
+          sourceType: bcgParams.value.sourceType,
           planogram: editorStore.currentState?.id || ''
         }
       );
@@ -507,10 +511,11 @@ async function executeBCGAnalysisWithParams() {
 
 // Listener para executar análise quando solicitado pelo BCGParamsPopover
 window.addEventListener('execute-bcg-analysis', (event: any) => {
-  const { xAxis, yAxis } = event.detail;
-  console.log('Evento recebido do BCGParamsPopover:', { xAxis, yAxis });
+  const { xAxis, yAxis, sourceType } = event.detail;
+  console.log('Evento recebido do BCGParamsPopover:', { xAxis, yAxis, sourceType });
   bcgParams.value.xAxis = xAxis;
   bcgParams.value.yAxis = yAxis;
+  bcgParams.value.sourceType = sourceType || 'monthly';
   console.log('bcgParams atualizados:', bcgParams.value);
   executeBCGAnalysisWithParams();
 });

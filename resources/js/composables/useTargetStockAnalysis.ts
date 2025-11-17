@@ -10,7 +10,11 @@ export function useTargetStockAnalysis() {
     const editorStore = useEditorStore();
     const analysisService = useAnalysisService();
 
-    async function executeTargetStockAnalysisWithParams(serviceLevels: ServiceLevel[], replenishmentParams: Replenishment[]) {
+    async function executeTargetStockAnalysisWithParams(
+        serviceLevels: ServiceLevel[], 
+        replenishmentParams: Replenishment[],
+        sourceType: 'monthly' | 'daily' = 'monthly'
+    ) {
         targetStockResultStore.loading = true;
         const products: any[] = [];
         const analysisResult = analysisResultStore.result;
@@ -41,7 +45,8 @@ export function useTargetStockAnalysis() {
                 const sales = await analysisService.getTargetStockData(
                     products.map(p => p.id),
                     {
-                        planogram: editorStore.currentState?.id
+                        planogram: editorStore.currentState?.id,
+                        sourceType: sourceType
                     }
                 ) as any;
 

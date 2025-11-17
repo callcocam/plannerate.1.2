@@ -79,6 +79,7 @@ const abcParams = ref({
     a: 0.8,
     b: 0.85,
   },
+  sourceType: 'monthly' as 'monthly' | 'daily',
 });
 
 
@@ -255,7 +256,11 @@ function removeFromGondola(selectedItemId: string | null) {
 }
 
 // Função para executar análise ABC com parâmetros específicos
-async function executeABCAnalysisWithParams(weights: any, thresholds: any) {
+async function executeABCAnalysisWithParams(
+  weights: any, 
+  thresholds: any, 
+  sourceType: 'monthly' | 'daily' = 'monthly'
+) {
   analysisResultStore.loading = true;
   const products: any[] = [];
 
@@ -284,7 +289,8 @@ async function executeABCAnalysisWithParams(weights: any, thresholds: any) {
       const analysisData = await getABCAnalysis(
         products.map(p => p.id),
         {
-          planogram: editorStore.currentState?.id
+          planogram: editorStore.currentState?.id,
+          sourceType: sourceType
         }
       ) as any;
       const analyzed = useAssortmentStatus(analysisData, weights, thresholds);
@@ -301,14 +307,19 @@ async function executeABCAnalysisWithParams(weights: any, thresholds: any) {
 
 // Listener para executar análise quando solicitado pelo ABCParamsPopover
 window.addEventListener('execute-abc-analysis', (event: any) => {
-  const { weights, thresholds } = event.detail;
+  const { weights, thresholds, sourceType } = event.detail;
   abcParams.value.weights = weights;
   abcParams.value.thresholds = thresholds;
-  executeABCAnalysisWithParams(weights, thresholds);
+  abcParams.value.sourceType = sourceType || 'monthly';
+  executeABCAnalysisWithParams(weights, thresholds, sourceType || 'monthly');
 });
 analysisResultStore.$onAction(({ name }) => {
   if (name === 'requestRecalculation') {
-    executeABCAnalysisWithParams(abcParams.value.weights, abcParams.value.thresholds);
+    executeABCAnalysisWithParams(
+      abcParams.value.weights, 
+      abcParams.value.thresholds, 
+      abcParams.value.sourceType
+    );
   }
 });
 </script>
@@ -432,7 +443,7 @@ analysisResultStore.$onAction(({ name }) => {
                   @click="selectedItemId = selectedItemId === item.id ? null : item.id"
                   :class="{ 'bg-blue-100 dark:bg-blue-900/50': selectedItemId === item.id, 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50': true }">
                   <td class="px-2 py-1 border">{{ item.id }}</td>
-                  <td class="px-2 py-1 border truncate max-w-20 flex-wrap">{{ item.category }}</td>
+                  <td class="px-2 py-1 border  flex-wrap">{{ item.category }}</td>
                   <td class="px-2 py-1 border">{{ item.name }}</td>
                   <td class="px-2 py-1 border">{{ item.weightedAverage }}</td>
                   <td class="px-2 py-1 border">{{ (item.individualPercent * 100).toFixed(2) }}%</td>

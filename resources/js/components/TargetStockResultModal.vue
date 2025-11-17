@@ -121,7 +121,8 @@ const targetStockParams = ref({
     { classification: 'A', coverageDays: 7 },
     { classification: 'B', coverageDays: 14 },
     { classification: 'C', coverageDays: 21 }
-  ] as Replenishment[]
+  ] as Replenishment[],
+  sourceType: 'monthly' as 'monthly' | 'daily'
 });
 
 // Estado para a linha selecionada
@@ -189,10 +190,11 @@ const summary = computed(() => {
 
 // Listener para executar análise quando solicitado pelo TargetStockParamsPopover
 window.addEventListener('execute-target-stock-analysis', (event: any) => {
-  const { serviceLevels, replenishmentParams } = event.detail;
+  const { serviceLevels, replenishmentParams, sourceType } = event.detail;
   targetStockParams.value.serviceLevels = serviceLevels;
   targetStockParams.value.replenishmentParams = replenishmentParams;
-  executeTargetStockAnalysisWithParams(serviceLevels, replenishmentParams);
+  targetStockParams.value.sourceType = sourceType || 'monthly';
+  executeTargetStockAnalysisWithParams(serviceLevels, replenishmentParams, sourceType || 'monthly');
 });
 
 // Listener para recálculo
@@ -200,7 +202,8 @@ targetStockResultStore.$onAction(({ name }) => {
   if (name === 'requestRecalculation') {
     executeTargetStockAnalysisWithParams(
       targetStockParams.value.serviceLevels,
-      targetStockParams.value.replenishmentParams
+      targetStockParams.value.replenishmentParams,
+      targetStockParams.value.sourceType
     );
   }
 });

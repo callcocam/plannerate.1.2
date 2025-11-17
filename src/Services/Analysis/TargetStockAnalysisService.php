@@ -30,7 +30,7 @@ class TargetStockAnalysisService
      */
     public function __construct(?string $sourceType = null)
     {
-        $this->dataSource = new SalesDataSourceService('daily');
+        $this->dataSource = new SalesDataSourceService($sourceType ?? 'monthly');
     }
 
     /**

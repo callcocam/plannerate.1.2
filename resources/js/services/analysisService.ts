@@ -4,6 +4,7 @@ import { apiService } from './api';
 interface ABCAnalysisParams {
     planogram?: any;
     storeId?: number;
+    sourceType?: 'monthly' | 'daily';
     weights?: {
         quantity: number;
         value: number;
@@ -45,6 +46,7 @@ interface ABCAnalysisResponse {
 interface TargetStockParams {
     planogram?: any;
     storeId?: number;
+    sourceType?: 'monthly' | 'daily';
     period?: number; // período em dias para análise
     safetyStock?: number; // estoque de segurança em percentual
     leadTime?: number; // tempo de reposição em dias
@@ -76,6 +78,7 @@ interface BCGAnalysisParams {
     products: string[] | number[];
     planogram?: string;
     storeId?: number;
+    sourceType?: 'monthly' | 'daily';
     xAxis?: string;
     yAxis?: string;
     classifyBy?: string;
@@ -164,6 +167,7 @@ class AnalysisService {
                 products,
                 planogram: params.planogram,
                 storeId: params.storeId,
+                sourceType: params.sourceType || 'monthly',
                 weights: params.weights || {
                     quantity: 0.3,
                     value: 0.5,
@@ -201,6 +205,7 @@ class AnalysisService {
                 products,
                 planogram: params.planogram,
                 storeId: params.storeId,
+                sourceType: params.sourceType || 'monthly',
                 period: params.period || 30,
                 safetyStock: params.safetyStock || 20,
                 leadTime: params.leadTime || 7
@@ -237,6 +242,7 @@ class AnalysisService {
                 products: params.products,
                 planogram: params.planogram || '',
                 storeId: params.storeId,
+                sourceType: params.sourceType || 'monthly',
                 xAxis: params.xAxis || 'VALOR DE VENDA',
                 yAxis: params.yAxis || 'MARGEM DE CONTRIBUIÇÃO',
                 classifyBy: params.classifyBy || 'categoria',

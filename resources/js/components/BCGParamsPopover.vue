@@ -8,6 +8,8 @@ import {
   SelectValue,
 } from '@plannerate/components/ui/select';
 import Button from '@plannerate/components/ui/button/Button.vue';
+import { RadioGroup, RadioGroupItem } from '@plannerate/components/ui/radio-group';
+import { Label } from '@plannerate/components/ui/label';
 
 const props = defineProps({
     xAxis: {
@@ -19,13 +21,18 @@ const props = defineProps({
         type: String,
         required: true,
         default: 'VALOR DE VENDA' // EIXO Y (horizontal)
+    },
+    sourceType: {
+        type: String as () => 'monthly' | 'daily',
+        default: 'monthly',
     }
 });
 
 const xAxis = ref(props.xAxis);
 const yAxis = ref(props.yAxis);
+const sourceType = ref<'monthly' | 'daily'>(props.sourceType);
 
-const emit = defineEmits(['update:xAxis', 'update:yAxis', 'show-result-modal', 'close']);
+const emit = defineEmits(['update:xAxis', 'update:yAxis', 'update:sourceType', 'show-result-modal', 'close']);
 
 // Opções para os eixos
 const xAxisOptions = [
@@ -48,12 +55,23 @@ watch(() => props.yAxis, (val) => {
     yAxis.value = val;
 });
 
+watch(() => props.sourceType, (val) => {
+    sourceType.value = val;
+});
+
+function updateSourceType(value: string) {
+    const newValue = value as 'monthly' | 'daily';
+    sourceType.value = newValue;
+    emit('update:sourceType', newValue);
+}
+
 function handleCalculate() {
     // Emitir evento customizado para que a modal execute o cálculo
     window.dispatchEvent(new CustomEvent('execute-bcg-analysis', {
         detail: {
             xAxis: xAxis.value,
-            yAxis: yAxis.value
+            yAxis: yAxis.value,
+            sourceType: sourceType.value
         }
     }));
     
@@ -65,6 +83,24 @@ function handleCalculate() {
 
 <template>
     <div class="flex flex-col gap-2 mb-2">
+        <div class="flex flex-col mb-4">
+            <label class="text-xs font-medium mb-2">Período (Mensal/Diário)</label>
+            <RadioGroup 
+                :default-value="sourceType" 
+                :model-value="sourceType"
+                @update:model-value="updateSourceType"
+                class="flex space-x-4"
+            >
+                <div class="flex items-center space-x-2">
+                    <RadioGroupItem id="monthly-bcg" value="monthly" />
+                    <Label for="monthly-bcg">Mensal</Label>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <RadioGroupItem id="daily-bcg" value="daily" />
+                    <Label for="daily-bcg">Diário</Label>
+                </div>
+            </RadioGroup>
+        </div>
         <div class="grid grid-cols-2 gap-4">
             <!-- Parâmetro EIXO X (vertical) -->
             <div class="space-y-4">
