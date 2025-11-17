@@ -45,17 +45,20 @@ class AnalysisController extends Controller
             'products' => 'required|array',
             'planogram' => 'required|string',
             'storeId' => 'nullable|integer|exists:stores,id',
+            'sourceType' => 'nullable|string|in:daily,monthly',
         ]);
 
         $planogram = Planogram::find($request->planogram);
         $startDate = $planogram->start_date;
         $endDate = $planogram->end_date;
+        $sourceType = $request->sourceType ?? 'monthly';
 
         $result = $this->abcService->analyze(
             $request->products,
             $startDate,
             $endDate,
-            $request->storeId
+            $request->storeId,
+            $sourceType
         );
 
         return response()->json($result);
@@ -73,17 +76,21 @@ class AnalysisController extends Controller
             'products' => 'required|array',
             'planogram' => 'required|string',
             'storeId' => 'nullable|integer|exists:stores,id',
+            'sourceType' => 'nullable|string|in:daily,monthly',
         ]);
 
         $planogram = Planogram::find($request->planogram);
         $startDate = $planogram->start_date;
         $endDate = $planogram->end_date;
+        $sourceType = $request->sourceType ?? 'monthly';
+        
 
         $result = $this->targetStockService->analyze(
             $request->products,
             $startDate,
             $endDate,
             $request->storeId,
+            $sourceType
         );
 
         return response()->json($result);
@@ -102,7 +109,8 @@ class AnalysisController extends Controller
             'planogram' => 'required|string',
             'storeId' => 'nullable|integer|exists:stores,id',
             'xAxis' => 'nullable|string',
-            'yAxis' => 'nullable|string'
+            'yAxis' => 'nullable|string',
+            'sourceType' => 'nullable|string|in:daily,monthly',
         ]);
 
         // Log dos parâmetros recebidos no controller
@@ -115,6 +123,7 @@ class AnalysisController extends Controller
         $planogram = Planogram::find($request->planogram);
         $startDate = $planogram->start_date;
         $endDate = $planogram->end_date;
+        $sourceType = $request->sourceType ?? 'monthly';
 
         $result = $this->bcgService->analyze(
             $request->products,
@@ -122,7 +131,8 @@ class AnalysisController extends Controller
             $endDate,
             $request->xAxis,
             $request->yAxis,
-            $request->storeId
+            $request->storeId,
+            $sourceType
         );
 
         return response()->json($result);

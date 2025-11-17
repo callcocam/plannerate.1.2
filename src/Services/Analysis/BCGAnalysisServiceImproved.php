@@ -36,14 +36,15 @@ class BCGAnalysisServiceImproved
         ?string $clientId = null,
         ?string $storeId = null,
         ?string $classifyBy = 'categoria',
-        ?string $displayBy = 'produto'
+        ?string $displayBy = 'produto',
+        ?string $sourceType = 'monthly'
     ): array {
 
         // Validar configuração
         if (!$this->isValidConfiguration($classifyBy, $displayBy)) {
             throw new \InvalidArgumentException("Configuração inválida: classificar por {$classifyBy} e exibir por {$displayBy}");
         }
-
+       
         // Buscar produtos
         $products = Product::whereIn('id', $productIds)->get();
 

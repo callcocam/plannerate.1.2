@@ -193,8 +193,8 @@ window.addEventListener('execute-target-stock-analysis', (event: any) => {
   const { serviceLevels, replenishmentParams, sourceType } = event.detail;
   targetStockParams.value.serviceLevels = serviceLevels;
   targetStockParams.value.replenishmentParams = replenishmentParams;
-  targetStockParams.value.sourceType = sourceType || 'monthly';
-  executeTargetStockAnalysisWithParams(serviceLevels, replenishmentParams, sourceType || 'monthly');
+  targetStockParams.value.sourceType = sourceType || 'daily';
+  executeTargetStockAnalysisWithParams(serviceLevels, replenishmentParams, sourceType || 'daily');
 });
 
 // Listener para recálculo

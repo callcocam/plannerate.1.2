@@ -67,7 +67,8 @@ class AnalysisControllerUpdated extends Controller
             'displayBy' => ['nullable', 'string', Rule::in(self::VALID_BCG_LEVELS)],
             'configuration' => 'nullable|array',
             'configuration.rule' => 'nullable|string',
-            'configuration.isValid' => 'nullable|boolean'
+            'configuration.isValid' => 'nullable|boolean',
+            'sourceType' => 'nullable|string|in:daily,monthly',
         ]);
 
         // Valores padrão
@@ -102,6 +103,7 @@ class AnalysisControllerUpdated extends Controller
             // e o último dia do mês de end_date
             $startDate = date('Y-m-01', strtotime($planogram->start_date));
             $endDate = date('Y-m-t', strtotime($planogram->end_date)); // 't' = último dia do mês
+            $sourceType = data_get($validatedData, 'sourceType', 'monthly');
 
             $result = $this->bcgService->analyze(
                 $validatedData['products'],
@@ -112,7 +114,8 @@ class AnalysisControllerUpdated extends Controller
                 $planogram->client_id,
                 $planogram->store_id,
                 $classifyBy,
-                $displayBy
+                $displayBy,
+                $sourceType
             );
 
             // Adicionar metadados da análise
@@ -187,11 +190,11 @@ class AnalysisControllerUpdated extends Controller
     {
         $request->validate([
             'classifyBy' => ['required', 'string', Rule::in(self::VALID_BCG_LEVELS)],
-            'displayBy' => ['required', 'string', Rule::in(self::VALID_BCG_LEVELS)]
+            'displayBy' => ['required', 'string', Rule::in(self::VALID_BCG_LEVELS)], 
         ]);
 
         $classifyBy = $request->classifyBy;
-        $displayBy = $request->displayBy;
+        $displayBy = $request->displayBy; 
         $isValid = $this->isValidBCGCombination($classifyBy, $displayBy);
 
         return response()->json([
@@ -213,6 +216,7 @@ class AnalysisControllerUpdated extends Controller
             'products' => 'required|array',
             'planogram' => 'required|string',
             'storeId' => 'nullable|integer|exists:stores,id',
+            'sourceType' => 'nullable|string|in:daily,monthly',
         ]);
 
         $planogram = Planogram::find($request->planogram);
@@ -220,13 +224,15 @@ class AnalysisControllerUpdated extends Controller
         // e o último dia do mês de end_date
         $startDate = date('Y-m-01', strtotime($planogram->start_date));
         $endDate = date('Y-m-t', strtotime($planogram->end_date)); // 't' = último dia do mês
+        $sourceType = $request->sourceType ?? 'monthly';
 
         $result = $this->abcService->analyze(
             $request->products,
             $startDate,
             $endDate,
             $planogram->client_id,
-            $planogram->store_id
+            $planogram->store_id,
+            $sourceType
         );
 
         return response()->json($result);
@@ -241,6 +247,7 @@ class AnalysisControllerUpdated extends Controller
             'products' => 'required|array',
             'planogram' => 'required|string',
             'storeId' => 'nullable|integer|exists:stores,id',
+            'sourceType' => 'nullable|string|in:daily,monthly',
         ]);
 
         $planogram = Planogram::find($request->planogram);
@@ -248,13 +255,15 @@ class AnalysisControllerUpdated extends Controller
         // e o último dia do mês de end_date
         $startDate = date('Y-m-01', strtotime($planogram->start_date));
         $endDate = date('Y-m-t', strtotime($planogram->end_date)); // 't' = último dia do mês
+        $sourceType = $request->sourceType ?? 'monthly';
 
         $result = $this->targetStockService->analyze(
             $request->products,
             $startDate,
             $endDate,
             $planogram->client_id,
-            $planogram->store_id
+            $planogram->store_id,
+            $sourceType
         );
 
         return response()->json($result);

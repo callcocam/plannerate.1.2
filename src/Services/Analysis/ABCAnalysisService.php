@@ -44,8 +44,11 @@ class ABCAnalysisService
         ?string $startDate = null,
         ?string $endDate = null,
         ?string $clientId = null,
-        ?string $storeId = null
+        ?string $storeId = null,
+        ?string $sourceType = null
     ): array {
+
+        $this->dataSource->setSourceType($sourceType ?? 'monthly');
         // Busca os produtos
         $products = Product::whereIn('id', $productIds)->get();
 
@@ -152,12 +155,16 @@ class ABCAnalysisService
             if ($saleDate = $this->dataSource->getQueryForProduct($product)->orderBy($dateField, 'desc')->first()) {
                 $lastSale = $saleDate->{$dateField};
             }
-
+            $fullPath = 'SEM CATEGORIA';
+            if ( $product->category) {
+               
+                $fullPath = $product->category->full_path;
+            }
             $result[] = [
                 'id' => $product->ean,
                 'name' => $product->name,
                 // SUPERMERCADO > MERCEARIA TRADICIONAL > FARINÁCEOS > FARINHA > DE MILHO > MÉDIA pegar os 5 primeiros níveis
-                'category' => implode(' > ', array_slice(explode(' > ', $product->category->full_path), 0, 5)), //Atributo analise de sortimento
+                'category' => implode(' > ', array_slice(explode(' > ', $fullPath), 0, 5)), //Atributo analise de sortimento
                 'quantity' => $quantity,
                 'value' => $value,
                 'margin' => $totalMargem,

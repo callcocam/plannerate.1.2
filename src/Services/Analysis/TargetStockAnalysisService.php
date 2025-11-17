@@ -30,7 +30,7 @@ class TargetStockAnalysisService
      */
     public function __construct(?string $sourceType = null)
     {
-        $this->dataSource = new SalesDataSourceService($sourceType ?? 'monthly');
+        $this->dataSource = new SalesDataSourceService($sourceType ?? 'monthly'); 
     }
 
     /**
@@ -48,14 +48,14 @@ class TargetStockAnalysisService
         ?string $startDate = null,
         ?string $endDate = null,
         ?string $clientId = null,
-        ?string $storeId = null
+        ?string $storeId = null,
+        ?string $sourceType = 'daily'
     ): array {
         // Busca os produtos
         // $products = Product::whereIn('id', $productIds)->get();
-
+        $this->dataSource->setSourceType($sourceType ?? 'daily');
         // Busca as vendas no período
-        $sales = $this->getSales($productIds, $startDate, $endDate, $clientId, $storeId);
-
+        $sales = $this->getSales($productIds, $startDate, $endDate, $clientId, $storeId); 
         // Agrupa as vendas por produto e dia (ou mês se usar monthly)
         $dailySales = $this->groupDailySales($sales);
 
