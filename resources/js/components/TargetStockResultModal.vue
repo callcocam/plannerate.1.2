@@ -122,7 +122,7 @@ const targetStockParams = ref({
     { classification: 'B', coverageDays: 14 },
     { classification: 'C', coverageDays: 21 }
   ] as Replenishment[],
-  sourceType: 'monthly' as 'monthly' | 'daily'
+  sourceType: 'daily' as 'monthly' | 'daily'
 });
 
 // Estado para a linha selecionada
