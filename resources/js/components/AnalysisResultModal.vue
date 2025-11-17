@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, nextTick } from 'vue';
 import { Button } from '@/components/ui/button';
 import { ArrowUpDown, ArrowUp, ArrowDown, Search, X, Download, RefreshCw, Package, CheckCircle2, Archive, Trash2 } from 'lucide-vue-next';
 import { Input } from '@/components/ui/input';
@@ -305,6 +305,37 @@ async function executeABCAnalysisWithParams(
   }
 }
 
+// Aplicar classificação ABC aos produtos na gôndola
+function applyABCClassificationToGondola() {
+  if (!analysisResultStore.result || analysisResultStore.result.length === 0) {
+    console.log('Nenhum resultado ABC disponível para aplicar');
+    return;
+  }
+
+  let appliedCount = 0;
+
+  editorStore.getCurrentGondola?.sections.forEach(section => {
+    section.shelves.forEach(shelf => {
+      shelf.segments.forEach(segment => {
+        if (segment.layer && segment.layer.product) {
+          const product = segment.layer.product as any;
+          const abcItem = analysisResultStore.result?.find((item: any) => item.ean === product.ean || item.id === product.id);
+
+          if (abcItem) {
+            // Aplicar classificação ABC ao produto
+            product.abcClass = abcItem.abcClass;
+            // Remover classificação BCG quando aplicar ABC
+            product.classification = null;
+            appliedCount++;
+          }
+        }
+      });
+    });
+  });
+
+  console.log(`Classificação ABC aplicada a ${appliedCount} produtos na gôndola (BCG removida)`);
+}
+
 // Listener para executar análise quando solicitado pelo ABCParamsPopover
 window.addEventListener('execute-abc-analysis', (event: any) => {
   const { weights, thresholds, sourceType } = event.detail;
@@ -316,8 +347,8 @@ window.addEventListener('execute-abc-analysis', (event: any) => {
 analysisResultStore.$onAction(({ name }) => {
   if (name === 'requestRecalculation') {
     executeABCAnalysisWithParams(
-      abcParams.value.weights, 
-      abcParams.value.thresholds, 
+      abcParams.value.weights,
+      abcParams.value.thresholds,
       abcParams.value.sourceType
     );
   }
@@ -486,6 +517,11 @@ analysisResultStore.$onAction(({ name }) => {
             <Button variant="outline" size="sm" @click="exportToExcel" class="flex items-center gap-2">
               <Download class="h-4 w-4" />
               Exportar Excel
+            </Button>
+
+            <Button variant="default" size="sm" @click="applyABCClassificationToGondola" class="flex items-center gap-2"
+              :disabled="analysisResultStore.loading">
+              Aplicar Classificação ABC na Gôndola
             </Button>
 
             <Button v-if="showRemoveButton" variant="destructive" size="sm" @click="removeFromGondola(selectedItemId)"

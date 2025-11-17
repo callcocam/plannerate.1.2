@@ -13,12 +13,9 @@
             </LayerComponent>
         </div>
 
-        <div class="absolute -top-4 -left-2 m-1 px-1 text-xs font-bold text-white rounded z-50" :class="{
-            'bg-green-500': abcClass === 'A',
-            'bg-yellow-500': abcClass === 'B',
-            'bg-red-500': abcClass === 'C'
-        }">
-            {{ abcClass }}
+        <div v-if="productClassification" class="absolute -top-4 -left-2 m-1 px-1 text-xs font-bold text-white rounded z-50"
+            :class="classificationBadgeClass" :title="classificationTitle">
+            {{ classificationLabel }}
         </div>
         <StockIndicator :segment="segment" :shelf="shelf" @click="(e) => handleLayerClick(e)" />
     </div>
@@ -75,6 +72,112 @@ const abcClass = computed(() => {
     const classificationEntry = analysisResultStore.result?.find((p: any) => p.id === productEan);
     return classificationEntry?.abcClass; // Default para evitar erros
 });
+
+/**
+ * Determina qual classificação mostrar (BCG tem prioridade sobre ABC)
+ */
+const productClassification = computed(() => {
+    if (!props.segment?.layer?.product) return null;
+
+    const product = props.segment.layer.product as any;
+
+    // Se o produto tiver classificação BCG, usar ela
+    if (product.classification) {
+        return {
+            type: 'BCG',
+            value: product.classification
+        };
+    }
+
+    // Caso contrário, usar ABC se disponível
+    if (abcClass.value) {
+        return {
+            type: 'ABC',
+            value: abcClass.value
+        };
+    }
+
+    return null;
+});
+
+/**
+ * Classes CSS para o badge baseado no tipo de classificação
+ */
+const classificationBadgeClass = computed(() => {
+    if (!productClassification.value) return '';
+
+    const { type, value } = productClassification.value;
+
+    if (type === 'ABC') {
+        // Cores para classificação ABC
+        if (value === 'A') return 'bg-green-500';
+        if (value === 'B') return 'bg-yellow-500';
+        if (value === 'C') return 'bg-red-500';
+    }
+
+    if (type === 'BCG') {
+        // Cores para classificação BCG (seguindo o padrão dos outros componentes)
+        if (value === 'Alto valor - manutenção') return 'bg-green-600';
+        if (value === 'Incentivo - volume') return 'bg-blue-500';
+        if (value === 'Incentivo - lucro') return 'bg-purple-500';
+        if (value === 'Incentivo - valor') return 'bg-orange-500';
+        if (value === 'Baixo valor - avaliar') return 'bg-red-600';
+    }
+
+    return 'bg-gray-500';
+});
+
+/**
+ * Título do tooltip com descrição da classificação
+ */
+const classificationTitle = computed(() => {
+    if (!productClassification.value) return '';
+
+    const { type, value } = productClassification.value;
+
+    if (type === 'ABC') {
+        const descriptions: Record<string, string> = {
+            'A': 'Classificação ABC: Classe A - Alto valor',
+            'B': 'Classificação ABC: Classe B - Valor médio',
+            'C': 'Classificação ABC: Classe C - Baixo valor'
+        };
+        return descriptions[value] || `Classificação ABC: ${value}`;
+    }
+
+    if (type === 'BCG') {
+        return `Classificação BCG: ${value}`;
+    }
+
+    return '';
+});
+
+/**
+ * Label a ser exibido no badge
+ */
+const classificationLabel = computed(() => {
+    if (!productClassification.value) return '';
+
+    const { type, value } = productClassification.value;
+
+    if (type === 'ABC') {
+        return value; // Simplesmente 'A', 'B', ou 'C'
+    }
+
+    if (type === 'BCG') {
+        // Abreviar os nomes longos da classificação BCG
+        const abbreviations: Record<string, string> = {
+            'Alto valor - manutenção': 'Alto Valor',
+            'Incentivo - volume': 'Inc. Volume',
+            'Incentivo - lucro': 'Inc. Lucro',
+            'Incentivo - valor': 'Inc. Valor',
+            'Baixo valor - avaliar': 'Baixo Valor'
+        };
+        return abbreviations[value] || value;
+    }
+
+    return '';
+});
+
 /**
  * Verifica se o layer está selecionado
  */

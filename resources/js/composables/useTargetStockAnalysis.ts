@@ -29,6 +29,11 @@ export function useTargetStockAnalysis() {
 
     // Função para recalcular agregações localmente (sem chamada API)
     function recalculateAggregations() {
+        // Verificar se há dados necessários
+        if (!currentGondola.value || !analysisResultStore.result) {
+            return;
+        }
+
         // Limpar agregações anteriores
         productAggregationStore.clear();
 
@@ -36,8 +41,12 @@ export function useTargetStockAnalysis() {
         const aggregationMap = new Map<string, ProductAggregation>();
 
         // Iterar por toda a gôndola e agregar produtos por EAN
-        currentGondola.value?.sections.forEach(section => {
+        currentGondola.value.sections?.forEach(section => {
+            if (!section.shelves) return;
+
             section.shelves.forEach(shelf => {
+                if (!shelf.segments) return;
+
                 shelf.segments.forEach(segment => {
                     if (!segment.layer || !segment.layer.product) {
                         return;
@@ -66,7 +75,9 @@ export function useTargetStockAnalysis() {
                         existing.placements.push(placement);
                     } else {
                         // Obter classificação do resultado da análise
-                        const classification = analysisResult?.find((p: any) => p.id === ean);
+                        const classification = Array.isArray(analysisResult)
+                            ? analysisResult.find((p: any) => p.id === ean)
+                            : null;
                         const { abcClass } = classification || { abcClass: 'B' };
 
                         aggregationMap.set(ean, {
@@ -92,9 +103,13 @@ export function useTargetStockAnalysis() {
     watch(
         () => currentGondola.value,
         (newGondola) => {
-            if (newGondola && analysisResultStore.result.length > 0) {
-                // Só recalcula se já houver resultados de análise
-                recalculateAggregations();
+            try {
+                if (newGondola && analysisResultStore.result && analysisResultStore.result.length > 0) {
+                    // Só recalcula se já houver resultados de análise
+                    recalculateAggregations();
+                }
+            } catch (error) {
+                console.error('Erro ao recalcular agregações:', error);
             }
         },
         { deep: true }

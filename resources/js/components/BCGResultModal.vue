@@ -462,12 +462,14 @@ async function executeBCGAnalysisWithParams() {
       shelf.segments.forEach(segment => {
         const product = segment.layer.product as any;
         if (product) {
+          console.log('Produto adicionado para análise BCG:', product);
           products.push({
             id: product.id,
             ean: product.ean,
             description: product.name,
             category: product.category,
-            currentStock: product.current_stock || 0
+            currentStock: product.current_stock || 0,
+            classification: product.classification || 'B',
           });
         }
       });
