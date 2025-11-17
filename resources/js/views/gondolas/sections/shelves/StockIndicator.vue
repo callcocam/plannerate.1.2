@@ -31,22 +31,35 @@
                     <div class="space-y-1 text-sm">
                         <p class="font-semibold">{{ props.segment.layer.product.name }}</p>
                         <hr class="border-gray-300">
-                        <div class="grid grid-cols-2 gap-2">
-                            <div>
-                                <p class="text-gray-600">Capacidade Planograma:</p>
-                                <p class="font-medium">{{ countItems.toFixed(0) }} unidades</p>
+                        <div class="space-y-2">
+                            <!-- Agregação na Gôndola -->
+                            <div class="bg-blue-50 p-2 rounded">
+                                <p class="text-xs text-gray-600 font-semibold mb-1">Capacidade na Gôndola:</p>
+                                <div class="grid grid-cols-2 gap-2 text-xs">
+                                    <div>
+                                        <p class="text-gray-600">Total Gôndola:</p>
+                                        <p class="font-medium">{{ gondolaTotalCapacity.toFixed(0) }} unidades</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-gray-600">Este Segmento:</p>
+                                        <p class="font-medium">{{ segmentContribution.toFixed(0) }} unidades ({{ contributionPercentage.toFixed(1) }}%)</p>
+                                    </div>
+                                </div>
                             </div>
-                            <div>
-                                <p class="text-gray-600">Estoque Alvo:</p>
-                                <p class="font-medium">{{ stockInfo.targetStock }} unidades</p>
-                            </div>
-                            <div>
-                                <p class="text-gray-600">Estoque Atual:</p>
-                                <p class="font-medium">{{ stockInfo.currentStock }} unidades</p>
-                            </div>
-                            <div>
-                                <p class="text-gray-600">Estoque Mínimo:</p>
-                                <p class="font-medium">{{ stockInfo.minimumStock }} unidades</p>
+                            <!-- Estoque -->
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <p class="text-gray-600">Estoque Alvo:</p>
+                                    <p class="font-medium">{{ stockInfo.targetStock }} unidades</p>
+                                </div>
+                                <div>
+                                    <p class="text-gray-600">Estoque Atual:</p>
+                                    <p class="font-medium">{{ stockInfo.currentStock }} unidades</p>
+                                </div>
+                                <div>
+                                    <p class="text-gray-600">Estoque Mínimo:</p>
+                                    <p class="font-medium">{{ stockInfo.minimumStock }} unidades</p>
+                                </div>
                             </div>
                         </div>
                         <hr class="border-gray-300">
@@ -92,7 +105,7 @@ const props = defineProps<{
 
 defineEmits(['click']);
 
-const { targetStockResultStore } = useTargetStockAnalysis();
+const { targetStockResultStore, productAggregationStore } = useTargetStockAnalysis();
 
 // Margem de tolerância configurável (20% por padrão para ser mais realista)
 const tolerancePercentage = computed(() => 0.10);
@@ -117,6 +130,37 @@ const countItems = computed(() => {
     return totalItems;
 });
 
+// Capacidade total do produto em toda a gôndola (todas as prateleiras)
+const gondolaTotalCapacity = computed(() => {
+    if (!props.segment?.layer?.product?.ean) {
+        return 0;
+    }
+    return productAggregationStore.getTotalCapacity(props.segment.layer.product.ean);
+});
+
+// Contribuição deste segmento para o total da gôndola
+const segmentContribution = computed(() => {
+    if (!props.segment?.layer?.product?.ean || !props.segment?.id) {
+        return 0;
+    }
+    const placement = productAggregationStore.getPlacementData(
+        props.segment.layer.product.ean,
+        props.segment.id
+    );
+    return placement?.capacityAtLocation || 0;
+});
+
+// Percentual de contribuição deste segmento no total da gôndola
+const contributionPercentage = computed(() => {
+    if (!props.segment?.layer?.product?.ean || !props.segment?.id) {
+        return 0;
+    }
+    return productAggregationStore.getContributionPercentage(
+        props.segment.layer.product.ean,
+        props.segment.id
+    );
+});
+
 const toleranceMargin = computed(() => {
     const info = stockInfo.value;
     if (!info || info.targetStock === undefined) {
@@ -128,18 +172,21 @@ const toleranceMargin = computed(() => {
 
 const stockStatus = computed(() => {
     const info = stockInfo.value;
-    if (!info || info.targetStock === undefined || !countItems.value) {
+    const totalCapacity = gondolaTotalCapacity.value;
+
+    if (!info || info.targetStock === undefined || !totalCapacity) {
         return 'unknown';
     }
-    
+
     const margin = toleranceMargin.value;
     const lowerBound = info.targetStock - margin;
     const upperBound = info.targetStock + margin;
-    
-    if (countItems.value < lowerBound) {
+
+    // Compara o total da gôndola (todas as prateleiras) com o target stock
+    if (totalCapacity < lowerBound) {
         return 'increase';
     }
-    if (countItems.value > upperBound) {
+    if (totalCapacity > upperBound) {
         return 'decrease';
     }
     return 'ok';
