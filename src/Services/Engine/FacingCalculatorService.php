@@ -63,21 +63,33 @@ class FacingCalculatorService
             return 1; // Mínimo 1 facing
         }
         
-        // Quantas unidades cabem na profundidade da prateleira?
-        $unitsPerRow = floor($shelfDepth / $productDepth);
-        
-        if ($unitsPerRow === 0) {
-            Log::warning("⚠️ Produto não cabe na profundidade da prateleira", [
+        // Validar profundidade da prateleira
+        if ($shelfDepth <= 0) {
+            Log::warning("⚠️ Profundidade da prateleira inválida", [
                 'product_id' => $product['id'] ?? 'N/A',
                 'product_name' => $productName,
-                'product_depth' => $productDepth,
                 'shelf_depth' => $shelfDepth
             ]);
             return 1; // Mínimo 1 facing
         }
         
+        // Quantas unidades cabem na profundidade da prateleira?
+        $unitsPerRow = floor($shelfDepth / $productDepth);
+        
+        if ($unitsPerRow <= 0) {
+            Log::warning("⚠️ Produto não cabe na profundidade da prateleira", [
+                'product_id' => $product['id'] ?? 'N/A',
+                'product_name' => $productName,
+                'product_depth' => $productDepth,
+                'shelf_depth' => $shelfDepth,
+                'units_per_row' => $unitsPerRow
+            ]);
+            return 1; // Mínimo 1 facing
+        }
+        
         // Quantas fileiras (facings) precisamos?
-        $facing = ceil($targetStock / $unitsPerRow);
+        // Proteção final contra divisão por zero (caso unitsPerRow seja muito pequeno)
+        $facing = $unitsPerRow > 0 ? ceil($targetStock / $unitsPerRow) : 1;
         
         Log::info("🔢 Facing calculado", [
             'product_id' => $product['id'] ?? 'N/A',

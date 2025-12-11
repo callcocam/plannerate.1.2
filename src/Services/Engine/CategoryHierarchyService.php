@@ -21,33 +21,34 @@ use Illuminate\Support\Facades\Log;
 class CategoryHierarchyService
 {
     /**
-     * Extrai o nome da categoria mercadológica GENÉRICA do produto
-     * Busca categorias de nível hierárquico mais alto (nível 2 ou 3)
+     * Extrai o nome da categoria mercadológica do produto
+     * Busca categorias baseado no nível hierárquico configurado no planograma
      * Ex: "REFRIGERANTE", "SUCO", "ÁGUA", "CAFÉ", "AÇÚCAR"
      * 
      * @param array $product - Produto com category_id
-     * @return string - Nome da categoria genérica
+     * @param string|null $mercadologicoLevel - Nível mercadológico (padrão: 'categoria')
+     * @return string - Nome da categoria
      */
-    public function extractCategoryFromProduct(array $product): string
+    public function extractCategoryFromProduct(array $product, ?string $mercadologicoLevel = 'categoria'): string
     {
         // Buscar pela category_id
         if (isset($product['category_id'])) {
             $category = Category::find($product['category_id']);
             
             if ($category) {
-                // Subir na hierarquia até encontrar uma categoria de nível 2 ou 3
-                // (categorias genéricas como REFRIGERANTE, SUCO, etc.)
-                $genericCategory = $this->getGenericCategory($category);
+                // Buscar categoria baseado no nível mercadológico configurado
+                $targetCategory = $this->getCategoryByLevel($category, $mercadologicoLevel);
                 
-                Log::info("📁 Categoria genérica extraída", [
+                Log::info("📁 Categoria mercadológica extraída", [
                     'product_id' => $product['id'],
                     'product_name' => $product['name'] ?? 'N/A',
-                    'specific_category' => $category->name,
-                    'generic_category' => $genericCategory->name,
-                    'level' => $genericCategory->level_name ?? 'N/A'
+                    'original_category' => $category->name,
+                    'target_category' => $targetCategory->name,
+                    'target_level' => $targetCategory->level_name ?? 'N/A',
+                    'requested_level' => $mercadologicoLevel
                 ]);
                 
-                return $genericCategory->name;
+                return $targetCategory->name;
             }
         }
         
@@ -94,12 +95,24 @@ class CategoryHierarchyService
      */
     protected function getGenericCategory(Category $category): Category
     {
-        // Se já é level_name = 'categoria', retornar ela mesma
-        if ($category->level_name === 'categoria') {
+        return $this->getCategoryByLevel($category, 'categoria');
+    }
+    
+    /**
+     * Busca categoria baseado no nível mercadológico configurado
+     * 
+     * @param Category $category - Categoria do produto
+     * @param string $targetLevel - Nível mercadológico desejado (ex: 'categoria', 'subcategoria', 'departamento')
+     * @return Category - Categoria do nível especificado
+     */
+    protected function getCategoryByLevel(Category $category, string $targetLevel): Category
+    {
+        // Se já está no nível desejado, retornar ela mesma
+        if ($category->level_name === $targetLevel) {
             return $category;
         }
         
-        // Subir na hierarquia até encontrar level_name = 'categoria'
+        // Subir na hierarquia até encontrar o nível desejado
         $current = $category;
         $maxIterations = 10; // Prevenir loop infinito
         $iterations = 0;
@@ -108,12 +121,12 @@ class CategoryHierarchyService
             $parent = Category::find($current->category_id);
             
             if (!$parent) {
-                // Não tem mais pai, retornar a categoria original
+                // Não tem mais pai, retornar a categoria atual
                 break;
             }
             
-            // Se encontrou level_name = 'categoria', retornar
-            if ($parent->level_name === 'categoria') {
+            // Se encontrou o nível desejado, retornar
+            if ($parent->level_name === $targetLevel) {
                 return $parent;
             }
             
@@ -121,7 +134,7 @@ class CategoryHierarchyService
             $iterations++;
         }
         
-        // Se não encontrou 'categoria', retornar a categoria original
+        // Se não encontrou o nível desejado, retornar a categoria original
         return $category;
     }
 

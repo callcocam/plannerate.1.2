@@ -17,6 +17,8 @@ class GondolaZone extends Model
 {
     use HasFactory, HasUlids;
 
+    protected $table = 'gondola_zones';
+
     protected $fillable = [
         'gondola_id',
         'name',

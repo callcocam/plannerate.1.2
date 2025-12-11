@@ -37,6 +37,7 @@ class ABCAnalysisService
      * @param string|null $endDate
      * @param string|null $clientId 
      * @param string|null $storeId 
+     * @param array|null $weights - Pesos ABC (quantity, value, margin)
      * @return array
      */
     public function analyze(
@@ -44,13 +45,14 @@ class ABCAnalysisService
         ?string $startDate = null,
         ?string $endDate = null,
         ?string $clientId = null,
-        ?string $storeId = null
+        ?string $storeId = null,
+        ?array $weights = null
     ): array {
         // Busca os produtos
         $products = Product::whereIn('id', $productIds)->get();
 
         // Classifica os produtos
-        $classified = $this->classifyProducts($products, $startDate, $endDate, $clientId, $storeId);
+        $classified = $this->classifyProducts($products, $startDate, $endDate, $clientId, $storeId, $weights);
 
         return $classified;
     }
@@ -88,7 +90,8 @@ class ABCAnalysisService
         ?string $startDate = null,
         ?string $endDate = null,
         ?string $clientId = null,
-        ?string $storeId = null
+        ?string $storeId = null,
+        ?array $weights = null
     ): array {
         $result = [];
 
@@ -153,11 +156,17 @@ class ABCAnalysisService
                 $lastSale = $saleDate->{$dateField};
             }
 
+            // Extrair categoria de forma segura (tratar quando category é null)
+            $categoryPath = 'SEM_CATEGORIA';
+            if ($product->category && isset($product->category->full_path)) {
+                $categoryPath = implode(' > ', array_slice(explode(' > ', $product->category->full_path), 0, 5));
+            }
+            
             $result[] = [
                 'id' => $product->ean,
                 'name' => $product->name,
                 // SUPERMERCADO > MERCEARIA TRADICIONAL > FARINÁCEOS > FARINHA > DE MILHO > MÉDIA pegar os 5 primeiros níveis
-                'category' => implode(' > ', array_slice(explode(' > ', $product->category->full_path), 0, 5)), //Atributo analise de sortimento
+                'category' => $categoryPath, //Atributo analise de sortimento
                 'quantity' => $quantity,
                 'value' => $value,
                 'margin' => $totalMargem,

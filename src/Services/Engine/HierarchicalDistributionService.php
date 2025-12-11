@@ -37,7 +37,9 @@ class HierarchicalDistributionService
      * @param string|null $startDate - Data inicial
      * @param string|null $endDate - Data final
      * @param int|null $storeId - ID da loja
+     * @param string|null $clientId - ID do cliente (opcional)
      * @param array|null $zonesConfig - Configuração de zonas de performance (opcional)
+     * @param string|null $mercadologicoLevel - Nível mercadológico do planograma (padrão: 'categoria')
      * @return array - Resultado da distribuição
      */
     public function distributeByHierarchy(
@@ -48,8 +50,16 @@ class HierarchicalDistributionService
         ?string $startDate = null,
         ?string $endDate = null,
         ?int $storeId = null,
-        ?array $zonesConfig = null
+        ?string $clientId = null,
+        ?array $zonesConfig = null,
+        ?string $mercadologicoLevel = 'categoria'
     ): array {
+        // Definir nível mercadológico padrão se não fornecido
+        $mercadologicoLevel = $mercadologicoLevel ?? 'categoria';
+        
+        Log::info("📊 Nível mercadológico configurado", [
+            'mercadologico_level' => $mercadologicoLevel
+        ]);
         // Log sobre zonas configuradas
         if ($zonesConfig) {
             Log::info("📍 Motor recebeu configuração de zonas", [
@@ -81,7 +91,8 @@ class HierarchicalDistributionService
         // 2. Identificar ordem das categorias
         $categoriesPriority = $this->abcHierarchical->extractCategoriesPriority(
             $allProducts,
-            $abcGlobal
+            $abcGlobal,
+            $mercadologicoLevel
         );
 
         // 3. Preparar prateleiras em ordem linear
@@ -142,8 +153,8 @@ class HierarchicalDistributionService
                 ]);
             } else {
                 // Categoria sem ID (ex: "SEM_CATEGORIA")
-                $categoryProducts = array_filter($allProducts, function($p) use ($categoryName) {
-                    return $this->categoryService->extractCategoryFromProduct($p) === $categoryName;
+                $categoryProducts = array_filter($allProducts, function($p) use ($categoryName, $mercadologicoLevel) {
+                    return $this->categoryService->extractCategoryFromProduct($p, $mercadologicoLevel) === $categoryName;
                 });
             }
 
@@ -185,6 +196,7 @@ class HierarchicalDistributionService
                 $productIds,
                 $startDate,
                 $endDate,
+                $clientId,
                 $storeId
             );
 
@@ -369,6 +381,17 @@ class HierarchicalDistributionService
             // Usar ABC GLOBAL para que os parâmetros sejam os mesmos do modal
             $targetStock = $this->getTargetStockForProduct($product, $targetStockResults, $targetStockParams, $abcClassGlobal);
 
+            Log::info("🎯 Target Stock e Facing para produto", [
+                'product_id' => $product['id'],
+                'product_name' => $product['name'] ?? 'N/A',
+                'abc_class_global' => $abcClassGlobal,
+                'target_stock_calculated' => $targetStock,
+                'target_stock_params' => [
+                    'service_level' => $targetStockParams['serviceLevel'][$abcClassGlobal] ?? 'N/A',
+                    'coverage_days' => $targetStockParams['coverageDays'][$abcClassGlobal] ?? 'N/A'
+                ]
+            ]);
+
             // Calcular facing baseado no target stock
             $shelfDepth = $linearShelves[$currentShelfIndex]['shelf_depth'] ?? 40;
             $facing = $this->facingCalculator->calculateFacing(
@@ -376,6 +399,15 @@ class HierarchicalDistributionService
                 $targetStock,
                 $shelfDepth
             );
+            
+            Log::info("📐 Facing final para distribuição", [
+                'product_id' => $product['id'],
+                'product_name' => $product['name'] ?? 'N/A',
+                'target_stock' => $targetStock,
+                'facing_calculated' => $facing,
+                'product_depth' => $product['depth'] ?? 0,
+                'shelf_depth' => $shelfDepth
+            ]);
 
             // Tentar colocar produto
             $placedSuccessfully = $this->tryPlaceProduct(
@@ -545,13 +577,22 @@ class HierarchicalDistributionService
             'product_width' => $productWidth . 'cm'
         ]);
 
+        // Validar dimensões do produto
+        if ($productWidth <= 0) {
+            Log::warning("⚠️ Produto sem largura válida, pulando", [
+                'product_name' => $product['name'] ?? 'N/A',
+                'product_width' => $productWidth
+            ]);
+            return false;
+        }
+
         // Tentar colocar nas prateleiras disponíveis
         while ($remainingFacing > 0 && $currentShelfIndex < count($linearShelves)) {
             $shelfData = &$linearShelves[$currentShelfIndex];
             $spaceAvailable = $shelfData['available_width'] - $shelfData['used_width'];
 
-            // Calcular quantos facings cabem nesta prateleira
-            $maxFacingInShelf = (int) floor($spaceAvailable / $productWidth);
+            // Calcular quantos facings cabem nesta prateleira (proteger contra divisão por zero)
+            $maxFacingInShelf = $productWidth > 0 ? (int) floor($spaceAvailable / $productWidth) : 0;
 
             if ($maxFacingInShelf > 0) {
                 // Colocar o que couber (ou tudo se couber)
@@ -615,6 +656,16 @@ class HierarchicalDistributionService
     protected function createSegment($shelf, array $product, int $facing): void
     {
         $productWidth = $product['width'] ?? 0;
+        
+        // Validar dimensões antes de criar segmento
+        if ($productWidth <= 0) {
+            Log::warning("⚠️ Tentativa de criar segmento com produto sem largura válida", [
+                'product_name' => $product['name'] ?? 'N/A',
+                'product_width' => $productWidth
+            ]);
+            return;
+        }
+        
         $totalWidth = $productWidth * $facing;
 
         // Criar segmento

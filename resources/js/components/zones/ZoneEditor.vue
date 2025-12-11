@@ -39,12 +39,36 @@
         </span>
       </div>
       
+      <!-- Toggle para aplicar em todos os módulos -->
+      <div class="mb-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
+        <div class="flex items-center space-x-2">
+          <input 
+            id="apply-all-modules"
+            type="checkbox" 
+            v-model="applyToAllModules"
+            class="h-4 w-4 border-gray-300 text-primary focus:ring-2 focus:ring-primary rounded"
+          />
+          <label for="apply-all-modules" class="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
+            🌐 Aplicar em todos os módulos
+          </label>
+        </div>
+        <p class="text-xs text-gray-600 dark:text-gray-400 mt-1 ml-6">
+          Se marcado, será criada uma única zona que inclui as prateleiras equivalentes de todos os módulos
+        </p>
+      </div>
+
       <!-- Select de Módulo -->
-      <div class="mb-3">
-        <label class="text-xs text-gray-600 dark:text-gray-400 block mb-2">Selecione o Módulo:</label>
+      <div class="mb-3" :class="{ 'opacity-50': applyToAllModules }">
+        <label class="text-xs text-gray-600 dark:text-gray-400 block mb-2">
+          Selecione o Módulo:
+          <span v-if="applyToAllModules" class="text-yellow-600 dark:text-yellow-400 ml-1">
+            (será aplicado em todos)
+          </span>
+        </label>
         <select 
           v-model="selectedModuleIndex"
-          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm"
+          :disabled="applyToAllModules"
+          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm disabled:cursor-not-allowed"
         >
           <option 
             v-for="(module, index) in modulesStructure" 
@@ -91,7 +115,12 @@
         @click="createZoneFromSelection"
         class="w-full"
       >
-        🎯 Criar Zona com {{ selectedShelves.length }} {{ selectedShelves.length === 1 ? 'prateleira selecionada' : 'prateleiras selecionadas' }}
+        <span v-if="applyToAllModules">
+          🌐 Criar Zona Única para Todos os Módulos ({{ modulesStructure.length }} módulos)
+        </span>
+        <span v-else>
+          🎯 Criar Zona com {{ selectedShelves.length }} {{ selectedShelves.length === 1 ? 'prateleira selecionada' : 'prateleiras selecionadas' }}
+        </span>
       </Button>
       <div v-else class="text-center text-sm text-gray-500 py-2">
         Selecione prateleiras acima para criar uma zona
@@ -137,6 +166,7 @@ const emit = defineEmits<{
 // State
 const selectedShelves = ref<number[]>([]);
 const selectedModuleIndex = ref<number>(0); // Módulo selecionado no select
+const applyToAllModules = ref<boolean>(false); // Toggle para aplicar em todos os módulos
 
 // Computed: Estrutura de módulos com índices globais e locais
 const modulesStructure = computed(() => {
@@ -223,29 +253,121 @@ const toggleShelfSelection = (index: number) => {
   selectedShelves.value.sort((a, b) => a - b);
 };
 
+/**
+ * Extrai os índices locais das prateleiras selecionadas no módulo atual
+ */
+const getLocalIndexesFromSelected = (): number[] => {
+  const currentMod = modulesStructure.value[selectedModuleIndex.value];
+  if (!currentMod) return [];
+  
+  // Encontrar índices locais das prateleiras selecionadas
+  const localIndexes: number[] = [];
+  selectedShelves.value.forEach(globalIndex => {
+    const shelf = currentMod.shelves.find((s: any) => s.globalIndex === globalIndex);
+    if (shelf) {
+      localIndexes.push(shelf.localIndex);
+    }
+  });
+  
+  return localIndexes.sort((a, b) => a - b);
+};
+
+/**
+ * Cria uma única zona que se aplica a todos os módulos
+ * Coleta todos os índices globais equivalentes de todos os módulos em uma única zona
+ */
+const createZonesForAllModules = (localIndexes: number[], baseZoneName: string, rules: ZoneRules, multiplier: number): Zone[] => {
+  // Coletar TODOS os índices globais de TODOS os módulos
+  const allGlobalIndexes: number[] = [];
+  
+  modulesStructure.value.forEach((module) => {
+    // Para cada índice local, buscar o índice global equivalente neste módulo
+    localIndexes.forEach(localIdx => {
+      if (module.shelves[localIdx]) {
+        allGlobalIndexes.push(module.shelves[localIdx].globalIndex);
+      }
+    });
+  });
+  
+  // Ordenar os índices para melhor organização
+  allGlobalIndexes.sort((a, b) => a - b);
+  
+  if (allGlobalIndexes.length === 0) {
+    return [];
+  }
+  
+  // Criar UMA ÚNICA zona com todos os índices
+  const zoneName = modulesStructure.value.length > 1 
+    ? `${baseZoneName} (Todos os Módulos)`
+    : baseZoneName;
+  
+  return [{
+    id: `zone-${Date.now()}`,
+    name: zoneName,
+    shelf_indexes: allGlobalIndexes,
+    performance_multiplier: multiplier,
+    rules: { ...rules }
+  }];
+};
+
 const createZoneFromSelection = () => {
   if (selectedShelves.value.length === 0) return;
   
   const shelvesText = selectedShelves.value.length === 1 ? 'prateleira' : 'prateleiras';
-  const zoneName = `Zona ${props.zones.length + 1}`;
+  const baseZoneName = `Zona ${props.zones.length + 1}`;
   
-  const newZone: Zone = {
-    id: `zone-${Date.now()}`,
-    name: zoneName,
-    shelf_indexes: [...selectedShelves.value],
-    performance_multiplier: 1.0,
-    rules: {
-      priority: 'high_margin',
-      exposure_type: 'vertical',
-      abc_filter: [],
-    }
+  const defaultRules: ZoneRules = {
+    priority: 'high_margin',
+    exposure_type: 'vertical',
+    abc_filter: [],
   };
   
-  const updatedZones = [...props.zones, newZone];
-  emit('update:zones', updatedZones);
-  emit('zone-created', newZone);
+  let newZones: Zone[] = [];
   
-  console.log(`✅ ${zoneName} criada com ${selectedShelves.value.length} ${shelvesText}`);
+  if (applyToAllModules.value && modulesStructure.value.length > 1) {
+    // Aplicar em todos os módulos
+    const localIndexes = getLocalIndexesFromSelected();
+    
+    if (localIndexes.length === 0) {
+      alert('❌ Erro ao identificar prateleiras locais. Tente novamente.');
+      return;
+    }
+    
+    // Criar uma única zona que se aplica a todos os módulos
+    newZones = createZonesForAllModules(localIndexes, baseZoneName, defaultRules, 1.0);
+    
+    if (newZones.length === 0) {
+      alert('❌ Não foi possível criar zona em todos os módulos. Verifique se os módulos têm o mesmo número de prateleiras.');
+      return;
+    }
+    
+    const updatedZones = [...props.zones, ...newZones];
+    emit('update:zones', updatedZones);
+    
+    // Emitir a zona criada para seleção automática
+    if (newZones.length > 0) {
+      emit('zone-created', newZones[0]);
+    }
+    
+    const totalShelvesInZone = newZones[0]?.shelf_indexes.length || 0;
+    console.log(`✅ Zona "${newZones[0].name}" criada com ${totalShelvesInZone} prateleiras (aplicada em ${modulesStructure.value.length} módulos)`);
+  } else {
+    // Criar apenas no módulo atual
+    const newZone: Zone = {
+      id: `zone-${Date.now()}`,
+      name: baseZoneName,
+      shelf_indexes: [...selectedShelves.value],
+      performance_multiplier: 1.0,
+      rules: defaultRules
+    };
+    
+    newZones = [newZone];
+    const updatedZones = [...props.zones, newZone];
+    emit('update:zones', updatedZones);
+    emit('zone-created', newZone);
+    
+    console.log(`✅ ${baseZoneName} criada com ${selectedShelves.value.length} ${shelvesText}`);
+  }
   
   // Limpar seleção para permitir criar nova zona
   selectedShelves.value = [];
@@ -267,13 +389,37 @@ const removeShelfFromZone = (shelfIndex: number, zone: Zone) => {
   emit('update:zones', updatedZones);
 };
 
+/**
+ * Aplica template em todos os módulos ou apenas no atual
+ */
 const applyTemplate = (templateType: string) => {
-  const totalShelves = props.shelfCount;
+  // Verificar se todos os módulos têm o mesmo número de prateleiras
+  const shelvesPerModule = modulesStructure.value.length > 0 
+    ? modulesStructure.value[0].shelves.length 
+    : props.shelfCount;
+  
+  const allModulesSameSize = modulesStructure.value.every(
+    mod => mod.shelves.length === shelvesPerModule
+  );
+  
+  // Se não tiver múltiplos módulos ou módulos com tamanhos diferentes, aplicar normalmente
+  if (!applyToAllModules.value || modulesStructure.value.length <= 1 || !allModulesSameSize) {
+    applyTemplateToCurrent(props.shelfCount, templateType);
+    return;
+  }
+  
+  // Aplicar template em todos os módulos
+  applyTemplateToAllModules(templateType, shelvesPerModule);
+};
+
+/**
+ * Aplica template apenas no módulo atual (ou em toda gôndola se for estrutura plana)
+ */
+const applyTemplateToCurrent = (totalShelves: number, templateType: string) => {
   let newZones: Zone[] = [];
   
   switch (templateType) {
     case 'premium':
-      // Zona premium no meio (altura dos olhos)
       const midStart = Math.floor(totalShelves / 3);
       const midEnd = Math.floor((totalShelves * 2) / 3);
       newZones = [{
@@ -291,7 +437,6 @@ const applyTemplate = (templateType: string) => {
       break;
       
     case 'combate':
-      // Zona combate embaixo
       const bottomCount = Math.ceil(totalShelves / 4);
       newZones = [{
         id: `zone-combate-${Date.now()}`,
@@ -308,7 +453,6 @@ const applyTemplate = (templateType: string) => {
       break;
       
     case 'complementar':
-      // Zona complementar no topo
       const topCount = Math.ceil(totalShelves / 5);
       newZones = [{
         id: `zone-complementar-${Date.now()}`,
@@ -323,7 +467,6 @@ const applyTemplate = (templateType: string) => {
       break;
       
     case 'auto':
-      // 3 zonas: topo, meio (premium), base
       const third = Math.floor(totalShelves / 3);
       newZones = [
         {
@@ -365,6 +508,112 @@ const applyTemplate = (templateType: string) => {
   }
   
   emit('update:zones', newZones);
+};
+
+/**
+ * Aplica template em todos os módulos baseado em índices locais
+ */
+const applyTemplateToAllModules = (templateType: string, shelvesPerModule: number) => {
+  let templateZones: Array<{ name: string; localIndexes: number[]; multiplier: number; rules: ZoneRules }> = [];
+  
+  switch (templateType) {
+    case 'premium':
+      const midStart = Math.floor(shelvesPerModule / 3);
+      const midEnd = Math.floor((shelvesPerModule * 2) / 3);
+      templateZones = [{
+        name: '🏆 Premium - Altura dos Olhos',
+        localIndexes: Array.from({ length: midEnd - midStart }, (_, i) => midStart + i),
+        multiplier: 1.0,
+        rules: {
+          priority: 'high_margin',
+          exposure_type: 'vertical',
+          abc_filter: ['A', 'B'],
+          min_margin_percent: 30
+        }
+      }];
+      break;
+      
+    case 'combate':
+      const bottomCount = Math.ceil(shelvesPerModule / 4);
+      templateZones = [{
+        name: '💰 Combate - Base',
+        localIndexes: Array.from({ length: bottomCount }, (_, i) => shelvesPerModule - bottomCount + i),
+        multiplier: 0.5,
+        rules: {
+          priority: 'low_price',
+          exposure_type: 'horizontal',
+          abc_filter: ['C'],
+          max_margin_percent: 20
+        }
+      }];
+      break;
+      
+    case 'complementar':
+      const topCount = Math.ceil(shelvesPerModule / 5);
+      templateZones = [{
+        name: '🔗 Complementar - Topo',
+        localIndexes: Array.from({ length: topCount }, (_, i) => i),
+        multiplier: 0.6,
+        rules: {
+          priority: 'complementary',
+          exposure_type: 'horizontal',
+        }
+      }];
+      break;
+      
+    case 'auto':
+      const third = Math.floor(shelvesPerModule / 3);
+      templateZones = [
+        {
+          name: '🔗 Topo - Complementares',
+          localIndexes: Array.from({ length: third }, (_, i) => i),
+          multiplier: 0.6,
+          rules: {
+            priority: 'complementary',
+            exposure_type: 'horizontal'
+          }
+        },
+        {
+          name: '🏆 Meio - Premium',
+          localIndexes: Array.from({ length: third }, (_, i) => third + i),
+          multiplier: 1.0,
+          rules: {
+            priority: 'high_margin',
+            exposure_type: 'vertical',
+            abc_filter: ['A', 'B'],
+            min_margin_percent: 25
+          }
+        },
+        {
+          name: '💰 Base - Combate',
+          localIndexes: Array.from({ length: shelvesPerModule - (third * 2) }, (_, i) => third * 2 + i),
+          multiplier: 0.5,
+          rules: {
+            priority: 'low_price',
+            exposure_type: 'horizontal',
+            abc_filter: ['C'],
+            max_margin_percent: 20
+          }
+        }
+      ];
+      break;
+  }
+  
+  // Criar zonas para cada template (uma por template que se aplica a todos os módulos)
+  const allZones: Zone[] = [];
+  templateZones.forEach(templateZone => {
+    const zonesForTemplate = createZonesForAllModules(
+      templateZone.localIndexes,
+      templateZone.name,
+      templateZone.rules,
+      templateZone.multiplier
+    );
+    allZones.push(...zonesForTemplate);
+  });
+  
+  emit('update:zones', allZones);
+  const totalShelves = allZones.reduce((sum, zone) => sum + zone.shelf_indexes.length, 0);
+  console.log(`✅ Template "${templateType}" aplicado em todos os módulos: ${allZones.length} zona(s) criada(s) com ${totalShelves} prateleiras total`);
 };
 </script>
 

@@ -49,13 +49,17 @@ class ABCHierarchicalService
             'date_range' => [$startDate, $endDate]
         ]);
         
+        // Converter storeId de int para string se necessário
+        $storeIdString = $storeId !== null ? (string) $storeId : null;
+        
         // Usar ABCAnalysisService existente
         $abcResults = $this->abcService->analyze(
             $productIds,
             $startDate,
             $endDate,
-            $storeId,
-            $weights
+            null, // clientId - não usado no gerador automático
+            $storeIdString,
+            $weights // pesos ABC
         );
         
         $classA = count(array_filter($abcResults, fn($p) => ($p['abc_class'] ?? '') === 'A'));
@@ -78,17 +82,20 @@ class ABCHierarchicalService
      * 
      * @param array $allProducts - Lista de produtos
      * @param array $abcGlobal - Resultado do ABC global
+     * @param string|null $mercadologicoLevel - Nível mercadológico do planograma (padrão: 'categoria')
      * @return array - ['FARINHA' => 'cat-456', 'ARROZ' => 'cat-789', ...]
      */
-    public function extractCategoriesPriority(array $allProducts, array $abcGlobal): array
+    public function extractCategoriesPriority(array $allProducts, array $abcGlobal, ?string $mercadologicoLevel = 'categoria'): array
     {
-        Log::info("📊 Extraindo prioridade de categorias pelo ABC Global");
+        Log::info("📊 Extraindo prioridade de categorias pelo ABC Global", [
+            'mercadologico_level' => $mercadologicoLevel
+        ]);
         
         // 1. Agrupar produtos por categoria
         $categoriesMap = [];
         
         foreach ($allProducts as $product) {
-            $categoryName = $this->categoryService->extractCategoryFromProduct($product);
+            $categoryName = $this->categoryService->extractCategoryFromProduct($product, $mercadologicoLevel);
             
             if (!isset($categoriesMap[$categoryName])) {
                 // 🔧 CORREÇÃO: Usar o ID da categoria GENÉRICA, não da subcategoria do produto
@@ -220,13 +227,17 @@ class ABCHierarchicalService
             'weights' => $weights
         ]);
         
+        // Converter storeId de int para string se necessário
+        $storeIdString = $storeId !== null ? (string) $storeId : null;
+        
         // Usar ABCAnalysisService existente
         $abcResults = $this->abcService->analyze(
             $productIds,
             $startDate,
             $endDate,
-            $storeId,
-            $weights
+            null, // clientId - não usado no gerador automático
+            $storeIdString,
+            $weights // pesos ABC
         );
         
         $classA = count(array_filter($abcResults, fn($p) => ($p['abc_class'] ?? '') === 'A'));
