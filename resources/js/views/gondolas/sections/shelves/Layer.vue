@@ -14,6 +14,7 @@ import { Layer as LayerType, Segment as SegmentType } from '@/types/segment';
 import { Shelf } from '@plannerate/types/shelves';
 import { validateShelfWidth } from '@plannerate/utils/validation';
 import { toast } from 'vue-sonner';
+import { usePerformance } from '@/composables/usePerformance';
 const props = defineProps<{
     layer: LayerType;
     segment: SegmentType;
@@ -231,7 +232,7 @@ const onIncreaseSegmentQuantity = () => {
         return;
     }
     segmentQuantity.value += 1;
-    console.log("Increasing segment quantity to:", segmentQuantity.value);
+    // Log removido para melhorar performance - era executado muito frequentemente
     editorStore.updateSegmentQuantity(
         editorGondola.value.id,
         currentSectionId.value,
@@ -256,58 +257,97 @@ const onDecreaseSegmentQuantity = () => {
         segmentQuantity.value
     );
 };
+// Performance optimization with RAF
+const { debounce, rafDebounce } = usePerformance();
+
 /**
- * Gerencia a navegação por teclado e teclas de ação
+ * Gerencia a navegação por teclado e teclas de ação - Otimizado com debouncing e RAF
  */
-const handleKeyDown = (event: KeyboardEvent) => {
-    // Gerencia aumento/diminuição com setas quando selecionado
-    if (isSelected.value) {
-        const target = event?.target as HTMLElement;
-        const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
-        // Vamos verificar se e um numero e passar o numero no incremant da quantity
-        if (/^[1-9]$/.test(event.key) && !isInput) {
-            event.preventDefault();
-            onUpdateQuantity(parseInt(event.key))
-        } else if (event.key === 'ArrowRight' && !isInput) {
-            event.preventDefault();
-            onIncreaseQuantity();
-        } else if (event.key === 'ArrowLeft' && !isInput) {
-            event.preventDefault();
-            onDecreaseQuantity();
-        } else if (event.key === 'ArrowUp' && !isInput) {
-            event.preventDefault();
-            onIncreaseSegmentQuantity();
-        } else if (event.key === 'ArrowDown' && !isInput) {
-            event.preventDefault();
-            onDecreaseSegmentQuantity();
-        } else if (event.key === 'Delete' || event.key === 'Backspace' && !isInput) {
-            event.preventDefault();
-            if (editorGondola.value) {
-                let sectionId = null;
-                let shelfId = null;
-                let segmentId = null;
-                editorGondola.value.sections.forEach(section => {
-                    section.shelves.forEach(shelf => {
-                        shelf.segments.forEach(segment => {
-                            if (segment.id === props.segment.id) {
-                                sectionId = section.id;
-                                shelfId = shelf.id;
-                                segmentId = segment.id;
-                            }
-                        });
-                    });
-                });
-                if (sectionId && shelfId && segmentId) {
-                    editorStore.removeSegmentFromShelf(editorGondola.value.id, sectionId, shelfId, segmentId);
-                }
+const handleKeyDown = rafDebounce((event: KeyboardEvent) => {
+    // Early exit if not selected to avoid unnecessary processing
+    if (!isSelected.value) return;
+    
+    const target = event?.target as HTMLElement;
+    const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+    
+    // Use switch for better performance than multiple if-else
+    switch (event.key) {
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+        case '6':
+        case '7':
+        case '8':
+        case '9':
+            if (!isInput) {
+                event.preventDefault();
+                onUpdateQuantity(parseInt(event.key));
             }
-        }
+            break;
+        case 'ArrowRight':
+            if (!isInput) {
+                event.preventDefault();
+                onIncreaseQuantity();
+            }
+            break;
+        case 'ArrowLeft':
+            if (!isInput) {
+                event.preventDefault();
+                onDecreaseQuantity();
+            }
+            break;
+        case 'ArrowUp':
+            if (!isInput) {
+                event.preventDefault();
+                onIncreaseSegmentQuantity();
+            }
+            break;
+        case 'ArrowDown':
+            if (!isInput) {
+                event.preventDefault();
+                onDecreaseSegmentQuantity();
+            }
+            break;
+        case 'Delete':
+        case 'Backspace':
+            if (!isInput) {
+                event.preventDefault();
+                // Use RAF for heavy DOM operations
+                requestAnimationFrame(() => {
+                    if (editorGondola.value) {
+                        let sectionId = null;
+                        let shelfId = null;
+                        let segmentId = null;
+                        
+                        // Early break when found to improve performance
+                        findSegment: for (const section of editorGondola.value.sections) {
+                            for (const shelf of section.shelves) {
+                                for (const segment of shelf.segments) {
+                                    if (segment.id === props.segment.id) {
+                                        sectionId = section.id;
+                                        shelfId = shelf.id;
+                                        segmentId = segment.id;
+                                        break findSegment;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        if (sectionId && shelfId && segmentId) {
+                            editorStore.removeSegmentFromShelf(editorGondola.value.id, sectionId, shelfId, segmentId);
+                        }
+                    }
+                });
+            }
+            break;
     }
-};
+}, 16, true); // 16ms debounce (~60fps) with immediate execution for responsiveness
 // Lifecycle hooks
 onMounted(() => {
-    // Não precisamos mais do listener global, pois movemos a lógica para handleKeyDown
-    document.addEventListener('keydown', handleKeyDown);
+    // Event listener otimizado com passive para melhor performance
+    document.addEventListener('keydown', handleKeyDown, { passive: false });
 });
 
 onUnmounted(() => {

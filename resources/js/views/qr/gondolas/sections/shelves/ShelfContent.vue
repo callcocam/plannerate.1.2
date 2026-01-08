@@ -163,7 +163,7 @@ const handleDragEnter = (event: DragEvent) => {
     if (isSegmentBeingDragged(event.dataTransfer)) {
         segmentDragOverCount.value++;
         if (!segmentDragOverActive.value) {
-            console.log('ShelfContent: Segment sendo arrastado sobre a prateleira', props.shelf.id);
+                // Performance: Removed console.log to prevent spam during drag operations
             segmentDragOverActive.value = true;
         }
     }
@@ -239,7 +239,7 @@ const handleDragLeave = (event: DragEvent) => {
             if (segmentDragOverActive.value) {
                 segmentDragOverCount.value = 0;
                 segmentDragOverActive.value = false;
-                console.log('ShelfContent: Segment drag resetado na prateleira', props.shelf.id);
+                // Performance: Removed console.log to prevent spam during drag operations
             }
         }
     } /* else {
@@ -247,7 +247,9 @@ const handleDragLeave = (event: DragEvent) => {
     } */
 };
 
-const handleDrop = (event: DragEvent) => {
+const { rafDebounce } = usePerformance();
+
+const handleDrop = rafDebounce(async (event: DragEvent) => {
     event.preventDefault();
     const currentTargetElement = event.currentTarget as HTMLElement | null;
 
@@ -265,7 +267,7 @@ const handleDrop = (event: DragEvent) => {
         segmentDragOverCount.value = 0;
         if (segmentDragOverActive.value) {
             segmentDragOverActive.value = false;
-            console.log('ShelfContent: Segment drag resetado no drop na prateleira', props.shelf.id);
+            // Performance: Removed console.log to prevent spam during drag operations
         }
     };
 
@@ -325,7 +327,7 @@ const handleDrop = (event: DragEvent) => {
     } finally {
         resetVisualState(); // Garante reset no final
     }
-};
+});
 
 // const handleDoubleClick = (event: MouseEvent) => {
 //     event.stopPropagation();

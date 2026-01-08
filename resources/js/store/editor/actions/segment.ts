@@ -94,7 +94,7 @@ export function setShelfSegmentsOrder(gondolaId: string, sectionId: string, shel
     const deletedSegments = shelf.segments.filter(seg => isSegmentDeleted(seg));
     shelf.segments = [...newSegments as import('@/types/shelves').Segment[], ...deletedSegments];
     
-    console.log(`Nova ordem dos segmentos definida para a prateleira ${shelfId}`);
+    // Performance: Removed console.log to prevent spam during segment reordering
     recordChange();
 }
 
