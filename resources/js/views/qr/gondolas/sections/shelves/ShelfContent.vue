@@ -247,9 +247,7 @@ const handleDragLeave = (event: DragEvent) => {
     } */
 };
 
-const { rafDebounce } = usePerformance();
-
-const handleDrop = rafDebounce(async (event: DragEvent) => {
+const handleDrop = (event: DragEvent) => {
     event.preventDefault();
     const currentTargetElement = event.currentTarget as HTMLElement | null;
 
@@ -327,7 +325,7 @@ const handleDrop = rafDebounce(async (event: DragEvent) => {
     } finally {
         resetVisualState(); // Garante reset no final
     }
-});
+};
 
 // const handleDoubleClick = (event: MouseEvent) => {
 //     event.stopPropagation();

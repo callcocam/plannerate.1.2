@@ -14,7 +14,6 @@ import { Layer as LayerType, Segment as SegmentType } from '@/types/segment';
 import { Shelf } from '@plannerate/types/shelves';
 import { validateShelfWidth } from '@plannerate/utils/validation';
 import { toast } from 'vue-sonner';
-import { usePerformance } from '@/composables/usePerformance';
 const props = defineProps<{
     layer: LayerType;
     segment: SegmentType;
@@ -257,13 +256,20 @@ const onDecreaseSegmentQuantity = () => {
         segmentQuantity.value
     );
 };
-// Performance optimization with RAF
-const { debounce, rafDebounce } = usePerformance();
+
+// Simple debouncing for performance
+const createDebounce = (fn: Function, delay: number) => {
+    let timeoutId: ReturnType<typeof setTimeout>;
+    return (...args: any[]) => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => fn.apply(this, args), delay);
+    };
+};
 
 /**
- * Gerencia a navegação por teclado e teclas de ação - Otimizado com debouncing e RAF
+ * Gerencia a navegação por teclado e teclas de ação
  */
-const handleKeyDown = rafDebounce((event: KeyboardEvent) => {
+const handleKeyDown = createDebounce((event: KeyboardEvent) => {
     // Early exit if not selected to avoid unnecessary processing
     if (!isSelected.value) return;
     

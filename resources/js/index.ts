@@ -1,14 +1,14 @@
 /// <reference types="vite/client" />
 
 import './../css/app.css';
-import './echo'; // Importar configuração do Echo
+// import './echo'; // Removed broadcast configuration
 import type { App, Component } from 'vue'
 import Plannerate from './App.vue';
 import ConfirmModal from './components/Confirm.vue';
 import AlertConfirm from './components/AlertConfirm.vue';
 import router from './routes';
 import { createPinia } from 'pinia';
-import QueueMonitor from './components/QueueMonitor.vue';
+// import QueueMonitor from './components/QueueMonitor.vue'; // Removed broadcast component
 
 // Definição de interfaces para tipagem adequada
 export interface PluginOptions {
@@ -64,8 +64,8 @@ const registerMainComponents = (app: App): void => {
     app.component('v-confirm-modal', ConfirmModal);
     app.component('AlertConfirm', AlertConfirm);
     app.component('v-alert-confirm', AlertConfirm);
-    app.component('queue-monitor', QueueMonitor);
-    app.component('QueueMonitor', QueueMonitor);
+    // app.component('queue-monitor', QueueMonitor); // Removed broadcast component
+    // app.component('QueueMonitor', QueueMonitor); // Removed broadcast component
 }
 
 /**

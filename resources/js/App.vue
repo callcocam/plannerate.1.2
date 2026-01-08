@@ -13,6 +13,6 @@ const appLayoutKey = route.fullPath.concat('-app-layout');
             <router-view :key="appLayoutKey" />
         </div>
         <Toaster />
-        <QueueMonitor />
+        <!-- <QueueMonitor /> Removed broadcast component -->
     </AppLayout>
 </template>

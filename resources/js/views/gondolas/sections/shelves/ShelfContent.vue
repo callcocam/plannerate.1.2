@@ -247,9 +247,7 @@ const handleDragLeave = (event: DragEvent) => {
     } */
 };
 
-const { rafDebounce } = usePerformance();
-
-const handleDrop = rafDebounce(async (event: DragEvent) => {
+const handleDrop = (event: DragEvent) => {
     event.preventDefault();
     const currentTargetElement = event.currentTarget as HTMLElement | null;
 
@@ -282,98 +280,41 @@ const handleDrop = rafDebounce(async (event: DragEvent) => {
         const position = { x: event.offsetX, y: event.offsetY };
 
         if (types.includes('text/products-multiple')) {
-            // Processar múltiplos produtos com async JSON parse
+            // Processar múltiplos produtos
             const productsData = event.dataTransfer.getData('text/products-multiple');
             if (!productsData) { console.error('handleDrop: productsData is empty!'); return; }
-            
-            // Use async JSON parsing to prevent UI blocking
-            await new Promise(resolve => {
-                try {
-                    const products = JSON.parse(productsData) as Product[];
-                    emit('drop-products-multiple', products, props.shelf, position);
-                    resolve(null);
-                } catch (err) {
-                    console.error('Error parsing products data:', err);
-                    resolve(null);
-                }
-            });
+            const products = JSON.parse(productsData) as Product[];
+
+            emit('drop-products-multiple', products, props.shelf, position);
 
         } else if (types.includes('text/product')) {
-            // Processar produto único com async JSON parse
+            // Processar produto único (comportamento original)
             const productData = event.dataTransfer.getData('text/product');
             if (!productData) { console.error('handleDrop: productData is empty!'); return; }
-            
-            // Use async JSON parsing to prevent UI blocking
-            await new Promise(resolve => {
-                try {
-                    const product = JSON.parse(productData) as Product;
-                    emit('drop-product', product, props.shelf, position);
-                    resolve(null);
-                } catch (err) {
-                    console.error('Error parsing product data:', err);
-                    resolve(null);
-                }
-            });
+            const product = JSON.parse(productData) as Product;
+            emit('drop-product', product, props.shelf, position);
 
         } else if (types.includes('text/segment')) {
             const segmentDataString = event.dataTransfer.getData('text/segment');
             if (!segmentDataString) { console.error('handleDrop: segmentData is empty!'); return; }
-            
-            // Use async JSON parsing to prevent UI blocking
-            await new Promise(resolve => {
-                try {
-                    const segmentData = JSON.parse(segmentDataString) as Layer & { segment?: { shelf_id?: string } };
-                    const originShelfId = segmentData?.segment?.shelf_id;
+            const segmentData = JSON.parse(segmentDataString) as Layer & { segment?: { shelf_id?: string } }; // Tipagem para segment.shelf_id
+            const originShelfId = segmentData?.segment?.shelf_id;
 
-                    // *** VERIFICAÇÃO DE ORIGEM MOVIDA PARA CÁ ***
-                    if (originShelfId && originShelfId !== props.shelf.id) {
-                        emit('drop-segment', segmentData, props.shelf, position);
-                    } else if (!originShelfId) {
-                        console.warn('handleDrop (segment): Origin Shelf ID not found in data. Allowing drop.');
-                        emit('drop-segment', segmentData, props.shelf, position); // Comportamento leniente: permite se não achar origem
-                    }
-                    resolve(null);
-                } catch (err) {
-                    console.error('Error parsing segment data:', err);
-                    resolve(null);
-                }
-            });
-            
-            // Use async JSON parsing to prevent UI blocking
-            await new Promise(resolve => {
-                try {
-                    const segmentData = JSON.parse(segmentDataString) as Layer & { segment?: { shelf_id?: string } };
-                    const originShelfId = segmentData?.segment?.shelf_id;
-
-                    // *** VERIFICAÇÃO DE ORIGEM MOVIDA PARA CÁ ***
-                    if (originShelfId && originShelfId !== props.shelf.id) {
-                        emit('drop-segment', segmentData, props.shelf, position);
-                    } else if (!originShelfId) {
-                        console.warn('handleDrop (segment): Origin Shelf ID not found in data. Allowing drop.');
-                        emit('drop-segment', segmentData, props.shelf, position); // Comportamento leniente: permite se não achar origem
-                    }
-                    resolve(null);
-                } catch (err) {
-                    console.error('Error parsing segment data:', err);
-                    resolve(null);
-                }
-            });
+            // *** VERIFICAÇÃO DE ORIGEM MOVIDA PARA CÁ ***
+            if (originShelfId && originShelfId !== props.shelf.id) {
+                emit('drop-segment', segmentData, props.shelf, position);
+            } else if (!originShelfId) {
+                console.warn('handleDrop (segment): Origin Shelf ID not found in data. Allowing drop.');
+                emit('drop-segment', segmentData, props.shelf, position); // Comportamento leniente: permite se não achar origem
+            } else {
+                // Não faz nada se a origem for a mesma
+            }
 
         } else if (types.includes('text/segment/copy')) {
             const segmentDataCopy = event.dataTransfer.getData('text/segment/copy');
             if (!segmentDataCopy) { console.error('handleDrop: segmentDataCopy is empty!'); return; }
-            
-            // Use async JSON parsing to prevent UI blocking
-            await new Promise(resolve => {
-                try {
-                    const segment = JSON.parse(segmentDataCopy) as Layer;
-                    emit('drop-segment-copy', segment, props.shelf, position);
-                    resolve(null);
-                } catch (err) {
-                    console.error('Error parsing segment copy data:', err);
-                    resolve(null);
-                }
-            });
+            const segment = JSON.parse(segmentDataCopy) as Layer;
+            emit('drop-segment-copy', segment, props.shelf, position);
 
         } else {
             // console.log('handleDrop: No relevant data type found on drop.');
@@ -384,7 +325,7 @@ const handleDrop = rafDebounce(async (event: DragEvent) => {
     } finally {
         resetVisualState(); // Garante reset no final
     }
-});
+};
 
 // const handleDoubleClick = (event: MouseEvent) => {
 //     event.stopPropagation();
