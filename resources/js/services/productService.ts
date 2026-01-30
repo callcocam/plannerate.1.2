@@ -101,6 +101,13 @@ export const useProductService = () => {
         return apiService.post(`/products/sync-sales/purchases/product`, params);
     }
 
+    /**
+     * Associa um produto a um cliente
+     */
+    const associateProductToClient = (productId: string, clientId: string) => {
+        return apiService.post(`/products/${productId}/associate`, { client_id: clientId });
+    }
+
     return {
         getProduct,
         getShelf,
@@ -114,6 +121,7 @@ export const useProductService = () => {
         updateProduct,
         updateSalesPurchasesProduct,
         getProductsPost,
-        updateProductDimensions
+        updateProductDimensions,
+        associateProductToClient
     };
 };

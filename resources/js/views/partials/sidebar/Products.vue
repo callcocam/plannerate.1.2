@@ -76,7 +76,19 @@
                             </PopoverContent>
                         </Popover>
                     </div>
-
+                    <div class="mb-2">
+                        <Label class="mb-1 block">Cliente</Label>
+                        <Select v-model="filters.client_id" class="w-full">
+                            <SelectTrigger class="w-full">
+                                <SelectValue placeholder="Selecione um cliente" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem v-for="client in clients" :key="client.id" :value="client.id">
+                                    {{ client.name }}
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
                     <div class="mb-2">
                         <Label class="mb-1 block">Status de uso</Label>
                         <div class="space-y-2">
@@ -134,17 +146,17 @@
                 <ul v-if="!loading && filteredProducts.length > 0" class="space-y-1">
                     <li v-for="product in filteredProducts" :key="product.id"
                         class="group  rounded-md p-2 shadow-sm transition" :class="{
-                            'cursor-pointer': product.dimensions ? true : false,
-                            'disabled:opacity-50 cursor-not-allowed disabled': !product.dimensions,
+                            'cursor-pointer': isDragable(product),
+                            'disabled:opacity-50 cursor-not-allowed disabled': !isDragable(product),
                             'bg-blue-100 border-2 border-blue-400 dark:bg-blue-900 dark:border-blue-500': isProductSelected(product.id),
                             'bg-white hover:bg-blue-50 dark:bg-gray-700 dark:hover:bg-gray-600': !isProductSelected(product.id)
-                        }" @click="handleProductSelect(product, $event)" :draggable="product.dimensions ? true : false"
+                        }" @click="handleProductSelect(product, $event)" :draggable="isDragable(product)"
                         @dragstart="handleDragStart($event, product)">
                         <div class="flex items-center space-x-3">
                             <div
                                 class="flex-shrink-0 overflow-hidden rounded border bg-white p-1 dark:border-gray-600 dark:bg-gray-800">
                                 <img :src="product.image_url" :alt="product.name"
-                                    class="h-12 w-12 object-contain select-none" :disabled="!product.dimensions"
+                                    class="h-12 w-12 object-contain select-none" :disabled="!isDragable(product)"
                                     @error="(e) => handleImageError(e, product)" />
                             </div>
                             <div class="min-w-0 flex-1">
@@ -209,8 +221,10 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import MercadologicoSelector from '@/components/form/fields/MercadologicoSelector.vue';
 import { useViewStatsStore } from '@plannerate/store/editor/viewStats';
 import { useProductService } from '@plannerate/services/productService';
+import { Select } from '@/components/ui/select'; 
 
 const viewStatsStore = useViewStatsStore();
+
 
 interface Category {
     id: number | string;
@@ -220,13 +234,14 @@ interface Category {
 interface FilterState {
     search: string;
     category: number | string | null | '';
+    client_id: number | string | null | '';
     hangable: boolean;
     stackable: boolean;
     usageStatus: string;
     dimension: boolean;
     sales: boolean;
 }
-const props = defineProps({
+const props = defineProps({ 
     categories: {
         type: Array as () => Category[],
         default: () => [],
@@ -234,7 +249,7 @@ const props = defineProps({
     open: {
         type: Boolean,
         default: true,
-    },
+    }, 
 });
 
 const editorStore = useEditorStore();
@@ -247,7 +262,14 @@ const { productIdsInCurrentGondola } = storeToRefs(editorStore);
 const selectedProducts = ref<Set<string>>(new Set());
 const isMultiSelectMode = ref(false);
 
+const clients = computed(() => editorStore.currentState.clients || []); 
+ 
+
 const emit = defineEmits(['select-product', 'drag-start', 'view-stats', 'close', 'toggle']);
+
+const isDragable = (product: Product) => {
+    return !!(product.dimensions && editorStore.currentState?.client_id === filters.client_id);
+};
 
 // Função para limpar valores null/undefined de um objeto
 const cleanMercadologicoNivel = (obj: any) => {
@@ -267,11 +289,12 @@ const cleanMercadologicoNivel = (obj: any) => {
 };
 
 const showFilters = ref(false);
-const showMercadologicoPopover = ref(false);
+const showMercadologicoPopover = ref(false); 
 const mercadologicoNivel = ref(cleanMercadologicoNivel(editorStore.currentState?.mercadologico_nivel));
 const filters = reactive<FilterState>({
     search: '',
     category: mercadologicoNivel.value,
+    client_id: editorStore.currentState?.client_id || '',
     hangable: false,
     stackable: false,
     usageStatus: 'unused',
@@ -292,7 +315,7 @@ const selectedProductsCount = computed(() => selectedProducts.value.size);
 const isProductSelected = (productId: string): boolean => {
     return selectedProducts.value.has(productId);
 };
-
+console.log('Product IDs in current gondola:', editorStore.currentState?.client_id);
 // Função para limpar seleção
 const clearSelection = () => {
     selectedProducts.value.clear();
@@ -337,7 +360,7 @@ const fetchProducts = async (page = 1, append = false) => {
             dimension: filters.dimension || undefined,
             sales: filters.sales || undefined,
             planogram_id: editorStore.currentState?.id || undefined,
-            client_id: editorStore.currentState?.client_id,
+            client_id: filters.client_id || undefined,
             page: page,
             limit: LIST_LIMIT,
         };

@@ -9,6 +9,7 @@
 namespace Callcocam\Plannerate\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\Client;
 use App\Models\Cluster;
 use App\Models\Departament;
 use App\Models\Planogram;

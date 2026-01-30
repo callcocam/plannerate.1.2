@@ -85,9 +85,52 @@
                 </div>
             </div>
 
+            <!-- Associar -->
+            <div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+                <h4
+                    class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center justify-between">
+                    <div class="flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                        </svg>
+                        Associar Cliente
+                    </div>
+                </h4>
+
+                <div v-if="isProductAssociated" class="bg-green-50 dark:bg-green-900/20 rounded-md p-3 text-center">
+                    <div class="flex items-center justify-center gap-2 text-green-700 dark:text-green-300">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span class="text-sm font-medium">Produto associado ao cliente</span>
+                    </div>
+                </div>
+
+                <div v-else class="space-y-2">
+                    <p class="text-xs text-gray-600 dark:text-gray-400 mb-2">
+                        Este produto ainda não está associado ao cliente atual.
+                    </p>
+                    <button type="button" @click="handleAssociateProduct" :disabled="isAssociating"
+                        class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-md transition-colors">
+                        <svg v-if="!isAssociating" class="w-4 h-4" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                        </svg>
+                        <svg v-else class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        {{ isAssociating ? 'Associando...' : 'Associar ao Cliente' }}
+                    </button>
+                </div>
+            </div>
             <!-- Dimensões -->
             <div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
-                <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center justify-between">
+                <h4
+                    class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center justify-between">
                     <div class="flex items-center gap-1">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -260,7 +303,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useViewStatsStore } from '@plannerate/store/editor/viewStats';
 import EditProduct from './EditProduct.vue';
 import EditDimensions from './EditDimensions.vue';
@@ -275,9 +318,11 @@ const viewStatsStore = useViewStatsStore();
 
 const editorStore = useEditorStore();
 
-const { updateSalesPurchasesProduct, getProduct } = useProductService();
+const { updateSalesPurchasesProduct, getProduct, associateProductToClient } = useProductService();
 
 const currentGondola = computed(() => editorStore.currentState);
+
+const isAssociating = ref(false);
 
 console.log('Current Gondola:', currentGondola.value);
 
@@ -296,6 +341,16 @@ const hasProductCharacteristics = computed(() => {
     if (!productInfo.value) return false;
     const product = productInfo.value as any;
     return product.stackable || product.perishable || product.flammable || product.hangable;
+});
+
+const isProductAssociated = computed(() => {
+    if (!productInfo.value || !currentGondola.value?.client_id) return false;
+    const product = productInfo.value as any;
+console.log('Verificando associação do produto:', product, 'com cliente ID:', currentGondola.value?.client_id);
+    // Verifica se o produto tem associação com o cliente atual no array de clients (many-to-many)
+    return product.clients &&
+        Array.isArray(product.clients) &&
+        product.clients.some((client: any) => client.id === currentGondola.value?.client_id);
 });
 
 const statusText = computed(() => {
@@ -329,6 +384,45 @@ const statusClass = computed(() => {
             return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
     }
 });
+
+const handleAssociateProduct = async () => {
+    if (!productInfo.value) {
+        toast.error('Nenhum produto selecionado');
+        return;
+    }
+
+    if (!currentGondola.value?.client_id) {
+        toast.error('Nenhum cliente identificado no contexto atual');
+        return;
+    }
+
+    isAssociating.value = true;
+
+    try {
+        const response = await associateProductToClient(
+            productInfo.value.id,
+            currentGondola.value.client_id
+        );
+
+        console.log('✅ Produto associado com sucesso:', response);
+
+        // Atualizar os dados do produto com a resposta da associação
+        if (response?.data?.data) {
+            viewStatsStore.setSelectedProduct(response.data.data);
+        }
+
+        toast.success('Produto associado ao cliente com sucesso!');
+    } catch (error: any) {
+        console.error('❌ Erro ao associar produto:', error);
+
+        const errorMessage = error?.response?.data?.message ||
+            'Não foi possível associar o produto ao cliente. Tente novamente.';
+
+        toast.error(errorMessage);
+    } finally {
+        isAssociating.value = false;
+    }
+} 
 
 const syncProduct = async (_type: string, dates: { startDate: string | null, endDate: string | null }) => {
     console.log('Iniciando sincronização do produto...', currentGondola.value, dates);

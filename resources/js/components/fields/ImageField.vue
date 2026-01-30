@@ -29,6 +29,7 @@ import "vue-advanced-cropper/dist/style.css";
 import type { CropperResult } from 'vue-advanced-cropper';
 import { Label } from '../ui/label';
 import { Button } from '../ui/button';
+import { Upload } from 'lucide-vue-next';
 
 const props = defineProps<{
     modelValue?: string;
@@ -47,9 +48,7 @@ const emit = defineEmits<{
 const fileInput = ref<HTMLInputElement | null>(null);
 const imageUrl = ref<string | null>(null);
 const previewUrl = ref<string | null>(null);
-const selectedFile = ref<File | null>(null);
-const croppedImage = ref<CropperResult | null>(null);
-const cropperRef = ref<any>(null);
+const selectedFile = ref<File | null>(null); 
 
 // Observar mudanças no modelValue para atualizar o imageUrl
 watch(() => props.modelValue, (newValue) => {
@@ -72,27 +71,6 @@ const selectImage = (e: Event) => {
         imageUrl.value = null;
         previewUrl.value = null;
     }
-};
-
-const handleCrop = (result: CropperResult) => { 
-    croppedImage.value = result; 
-    emit('crop', result);
-};
- 
-
-const removeImage = () => {
-    emit('update:modelValue', '');
-    previewUrl.value = null;
-    imageUrl.value = null;
-    croppedImage.value = null;
-    selectedFile.value = null;
-};
-
-const cancelImageSelection = () => {
-    selectedFile.value = null;
-    previewUrl.value = null;
-    imageUrl.value = props.modelValue || null;
-    croppedImage.value = null;
 };
  
 </script> 

@@ -8,9 +8,10 @@
 
 namespace Callcocam\Plannerate\Http\Resources;
 
- 
+use App\Models\Client;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Cache;
 
 class PlannerateResource extends JsonResource
 {
@@ -27,9 +28,12 @@ class PlannerateResource extends JsonResource
             // 'store' => $this->whenLoaded('store', function () {
             //     return  $this->store->name;
             // }),
-            'store'=>$this->store,
+            'store' => $this->store,
             'client_id' => $this->client_id,
-            // 'client' => $this->whenLoaded('client'),
+            'clients' => Cache::remember("clients_plannerate", 60 * 60, function () {
+                return Client::all(['id', 'name'])->toArray();
+            }),
+            'client' => $this->client_id,
             'cluster_id' => $this->cluster_id,
             // 'cluster' =>$this->cluster, 
             // 'user' => $this->user,
